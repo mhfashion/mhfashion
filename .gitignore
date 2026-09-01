@@ -8,3 +8,5 @@ dist/
 *.log
 .turbo/
 coverage/
+.open-next/
+.wrangler/
