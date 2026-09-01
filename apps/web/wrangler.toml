@@ -1,0 +1,14 @@
+name = "mhfashion"
+main = ".open-next/worker.js"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Bindings (R2, Workers AI, etc.) will be added here as those integrations
+# are wired up. Example (uncomment and fill in once the R2 bucket exists):
+# [[r2_buckets]]
+# binding = "MH_FASHION_ASSETS"
+# bucket_name = "mh-fashion-assets"
