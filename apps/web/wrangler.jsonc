@@ -11,4 +11,9 @@
   "observability": {
     "enabled": true
   }
+  // R2 bindings (for design SVGs, mockups, brushes) will be added here
+  // once the bucket exists, e.g.:
+  // "r2_buckets": [
+  //   { "binding": "MH_FASHION_ASSETS", "bucket_name": "mh-fashion-assets" }
+  // ]
 }
