@@ -11,8 +11,11 @@ import {
   User,
   DollarSign,
   Moon,
+  Sun,
   Pencil,
 } from "lucide-react";
+import { useTheme } from "@/lib/theme-context";
+import { useCurrency } from "@/lib/currency-context";
 
 const NAV_LINKS = [
   { label: "New", href: "/new" },
@@ -28,6 +31,8 @@ const NAV_LINKS = [
 
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const { currency, toggleCurrency } = useCurrency();
 
   return (
     <>
@@ -79,11 +84,18 @@ export default function MobileNav() {
             <a href="/cart" className="py-2.5 flex items-center gap-2">
               <ShoppingCart size={15} /> Cart
             </a>
-            <button className="py-2.5 flex items-center gap-2 text-left">
-              <DollarSign size={15} /> Currency: Ks
+            <button
+              onClick={toggleCurrency}
+              className="py-2.5 flex items-center gap-2 text-left"
+            >
+              <DollarSign size={15} /> Currency: {currency}
             </button>
-            <button className="py-2.5 flex items-center gap-2 text-left">
-              <Moon size={15} /> Dark mode
+            <button
+              onClick={toggleTheme}
+              className="py-2.5 flex items-center gap-2 text-left"
+            >
+              {theme === "dark" ? <Moon size={15} /> : <Sun size={15} />}{" "}
+              {theme === "dark" ? "Dark mode" : "Light mode"}
             </button>
 
             <div className="border-t border-border my-2" />

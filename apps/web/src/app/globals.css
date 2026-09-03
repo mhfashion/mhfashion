@@ -2,8 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light mode (default CSS values, overridden by .dark below) */
 :root {
+  color-scheme: light;
+  --bg: 255 255 255;
+  --bg-surface: 242 242 242;
+  --accent: 101 156 20;       /* darker lime for contrast on light bg */
+  --accent-foreground: 255 255 255;
+  --border: 224 224 224;
+  --border-light: 200 200 200;
+  --text-primary: 13 13 13;
+  --text-secondary: 90 90 90;
+  --text-muted: 120 120 120;
+  --text-faint: 150 150 150;
+}
+
+/* Dark mode (confirmed default theme — see .dark class on <html>) */
+.dark {
   color-scheme: dark;
+  --bg: 13 13 13;
+  --bg-surface: 26 26 26;
+  --accent: 212 255 63;
+  --accent-foreground: 13 13 13;
+  --border: 38 38 38;
+  --border-light: 64 64 64;
+  --text-primary: 240 240 240;
+  --text-secondary: 179 179 179;
+  --text-muted: 138 138 138;
+  --text-faint: 106 106 106;
 }
 
 body {

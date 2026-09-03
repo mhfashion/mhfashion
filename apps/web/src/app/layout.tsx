@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ThemeProvider } from "@/lib/theme-context";
+import { CurrencyProvider } from "@/lib/currency-context";
 
 export const metadata: Metadata = {
   title: "MH Fashion — Design Your Own World",
@@ -12,11 +14,16 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Dark mode is the confirmed default theme; a client-side toggle
-  // will add/remove the "dark" class and persist the choice per user.
+  // Server-rendered as dark by default (matches the confirmed platform
+  // default and avoids a flash-of-light on first paint); ThemeProvider
+  // reconciles with the user's saved choice right after mount.
   return (
-    <html lang="en" className="dark">
-      <body>{children}</body>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body>
+        <ThemeProvider>
+          <CurrencyProvider>{children}</CurrencyProvider>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

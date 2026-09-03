@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Heart, Shirt } from "lucide-react";
 import type { Product } from "@/lib/types";
-import { formatPriceRange } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency-context";
 
 export default function ProductCard({ product }: { product: Product }) {
   const [favorited, setFavorited] = useState(false);
+  const { formatRangeKs } = useCurrency();
 
   return (
     <a href={`/products/${product.slug}`} className="block group">
@@ -47,7 +48,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
       <p className="text-[10px] mt-1 truncate">{product.name}</p>
       <p className="text-[10px] text-text-muted">
-        {formatPriceRange(product.priceMinKs, product.priceMaxKs)}
+        {formatRangeKs(product.priceMinKs, product.priceMaxKs)}
       </p>
     </a>
   );

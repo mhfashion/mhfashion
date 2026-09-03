@@ -6,24 +6,25 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Base surfaces (dark-mode-first, per the VOID-inspired reference)
+        // All colors read from CSS variables (see globals.css) so the
+        // .dark class toggle switches every color app-wide instantly.
         bg: {
-          DEFAULT: "#0d0d0d",
-          surface: "#1a1a1a",
+          DEFAULT: "rgb(var(--bg) / <alpha-value>)",
+          surface: "rgb(var(--bg-surface) / <alpha-value>)",
         },
         accent: {
-          DEFAULT: "#d4ff3f", // neon-lime, matches confirmed mockups
-          foreground: "#0d0d0d",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          foreground: "rgb(var(--accent-foreground) / <alpha-value>)",
         },
         border: {
-          DEFAULT: "#262626",
-          light: "#404040",
+          DEFAULT: "rgb(var(--border) / <alpha-value>)",
+          light: "rgb(var(--border-light) / <alpha-value>)",
         },
         text: {
-          primary: "#f0f0f0",
-          secondary: "#b3b3b3",
-          muted: "#8a8a8a",
-          faint: "#6a6a6a",
+          primary: "rgb(var(--text-primary) / <alpha-value>)",
+          secondary: "rgb(var(--text-secondary) / <alpha-value>)",
+          muted: "rgb(var(--text-muted) / <alpha-value>)",
+          faint: "rgb(var(--text-faint) / <alpha-value>)",
         },
       },
       borderRadius: {
