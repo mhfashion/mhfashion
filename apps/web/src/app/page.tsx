@@ -6,6 +6,11 @@ import CollectionGrid from "@/components/CollectionGrid";
 import Footer from "@/components/Footer";
 import { getNewArrivals, getBestSellers } from "@/lib/products";
 
+// Fetch products fresh on every request instead of baking the result into
+// the static HTML at build time (build-time fetches can fail silently in
+// sandboxed build environments and leave the page permanently empty).
+export const dynamic = "force-dynamic";
+
 // Server Component — fetches live data from Supabase on each request.
 export default async function HomePage() {
   const [newArrivals, bestSellers] = await Promise.all([
