@@ -23,9 +23,9 @@ export default function Header() {
           <a href="/" className="font-bold text-base tracking-wide">
             MH FASHION.
           </a>
-          <nav className="flex items-center gap-4.5 text-sm text-text-secondary">
-            <a href="/new" className="hover:text-text-primary">New</a>
-            <a href="/popular" className="hover:text-text-primary">Popular</a>
+          <nav className="flex items-center gap-6 text-sm text-text-secondary">
+            <a href="/new" className="hover:text-text-primary whitespace-nowrap">New</a>
+            <a href="/popular" className="hover:text-text-primary whitespace-nowrap">Popular</a>
 
             {/* Collections dropdown (desktop only, per confirmed spec) */}
             <div className="relative group">
