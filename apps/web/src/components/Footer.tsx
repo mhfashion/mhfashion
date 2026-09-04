@@ -30,6 +30,7 @@ export default function Footer() {
           <p className="text-[10px] font-semibold text-text-muted mb-2">HELP</p>
           <ul className="text-[10px] space-y-1.5">
             <li><a href="/faq">FAQ</a></li>
+            <li><a href="/contact">Contact Form</a></li>
             <li><a href="/shipping">Shipping Info</a></li>
             <li><a href="/returns">Returns & Exchanges</a></li>
             <li><a href="/size-guide">Size Guide</a></li>
@@ -37,12 +38,12 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="text-[10px] font-semibold text-text-muted mb-2">ABOUT</p>
+          <p className="text-[10px] font-semibold text-text-muted mb-2">LEGAL</p>
           <ul className="text-[10px] space-y-1.5">
             <li><a href="/about">About Us</a></li>
             <li><a href="/terms">Terms of Use</a></li>
             <li><a href="/privacy">Privacy Policy</a></li>
-            <li><a href="/contact">Contact Us</a></li>
+            <li><a href="/cookie-policy">Cookie Policy</a></li>
           </ul>
         </div>
 
@@ -70,17 +71,54 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-4">
-        <p className="text-[9px] text-text-faint">
-          © {new Date().getFullYear()} MH Fashion. All rights reserved.
-        </p>
-        <div className="flex gap-2 text-[9px] text-text-secondary">
-          <span className="border border-border-light rounded px-1.5 py-0.5">Visa</span>
-          <span className="border border-border-light rounded px-1.5 py-0.5">KBZPay</span>
-          <span className="border border-border-light rounded px-1.5 py-0.5">Wave Pay</span>
-          <span className="border border-border-light rounded px-1.5 py-0.5">AYA Pay</span>
+      {/* Payment methods (split Myanmar / International) + app download,
+          mirroring the reference layout the user provided. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-5 border-b border-border">
+        <div>
+          <p className="text-[10px] font-semibold text-text-muted mb-2">
+            MYANMAR PAYMENT
+          </p>
+          <div className="flex flex-wrap gap-1.5 text-[9px] text-text-secondary">
+            <span className="border border-border-light rounded px-1.5 py-0.5">KBZPay</span>
+            <span className="border border-border-light rounded px-1.5 py-0.5">Wave Pay</span>
+            <span className="border border-border-light rounded px-1.5 py-0.5">AYA Pay</span>
+          </div>
+        </div>
+
+        <div className="md:text-center">
+          <p className="text-[10px] font-semibold text-text-muted mb-2">
+            DOWNLOAD OUR APP
+          </p>
+          <div className="flex gap-1.5 md:justify-center">
+            <a
+              href="#"
+              className="border border-border-light rounded px-2.5 py-1 text-[9px] text-text-secondary"
+            >
+              App Store
+            </a>
+            <a
+              href="#"
+              className="border border-border-light rounded px-2.5 py-1 text-[9px] text-text-secondary"
+            >
+              Google Play
+            </a>
+          </div>
+        </div>
+
+        <div className="md:text-right">
+          <p className="text-[10px] font-semibold text-text-muted mb-2">
+            INTERNATIONAL PAYMENT
+          </p>
+          <div className="flex flex-wrap gap-1.5 text-[9px] text-text-secondary md:justify-end">
+            <span className="border border-border-light rounded px-1.5 py-0.5">Visa</span>
+            <span className="border border-border-light rounded px-1.5 py-0.5">Mastercard</span>
+          </div>
         </div>
       </div>
+
+      <p className="text-[9px] text-text-faint text-center pt-4">
+        © {new Date().getFullYear()} MH Fashion. All rights reserved.
+      </p>
     </footer>
   );
 }
