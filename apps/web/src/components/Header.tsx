@@ -23,13 +23,13 @@ export default function Header() {
           <a href="/" className="font-bold text-base tracking-wide">
             MH FASHION.
           </a>
-          <nav className="flex items-center gap-6 text-sm text-text-secondary">
-            <a href="/new" className="hover:text-text-primary whitespace-nowrap">New</a>
-            <a href="/popular" className="hover:text-text-primary whitespace-nowrap">Popular</a>
+          <nav className="flex items-center gap-6 text-sm font-semibold text-text-primary">
+            <a href="/new" className="hover:text-accent whitespace-nowrap">New</a>
+            <a href="/popular" className="hover:text-accent whitespace-nowrap">Popular</a>
 
             {/* Collections dropdown (desktop only, per confirmed spec) */}
             <div className="relative group">
-              <button className="flex items-center gap-1 hover:text-text-primary">
+              <button className="flex items-center gap-1 hover:text-accent">
                 Collections <ChevronDown size={13} />
               </button>
               <div className="absolute left-0 top-full pt-2 hidden group-hover:block">
@@ -38,7 +38,7 @@ export default function Header() {
                     <a
                       key={c.href}
                       href={c.href}
-                      className="block px-2.5 py-1.5 rounded-md text-sm hover:bg-bg"
+                      className="block px-2.5 py-1.5 rounded-md text-sm font-medium hover:bg-bg hover:text-accent"
                     >
                       {c.label}
                     </a>
@@ -47,7 +47,7 @@ export default function Header() {
               </div>
             </div>
 
-            <a href="/guide" className="hover:text-text-primary">Guide</a>
+            <a href="/guide" className="hover:text-accent">Guide</a>
           </nav>
         </div>
 
