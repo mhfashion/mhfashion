@@ -36,7 +36,7 @@ export default function MobileNav() {
 
   return (
     <>
-      <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-border">
+      <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-border bg-bg sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
           <button onClick={() => setOpen(true)} aria-label="Open menu">
             <Menu size={20} />
