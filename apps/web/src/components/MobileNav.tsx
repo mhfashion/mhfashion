@@ -5,7 +5,6 @@ import {
   Menu,
   X,
   Search,
-  Bell,
   Heart,
   ShoppingCart,
   User,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
+import NotificationBell from "./NotificationBell";
 
 const NAV_LINKS = [
   { label: "New", href: "/new" },
@@ -45,7 +45,7 @@ export default function MobileNav() {
         </div>
         <div className="flex items-center gap-3 text-text-secondary">
           <Search size={17} />
-          <Bell size={17} />
+          <NotificationBell />
         </div>
       </div>
 

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   Search,
-  Bell,
   Heart,
   ShoppingCart,
   User,
@@ -15,12 +14,9 @@ import {
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
 import { useCart } from "@/lib/cart-context";
+import NotificationBell from "./NotificationBell";
 
-export default function HeaderActions({
-  hasNotification = false,
-}: {
-  hasNotification?: boolean;
-}) {
+export default function HeaderActions() {
   const { theme, toggleTheme } = useTheme();
   const { currency, toggleCurrency } = useCurrency();
   const { itemCount } = useCart();
@@ -47,12 +43,7 @@ export default function HeaderActions({
       </button>
 
       <div className="flex items-center gap-3.5 text-text-secondary">
-        <button aria-label="Notifications" className="relative">
-          <Bell size={18} />
-          {hasNotification && (
-            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-accent" />
-          )}
-        </button>
+        <NotificationBell />
 
         <button aria-label="Wishlist">
           <Heart size={18} />
