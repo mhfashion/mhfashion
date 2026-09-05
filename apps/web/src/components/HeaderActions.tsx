@@ -14,16 +14,16 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
+import { useCart } from "@/lib/cart-context";
 
 export default function HeaderActions({
-  cartCount = 0,
   hasNotification = false,
 }: {
-  cartCount?: number;
   hasNotification?: boolean;
 }) {
   const { theme, toggleTheme } = useTheme();
   const { currency, toggleCurrency } = useCurrency();
+  const { itemCount } = useCart();
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
@@ -81,9 +81,9 @@ export default function HeaderActions({
 
         <a href="/cart" aria-label="Cart" className="relative">
           <ShoppingCart size={18} />
-          {cartCount > 0 && (
+          {itemCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">
-              {cartCount}
+              {itemCount}
             </span>
           )}
         </a>

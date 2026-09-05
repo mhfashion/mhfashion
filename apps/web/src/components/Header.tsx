@@ -52,7 +52,7 @@ export default function Header() {
             </nav>
           </div>
 
-          <HeaderActions cartCount={2} hasNotification />
+          <HeaderActions />
 
           {/* Subtle accent glow beneath the pill, matching the reference */}
           <div className="absolute left-6 right-6 -bottom-1.5 h-1.5 bg-accent/40 blur-md rounded-full -z-10" />
