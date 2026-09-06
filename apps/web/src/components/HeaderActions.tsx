@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Search,
   Heart,
@@ -21,10 +21,21 @@ export default function HeaderActions() {
   const { currency, toggleCurrency } = useCurrency();
   const { itemCount } = useCart();
   const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div className="flex items-center gap-3">
-      {/* Inline search field (desktop) */}
+      {/* Inline search field (desktop, lg+) */}
       <div className="hidden lg:flex items-center gap-2 bg-bg-surface border border-border rounded-full px-3 py-1.5 w-56 text-text-secondary">
         <Search size={15} />
         <input
@@ -33,14 +44,28 @@ export default function HeaderActions() {
           className="bg-transparent outline-none text-xs w-full placeholder:text-text-faint"
         />
       </div>
-      {/* Search icon only (below lg) */}
-      <button
-        aria-label="Search"
-        className="lg:hidden text-text-secondary"
-        onClick={() => setSearchOpen((s) => !s)}
-      >
-        <Search size={18} />
-      </button>
+
+      {/* Search icon + dropdown (md–lg, where the inline field is hidden) */}
+      <div className="relative lg:hidden" ref={searchRef}>
+        <button
+          aria-label="Search"
+          className="text-text-secondary"
+          onClick={() => setSearchOpen((s) => !s)}
+        >
+          <Search size={18} />
+        </button>
+        {searchOpen && (
+          <div className="absolute right-0 top-full mt-3 w-64 bg-bg-surface border border-border rounded-full px-3 py-2 shadow-xl flex items-center gap-2 text-text-secondary z-50">
+            <Search size={15} />
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search products..."
+              className="bg-transparent outline-none text-xs w-full placeholder:text-text-faint"
+            />
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center gap-3.5 text-text-secondary">
         <NotificationBell />
