@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer className="px-6 md:px-8 py-6 border-t border-border mt-6">
+    <footer className="hidden md:block px-6 md:px-8 py-6 border-t border-border mt-6">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-5 pb-5 border-b border-border">
         <div className="col-span-2 md:col-span-1">
           <p className="font-bold text-sm mb-2">MH FASHION.</p>

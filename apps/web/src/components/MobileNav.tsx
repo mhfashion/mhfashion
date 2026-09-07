@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   Menu,
-  X,
   Search,
   Heart,
   ShoppingCart,
@@ -91,7 +90,7 @@ export default function MobileNav() {
           drawer/backdrop directly beneath it. */}
       <div className="flex md:hidden items-center justify-between h-14 px-4 border-b border-border bg-bg sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
-          <button onClick={() => setOpen(true)} aria-label="Open menu">
+          <button onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
             <Menu size={20} />
           </button>
           <span className="font-bold text-sm">
@@ -119,14 +118,7 @@ export default function MobileNav() {
           transition-transform duration-300 ease-out overflow-y-auto
           ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <span className="text-xs font-semibold text-text-muted">MENU</span>
-          <button onClick={close} aria-label="Close menu">
-            <X size={18} />
-          </button>
-        </div>
-
-        <nav className="text-sm">
+        <nav className="text-sm pt-1">
           {NAV_LINKS.map((link) => (
             <LinkRow key={link.href} {...link} onClick={close} />
           ))}
