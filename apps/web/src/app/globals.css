@@ -35,3 +35,21 @@
 body {
   @apply bg-bg text-text-primary;
 }
+
+/* Continuous right-to-left auto-scroll for the category row */
+@keyframes marquee-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee-left 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
