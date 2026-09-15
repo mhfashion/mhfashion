@@ -17,6 +17,11 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "5", name: "Cups", slug: "cups", icon: "cup" },
 ];
 
+// Each item is 64px wide + 16px gap = 80px. Repeating the list this many
+// times keeps the track wider than any realistic viewport, so there's never
+// a visible gap at the end of the row.
+const REPEAT = 5;
+
 function CategoryItem({ cat }: { cat: Category }) {
   const Icon = ICONS[cat.icon] ?? ICONS.default;
   return (
@@ -46,17 +51,24 @@ export default function CategoryRow({
         </a>
       </div>
 
-      {/* Continuous right-to-left auto-scroll (marquee); the category list
-          is duplicated so translating -50% loops seamlessly back to the
-          start. Hovering pauses it (see .animate-marquee in globals.css). */}
+      {/* Continuous right-to-left auto-scroll (marquee). The list is repeated
+          enough times to overflow even wide screens, and the animation
+          translates by exactly one half of the track so the loop is seamless.
+          Hovering pauses it (see .animate-marquee in globals.css). */}
       <div className="overflow-hidden">
         <div className="flex gap-4 w-max animate-marquee">
-          {categories.map((cat) => (
-            <CategoryItem key={`a-${cat.id}`} cat={cat} />
-          ))}
-          {categories.map((cat) => (
-            <CategoryItem key={`b-${cat.id}`} cat={cat} />
-          ))}
+          {/* First half of the track */}
+          {Array.from({ length: REPEAT }).map((_, i) =>
+            categories.map((cat) => (
+              <CategoryItem key={`a-${i}-${cat.id}`} cat={cat} />
+            ))
+          )}
+          {/* Second half — identical, so -50% lands back at the start */}
+          {Array.from({ length: REPEAT }).map((_, i) =>
+            categories.map((cat) => (
+              <CategoryItem key={`b-${i}-${cat.id}`} cat={cat} />
+            ))
+          )}
         </div>
       </div>
     </section>

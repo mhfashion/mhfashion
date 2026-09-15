@@ -36,13 +36,15 @@ body {
   @apply bg-bg text-text-primary;
 }
 
-/* Continuous right-to-left auto-scroll for the category row */
+/* Continuous right-to-left auto-scroll for the category row. The list is
+   repeated 8x in the component so this only needs to translate by 1/8 of
+   the total width for a perfectly seamless loop on any screen size. */
 @keyframes marquee-left {
   from {
     transform: translateX(0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translateX(-12.5%);
   }
 }
 
