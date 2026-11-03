@@ -263,12 +263,12 @@ Ks/$ toggles, notification dropdown, category marquee.
 **Built, using placeholder data:** Editor page (`/create`), Account page
 (`/account`).
 
-**Next:** show the site header on the editor page, Auth (email / Google /
-Facebook), product detail page, replace placeholders with Supabase data, cart
-and checkout.
+**Next:** Auth (email / Google / Facebook), product detail page, replace
+placeholders with Supabase data, cart and checkout.
 
 ---
 
 ## Change Log
 
 - Initial consolidated plan created from the planning conversation.
+- Editor page now shows the site Header bar at the top; removed it from "Next".
