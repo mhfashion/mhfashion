@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Undo2, Redo2, Shirt, Scissors, Sparkles } from "lucide-react";
+import Header from "@/components/Header";
 import EditorLeftRail, {
   type PanelId,
   type ToolId,
@@ -70,6 +71,9 @@ export default function EditorPage() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
+      {/* Site header stays visible above the editor toolbar */}
+      <Header />
+
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-3 text-text-secondary">
