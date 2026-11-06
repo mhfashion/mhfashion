@@ -12,7 +12,7 @@ export default function GuideCard({
   index: number;
 }) {
   return (
-    <article className="group border-t border-border py-6 sm:py-8">
+    <article className="group border-t border-border py-5 sm:py-6">
       <Link
         href={`/guide/${post.slug}`}
         className="flex h-full flex-col rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-bg"
@@ -36,7 +36,7 @@ export default function GuideCard({
           <span className="flex items-center gap-1.5 text-text-muted">
             <Clock3 size={13} aria-hidden="true" /> {post.readingMinutes} min read
           </span>
-          <span className="font-semibold text-text-primary group-hover:text-accent">Read guide</span>
+          <span className="font-semibold text-text-primary group-hover:text-accent">Read post</span>
         </div>
       </Link>
     </article>
