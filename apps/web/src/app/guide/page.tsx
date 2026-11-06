@@ -26,8 +26,8 @@ function guideUrl(category: string, query: string): string {
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const params = await searchParams;
   return guideMetadata({
-    title: "MH Fashion Guide — Products, Design & Payment",
-    description: "Find your fit, understand product options, and learn the MH Fashion design, payment and delivery workflow. Practical guides for your next custom piece.",
+    title: "MH Fashion Blog Posts — Products, Design & Payment",
+    description: "Read MH Fashion posts about products, design, payment and delivery for your next custom piece.",
     path: "/guide",
     noindex: Boolean(first(params.q) || first(params.category)),
   });
@@ -47,18 +47,13 @@ export default async function GuidePage({ searchParams }: PageProps) {
   return (
     <div>
       <Header />
-      <main className="mx-auto max-w-5xl px-5 py-6 sm:px-8 md:py-10">
-        <section className="mb-8 flex flex-col justify-between gap-6 border-b border-border pb-8 md:flex-row md:items-end md:gap-10">
-          <div className="max-w-lg">
-            <p className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+      <main className="w-full px-6 py-6 sm:px-8 lg:px-10 md:py-10">
+        <section className="mb-8 flex flex-col justify-between gap-5 border-b border-border pb-7 lg:flex-row lg:items-end">
+          <div>
+            <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
               <BookOpen size={14} aria-hidden="true" /> MH Fashion blog posts
             </p>
-            <h1 className="text-3xl font-black leading-[1.05] tracking-tight sm:text-4xl md:text-5xl">
-              BLOG POSTS.<br /><span className="text-accent">SHORT. USEFUL. MH.</span>
-            </h1>
-            <p className="mt-5 max-w-md text-sm leading-relaxed text-text-secondary">
-              Notes on products, design, payments, and the ideas behind your next custom piece.
-            </p>
+            <h1 className="text-2xl font-black leading-none tracking-tight sm:text-3xl">Blog posts</h1>
           </div>
           <form action="/guide#articles" method="get" className="w-full md:max-w-sm" role="search">
             <label htmlFor="guide-search" className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted">
@@ -92,20 +87,22 @@ export default async function GuidePage({ searchParams }: PageProps) {
 
         {featured && (
           <section aria-labelledby="featured-heading" className="mb-10">
-              <Link href={`/guide/${featured.slug}`} className="group flex flex-col gap-5 rounded-xl border border-border bg-bg-surface p-5 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:p-6 md:flex-row md:items-center md:gap-8">
-              <div className="flex items-center gap-4 md:w-40 md:shrink-0 md:flex-col md:items-start">
-                <span aria-hidden="true" className="text-5xl font-black tracking-tighter text-accent sm:text-6xl">01<span className="text-text-faint">/</span></span>
+              <Link href={`/guide/${featured.slug}`} className="group grid overflow-hidden rounded-xl border border-border bg-bg-surface outline-none focus-visible:ring-2 focus-visible:ring-accent md:grid-cols-[minmax(240px,0.8fr)_1.2fr]">
+              {featured.coverImageUrl && <div className="relative aspect-[16/9] overflow-hidden bg-bg md:aspect-auto"><img src={featured.coverImageUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /></div>}
+              <div className="flex flex-col justify-between gap-6 p-5 sm:p-7">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-accent">Featured post</p>
-                  <p className="mt-1 text-xs text-text-muted">{categoryNames.get(featured.categorySlug)}</p>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-accent">Featured post</p>
+                    <p className="text-xs text-text-muted">{categoryNames.get(featured.categorySlug)}</p>
+                  </div>
+                  <h2 id="featured-heading" className="mb-3 text-xl font-bold leading-tight transition-colors group-hover:text-accent sm:text-2xl">{featured.title}</h2>
+                  <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">{featured.excerpt}</p>
+                </div>
+                <div className="flex items-center justify-between gap-4 text-xs">
+                  <span className="inline-flex items-center gap-1.5 text-text-muted"><Clock3 size={13} aria-hidden="true" /> {featured.readingMinutes} min read</span>
+                  <span className="flex items-center gap-2 font-semibold text-accent">Read post <ArrowUpRight size={18} aria-hidden="true" /></span>
                 </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 id="featured-heading" className="mb-3 text-xl font-bold leading-tight transition-colors group-hover:text-accent sm:text-2xl">{featured.title}</h2>
-                <p className="max-w-xl text-sm leading-relaxed text-text-secondary">{featured.excerpt}</p>
-                <span className="mt-5 inline-flex items-center gap-1.5 text-xs text-text-muted"><Clock3 size={13} aria-hidden="true" /> {featured.readingMinutes} min read</span>
-              </div>
-              <span className="flex items-center gap-2 text-sm font-semibold text-accent md:self-end">Read post <ArrowUpRight size={18} aria-hidden="true" /></span>
             </Link>
           </section>
         )}
@@ -138,7 +135,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <Link href="/guide" className="mt-5 inline-block text-sm font-semibold text-accent">Try again</Link>
             </div>
           ) : posts.length ? (
-            <div className="grid gap-x-10 md:grid-cols-2">
+            <div className="grid gap-x-8 md:grid-cols-2 xl:grid-cols-3">
               {posts.map((post, index) => <GuideCard key={post.id} post={post} categoryName={categoryNames.get(post.categorySlug) ?? "Guide"} index={index} />)}
             </div>
           ) : (

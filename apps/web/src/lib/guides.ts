@@ -21,6 +21,7 @@ export type GuidePost = {
   categorySlug: string;
   title: string;
   excerpt: string;
+  coverImageUrl?: string | null;
   sections: GuideSection[];
   readingMinutes: number;
   featured: boolean;
@@ -48,6 +49,7 @@ type GuidePostRow = {
   slug: unknown;
   title: unknown;
   excerpt: unknown;
+  cover_image_url: unknown;
   sections: unknown;
   reading_minutes: unknown;
   featured: unknown;
@@ -77,6 +79,17 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
+}
+
+function isNullableHttpUrl(value: unknown): value is string | null {
+  if (value === undefined || value === null) return true;
+  if (typeof value !== "string" || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 function isInteger(value: unknown): value is number {
@@ -143,6 +156,7 @@ function parseGuidePost(
     !isNonEmptyString(value.category_id) ||
     !isNonEmptyString(value.title) ||
     !isNonEmptyString(value.excerpt) ||
+    !isNullableHttpUrl(value.cover_image_url) ||
     !Array.isArray(value.sections) ||
     value.sections.length === 0 ||
     !isInteger(value.reading_minutes) ||
@@ -170,6 +184,7 @@ function parseGuidePost(
     categorySlug,
     title: value.title,
     excerpt: value.excerpt,
+    coverImageUrl: value.cover_image_url ?? null,
     sections,
     readingMinutes: value.reading_minutes,
     featured: value.featured,
@@ -232,7 +247,7 @@ async function loadGuideCatalog(): Promise<GuideCatalog> {
       supabase
         .from("guide_posts")
         .select(
-          "id, category_id, slug, title, excerpt, sections, reading_minutes, featured, published_at, seo_title, seo_description"
+          "id, category_id, slug, title, excerpt, cover_image_url, sections, reading_minutes, featured, published_at, seo_title, seo_description"
         )
         .eq("status", "published")
         .not("published_at", "is", null)

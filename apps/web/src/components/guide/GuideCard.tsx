@@ -17,6 +17,11 @@ export default function GuideCard({
         href={`/guide/${post.slug}`}
         className="flex h-full flex-col rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-bg"
       >
+        {post.coverImageUrl && (
+          <div className="mb-5 aspect-[16/9] overflow-hidden rounded-lg bg-bg-surface">
+            <img src={post.coverImageUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          </div>
+        )}
         <div className="mb-5 flex items-center justify-between gap-3">
           <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-accent">
             {categoryName}
