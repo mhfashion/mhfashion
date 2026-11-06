@@ -1,0 +1,9 @@
+{
+  "routes": [
+    { "path": "/", "title": "Home" },
+    { "path": "/account", "title": "My Account" },
+    { "path": "/create", "title": "Create Design" },
+    { "path": "/guide", "title": "Guide" },
+    { "path": "/guide/:slug", "title": "Guide Article" }
+  ]
+}

@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
-    "lint": "npm run lint --workspace=apps/web"
+    "lint": "npm run lint --workspace=apps/web",
+    "test:guide": "node --test tests/guides.test.cjs",
+    "test:guide:http": "node --test tests/guide-http.test.cjs"
   }
 }

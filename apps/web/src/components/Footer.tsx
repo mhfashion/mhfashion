@@ -29,6 +29,7 @@ export default function Footer() {
         <div>
           <p className="text-[10px] font-semibold text-text-muted mb-2">HELP</p>
           <ul className="text-[10px] space-y-1.5">
+            <li><a href="/guide">Guide</a></li>
             <li><a href="/faq">FAQ</a></li>
             <li><a href="/contact">Contact Form</a></li>
             <li><a href="/shipping">Shipping Info</a></li>
