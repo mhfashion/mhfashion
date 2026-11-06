@@ -15,6 +15,7 @@ import AttributeBar, {
   type AttributeSelection,
 } from "@/components/editor/AttributeBar";
 import { useCurrency } from "@/lib/currency-context";
+import { useI18n } from "@/lib/i18n";
 
 type Side = "Front" | "Back";
 
@@ -33,6 +34,7 @@ const INITIAL_LAYERS: Record<Side, EditorLayer[]> = {
 
 export default function EditorPage() {
   const { formatKs } = useCurrency();
+  const { t } = useI18n();
 
   const [activePanel, setActivePanel] = useState<PanelId | null>("elements");
   const [activeTool, setActiveTool] = useState<ToolId>("move");
@@ -77,12 +79,12 @@ export default function EditorPage() {
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-3 text-text-secondary">
-          <button title="Undo"><Undo2 size={16} /></button>
-          <button title="Redo"><Redo2 size={16} /></button>
+          <button title={t("editor.undo")}><Undo2 size={16} /></button>
+          <button title={t("editor.redo")}><Redo2 size={16} /></button>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium">Custom Design</span>
+          <span className="text-xs font-medium">{t("editor.customDesign")}</span>
           <span className="text-xs font-semibold text-accent">
             {formatKs(priceKs)}
           </span>
@@ -96,7 +98,7 @@ export default function EditorPage() {
           <button
             disabled={!mockupAttached}
             title={
-              mockupAttached ? undefined : "Attach the mockup first"
+              mockupAttached ? undefined : t("editor.attachFirst")
             }
             className="text-[11px] px-3 py-1.5 rounded border border-border bg-bg-surface disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -105,7 +107,7 @@ export default function EditorPage() {
           <button
             disabled={!mockupAttached}
             title={
-              mockupAttached ? undefined : "Attach the mockup first"
+              mockupAttached ? undefined : t("editor.attachFirst")
             }
             className="text-[11px] px-3 py-1.5 rounded bg-accent text-accent-foreground font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -132,9 +134,9 @@ export default function EditorPage() {
               {activeTool.replace("-", " ")}
             </span>
             <span className="text-border-light">|</span>
-            <span>Stroke</span>
+            <span>{t("editor.stroke")}</span>
             <span className="w-3.5 h-3.5 rounded-sm bg-text-primary" />
-            <span>Width 2px</span>
+            <span>{t("editor.width")}</span>
           </div>
 
           <div className="flex gap-4">
@@ -159,8 +161,8 @@ export default function EditorPage() {
                       : "text-text-muted"
                   }`}
                 >
-                  {side}
-                  {activeSide === side ? " (selected)" : ""}
+                  {side === "Front" ? t("editor.front") : t("editor.back")}
+                  {activeSide === side ? ` (${t("editor.selected")})` : ""}
                 </span>
 
                 {/* Live mockup preview appears under the selected canvas */}
@@ -169,7 +171,7 @@ export default function EditorPage() {
                     <div className="w-12 aspect-[3/4] bg-bg rounded flex items-center justify-center">
                       <Shirt size={18} className="text-border-light" />
                     </div>
-                    <span className="text-[8px] text-text-muted">Mockup</span>
+                    <span className="text-[8px] text-text-muted">{t("editor.mockup")}</span>
                   </div>
                 )}
               </div>
@@ -185,13 +187,13 @@ export default function EditorPage() {
             }`}
           >
             <Scissors size={13} />
-            {mockupAttached ? "Mockup attached ✓" : "Attach to mockup"}
+            {mockupAttached ? t("editor.attached") : t("editor.attach")}
           </button>
 
           {!mockupAttached && (
             <p className="text-[9px] text-text-faint flex items-center gap-1">
               <Sparkles size={10} />
-              Attach the design to the mockup to unlock Add to cart / Buy now
+              {t("editor.unlock")}
             </p>
           )}
         </div>

@@ -1,12 +1,16 @@
+"use client";
+
+import { useI18n } from "@/lib/i18n";
+
 export default function Footer() {
+  const { t } = useI18n();
   return (
     <footer className="hidden md:block px-6 md:px-8 py-6 border-t border-border mt-6">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-5 pb-5 border-b border-border">
         <div className="col-span-2 md:col-span-1">
           <p className="font-bold text-sm mb-2">MH FASHION.</p>
           <p className="text-[10px] text-text-muted leading-relaxed">
-            Print-on-demand for those who don&apos;t follow the crowd. Design
-            it your way.
+            {t("footer.description")}
           </p>
           <div className="flex gap-2.5 mt-3 text-text-secondary text-xs">
             <span>FB</span>
@@ -17,29 +21,29 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="text-[10px] font-semibold text-text-muted mb-2">SHOP</p>
+          <p className="text-[10px] font-semibold text-text-muted mb-2">{t("footer.shop")}</p>
           <ul className="text-[10px] space-y-1.5">
-            <li><a href="/products">All Products</a></li>
-            <li><a href="/new">New Arrivals</a></li>
-            <li><a href="/best-sellers">Best Sellers</a></li>
-            <li><a href="/collections">Collections</a></li>
+            <li><a href="/products">{t("nav.allProducts")}</a></li>
+            <li><a href="/new">{t("nav.newArrivals")}</a></li>
+            <li><a href="/best-sellers">{t("nav.bestSellers")}</a></li>
+            <li><a href="/collections">{t("nav.collectionsPlural")}</a></li>
           </ul>
         </div>
 
         <div>
-          <p className="text-[10px] font-semibold text-text-muted mb-2">HELP</p>
+          <p className="text-[10px] font-semibold text-text-muted mb-2">{t("footer.help")}</p>
           <ul className="text-[10px] space-y-1.5">
-            <li><a href="/guide">Guide</a></li>
-            <li><a href="/faq">FAQ</a></li>
-            <li><a href="/contact">Contact Form</a></li>
-            <li><a href="/shipping">Shipping Info</a></li>
-            <li><a href="/returns">Returns & Exchanges</a></li>
-            <li><a href="/size-guide">Size Guide</a></li>
+            <li><a href="/guide">{t("nav.guide")}</a></li>
+            <li><a href="/faq">{t("nav.faq")}</a></li>
+            <li><a href="/contact">{t("nav.contact")}</a></li>
+            <li><a href="/shipping">{t("nav.shipping")}</a></li>
+            <li><a href="/returns">{t("nav.returns")}</a></li>
+            <li><a href="/size-guide">{t("nav.sizeGuide")}</a></li>
           </ul>
         </div>
 
         <div>
-          <p className="text-[10px] font-semibold text-text-muted mb-2">LEGAL</p>
+          <p className="text-[10px] font-semibold text-text-muted mb-2">{t("footer.legal")}</p>
           <ul className="text-[10px] space-y-1.5">
             <li><a href="/about">About Us</a></li>
             <li><a href="/terms">Terms of Use</a></li>
@@ -50,15 +54,15 @@ export default function Footer() {
 
         <div className="col-span-2 md:col-span-1">
           <p className="text-[10px] font-semibold text-text-muted mb-2">
-            NEWSLETTER
+            {t("footer.newsletter")}
           </p>
           <p className="text-[9px] text-text-muted mb-2">
-            Get 10% off your first order
+            {t("footer.discount")}
           </p>
           <form className="flex gap-1.5">
             <input
               type="email"
-              placeholder="Enter your email"
+              placeholder={t("footer.email")}
               className="flex-1 bg-bg-surface rounded-md h-6 px-2 text-[9px] text-text-primary placeholder:text-text-faint"
             />
             <button
@@ -77,7 +81,7 @@ export default function Footer() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-5 border-b border-border">
         <div>
           <p className="text-[10px] font-semibold text-text-muted mb-2">
-            MYANMAR PAYMENT
+            {t("footer.myanmarPayment")}
           </p>
           <div className="flex flex-wrap gap-1.5 text-[9px] text-text-secondary">
             <span className="border border-border-light rounded px-1.5 py-0.5">KBZPay</span>
@@ -88,7 +92,7 @@ export default function Footer() {
 
         <div className="md:text-center">
           <p className="text-[10px] font-semibold text-text-muted mb-2">
-            DOWNLOAD OUR APP
+            {t("footer.download")}
           </p>
           <div className="flex gap-1.5 md:justify-center">
             <a
@@ -108,7 +112,7 @@ export default function Footer() {
 
         <div className="md:text-right">
           <p className="text-[10px] font-semibold text-text-muted mb-2">
-            INTERNATIONAL PAYMENT
+            {t("footer.internationalPayment")}
           </p>
           <div className="flex flex-wrap gap-1.5 text-[9px] text-text-secondary md:justify-end">
             <span className="border border-border-light rounded px-1.5 py-0.5">Visa</span>
@@ -118,7 +122,7 @@ export default function Footer() {
       </div>
 
       <p className="text-[9px] text-text-faint text-center pt-4">
-        © {new Date().getFullYear()} MH Fashion. All rights reserved.
+        © {new Date().getFullYear()} MH Fashion. {t("footer.rights")}
       </p>
     </footer>
   );

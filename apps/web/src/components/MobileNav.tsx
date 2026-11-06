@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
+import { useI18n } from "@/lib/i18n";
 import NotificationBell from "./NotificationBell";
 
 const NAV_LINKS = [
@@ -82,6 +83,7 @@ export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { currency, toggleCurrency } = useCurrency();
+  const { locale, setLocale, t } = useI18n();
   const close = () => setOpen(false);
 
   return (
@@ -90,7 +92,7 @@ export default function MobileNav() {
           drawer/backdrop directly beneath it. */}
       <div className="flex md:hidden items-center justify-between h-14 px-4 border-b border-border bg-bg sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
-          <button onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
+          <button onClick={() => setOpen((o) => !o)} aria-label={t("actions.toggleMenu")}>
             <Menu size={20} />
           </button>
           <span className="font-bold text-sm">
@@ -98,6 +100,11 @@ export default function MobileNav() {
           </span>
         </div>
         <div className="flex items-center gap-3 text-text-secondary">
+          <div className="flex items-center gap-1 text-[9px] font-semibold">
+            <button onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : ""}>EN</button>
+            <span>/</span>
+            <button onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : ""}>မြန်မာ</button>
+          </div>
           <Search size={17} />
           <NotificationBell />
         </div>
@@ -129,7 +136,7 @@ export default function MobileNav() {
             onClick={close}
             className="flex items-center gap-2 px-4 py-2.5 text-accent font-semibold border-b border-border/40"
           >
-            <Pencil size={15} /> Create design
+            <Pencil size={15} /> {t("actions.create")}
           </a>
 
           <a
@@ -137,54 +144,54 @@ export default function MobileNav() {
             onClick={close}
             className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40"
           >
-            <Heart size={15} /> Wishlist
+            <Heart size={15} /> {t("actions.wishlist")}
           </a>
           <a
             href="/cart"
             onClick={close}
             className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40"
           >
-            <ShoppingCart size={15} /> Cart
+            <ShoppingCart size={15} /> {t("actions.cart")}
           </a>
           <button
             onClick={toggleCurrency}
             className="w-full flex items-center gap-2 px-4 py-2.5 text-left border-b border-border/40"
           >
-            <DollarSign size={15} /> Currency: {currency}
+            <DollarSign size={15} /> {t("actions.currency")}: {currency}
           </button>
           <button
             onClick={toggleTheme}
             className="w-full flex items-center gap-2 px-4 py-2.5 text-left border-b border-border/40"
           >
             {theme === "dark" ? <Moon size={15} /> : <Sun size={15} />}{" "}
-            {theme === "dark" ? "Dark mode" : "Light mode"}
+            {theme === "dark" ? t("actions.darkMode") : t("actions.lightMode")}
           </button>
 
           {/* Footer-equivalent groups, mirrored here for quick access */}
-          <GroupHeading>SHOP</GroupHeading>
+          <GroupHeading>{t("footer.shop")}</GroupHeading>
           {SHOP_LINKS.map((link) => (
             <LinkRow key={link.href} {...link} onClick={close} />
           ))}
 
-          <GroupHeading>HELP</GroupHeading>
+          <GroupHeading>{t("footer.help")}</GroupHeading>
           {HELP_LINKS.map((link) => (
             <LinkRow key={link.href} {...link} onClick={close} />
           ))}
 
-          <GroupHeading>LEGAL</GroupHeading>
+          <GroupHeading>{t("footer.legal")}</GroupHeading>
           {LEGAL_LINKS.map((link) => (
             <LinkRow key={link.href} {...link} onClick={close} />
           ))}
 
-          <GroupHeading>NEWSLETTER</GroupHeading>
+          <GroupHeading>{t("footer.newsletter")}</GroupHeading>
           <div className="px-4 pb-3">
             <p className="text-[10px] text-text-muted mb-2">
-              Get 10% off your first order
+              {t("footer.discount")}
             </p>
             <form className="flex gap-1.5">
               <input
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t("footer.email")}
                 className="flex-1 bg-bg-surface rounded-md h-7 px-2 text-[10px] placeholder:text-text-faint"
               />
               <button
@@ -197,14 +204,14 @@ export default function MobileNav() {
             </form>
           </div>
 
-          <GroupHeading>MYANMAR PAYMENT</GroupHeading>
+          <GroupHeading>{t("footer.myanmarPayment")}</GroupHeading>
           <div className="flex flex-wrap gap-1.5 px-4 pb-3 text-[9px] text-text-secondary">
             <span className="border border-border-light rounded px-1.5 py-0.5">KBZPay</span>
             <span className="border border-border-light rounded px-1.5 py-0.5">Wave Pay</span>
             <span className="border border-border-light rounded px-1.5 py-0.5">AYA Pay</span>
           </div>
 
-          <GroupHeading>DOWNLOAD OUR APP</GroupHeading>
+          <GroupHeading>{t("footer.download")}</GroupHeading>
           <div className="flex gap-1.5 px-4 pb-3">
             <a href="#" className="border border-border-light rounded px-2.5 py-1 text-[9px]">
               App Store
@@ -214,7 +221,7 @@ export default function MobileNav() {
             </a>
           </div>
 
-          <GroupHeading>INTERNATIONAL PAYMENT</GroupHeading>
+          <GroupHeading>{t("footer.internationalPayment")}</GroupHeading>
           <div className="flex flex-wrap gap-1.5 px-4 pb-4 text-[9px] text-text-secondary">
             <span className="border border-border-light rounded px-1.5 py-0.5">Visa</span>
             <span className="border border-border-light rounded px-1.5 py-0.5">Mastercard</span>
@@ -227,7 +234,7 @@ export default function MobileNav() {
             onClick={close}
             className="flex items-center gap-2 px-4 py-3 font-semibold"
           >
-            <User size={15} /> Account
+            <User size={15} /> {t("actions.account")}
           </a>
 
           <p className="text-[9px] text-text-faint text-center px-4 pb-5 pt-2">

@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight, BookOpen, Clock3, Search, X } from "lucide-re
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GuideCard from "@/components/guide/GuideCard";
+import GuideLabel from "@/components/guide/GuideLabel";
 import { filterGuidePosts, getGuideCatalog } from "@/lib/guides";
 import { guideMetadata } from "@/lib/guide-metadata";
 
@@ -51,9 +52,9 @@ export default async function GuidePage({ searchParams }: PageProps) {
         <section className="mb-8 flex flex-col justify-between gap-5 border-b border-border pb-7 lg:flex-row lg:items-end">
           <div>
             <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
-              <BookOpen size={14} aria-hidden="true" /> MH Fashion blog posts
+              <BookOpen size={14} aria-hidden="true" /> <GuideLabel id="guide.blog" fallback="MH Fashion blog posts" />
             </p>
-            <h1 className="text-2xl font-black leading-none tracking-tight sm:text-3xl">Blog posts</h1>
+            <h1 className="text-2xl font-black leading-none tracking-tight sm:text-3xl"><GuideLabel id="guide.blogPosts" fallback="Blog posts" /></h1>
           </div>
           <form action="/guide#articles" method="get" className="w-full md:max-w-sm" role="search">
             <label htmlFor="guide-search" className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted">
@@ -92,7 +93,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <div className="flex flex-col justify-between gap-6 p-5 sm:p-7">
                 <div>
                   <div className="mb-4 flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-accent">Featured post</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-accent"><GuideLabel id="guide.featured" fallback="Featured post" /></p>
                     <p className="text-xs text-text-muted">{categoryNames.get(featured.categorySlug)}</p>
                   </div>
                   <h2 id="featured-heading" className="mb-3 text-xl font-bold leading-tight transition-colors group-hover:text-accent sm:text-2xl">{featured.title}</h2>
@@ -100,7 +101,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
                 </div>
                 <div className="flex items-center justify-between gap-4 text-xs">
                   <span className="inline-flex items-center gap-1.5 text-text-muted"><Clock3 size={13} aria-hidden="true" /> {featured.readingMinutes} min read</span>
-                  <span className="flex items-center gap-2 font-semibold text-accent">Read post <ArrowUpRight size={18} aria-hidden="true" /></span>
+                  <span className="flex items-center gap-2 font-semibold text-accent"><GuideLabel id="guide.read" fallback="Read post" /> <ArrowUpRight size={18} aria-hidden="true" /></span>
                 </div>
               </div>
             </Link>
@@ -109,7 +110,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
 
         <section id="articles" aria-labelledby="articles-heading" className="scroll-mt-24">
           <div className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <h2 id="articles-heading" className="text-lg font-bold">Latest posts</h2>
+            <h2 id="articles-heading" className="text-lg font-bold"><GuideLabel id="guide.latest" fallback="Latest posts" /></h2>
             <nav aria-label="Post categories" className="flex flex-wrap gap-2">
               <Link href={guideUrl("", query)} aria-current={!selectedCategory ? "page" : undefined} className={`rounded-full border px-3.5 py-2 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-accent ${!selectedCategory ? "border-accent bg-accent text-accent-foreground" : "border-border text-text-secondary hover:border-border-light hover:text-text-primary"}`}>
                 All posts <span className="ml-1 opacity-70">{catalog.posts.length}</span>
@@ -132,7 +133,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <BookOpen size={26} className="mx-auto mb-4 text-text-muted" aria-hidden="true" />
               <h3 className="mb-2 text-lg font-bold">Posts are temporarily unavailable.</h3>
               <p className="text-sm text-text-secondary">We could not load the posts. Please try again in a moment.</p>
-              <Link href="/guide" className="mt-5 inline-block text-sm font-semibold text-accent">Try again</Link>
+              <Link href="/guide" className="mt-5 inline-block text-sm font-semibold text-accent"><GuideLabel id="guide.tryAgain" fallback="Try again" /></Link>
             </div>
           ) : posts.length ? (
             <div className="grid gap-x-8 md:grid-cols-2 xl:grid-cols-3">
@@ -143,17 +144,17 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <Search size={26} className="mx-auto mb-4 text-text-muted" aria-hidden="true" />
               <h3 className="mb-2 text-lg font-bold">{query || selectedCategory ? "No posts match your search." : "New posts are on the way."}</h3>
               <p className="text-sm text-text-secondary">{query || selectedCategory ? "Try a different keyword or browse all categories." : "Published posts will appear here when they are ready."}</p>
-              {(query || selectedCategory) && <Link href="/guide#articles" className="mt-5 inline-block text-sm font-semibold text-accent">Browse all posts</Link>}
+              {(query || selectedCategory) && <Link href="/guide#articles" className="mt-5 inline-block text-sm font-semibold text-accent"><GuideLabel id="guide.browse" fallback="Browse all posts" /></Link>}
             </div>
           )}
         </section>
 
         <aside className="mt-10 flex flex-col justify-between gap-5 border-t border-border py-8 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-lg font-bold">Your idea. Your next piece.</h2>
+            <h2 className="text-lg font-bold"><GuideLabel id="guide.idea" fallback="Your idea. Your next piece." /></h2>
             <p className="mt-2 text-sm text-text-muted">Explore the design workspace and see how it comes together.</p>
           </div>
-          <Link href="/create" className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-accent px-5 py-3 text-xs font-bold text-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-text-primary sm:self-auto">Explore the editor <ArrowRight size={15} aria-hidden="true" /></Link>
+          <Link href="/create" className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-accent px-5 py-3 text-xs font-bold text-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-text-primary sm:self-auto"><GuideLabel id="guide.editor" fallback="Explore the editor" /> <ArrowRight size={15} aria-hidden="true" /></Link>
         </aside>
       </main>
       <Footer />

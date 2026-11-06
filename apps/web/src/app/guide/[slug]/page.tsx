@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Clock3 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GuideCard from "@/components/guide/GuideCard";
+import GuideLabel from "@/components/guide/GuideLabel";
 import { getGuideCatalog, getGuidePostBySlug } from "@/lib/guides";
 import { guideMetadata } from "@/lib/guide-metadata";
 
@@ -45,8 +46,8 @@ export default async function GuideArticlePage({ params }: PageProps) {
       <Header />
       <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 md:py-12">
         <nav aria-label="Breadcrumb" className="mb-8 flex flex-wrap items-center gap-2 text-xs text-text-muted">
-          <Link href="/" className="hover:text-accent">Home</Link><span aria-hidden="true">/</span>
-          <Link href="/guide" className="hover:text-accent">Guide</Link><span aria-hidden="true">/</span>
+          <Link href="/" className="hover:text-accent"><GuideLabel id="guide.home" fallback="Home" /></Link><span aria-hidden="true">/</span>
+          <Link href="/guide" className="hover:text-accent"><GuideLabel id="nav.guide" fallback="Guide" /></Link><span aria-hidden="true">/</span>
           <Link href={categoryUrl} className="hover:text-accent">{category?.name ?? "Article"}</Link>
         </nav>
 
@@ -54,7 +55,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
           <Link href={categoryUrl} className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent hover:underline">{category?.name ?? "Guide"}</Link>
           <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl">{post.title}</h1>
           <p className="mt-5 text-base leading-relaxed text-text-secondary">{post.excerpt}</p>
-          <p className="mt-5 flex items-center gap-1.5 text-xs text-text-muted"><Clock3 size={13} aria-hidden="true" /> {post.readingMinutes} min read <span className="mx-2" aria-hidden="true">·</span> MH Fashion handbook</p>
+          <p className="mt-5 flex items-center gap-1.5 text-xs text-text-muted"><Clock3 size={13} aria-hidden="true" /> {post.readingMinutes} min read <span className="mx-2" aria-hidden="true">·</span> <GuideLabel id="guide.handbook" fallback="MH Fashion handbook" /></p>
         </header>
 
         {catalog.source === "starter" && (
@@ -98,7 +99,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
 
         {related.length > 0 && (
           <section aria-labelledby="related-heading" className="mt-14 border-t border-border pt-8">
-            <h2 id="related-heading" className="mb-6 text-xl font-bold">Keep exploring</h2>
+            <h2 id="related-heading" className="mb-6 text-xl font-bold"><GuideLabel id="guide.keepExploring" fallback="Keep exploring" /></h2>
             <div className="grid gap-x-10 md:grid-cols-2">{related.map((item, index) => <GuideCard key={item.id} post={item} categoryName={categoryNames.get(item.categorySlug) ?? "Guide"} index={index} />)}</div>
           </section>
         )}

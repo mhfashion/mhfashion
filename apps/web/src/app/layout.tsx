@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/lib/theme-context";
 import { CurrencyProvider } from "@/lib/currency-context";
 import { CartProvider } from "@/lib/cart-context";
+import { LocaleProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "MH Fashion — Design Your Own World",
@@ -22,9 +23,11 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          <CurrencyProvider>
-            <CartProvider>{children}</CartProvider>
-          </CurrencyProvider>
+          <LocaleProvider>
+            <CurrencyProvider>
+              <CartProvider>{children}</CartProvider>
+            </CurrencyProvider>
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

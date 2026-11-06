@@ -14,6 +14,7 @@ import {
 import Header from "@/components/Header";
 import { useCurrency } from "@/lib/currency-context";
 import { useTheme } from "@/lib/theme-context";
+import { useI18n } from "@/lib/i18n";
 
 type SectionId =
   | "profile"
@@ -94,13 +95,14 @@ export default function AccountPage() {
   const [active, setActive] = useState<SectionId>("profile");
   const { currency, toggleCurrency } = useCurrency();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useI18n();
 
   return (
     <main>
       <Header />
 
       <div className="px-6 md:px-8 py-6 max-w-5xl mx-auto">
-        <h1 className="text-lg font-bold mb-5">MY ACCOUNT</h1>
+        <h1 className="text-lg font-bold mb-5">{t("account.title")}</h1>
 
         <div className="flex flex-col md:flex-row gap-6">
           {/* Section nav */}
@@ -119,30 +121,30 @@ export default function AccountPage() {
               </button>
             ))}
             <button className="flex items-center gap-2 px-3 py-2 rounded-md text-xs text-text-muted hover:text-text-primary md:mt-4">
-              <LogOut size={14} /> Sign out
+              <LogOut size={14} /> {t("account.signOut")}
             </button>
           </nav>
 
           <div className="flex-1 min-w-0">
             {active === "profile" && (
               <section>
-                <SectionHeading>Profile</SectionHeading>
+                <SectionHeading>{t("account.profile")}</SectionHeading>
                 <div className="grid sm:grid-cols-2 gap-4 max-w-lg">
-                  <Labelled label="Full name">
+                  <Labelled label={t("account.fullName")}>
                     <TextField value="MH Fashion" />
                   </Labelled>
-                  <Labelled label="Email">
+                  <Labelled label={t("account.email")}>
                     <TextField value="mhfashionmm@gmail.com" />
                   </Labelled>
-                  <Labelled label="Phone number">
+                  <Labelled label={t("account.phone")}>
                     <TextField value="+95 9 400 686 925" />
                   </Labelled>
                   <div className="sm:col-span-2">
-                    <Labelled label="Delivery address">
+                    <Labelled label={t("account.address")}>
                       <textarea
                         rows={3}
                         defaultValue=""
-                        placeholder="Street, township, city, country"
+                        placeholder={t("account.addressPlaceholder")}
                         className="w-full bg-bg-surface border border-border rounded-md px-2.5 py-1.5 text-xs outline-none resize-none placeholder:text-text-faint focus:border-border-light"
                       />
                     </Labelled>
@@ -161,7 +163,7 @@ export default function AccountPage() {
 
             {active === "orders" && (
               <section>
-                <SectionHeading>Order History</SectionHeading>
+                <SectionHeading>{t("account.orders")}</SectionHeading>
                 <div className="space-y-3">
                   {PLACEHOLDER_ORDERS.map((order) => {
                     const stageIndex = ORDER_STAGES.indexOf(order.stage);
@@ -209,7 +211,7 @@ export default function AccountPage() {
 
             {active === "designs" && (
               <section>
-                <SectionHeading>My Designs</SectionHeading>
+                <SectionHeading>{t("account.designs")}</SectionHeading>
                 <p className="text-[10px] text-text-muted mb-3">
                   {PLACEHOLDER_DESIGNS.length} of {MAX_SAVED_DESIGNS} saved.
                   Delete one to make room for a new design.
@@ -236,7 +238,7 @@ export default function AccountPage() {
                             Edit
                           </a>
                           <button className="text-[10px] text-text-muted flex items-center gap-1">
-                            <Trash2 size={10} /> Delete
+                            <Trash2 size={10} /> {t("account.delete")}
                           </button>
                         </div>
                       </div>
@@ -257,10 +259,10 @@ export default function AccountPage() {
 
             {active === "wishlist" && (
               <section>
-                <SectionHeading>Wishlist</SectionHeading>
+                <SectionHeading>{t("account.wishlist")}</SectionHeading>
                 {PLACEHOLDER_WISHLIST.length === 0 ? (
                   <p className="text-[11px] text-text-muted">
-                    Nothing saved yet.
+                    {t("account.emptyWishlist")}
                   </p>
                 ) : (
                   <div className="grid sm:grid-cols-4 gap-3">
@@ -280,11 +282,11 @@ export default function AccountPage() {
 
             {active === "points" && (
               <section>
-                <SectionHeading>AI Points</SectionHeading>
+                <SectionHeading>{t("account.points")}</SectionHeading>
                 <div className="grid sm:grid-cols-2 gap-3 max-w-md">
                   <div className="border border-border rounded-lg p-3.5">
                     <p className="text-[10px] text-text-muted mb-1">
-                      Daily points
+                      {t("account.dailyPoints")}
                     </p>
                     <p className="text-xl font-bold text-accent">300</p>
                     <p className="text-[9px] text-text-faint mt-1">
@@ -294,7 +296,7 @@ export default function AccountPage() {
                   </div>
                   <div className="border border-border rounded-lg p-3.5">
                     <p className="text-[10px] text-text-muted mb-1">
-                      Purchase points
+                      {t("account.purchasePoints")}
                     </p>
                     <p className="text-xl font-bold">150</p>
                     <p className="text-[9px] text-text-faint mt-1">
@@ -312,7 +314,7 @@ export default function AccountPage() {
 
             {active === "settings" && (
               <section>
-                <SectionHeading>Settings</SectionHeading>
+                <SectionHeading>{t("account.settings")}</SectionHeading>
                 <div className="space-y-3 max-w-md">
                   <div className="flex items-center justify-between border border-border rounded-lg px-3.5 py-3">
                     <div>
@@ -331,7 +333,7 @@ export default function AccountPage() {
 
                   <div className="flex items-center justify-between border border-border rounded-lg px-3.5 py-3">
                     <div>
-                      <p className="text-xs font-medium">Theme</p>
+                      <p className="text-xs font-medium">{t("account.theme")}</p>
                       <p className="text-[10px] text-text-muted">
                         Switch between dark and light appearance.
                       </p>
@@ -346,7 +348,7 @@ export default function AccountPage() {
 
                   <div className="flex items-center justify-between border border-border rounded-lg px-3.5 py-3">
                     <div>
-                      <p className="text-xs font-medium">Notifications</p>
+                      <p className="text-xs font-medium">{t("account.notifications")}</p>
                       <p className="text-[10px] text-text-muted">
                         In-app notifications are always on. Email updates are
                         sent when an email is on file.

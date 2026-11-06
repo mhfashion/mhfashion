@@ -1,6 +1,9 @@
+"use client";
+
 import { ChevronDown } from "lucide-react";
 import MobileNav from "./MobileNav";
 import HeaderActions from "./HeaderActions";
+import { useI18n } from "@/lib/i18n";
 
 const COLLECTIONS = [
   { label: "MH Fashion", href: "/mh-fashion" },
@@ -12,6 +15,7 @@ const COLLECTIONS = [
 ];
 
 export default function Header() {
+  const { t } = useI18n();
   return (
     <>
       {/* Mobile: hamburger + logo, sticky (handled inside MobileNav) so it stays visible while scrolling */}
@@ -25,13 +29,13 @@ export default function Header() {
               <span className="text-accent">MH</span> FASHION.
             </a>
             <nav className="flex items-center gap-6 text-sm font-semibold text-text-primary">
-              <a href="/new" className="hover:text-accent whitespace-nowrap">New</a>
-              <a href="/popular" className="hover:text-accent whitespace-nowrap">Popular</a>
+              <a href="/new" className="hover:text-accent whitespace-nowrap">{t("nav.new")}</a>
+              <a href="/popular" className="hover:text-accent whitespace-nowrap">{t("nav.popular")}</a>
 
               {/* Collections dropdown (desktop only, per confirmed spec) */}
               <div className="relative group">
                 <button className="flex items-center gap-1 hover:text-accent">
-                  Collections <ChevronDown size={13} />
+                  {t("nav.collections")} <ChevronDown size={13} />
                 </button>
                 <div className="absolute left-0 top-full pt-2 hidden group-hover:block">
                   <div className="bg-bg-surface border border-border rounded-lg p-1.5 w-44 shadow-lg">
@@ -48,7 +52,7 @@ export default function Header() {
                 </div>
               </div>
 
-              <a href="/guide" className="hover:text-accent">Guide</a>
+              <a href="/guide" className="hover:text-accent">{t("nav.guide")}</a>
             </nav>
           </div>
 
