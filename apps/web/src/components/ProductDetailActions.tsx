@@ -22,14 +22,14 @@ export default function ProductDetailActions({ product }: { product: Product }) 
   }
 
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
-      <button type="button" onClick={buyNow} className="rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground transition-opacity hover:opacity-85">
+    <div className="grid grid-cols-3 gap-1.5">
+      <button type="button" onClick={buyNow} className="rounded-md bg-accent px-2 py-2.5 text-[11px] font-bold text-accent-foreground transition-opacity hover:opacity-85 sm:text-xs">
         {t("product.buyNow")}
       </button>
-      <button type="button" onClick={addToCart} className="rounded-xl border-2 border-accent px-4 py-3 text-sm font-bold text-accent transition-colors hover:bg-accent hover:text-accent-foreground">
+      <button type="button" onClick={addToCart} className="rounded-md border border-accent px-2 py-2.5 text-[11px] font-bold text-accent transition-colors hover:bg-accent hover:text-accent-foreground sm:text-xs">
         {added ? t("product.addedToCart") : t("product.addToCart")}
       </button>
-      <a href={`/create?product=${encodeURIComponent(product.slug)}`} className="rounded-xl border border-border px-4 py-3 text-center text-sm font-bold text-text-primary transition-colors hover:border-accent hover:text-accent">
+      <a href={`/create?product=${encodeURIComponent(product.slug)}`} className="rounded-md border border-border px-2 py-2.5 text-center text-[11px] font-bold text-text-primary transition-colors hover:border-accent hover:text-accent sm:text-xs">
         {t("product.editDesign")}
       </a>
     </div>
