@@ -4,52 +4,50 @@ import { useState } from "react";
 import { Heart, Shirt } from "lucide-react";
 import type { Product } from "@/lib/types";
 import { useCurrency } from "@/lib/currency-context";
+import { useI18n } from "@/lib/i18n";
 
 export default function ProductCard({ product }: { product: Product }) {
   const [favorited, setFavorited] = useState(false);
   const { formatRangeKs } = useCurrency();
+  const { t } = useI18n();
+  const productUrl = `/products/${product.slug}`;
 
   return (
-    <a href={`/products/${product.slug}`} className="block group">
-      <div className="relative aspect-square rounded-lg bg-bg-surface flex items-center justify-center overflow-hidden">
+    <div className="group">
+      <a href={productUrl} className="relative block aspect-square overflow-hidden rounded-lg bg-bg-surface">
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
+          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
         ) : (
-          <Shirt size={22} className="text-border-light" />
+          <span className="flex h-full w-full items-center justify-center"><Shirt size={22} className="text-border-light" /></span>
         )}
 
         {product.isNew && (
-          <span className="absolute top-1.5 left-1.5 bg-accent text-accent-foreground text-[7px] font-bold px-1 py-0.5 rounded">
-            NEW
-          </span>
+          <span className="absolute left-1.5 top-1.5 rounded bg-accent px-1 py-0.5 text-[7px] font-bold text-accent-foreground">NEW</span>
         )}
 
-        {/* Favorite heart — every product card must have this */}
         <button
           onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             setFavorited((f) => !f);
           }}
           aria-label="Favorite"
-          className="absolute top-1.5 right-1.5"
+          className="absolute right-1.5 top-1.5"
         >
-          <Heart
-            size={15}
-            fill={favorited ? "currentColor" : "none"}
-            className={favorited ? "text-accent" : "text-text-primary"}
-          />
+          <Heart size={15} fill={favorited ? "currentColor" : "none"} className={favorited ? "text-accent" : "text-text-primary"} />
         </button>
-      </div>
+      </a>
 
-      <p className="text-[10px] mt-1 truncate">{product.name}</p>
-      <p className="text-[10px] text-text-muted">
-        {formatRangeKs(product.priceMinKs, product.priceMaxKs)}
-      </p>
-    </a>
+      <a href={productUrl} className="mt-1 block truncate text-[10px]">{product.name}</a>
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <span className="min-w-0 rounded-md border border-border bg-bg-surface px-2 py-1 text-[10px] font-semibold text-text-primary shadow-sm">
+          {formatRangeKs(product.priceMinKs, product.priceMaxKs)}
+        </span>
+        <a href={productUrl} className="shrink-0 rounded-md bg-accent px-2.5 py-1.5 text-[10px] font-bold text-accent-foreground transition-opacity hover:opacity-85">
+          {t("product.buy")}
+        </a>
+      </div>
+    </div>
   );
 }
