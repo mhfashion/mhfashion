@@ -141,7 +141,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <div className="absolute bottom-4 right-5 text-3xl font-black italic text-[#54a817]/80 sm:right-12 sm:text-4xl">Your<br />Style</div>
             </section>
 
-            <div className="mb-7 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="mb-7 grid grid-cols-4 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
               <Link href="/faq" className="group flex min-h-[92px] items-center gap-3 rounded-xl border border-border bg-bg-surface p-4 hover:border-accent/60 sm:col-span-1">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent"><Star size={20} /></span>

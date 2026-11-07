@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { CurrencyProvider } from "@/lib/currency-context";
 import { CartProvider } from "@/lib/cart-context";
 import { LocaleProvider } from "@/lib/i18n";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 export const metadata: Metadata = {
   title: "MH Fashion — Design Your Own World",
@@ -25,7 +26,10 @@ export default function RootLayout({
         <ThemeProvider>
           <LocaleProvider>
             <CurrencyProvider>
-              <CartProvider>{children}</CartProvider>
+              <CartProvider>
+                <div className="pb-16 md:pb-0">{children}</div>
+                <MobileBottomNav />
+              </CartProvider>
             </CurrencyProvider>
           </LocaleProvider>
         </ThemeProvider>

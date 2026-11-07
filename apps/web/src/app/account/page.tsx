@@ -182,6 +182,11 @@ export default function AccountPage() {
           </aside>
 
           <div className="min-w-0">
+            <section className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#69b917] to-[#3d8d0d] p-4 text-white shadow-sm xl:hidden">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-white/70 bg-slate-900 text-sm font-black shadow-lg">MTA</div>
+              <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-black">Min Thu Aung</h2><p className="mt-0.5 text-[10px] text-white/75">@minthu.aung</p><span className="mt-2 inline-flex rounded-full bg-[#e7b52d] px-2.5 py-1 text-[9px] font-bold text-[#573600]">♛ {copy.member}</span></div>
+              <button type="button" onClick={() => setActive("settings")} aria-label={copy.accountSettings} className="rounded-full bg-white/15 p-2"><Settings size={16} /></button>
+            </section>
             {sectionContent === "dashboard" ? (
               <>
                 <section className="relative isolate mb-5 min-h-[205px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-6 py-7 text-[#172810] sm:px-9 sm:py-9"><div className="relative z-10 max-w-[58%]"><h1 className="text-3xl font-black leading-tight sm:text-4xl">{copy.welcome}</h1><p className="mt-3 text-sm text-[#355128]">{copy.welcomeSub}</p><button onClick={() => window.location.href = "/create"} className="mt-5 inline-flex items-center rounded-full bg-[#55a918] px-4 py-2.5 text-xs font-bold text-white">{copy.start} <ArrowRight size={15} className="ml-1.5" /></button></div><div className="absolute -right-8 -top-12 h-72 w-72 rounded-full bg-[#9bda45]/50" /><div className="absolute bottom-[-55px] right-[18%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block"><div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div></div><div className="absolute bottom-5 right-6 text-3xl font-black italic text-[#54a817]/80 sm:right-12">Create<br />Your Style</div></section>
