@@ -3,6 +3,7 @@
     { "path": "/", "title": "Home" },
     { "path": "/account", "title": "My Account" },
     { "path": "/create", "title": "Create Design" },
+    { "path": "/new", "title": "New Arrivals" },
     { "path": "/popular", "title": "Popular Products" },
     { "path": "/guide", "title": "Guide" },
     { "path": "/guide/:slug", "title": "Guide Article" }
