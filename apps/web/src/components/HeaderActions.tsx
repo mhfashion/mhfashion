@@ -19,7 +19,7 @@ import NotificationBell from "./NotificationBell";
 
 export default function HeaderActions() {
   const { theme, toggleTheme } = useTheme();
-  const { currency, toggleCurrency } = useCurrency();
+  const { toggleCurrency } = useCurrency();
   const { itemCount } = useCart();
   const { locale, setLocale, t } = useI18n();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -73,7 +73,7 @@ export default function HeaderActions() {
         <div className="flex items-center gap-1 text-[10px] font-semibold border border-border-light rounded-full px-2 py-1" aria-label="Language">
           <button onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : ""}>EN</button>
           <span className="text-border-light">/</span>
-          <button onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : ""}>မြန်မာ</button>
+          <button onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : ""}>MM</button>
         </div>
         <NotificationBell />
 
@@ -87,7 +87,7 @@ export default function HeaderActions() {
           aria-label={t("actions.currency")}
           className="flex items-center gap-1 text-xs font-medium border border-border-light rounded-full px-2.5 py-1"
         >
-          {currency} <ChevronDown size={12} />
+          $/Ks <ChevronDown size={12} />
         </button>
 
         <button onClick={toggleTheme} aria-label={t("actions.theme")}>
