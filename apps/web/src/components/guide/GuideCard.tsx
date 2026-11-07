@@ -40,9 +40,9 @@ export default function GuideCard({
           <span className="absolute bottom-[-1px] left-3 inline-flex items-center gap-1 rounded-full bg-bg-surface px-2.5 py-1.5 text-[10px] font-semibold text-text-primary shadow-sm">
             <Clock3 size={12} aria-hidden="true" /> {post.readingMinutes} min read
           </span>
-          <button type="button" aria-label="Save post" className="absolute right-3 top-3 rounded-full bg-white/85 p-1.5 text-text-primary opacity-0 transition-opacity group-hover:opacity-100" onClick={(event) => event.preventDefault()}>
+          <span aria-label="Save post" className="absolute right-3 top-3 rounded-full bg-white/85 p-1.5 text-text-primary opacity-0 transition-opacity group-hover:opacity-100">
             <Bookmark size={14} aria-hidden="true" />
-          </button>
+          </span>
         </div>
         <div className="p-4">
           <h3 className="line-clamp-2 min-h-[2.8rem] text-base font-bold leading-snug transition-colors group-hover:text-accent">{post.title}</h3>
