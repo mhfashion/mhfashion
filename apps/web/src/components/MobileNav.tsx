@@ -5,7 +5,6 @@ import {
   Menu,
   Search,
   Heart,
-  User,
   DollarSign,
   Moon,
   Sun,
@@ -211,16 +210,7 @@ export default function MobileNav() {
           </div>
 
           <div className="border-t border-border" />
-
-          <a
-            href="/account"
-            onClick={close}
-            className="flex items-center gap-2 px-4 py-3 font-semibold"
-          >
-            <User size={15} /> {t("actions.account")}
-          </a>
-
-          <p className="text-[9px] text-text-faint text-center px-4 pb-5 pt-2">
+          <p className="px-4 pb-5 pt-3 text-center text-[9px] text-text-faint">
             © {new Date().getFullYear()} MH Fashion. All rights reserved.
           </p>
         </nav>
