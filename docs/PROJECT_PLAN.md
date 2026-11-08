@@ -42,6 +42,9 @@ Fonts: woff2 for web, otf for the future mobile app.
   `npx wrangler deploy`).
 - Supabase: Claude writes SQL migrations (`supabase/migrations/`); the owner
   runs them in the SQL Editor.
+- Current Cloudflare build toolchain: Next.js 15.5.29, `@opennextjs/cloudflare`
+  1.20.16, and Wrangler 4.158.0. Keep the lockfile aligned with these versions;
+  the OpenNext Worker build is validated with `npm run cf:build --workspace=apps/web`.
 - Standalone Cloudflare Worker scripts are NOT committed to the repo; Claude
   hands over the code and the owner deploys it in Cloudflare.
 - Secrets (`.env.local`, API keys, tokens) never go into GitHub.
