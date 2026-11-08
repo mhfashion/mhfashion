@@ -105,6 +105,14 @@ in a Pricing Management module. Product cards show a range (lowest–highest);
 once a full combination is chosen on the detail page, show the exact price.
 Other product types get their own attribute sets and pricing formulas.
 
+### 4.6 Product detail presentation
+
+- On desktop, use the available page width with modest side gutters rather than
+  a narrow centered column. Give the product gallery a balanced, substantially
+  wider share beside the purchase details; stack the two regions on small screens.
+- Keep photo frames and thumbnail outlines to subtle 1px borders. The active
+  thumbnail may use the accent color, but should not become a thick frame.
+
 ## 5. Mockup / Preview System
 
 - Grayscale recolor: one base image per style/angle; colors applied
@@ -378,6 +386,12 @@ catalog-facing items.
 scaffold and Cloudflare deploy, Supabase schema (migrations 0001–0004), homepage
 with live product data, sticky header, mobile drawer, footer, dark/light and
 Ks/$ toggles, notification dropdown, category marquee.
+
+**Product detail pages (`/products/[slug]`):** the page uses the available
+desktop width up to 1440px with modest gutters, a larger responsive gallery
+column beside purchase details, and subtle 1px image/thumbnail borders. The
+selected thumbnail retains an accent border without a thick outline; smaller
+screens keep the gallery stacked above product details.
 
 **Editor prototype (`/create`):** Fabric.js canvas with selectable, movable,
 scalable and rotatable objects; in-place text editing and family/size/weight/

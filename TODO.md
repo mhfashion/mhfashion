@@ -105,3 +105,12 @@ Source of scope: user report that a new layer could be created but artwork could
 - [x] Eraser removes the artwork while retaining the now-empty layer row so it can be drawn on again; the Layers delete action still removes the layer and its contents.
 - [x] Undo/Redo removes/restores the artwork without accidentally deleting/replacing the pre-existing blank layer. With no selection or a populated ordinary layer selected, retain the current object-per-layer insertion behavior.
 - Evidence: `addMark` now checks the selected side's layer tree, reuses the selected unlocked blank layer ID, and leaves its layer record/settings intact; it reports locked ancestors/groups instead of silently writing elsewhere. Eraser removes only the mark and Undo/Redo store complete document states. Production build and `git diff --check` pass.
+
+## Product detail spacing and photo frames
+
+Source of scope: user screenshot and request to remove excess side space and thin the frame around the product photo area.
+
+- [x] Expand the desktop product-detail content close to the available viewport width, retaining modest page gutters instead of a narrow centered column.
+- [x] Give the product gallery a larger, balanced column next to the purchase details; keep the layout stacked and usable on small screens.
+- [x] Use subtle 1px image-frame and thumbnail borders; keep the active thumbnail accent but remove the thick outline. Preserve product controls, purchase actions, review section, and related-product behavior.
+- Evidence: the detail wrapper now fills up to 1440px, the desktop grid gives the gallery a larger proportional column and removes the 280px image cap, the main photo and thumbnails use 1px borders, and the active thumbnail no longer uses `border-2`. `npm run build` passes.
