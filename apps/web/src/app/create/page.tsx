@@ -7,7 +7,7 @@ import EditorLeftRail, { type PanelId, type ToolId } from "@/components/editor/E
 import EditorFlyout from "@/components/editor/EditorFlyout";
 import LayersPanel, { type EditorLayer } from "@/components/editor/LayersPanel";
 import AttributeBar, { type AttributeSelection } from "@/components/editor/AttributeBar";
-import InteractiveCanvas, { type CanvasMark } from "@/components/editor/InteractiveCanvas";
+import InteractiveCanvas, { type CanvasMark, type ShapeType } from "@/components/editor/InteractiveCanvas";
 import MockupLibrary, { type MockupId } from "@/components/editor/MockupLibrary";
 import { useCurrency } from "@/lib/currency-context";
 import { useI18n } from "@/lib/i18n";
@@ -46,6 +46,10 @@ const DEFAULT_SELECTION: AttributeSelection = {
   size: "M",
 };
 
+function makeId(prefix: string) {
+  return `${prefix}-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now().toString(36)}`;
+}
+
 function isDocumentState(value: unknown): value is DocumentState {
   if (!value || typeof value !== "object") return false;
   const candidate = value as DocumentState;
@@ -53,6 +57,48 @@ function isDocumentState(value: unknown): value is DocumentState {
     Array.isArray(candidate.marks?.[side as Side]) &&
     Array.isArray(candidate.layers?.[side as Side]),
   );
+}
+
+async function prepareImage(file: File): Promise<string> {
+  const acceptedTypes = ["image/jpeg", "image/png", "image/webp"];
+  if (!acceptedTypes.includes(file.type)) {
+    throw new Error("Please choose a PNG, JPG or WebP image.");
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Image must be 10 MB or smaller.");
+  }
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error("This image could not be opened. Try another file.");
+  }
+
+  try {
+    const scale = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Your browser could not prepare this image.");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Image conversion failed.")), "image/webp", 0.78);
+    });
+    if (blob.size > 1_500_000) {
+      throw new Error("This photo is still too large after resizing. Please choose a smaller image.");
+    }
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Image could not be read."));
+      reader.onerror = () => reject(new Error("Image could not be read."));
+      reader.readAsDataURL(blob);
+    });
+  } finally {
+    bitmap.close();
+  }
 }
 
 export default function EditorPage() {
@@ -135,13 +181,33 @@ export default function EditorPage() {
         ...document.layers,
         [activeSide]: [...document.layers[activeSide], {
           id: mark.id,
-          name: `${mark.kind} element`,
+          name: mark.kind === "Text" ? `Text: ${(mark.text ?? "").slice(0, 24)}` : mark.kind === "Shape" ? `${mark.shapeType ?? "Rectangle"} shape` : `${mark.kind} element`,
           visible: true,
           locked: false,
           isGroup: false,
         }],
       },
     }));
+  };
+
+  const handleUploadImage = async (file: File) => {
+    const imageSrc = await prepareImage(file);
+    addMark({
+      id: `${activeSide.toLowerCase()}-image-${Date.now()}`,
+      kind: "Image",
+      x: 50,
+      y: 48,
+      imageSrc,
+      width: 34,
+    });
+  };
+
+  const handleAddText = (text: string, color: string, fontSize: number) => {
+    addMark({ id: makeId("text"), kind: "Text", text, color, fontSize, x: 50, y: 48 });
+  };
+
+  const handleAddShape = (shapeType: ShapeType, color: string) => {
+    addMark({ id: makeId("shape"), kind: "Shape", shapeType, color, x: 50, y: 48 });
   };
 
   const removeMark = (id: string) => commitDocument((document) => ({
@@ -155,21 +221,122 @@ export default function EditorPage() {
     },
   }));
 
+  const updateCanvasMarks = (marks: CanvasMark[]) => commitDocument((document) => ({
+    ...document,
+    marks: { ...document.marks, [activeSide]: marks },
+  }));
+
   const clearCanvas = () => commitDocument((document) => ({
     marks: { ...document.marks, [activeSide]: [] },
     layers: { ...document.layers, [activeSide]: [] },
   }));
 
-  const toggleLayerField = (side: Side, id: string, field: "visible" | "locked") =>
+  const updateLayer = (id: string, patch: Partial<EditorLayer>) =>
     commitDocument((document) => ({
       ...document,
       layers: {
         ...document.layers,
-        [side]: document.layers[side].map((layer) =>
-          layer.id === id ? { ...layer, [field]: !layer[field] } : layer,
-        ),
+        [activeSide]: document.layers[activeSide].map((layer) => layer.id === id ? { ...layer, ...patch } : layer),
       },
     }));
+
+  const addLayer = (isGroup = false) => {
+    const id = makeId(isGroup ? "group" : "layer");
+    commitDocument((document) => ({
+      ...document,
+      layers: {
+        ...document.layers,
+        [activeSide]: [...document.layers[activeSide], {
+          id,
+          name: isGroup ? "Group" : `Layer ${document.layers[activeSide].filter((layer) => !layer.isGroup).length + 1}`,
+          visible: true,
+          locked: false,
+          isGroup,
+          ...(isGroup ? { childIds: [] } : {}),
+        }],
+      },
+    }));
+    setSelectedLayerId(id);
+  };
+
+  const duplicateLayer = () => {
+    const id = selectedLayerId;
+    if (!id) return;
+    const layers = history.present.layers[activeSide];
+    const selected = layers.find((layer) => layer.id === id);
+    if (!selected) return;
+    const children = selected.isGroup ? layers.filter((layer) => layer.parentId === selected.id) : [];
+    const idMap = new Map<string, string>([[selected.id, makeId(selected.isGroup ? "group" : "layer")]]);
+    children.forEach((child) => idMap.set(child.id, makeId("layer")));
+    const cloneLayer = (layer: EditorLayer): EditorLayer => ({
+      ...layer,
+      id: idMap.get(layer.id) ?? makeId("layer"),
+      name: `${layer.name} copy`,
+      ...(layer.parentId ? { parentId: idMap.get(layer.parentId) ?? layer.parentId } : {}),
+      ...(layer.childIds ? { childIds: layer.childIds.map((childId) => idMap.get(childId) ?? childId) } : {}),
+    });
+    const clones = [selected, ...children].map(cloneLayer);
+    const cloneMarks = history.present.marks[activeSide]
+      .filter((mark) => idMap.has(mark.id))
+      .map((mark) => ({ ...mark, id: idMap.get(mark.id)!, x: Math.min(mark.x + 4, 95), y: Math.min(mark.y + 4, 95) }));
+    commitDocument((document) => ({
+      marks: { ...document.marks, [activeSide]: [...document.marks[activeSide], ...cloneMarks] },
+      layers: { ...document.layers, [activeSide]: [...document.layers[activeSide], ...clones] },
+    }));
+    setSelectedLayerId(idMap.get(selected.id) ?? null);
+  };
+
+  const mergeDown = () => {
+    const layers = history.present.layers[activeSide];
+    const selectedIndex = layers.findIndex((layer) => layer.id === selectedLayerId);
+    const selected = layers[selectedIndex];
+    if (!selected || selected.isGroup || selected.parentId) return;
+    const below = [...layers.slice(0, selectedIndex)].reverse().find((layer) => !layer.parentId && !layer.isGroup);
+    if (!below) return;
+    const groupId = makeId("group");
+    const group: EditorLayer = { id: groupId, name: `${below.name} + ${selected.name}`, visible: below.visible && selected.visible, locked: false, isGroup: true, childIds: [below.id, selected.id] };
+    const insertIndex = layers.slice(0, selectedIndex).filter((layer) => layer.id !== below.id).length;
+    const children = layers.filter((layer) => layer.id === below.id || layer.id === selected.id).map((layer) => ({ ...layer, parentId: groupId }));
+    const groupedLayers = layers.filter((layer) => layer.id !== below.id && layer.id !== selected.id);
+    groupedLayers.splice(insertIndex, 0, group, ...children);
+    commitDocument((document) => ({
+      ...document,
+      layers: {
+        ...document.layers,
+        [activeSide]: groupedLayers,
+      },
+    }));
+    setSelectedLayerId(groupId);
+  };
+
+  const deleteLayer = () => {
+    if (!selectedLayerId) return;
+    const layers = history.present.layers[activeSide];
+    const selected = layers.find((layer) => layer.id === selectedLayerId);
+    if (!selected) return;
+    const removeIds = new Set([selected.id, ...(selected.isGroup ? layers.filter((layer) => layer.parentId === selected.id).map((layer) => layer.id) : [])]);
+    commitDocument((document) => ({
+      marks: { ...document.marks, [activeSide]: document.marks[activeSide].filter((mark) => !removeIds.has(mark.id)) },
+      layers: { ...document.layers, [activeSide]: document.layers[activeSide].filter((layer) => !removeIds.has(layer.id)).map((layer) => layer.childIds ? { ...layer, childIds: layer.childIds.filter((childId) => !removeIds.has(childId)) } : layer) },
+    }));
+    setSelectedLayerId(null);
+  };
+
+  const moveLayer = (direction: -1 | 1) => {
+    if (!selectedLayerId) return;
+    commitDocument((document) => {
+      const items = [...document.layers[activeSide]];
+      const index = items.findIndex((layer) => layer.id === selectedLayerId);
+      const layer = items[index];
+      if (!layer) return document;
+      const siblingIndexes = items.map((candidate, candidateIndex) => candidate.parentId === layer.parentId ? candidateIndex : -1).filter((candidateIndex) => candidateIndex >= 0);
+      const position = siblingIndexes.indexOf(index);
+      const targetIndex = siblingIndexes[position - direction];
+      if (targetIndex === undefined) return document;
+      [items[index], items[targetIndex]] = [items[targetIndex], items[index]];
+      return { ...document, layers: { ...document.layers, [activeSide]: items } };
+    });
+  };
 
   const saveDraft = () => {
     const payload: SavedDraft = {
@@ -216,7 +383,7 @@ export default function EditorPage() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <EditorLeftRail activePanel={activePanel} onPanelChange={setActivePanel} activeTool={activeTool} onToolChange={setActiveTool} />
-        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} /></div>}
+        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} onUploadImage={handleUploadImage} onAddText={handleAddText} onAddShape={handleAddShape} /></div>}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f1] dark:bg-[#111]">
           <InteractiveCanvas
             activeTool={activeTool}
@@ -224,8 +391,12 @@ export default function EditorPage() {
             onSideChange={setActiveSide}
             mockupName={mockupName}
             marks={history.present.marks[activeSide]}
+            layers={history.present.layers[activeSide]}
+            selectedLayerId={selectedLayerId}
+            onSelectLayer={setSelectedLayerId}
             onAddMark={addMark}
             onRemoveMark={removeMark}
+            onMarksChange={updateCanvasMarks}
             onClear={clearCanvas}
           />
         </main>
@@ -235,7 +406,19 @@ export default function EditorPage() {
               <div className="mb-2 text-xs font-bold">Mockup</div>
               {mockup ? <div className="rounded-md border border-accent/40 bg-accent/5 p-2 text-[10px] text-accent"><div className="font-semibold">{mockupName}</div><button type="button" onClick={() => setMockupLibraryOpen(true)} className="mt-1 text-[9px] text-text-secondary underline">Change mockup</button></div> : <button type="button" onClick={() => setMockupLibraryOpen(true)} className="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-accent px-2 py-3 text-[10px] font-semibold text-accent hover:bg-accent/10"><span className="text-base leading-none">+</span> Select mockup</button>}
             </div>
-            <LayersPanel side={activeSide} layers={history.present.layers[activeSide]} selectedLayerId={selectedLayerId} onSelectLayer={setSelectedLayerId} onToggleVisible={(id) => toggleLayerField(activeSide, id, "visible")} onToggleLock={(id) => toggleLayerField(activeSide, id, "locked")} />
+            <LayersPanel
+              side={activeSide}
+              layers={history.present.layers[activeSide]}
+              selectedLayerId={selectedLayerId}
+              onSelectLayer={setSelectedLayerId}
+              onUpdateLayer={updateLayer}
+              onAddLayer={() => addLayer(false)}
+              onAddGroup={() => addLayer(true)}
+              onDuplicate={duplicateLayer}
+              onMergeDown={mergeDown}
+              onDelete={deleteLayer}
+              onMove={moveLayer}
+            />
           </div>
           {mockup && <div className="border-t border-border p-3"><div className="mb-2 text-[10px] font-semibold text-accent">Mockup selected</div><button type="button" onClick={() => setMockup(null)} className="w-full rounded border border-border px-2 py-1.5 text-[10px] text-text-secondary">Remove mockup</button></div>}
         </aside>

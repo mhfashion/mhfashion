@@ -122,11 +122,26 @@ Other product types get their own attribute sets and pricing formulas.
   the right; Front and Back canvases side by side (transparent background);
   attribute bar along the bottom.
 - Top bar: Undo/Redo, live price, Save / Add to Cart / Buy Now.
+- Canvas engine (current prototype): Fabric.js 6 renders browser-side editable
+  objects with selection, move, scale, rotate, in-place text editing, zoom, and
+  hand-pan. Transform edits are stored as object data and enter Undo/Redo and
+  browser-local Save/restore.
 - Tools palette: Move, Marquee, Lasso, Magic Wand, Eyedropper, Shape, Pen,
   Path Select, Clone Stamp/Healing Brush, Gradient, Eraser, Ruler, Rotate View,
   Hand, Zoom. More tools will be added over time.
-- Layers: blend mode + opacity + flow in one row, per-layer lock, new /
-  duplicate / merge / layer mask / clipping mask / effects.
+- Layers (current `/create` prototype): select, show/hide, lock/unlock, create
+  layers/groups, duplicate, reorder, delete, and group a layer with the layer
+  below it. Blend mode, opacity, flow, preview effects, clipping preview, and a
+  uniform mask-strength control are stored per layer and included in Undo/Redo.
+- Text and Elements panels can insert formatted text (text, color, font size)
+  and colored rectangle, circle, triangle, or star objects on the active side.
+  Each inserted object gets its own layer and participates in Undo/Redo and the
+  browser-local draft. Text can be edited in place; objects can be dragged,
+  resized, and rotated with Fabric controls. Font-family selection and freeform
+  vector path editing remain pending.
+- Production layer work remains: real pixel merge, paintable per-pixel masks,
+  true clipping masks, group transforms/recolor, and full vector/raster editing
+  require further implementation on top of the Fabric.js canvas engine.
 - Editable units are Layer and Group only. Flat layers move/rotate/scale but
   keep their color. Nested layers allow per-group recolor via swatches.
 - Layer type (text vs element) is decided by whether the layer name contains
@@ -139,14 +154,18 @@ Other product types get their own attribute sets and pricing formulas.
 - Mockup attach: Front placement copies proportionally to Back only when the
   print-area types match. Color changes apply to Front and Back together.
 - Buy Now / Add to Cart stay disabled until the mockup is attached.
-- Save: default limit 3 designs (admin-configurable); saved only after the full
-  flow completes; reusing artwork on another product counts separately.
+- Production Save: default limit 3 designs (admin-configurable); saved to the
+  user's account only after the full flow completes; reusing artwork on another
+  product counts separately. The current prototype's Save stores a single draft
+  in this browser's local storage and does not sync to an account.
 - Brushes: one grayscale PNG per brush (used for strokes and thumbnail) in R2.
 - AI: Remove Background and Upscale (Hugging Face) work only on user-uploaded
   photos and live in the top contextual toolbar. Image generation is later.
 - Terms acceptance on first use; watermark; right-click disabled.
-- User photo upload and AI upscale are built behind feature flags (off by
-  default) so Phase 2 only flips the flags.
+- The current `/create` prototype accepts user PNG/JPG/WebP photos locally,
+  resizes them in the browser, and includes them in the browser draft. Upload to
+  R2, account sync, Remove Background, and AI Upscale remain production/Phase 2
+  work and must be gated/configured before public launch.
 
 ## 7. Storefront Pages
 
@@ -260,8 +279,20 @@ scaffold and Cloudflare deploy, Supabase schema (migrations 0001–0004), homepa
 with live product data, sticky header, mobile drawer, footer, dark/light and
 Ks/$ toggles, notification dropdown, category marquee.
 
-**Built, using placeholder data:** Editor page (`/create`), Account page
-(`/account`).
+**Editor prototype (`/create`):** Fabric.js canvas with selectable, movable,
+scalable and rotatable objects; in-place text editing; zoom and hand-pan;
+browser-local image import; text/basic-shape insertion; Undo/Redo; Save and
+restore via local storage; Front/Back draft state; layer visibility/lock,
+creation, duplication, grouping, reorder, deletion, blend/opacity/flow, effects,
+clipping preview, and uniform mask strength. Designs remain browser-local and
+are not yet backed by Supabase or R2.
+
+**Built, using placeholder data:** Account page (`/account`).
+
+**Still pending for a production editor:** additional tools and hardening,
+editable mask painting/true clipping and pixel merge, group transforms/recolor,
+font-family controls, server/account design storage, production mockups, live
+price, Add to Cart, Buy Now, AI tools, and editor-specific automated tests.
 
 **Next:** Auth (email / Google / Facebook), product detail page, replace
 placeholders with Supabase data, cart and checkout.
@@ -272,3 +303,20 @@ placeholders with Supabase data, cart and checkout.
 
 - Initial consolidated plan created from the planning conversation.
 - Editor page now shows the site Header bar at the top; removed it from "Next".
+- `/create` now has browser-local Undo/Redo history and Save/restore; these do
+  not replace account-backed design saving.
+- Added local photo import (PNG/JPG/WebP) with browser-side resize and draft
+  persistence; production R2 upload and AI image tools remain deferred.
+- Connected the current layer controls to local editor state and Undo/Redo:
+  visibility, locking, creation, duplication, grouping, reordering, deletion,
+  blend/opacity/flow, preview effects, clipping preview, and uniform mask
+  strength. True pixel merge and paintable masks remain dependent on Fabric.js.
+- Added Text and Elements panel insertion for styled text and rectangle, circle,
+  triangle, and star shapes. Inserted objects become individual layers and are
+  saved/undone with the local editor draft; freeform vector path editing remains
+  pending.
+- Replaced the DOM-mock design area with Fabric.js 6 canvas objects. Added
+  select/move/scale/rotate, in-place text editing, zoom, hand-pan, actual canvas
+  stacking synchronized with layer order, and transform history persistence.
+  Production masks, pixel merge, account-backed storage, and further tool support
+  remain open work.
