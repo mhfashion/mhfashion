@@ -95,8 +95,8 @@ async function createObject(mark: CanvasMark, fabric: typeof import("fabric")) {
   const common = {
     left,
     top,
-    originX: "center" as const,
-    originY: "center" as const,
+    originX: mark.originX ?? "center",
+    originY: mark.originY ?? "center",
     angle: mark.angle ?? 0,
     scaleX: mark.scaleX ?? 1,
     scaleY: mark.scaleY ?? 1,
@@ -111,13 +111,24 @@ async function createObject(mark: CanvasMark, fabric: typeof import("fabric")) {
     return image;
   }
 
+  if (mark.kind === "Pen" && mark.pathData?.length) {
+    return new fabric.Path(mark.pathData as never, {
+      ...common,
+      fill: "",
+      stroke: mark.color ?? "#d4ff3f",
+      strokeWidth: mark.strokeWidth ?? 6,
+      strokeLineCap: "round",
+      strokeLineJoin: "round",
+    });
+  }
+
   if (mark.kind === "Text" || (mark.kind === "Clone" && mark.text)) {
     return new fabric.IText(mark.text ?? "Text", {
       ...common,
       fill: mark.color ?? "#111827",
       fontSize: mark.fontSize ?? 32,
-      fontFamily: "Arial",
-      fontWeight: "bold",
+      fontFamily: mark.fontFamily ?? "Arial",
+      fontWeight: mark.fontWeight ?? "bold",
       editable: true,
       splitByGrapheme: false,
     });
@@ -151,9 +162,22 @@ function objectToMark(object: FabricObject): CanvasMark | null {
     angle: object.angle ?? 0,
     scaleX: object.scaleX ?? 1,
     scaleY: object.scaleY ?? 1,
+    originX: object.originX as CanvasMark["originX"],
+    originY: object.originY as CanvasMark["originY"],
   };
   if ((mark.kind === "Text" || (mark.kind === "Clone" && mark.text)) && "text" in object) {
-    next.text = String((object as FabricObject & { text?: string }).text ?? mark.text ?? "");
+    const textObject = object as FabricObject & { text?: string; fontFamily?: string; fontWeight?: string; fontSize?: number; fill?: string };
+    next.text = String(textObject.text ?? mark.text ?? "");
+    next.fontFamily = textObject.fontFamily ?? mark.fontFamily ?? "Arial";
+    next.fontWeight = textObject.fontWeight ?? mark.fontWeight ?? "bold";
+    next.fontSize = textObject.fontSize ?? mark.fontSize ?? 32;
+    next.color = typeof textObject.fill === "string" ? textObject.fill : mark.color;
+  }
+  if (mark.kind === "Pen") {
+    const pathObject = object as FabricObject & { path?: Array<Array<string | number>>; stroke?: string; strokeWidth?: number };
+    next.pathData = pathObject.path ?? mark.pathData;
+    next.color = typeof pathObject.stroke === "string" ? pathObject.stroke : mark.color;
+    next.strokeWidth = pathObject.strokeWidth ?? mark.strokeWidth;
   }
   if (mark.imageSrc) next.width = (object.getScaledWidth() / BASE_WIDTH) * 100;
   return next;
@@ -210,6 +234,24 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
 
       canvas.on("object:modified", persist);
       canvas.on("text:changed", persist);
+      canvas.on("path:created", (event) => {
+        const path = (event as unknown as { path?: DataObject & { path?: Array<Array<string | number>>; left?: number; top?: number; originX?: CanvasMark["originX"]; originY?: CanvasMark["originY"]; stroke?: string; strokeWidth?: number } }).path;
+        if (!path?.path?.length) return;
+        const mark: CanvasMark = {
+          id: `pen-${Date.now()}`,
+          kind: "Pen",
+          x: ((path.left ?? 0) / BASE_WIDTH) * 100,
+          y: ((path.top ?? 0) / BASE_HEIGHT) * 100,
+          color: typeof path.stroke === "string" ? path.stroke : "#d4ff3f",
+          strokeWidth: path.strokeWidth ?? 6,
+          pathData: path.path,
+          originX: path.originX ?? "left",
+          originY: path.originY ?? "top",
+        };
+        path.data = mark;
+        callbacksRef.current.onAddMark(mark);
+        callbacksRef.current.onStatus("Pen stroke added as a vector path");
+      });
       canvas.on("selection:created", (event) => {
         const data = (event.selected?.[0] as DataObject | undefined)?.data;
         if (!suppressSelectionEventsRef.current) callbacksRef.current.onSelectLayer(data?.id ?? null);
@@ -336,11 +378,21 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
 
   useEffect(() => {
     if (!fabricCanvas) return;
+    fabricCanvas.isDrawingMode = activeTool === "pen";
     if (activeTool === "hand") {
       fabricCanvas.selection = false;
       for (const object of fabricCanvas.getObjects()) object.set({ selectable: false, evented: false });
     } else {
       fabricCanvas.selection = activeTool === "move" || activeTool === "marquee";
+      if (activeTool === "pen") {
+        void import("fabric").then((module) => {
+          if (callbacksRef.current.activeTool !== "pen") return;
+          const brush = new module.PencilBrush(fabricCanvas);
+          brush.color = "#d4ff3f";
+          brush.width = 6;
+          fabricCanvas.freeDrawingBrush = brush;
+        });
+      }
       void import("fabric").then((fabric) => {
         for (const object of fabricCanvas.getObjects()) {
           const id = (object as DataObject).data?.id;

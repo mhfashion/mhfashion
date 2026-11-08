@@ -13,6 +13,8 @@ const TITLES: Record<PanelId, string> = {
   ai: "AI",
 };
 const COLORS = ["#111827", "#d4ff3f", "#ef4444", "#3b82f6", "#a855f7", "#ffffff"];
+const FONT_FAMILIES = ["Arial", "Georgia", "Times New Roman", "Courier New", "Trebuchet MS", "Impact"];
+const EFFECT_OPTIONS = ["shadow", "stroke", "glow", "blur", "sharpen"];
 const SHAPES: { id: ShapeType; label: string }[] = [
   { id: "rectangle", label: "Rectangle" },
   { id: "circle", label: "Circle" },
@@ -23,17 +25,20 @@ const SHAPES: { id: ShapeType; label: string }[] = [
 type Props = {
   panel: PanelId;
   onUploadImage: (file: File) => Promise<void>;
-  onAddText: (text: string, color: string, fontSize: number) => void;
+  onAddText: (text: string, color: string, fontSize: number, fontFamily: string) => void;
   onAddShape: (shape: ShapeType, color: string) => void;
+  selectedEffects: string[];
+  onToggleEffect: (effect: string) => void;
 };
 
-export default function EditorFlyout({ panel, onUploadImage, onAddText, onAddShape }: Props) {
+export default function EditorFlyout({ panel, onUploadImage, onAddText, onAddShape, selectedEffects, onToggleEffect }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [text, setText] = useState("");
   const [textColor, setTextColor] = useState(COLORS[0]);
   const [fontSize, setFontSize] = useState(32);
+  const [fontFamily, setFontFamily] = useState("Arial");
   const [shapeColor, setShapeColor] = useState(COLORS[1]);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -55,7 +60,7 @@ export default function EditorFlyout({ panel, onUploadImage, onAddText, onAddSha
     event.preventDefault();
     const value = text.trim();
     if (!value) return;
-    onAddText(value, textColor, fontSize);
+    onAddText(value, textColor, fontSize, fontFamily);
     setText("");
   }
 
@@ -86,6 +91,11 @@ export default function EditorFlyout({ panel, onUploadImage, onAddText, onAddSha
               {[18, 24, 32, 40, 48, 64].map((size) => <option key={size} value={size}>{size} px</option>)}
             </select>
           </label>
+          <label className="block text-[9px] text-text-muted">Font family
+            <select value={fontFamily} onChange={(event) => setFontFamily(event.target.value)} className="mt-1 w-full rounded-md bg-bg px-2 py-1.5 text-[10px] text-text-primary">
+              {FONT_FAMILIES.map((family) => <option key={family} value={family}>{family}</option>)}
+            </select>
+          </label>
           <div>
             <p className="mb-1 text-[9px] text-text-muted">Text color</p>
             <div className="flex gap-1.5">{COLORS.map((color) => <button key={color} type="button" aria-label={`Text color ${color}`} aria-pressed={textColor === color} onClick={() => setTextColor(color)} style={{ backgroundColor: color }} className={`h-5 w-5 rounded-full border border-border ${textColor === color ? "ring-2 ring-accent ring-offset-1 ring-offset-bg-surface" : ""}`} />)}</div>
@@ -113,7 +123,8 @@ export default function EditorFlyout({ panel, onUploadImage, onAddText, onAddSha
 
       {panel === "effects" && (
         <div className="space-y-1.5 text-[10px]">
-          {["Drop Shadow", "Stroke", "Glow", "Blur", "Sharpen"].map((fx) => <button key={fx} className="w-full text-left px-2 py-1.5 rounded-md bg-bg border border-border">{fx}</button>)}
+          {EFFECT_OPTIONS.map((effect) => <button key={effect} type="button" aria-pressed={selectedEffects.includes(effect)} onClick={() => onToggleEffect(effect)} className={`w-full rounded-md border px-2 py-1.5 text-left ${selectedEffects.includes(effect) ? "border-accent bg-accent/10 text-accent" : "border-border bg-bg"}`}>{effect.charAt(0).toUpperCase() + effect.slice(1)} {selectedEffects.includes(effect) ? "· On" : "· Add"}</button>)}
+          <p className="pt-1 text-[9px] text-text-faint">Effects apply to the selected layer. Select a layer first to toggle them.</p>
         </div>
       )}
 

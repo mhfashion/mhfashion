@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, Grid3X3, Hand, ImagePlus, Monitor, MousePointer2, Ruler, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import type { ToolId } from "./EditorLeftRail";
 import type { EditorLayer } from "./LayersPanel";
@@ -18,6 +18,12 @@ export type CanvasMark = {
   text?: string;
   color?: string;
   fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  strokeWidth?: number;
+  pathData?: Array<Array<string | number>>;
+  originX?: "left" | "center" | "right";
+  originY?: "top" | "center" | "bottom";
   shapeType?: ShapeType;
   angle?: number;
   scaleX?: number;
@@ -31,7 +37,7 @@ const toolMessages: Partial<Record<ToolId, string>> = {
   "magic-wand": "Magic Wand is not available yet",
   eyedropper: "Eyedropper is not available yet",
   shape: "Click an empty canvas area to add a rectangle",
-  pen: "Pen tool is not available yet",
+  pen: "Draw freehand vector strokes on the canvas",
   "path-select": "Path selection is not available yet",
   "clone-stamp": "Click an empty area to duplicate the latest object",
   gradient: "Gradient tool is not available yet",
@@ -61,6 +67,8 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
   const [zoom, setZoom] = useState(100);
   const [grid, setGrid] = useState(true);
   const [status, setStatus] = useState(toolMessages.move ?? "Ready");
+
+  useEffect(() => setStatus(toolMessages[activeTool] ?? "Ready"), [activeTool]);
 
   return (
     <>

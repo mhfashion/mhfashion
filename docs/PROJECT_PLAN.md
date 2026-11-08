@@ -124,21 +124,28 @@ Other product types get their own attribute sets and pricing formulas.
 - Top bar: Undo/Redo, live price, Save / Add to Cart / Buy Now.
 - Canvas engine (current prototype): Fabric.js 6 renders browser-side editable
   objects with selection, move, scale, rotate, in-place text editing, zoom, and
-  hand-pan. Transform edits are stored as object data and enter Undo/Redo and
-  browser-local Save/restore.
+  hand-pan. The Pen tool now draws vector paths. Transform and path edits are
+  stored as object data and enter Undo/Redo and browser-local Save/restore.
 - Tools palette: Move, Marquee, Lasso, Magic Wand, Eyedropper, Shape, Pen,
   Path Select, Clone Stamp/Healing Brush, Gradient, Eraser, Ruler, Rotate View,
-  Hand, Zoom. More tools will be added over time.
-- Layers (current `/create` prototype): select, show/hide, lock/unlock, create
-  layers/groups, duplicate, reorder, delete, and group a layer with the layer
-  below it. Blend mode, opacity, flow, preview effects, clipping preview, and a
-  uniform mask-strength control are stored per layer and included in Undo/Redo.
-- Text and Elements panels can insert formatted text (text, color, font size)
+  Hand, Zoom. Pen supports freehand vector strokes; remaining selection, paint,
+  retouch, gradient, and measurement tools still need implementation.
+- Layers (current `/create` prototype): a Photoshop-style stack with type-aware
+  thumbnails, selection, inline rename, show/hide, lock/unlock, create/duplicate,
+  sibling reorder, drag/drop reorder, and drop into a folder group. Groups expand
+  and collapse; grouping/reordering, visibility, locking, and deletion are part
+  of Undo/Redo. Blend mode, opacity, flow, and effect toggles are stored per
+  layer. Shadow, stroke, and glow apply to canvas objects; blur and sharpen
+  apply to raster images. Clipping and uniform mask strength remain previews,
+  not paintable production masks.
+- Text and Elements panels can insert formatted text (text, color, font size,
+  font family)
   and colored rectangle, circle, triangle, or star objects on the active side.
   Each inserted object gets its own layer and participates in Undo/Redo and the
-  browser-local draft. Text can be edited in place; objects can be dragged,
-  resized, and rotated with Fabric controls. Font-family selection and freeform
-  vector path editing remain pending.
+  browser-local draft. Selected text can change font family, size, weight, and
+  color from the layer panel; text can also be edited in place. Objects can be
+  dragged, resized, and rotated with Fabric controls. Node-level vector path
+  editing remains pending.
 - Production layer work remains: real pixel merge, paintable per-pixel masks,
   true clipping masks, group transforms/recolor, and full vector/raster editing
   require further implementation on top of the Fabric.js canvas engine.
@@ -280,19 +287,22 @@ with live product data, sticky header, mobile drawer, footer, dark/light and
 Ks/$ toggles, notification dropdown, category marquee.
 
 **Editor prototype (`/create`):** Fabric.js canvas with selectable, movable,
-scalable and rotatable objects; in-place text editing; zoom and hand-pan;
-browser-local image import; text/basic-shape insertion; Undo/Redo; Save and
-restore via local storage; Front/Back draft state; layer visibility/lock,
-creation, duplication, grouping, reorder, deletion, blend/opacity/flow, effects,
-clipping preview, and uniform mask strength. Designs remain browser-local and
-are not yet backed by Supabase or R2.
+scalable and rotatable objects; in-place text editing and family/size/weight/
+color formatting; freehand vector Pen paths; zoom and hand-pan; browser-local
+image import; text/basic-shape insertion; Undo/Redo; Save and restore via local
+storage; Front/Back draft state; layer visibility/lock, creation, duplication,
+grouping, reorder, deletion, inline rename, collapsible groups, drag/drop nesting,
+thumbnails, blend/opacity/flow, effect toggles, clipping preview, and uniform
+mask strength. Designs remain browser-local and are not yet backed by Supabase
+or R2.
 
 **Built, using placeholder data:** Account page (`/account`).
 
 **Still pending for a production editor:** additional tools and hardening,
 editable mask painting/true clipping and pixel merge, group transforms/recolor,
-font-family controls, server/account design storage, production mockups, live
-price, Add to Cart, Buy Now, AI tools, and editor-specific automated tests.
+node-level path editing, remaining tool implementations, server/account design
+storage, production mockups, live price, Add to Cart, Buy Now, AI tools, and
+editor-specific automated tests.
 
 **Next:** Auth (email / Google / Facebook), product detail page, replace
 placeholders with Supabase data, cart and checkout.
@@ -320,3 +330,14 @@ placeholders with Supabase data, cart and checkout.
   stacking synchronized with layer order, and transform history persistence.
   Production masks, pixel merge, account-backed storage, and further tool support
   remain open work.
+- Added freehand vector Pen strokes with Undo/Redo and browser-draft persistence;
+  selected strokes support color and width changes. Added font-family selection
+  at text insertion and selected-text controls for family, size, weight, and
+  color. The Effects flyout now toggles selected-layer effects (shadow, stroke,
+  glow; raster blur/sharpen). True paintable masks, pixel merge, and node editing
+  remain pending.
+- Upgraded the Layers box toward Photoshop-style behavior: type-aware thumbnails,
+  double-click inline rename, collapsible folder groups, drag reorder, and
+  drag-into-group nesting. These actions update the Fabric layer stack and enter
+  Undo/Redo. True Photoshop masks, clipping, raster merge, and group transforms
+  remain unimplemented.

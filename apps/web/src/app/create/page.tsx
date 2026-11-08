@@ -5,7 +5,7 @@ import { Redo2, Undo2 } from "lucide-react";
 import Header from "@/components/Header";
 import EditorLeftRail, { type PanelId, type ToolId } from "@/components/editor/EditorLeftRail";
 import EditorFlyout from "@/components/editor/EditorFlyout";
-import LayersPanel, { type EditorLayer } from "@/components/editor/LayersPanel";
+import LayersPanel, { type EditorLayer, type LayerDropPosition } from "@/components/editor/LayersPanel";
 import AttributeBar, { type AttributeSelection } from "@/components/editor/AttributeBar";
 import InteractiveCanvas, { type CanvasMark, type ShapeType } from "@/components/editor/InteractiveCanvas";
 import MockupLibrary, { type MockupId } from "@/components/editor/MockupLibrary";
@@ -202,8 +202,8 @@ export default function EditorPage() {
     });
   };
 
-  const handleAddText = (text: string, color: string, fontSize: number) => {
-    addMark({ id: makeId("text"), kind: "Text", text, color, fontSize, x: 50, y: 48 });
+  const handleAddText = (text: string, color: string, fontSize: number, fontFamily: string) => {
+    addMark({ id: makeId("text"), kind: "Text", text, color, fontSize, fontFamily, fontWeight: "bold", x: 50, y: 48 });
   };
 
   const handleAddShape = (shapeType: ShapeType, color: string) => {
@@ -226,6 +226,14 @@ export default function EditorPage() {
     marks: { ...document.marks, [activeSide]: marks },
   }));
 
+  const updateMark = (id: string, patch: Partial<CanvasMark>) => commitDocument((document) => ({
+    ...document,
+    marks: {
+      ...document.marks,
+      [activeSide]: document.marks[activeSide].map((mark) => mark.id === id ? { ...mark, ...patch } : mark),
+    },
+  }));
+
   const clearCanvas = () => commitDocument((document) => ({
     marks: { ...document.marks, [activeSide]: [] },
     layers: { ...document.layers, [activeSide]: [] },
@@ -239,6 +247,45 @@ export default function EditorPage() {
         [activeSide]: document.layers[activeSide].map((layer) => layer.id === id ? { ...layer, ...patch } : layer),
       },
     }));
+
+  const dropLayer = (sourceId: string, targetId: string, position: LayerDropPosition) => commitDocument((document) => {
+    const layers = document.layers[activeSide];
+    const source = layers.find((layer) => layer.id === sourceId);
+    const target = layers.find((layer) => layer.id === targetId);
+    if (!source || !target || sourceId === targetId || (position === "inside" && (!target.isGroup || source.isGroup))) return document;
+    const nextParentId = position === "inside" ? target.id : target.isGroup ? undefined : target.parentId;
+    if (source.isGroup && nextParentId) return document;
+    const moved: EditorLayer = { ...source, parentId: nextParentId };
+    const remaining = layers.filter((layer) => layer.id !== sourceId);
+    let insertionIndex: number;
+    if (position === "inside") {
+      const children = remaining.map((layer, index) => layer.parentId === target.id ? index : -1).filter((index) => index >= 0);
+      insertionIndex = children.length ? children[children.length - 1] + 1 : remaining.findIndex((layer) => layer.id === target.id) + 1;
+    } else {
+      const targetIndex = remaining.findIndex((layer) => layer.id === targetId);
+      if (targetIndex < 0) return document;
+      insertionIndex = targetIndex + (position === "after" ? 1 : 0);
+    }
+    remaining.splice(Math.max(0, insertionIndex), 0, moved);
+    const normalized = remaining.map((layer) => {
+      if (!layer.isGroup || (layer.id !== source.parentId && layer.id !== nextParentId)) return layer;
+      let childIds = layer.childIds ?? [];
+      if (layer.id === source.parentId) childIds = childIds.filter((id) => id !== sourceId);
+      if (layer.id === nextParentId && !childIds.includes(sourceId)) childIds = [...childIds, sourceId];
+      return { ...layer, childIds };
+    });
+    return { ...document, layers: { ...document.layers, [activeSide]: normalized } };
+  });
+
+  const toggleSelectedEffect = (effect: string) => {
+    const layer = history.present.layers[activeSide].find((item) => item.id === selectedLayerId);
+    if (!layer) {
+      setSaveMessage("Select a layer before applying an effect");
+      return;
+    }
+    const effects = layer.effects ?? [];
+    updateLayer(layer.id, { effects: effects.includes(effect) ? effects.filter((item) => item !== effect) : [...effects, effect] });
+  };
 
   const addLayer = (isGroup = false) => {
     const id = makeId(isGroup ? "group" : "layer");
@@ -357,6 +404,9 @@ export default function EditorPage() {
   const mockupName = mockup
     ? ({ studio: "Studio T-shirt", flatlay: "Flat lay tee", hoodie: "Classic hoodie", oversized: "Oversized tee", cap: "Cotton cap", tote: "Canvas tote" }[mockup] ?? "Mockup")
     : null;
+  const selectedLayer = history.present.layers[activeSide].find((layer) => layer.id === selectedLayerId) ?? null;
+  const selectedMark = history.present.marks[activeSide].find((mark) => mark.id === selectedLayerId) ?? null;
+  const selectedEffects = selectedLayer?.effects ?? [];
   const chooseMockup = (id: MockupId) => {
     setMockup(id);
     setMockupLibraryOpen(false);
@@ -383,7 +433,7 @@ export default function EditorPage() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <EditorLeftRail activePanel={activePanel} onPanelChange={setActivePanel} activeTool={activeTool} onToolChange={setActiveTool} />
-        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} onUploadImage={handleUploadImage} onAddText={handleAddText} onAddShape={handleAddShape} /></div>}
+        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} onUploadImage={handleUploadImage} onAddText={handleAddText} onAddShape={handleAddShape} selectedEffects={selectedEffects} onToggleEffect={toggleSelectedEffect} /></div>}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f1] dark:bg-[#111]">
           <InteractiveCanvas
             activeTool={activeTool}
@@ -409,6 +459,7 @@ export default function EditorPage() {
             <LayersPanel
               side={activeSide}
               layers={history.present.layers[activeSide]}
+              marks={history.present.marks[activeSide]}
               selectedLayerId={selectedLayerId}
               onSelectLayer={setSelectedLayerId}
               onUpdateLayer={updateLayer}
@@ -418,6 +469,10 @@ export default function EditorPage() {
               onMergeDown={mergeDown}
               onDelete={deleteLayer}
               onMove={moveLayer}
+              onRenameLayer={(id, name) => updateLayer(id, { name })}
+              onDropLayer={dropLayer}
+              selectedMark={selectedMark}
+              onUpdateMark={updateMark}
             />
           </div>
           {mockup && <div className="border-t border-border p-3"><div className="mb-2 text-[10px] font-semibold text-accent">Mockup selected</div><button type="button" onClick={() => setMockup(null)} className="w-full rounded border border-border px-2 py-1.5 text-[10px] text-text-secondary">Remove mockup</button></div>}
