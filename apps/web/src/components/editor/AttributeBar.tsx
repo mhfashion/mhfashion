@@ -61,7 +61,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-1.5 text-[10px]">
+    <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[10px]">
       <span className="text-text-muted whitespace-nowrap">{label}</span>
       {children}
     </div>
@@ -128,7 +128,7 @@ export default function AttributeBar({
   };
 
   return (
-    <div className="border-t border-border px-4 py-2.5 flex items-center gap-4 flex-wrap">
+    <div className="flex max-w-full items-center gap-2 overflow-x-auto border-t border-border px-2 py-2 sm:gap-4 sm:px-4 sm:py-2.5">
       <Field label="Product">
         <Select
           value={selection.product}

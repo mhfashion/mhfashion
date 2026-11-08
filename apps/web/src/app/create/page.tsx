@@ -41,17 +41,17 @@ export default function EditorPage() {
   const chooseMockup = (id: MockupId) => { setMockup(id); setMockupLibraryOpen(false); };
 
   return (
-    <div className="flex h-screen min-h-[680px] flex-col overflow-hidden bg-bg">
+    <div className="flex h-[calc(100dvh-4rem)] min-h-[560px] flex-col overflow-hidden bg-bg md:h-screen">
       <Header />
-      <div className="flex shrink-0 items-center justify-between border-b border-border bg-bg-surface px-3 py-2">
-        <div className="flex items-center gap-1.5 text-text-secondary"><button title={t("editor.undo")} className="rounded p-1.5 hover:bg-bg"><Undo2 size={15} /></button><button title={t("editor.redo")} className="rounded p-1.5 hover:bg-bg"><Redo2 size={15} /></button><span className="mx-1 h-4 w-px bg-border" /><span className="hidden text-[10px] text-text-muted sm:inline">Untitled design</span></div>
-        <div className="flex items-center gap-2"><span className="text-[10px] text-text-muted">Estimated</span><span className="text-xs font-bold text-accent">{formatKs(22000)}</span></div>
-        <div className="flex items-center gap-1.5"><button className="hidden rounded border border-border px-2.5 py-1.5 text-[10px] font-semibold sm:block">Save</button><button disabled={!mockup} title={!mockup ? t("editor.attachFirst") : undefined} className="rounded border border-border px-2.5 py-1.5 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-40">{t("editor.addToCart")}</button><button disabled={!mockup} title={!mockup ? t("editor.attachFirst") : undefined} className="rounded bg-accent px-2.5 py-1.5 text-[10px] font-bold text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40">{t("editor.buyNow")}</button></div>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-bg-surface px-2 py-1.5 sm:px-3 sm:py-2">
+        <div className="flex min-w-0 items-center gap-1 text-text-secondary"><button title={t("editor.undo")} className="rounded p-1.5 hover:bg-bg"><Undo2 size={14} /></button><button title={t("editor.redo")} className="rounded p-1.5 hover:bg-bg"><Redo2 size={14} /></button><span className="mx-1 h-4 w-px bg-border" /><span className="hidden truncate text-[10px] text-text-muted sm:inline">Untitled design</span></div>
+        <div className="hidden items-center gap-2 sm:flex"><span className="text-[10px] text-text-muted">Estimated</span><span className="text-xs font-bold text-accent">{formatKs(22000)}</span></div>
+        <div className="flex shrink-0 items-center gap-1"><button className="hidden rounded border border-border px-2.5 py-1.5 text-[10px] font-semibold md:block">Save</button><button disabled={!mockup} title={!mockup ? t("editor.attachFirst") : undefined} className="rounded border border-border px-2 py-1.5 text-[9px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 sm:px-2.5 sm:text-[10px]">{t("editor.addToCart")}</button><button disabled={!mockup} title={!mockup ? t("editor.attachFirst") : undefined} className="rounded bg-accent px-2 py-1.5 text-[9px] font-bold text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40 sm:px-2.5 sm:text-[10px]">{t("editor.buyNow")}</button></div>
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <EditorLeftRail activePanel={activePanel} onPanelChange={setActivePanel} activeTool={activeTool} onToolChange={setActiveTool} />
-        {activePanel && <EditorFlyout panel={activePanel} />}
+        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} /></div>}
 
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f1] dark:bg-[#111]">
           <InteractiveCanvas activeTool={activeTool} activeSide={activeSide} mockupName={mockupName} onAddLayer={addLayer} onRemoveLayer={removeLayer} />

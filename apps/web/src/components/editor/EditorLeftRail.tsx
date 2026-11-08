@@ -78,7 +78,7 @@ export default function EditorLeftRail({
   onToolChange: (id: ToolId) => void;
 }) {
   return (
-    <div className="w-16 flex-shrink-0 border-r border-border flex flex-col items-center gap-2.5 py-3 overflow-y-auto">
+    <div className="w-12 flex-shrink-0 border-r border-border flex flex-col items-center gap-2 py-2 sm:w-16 sm:gap-2.5 sm:py-3 overflow-y-auto">
       {PANELS.map(({ id, label, Icon }) => {
         const active = activePanel === id;
         return (
@@ -92,8 +92,8 @@ export default function EditorLeftRail({
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
-            <Icon size={16} />
-            {label}
+            <Icon size={15} />
+            <span className="hidden sm:inline">{label}</span>
           </button>
         );
       })}
