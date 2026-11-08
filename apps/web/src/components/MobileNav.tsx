@@ -5,12 +5,10 @@ import {
   Menu,
   Search,
   Heart,
-  ShoppingCart,
   User,
   DollarSign,
   Moon,
   Sun,
-  Pencil,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
@@ -19,7 +17,6 @@ import NotificationBell from "./NotificationBell";
 
 const NAV_LINKS = [
   { label: "New", href: "/new" },
-  { label: "Popular", href: "/popular" },
   { label: "MH Fashion", href: "/mh-fashion" },
   { label: "Nyein", href: "/nyein" },
   { label: "Guide", href: "/guide" },
@@ -137,28 +134,12 @@ export default function MobileNav() {
             <LinkRow key={link.href} {...link} onClick={close} />
           ))}
 
-          {/* Create Design — right below Guide, per confirmed spec */}
-          <a
-            href="/create"
-            onClick={close}
-            className="flex items-center gap-2 px-4 py-2.5 text-accent font-semibold border-b border-border/40"
-          >
-            <Pencil size={15} /> {t("actions.create")}
-          </a>
-
           <a
             href="/wishlist"
             onClick={close}
             className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40"
           >
             <Heart size={15} /> {t("actions.wishlist")}
-          </a>
-          <a
-            href="/cart"
-            onClick={close}
-            className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40"
-          >
-            <ShoppingCart size={15} /> {t("actions.cart")}
           </a>
           <button
             onClick={toggleCurrency}
