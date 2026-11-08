@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { ArrowLeft, Heart, Shirt } from "lucide-react";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import ProductDetailActions from "@/components/ProductDetailActions";
 import ProductOptions from "@/components/ProductOptions";
@@ -57,7 +56,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           {related.length > 0 && <section className="mt-4 rounded-xl border border-border bg-bg-surface p-3 sm:p-4"><div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-black">You may also like</h2><a href="/popular" className="text-[10px] font-semibold text-accent">View all</a></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{related.map((item) => <ProductCard key={item.id} product={item} />)}</div></section>}
         </div>
       </main>
-      <Footer />
+
     </div>
   );
 }

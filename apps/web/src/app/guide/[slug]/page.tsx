@@ -14,7 +14,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
 import { getGuideCatalog, getGuidePostBySlug } from "@/lib/guides";
@@ -140,7 +139,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
           </div>
         </div>
       </main>
-      <Footer />
+
     </div>
   );
 }
