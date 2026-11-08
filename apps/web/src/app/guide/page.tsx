@@ -127,7 +127,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
           </aside>
 
           <div className="min-w-0">
-            <section className="relative isolate mb-5 min-h-[155px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-4 py-4 text-[#172810] sm:min-h-[230px] sm:px-9 sm:py-9 lg:min-h-[255px] lg:px-10">
+            <section className="relative isolate mb-5 min-h-[155px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-4 py-4 text-[#172810] sm:min-h-[210px] sm:px-9 sm:py-7 lg:min-h-[220px] lg:px-10 lg:py-8">
               <div className="relative z-10 max-w-[70%] sm:max-w-[48%]">
                 <span className="inline-flex rounded-full bg-[#5aa817] px-2 py-1 text-[8px] font-black uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[10px]">MH Fashion Guide</span>
                 <h1 className="mt-2 text-2xl font-black leading-[0.95] tracking-tight sm:mt-4 sm:text-5xl">Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></h1>
