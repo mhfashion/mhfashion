@@ -303,6 +303,15 @@ export default function EditorPage() {
     addMark({ id: makeId("shape"), kind: "Shape", shapeType, color, x: 50, y: 48 });
   };
 
+  const duplicateSelectedMark = (mark: CanvasMark) => {
+    addMark({
+      ...mark,
+      id: makeId("copy"),
+      x: Math.max(0, Math.min(100, mark.x + 4)),
+      y: Math.max(0, Math.min(100, mark.y + 4)),
+    });
+  };
+
   const removeMark = (id: string) => commitDocument((document) => ({
     ...document,
     marks: {
@@ -542,7 +551,7 @@ export default function EditorPage() {
             />
           </div>
         )}
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f1] dark:bg-[#111]">
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f3f4f6] dark:bg-[#f3f4f6]">
           <InteractiveCanvas
             activeTool={activeTool}
             activeSide={activeSide}
@@ -555,6 +564,8 @@ export default function EditorPage() {
             onAddMark={addMark}
             onAddElement={handleAddElement}
             onRemoveMark={removeMark}
+            onUpdateMark={updateMark}
+            onDuplicateMark={duplicateSelectedMark}
             onMarksChange={updateCanvasMarks}
             onClear={clearCanvas}
             toolColor={toolColor}

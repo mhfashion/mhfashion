@@ -69,6 +69,15 @@ Source of scope: `docs/PROJECT_PLAN.md` section 6 and the `/create` toolbar.
   - Show tool-specific cursor/status/options; keep added design changes in layers/history/drafts and keep navigation/measurement overlays out of saved artwork. Document the vector/object-level limits rather than claiming raster Photoshop behavior.
 - Evidence: `npm run build` passed; no inactive-tool placeholder messages remain; a read-only review found no P0/P1 issues. The review's Clone Stamp lock gap and Magic Wand raster-status ambiguity were corrected. Ruler visuals are transient overlays and are not included in saved marks/history; pixel-level raster selection/erasing and path-anchor editing remain out of scope.
 
+## Canva-style workspace and selection toolbar
+
+Source of scope: owner request to remove the dark Photoshop-like backing from the drawing area and make the red-circled bar work like Canva.
+
+- [x] Use a light neutral workspace and white artboard regardless of site dark mode; keep the transparency grid optional and off by default.
+- [x] Make the selection bar contextual: text exposes font, size, color, emphasis, and alignment; shapes expose type and fill; selected artwork exposes duplicate/delete actions.
+- [x] Remove developer-facing canvas-engine labeling from the drawing workspace footer.
+- Evidence: production build and TypeScript checks pass; selected artwork edits route through the existing history-backed update callback.
+
 ## Persistent Photoshop-style Layers Box
 
 Source of scope: user clarification that the Layers Box must exist from editor start and that selecting a layer must not make Opacity/Fill controls appear.

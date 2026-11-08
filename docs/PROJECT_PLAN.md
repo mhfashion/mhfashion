@@ -122,6 +122,11 @@ Other product types get their own attribute sets and pricing formulas.
   the right; Front and Back canvases side by side (transparent background);
   attribute bar along the bottom.
 - Top bar: Undo/Redo, live price, Save / Add to Cart / Buy Now.
+- Drawing workspace (owner-requested Canva-inspired pass): keep the work area
+  light and the artboard white regardless of site theme, with the transparency
+  grid optional and off by default. The selection bar becomes contextual: text
+  exposes font/size/color/emphasis/alignment, shapes expose geometry/fill, and
+  selected artwork exposes duplicate/delete actions.
 - Canvas engine (current prototype): Fabric.js 6 renders browser-side editable
   objects with selection, move, scale, rotate, in-place text editing, zoom, and
   hand-pan. The Pen tool now draws vector paths. Transform and path edits are
@@ -522,3 +527,7 @@ placeholders with Supabase data, cart and checkout.
   editor-only products API/helper at the owner's request. Storefront catalog and
   product detail pages, plus the editor's bottom Product attribute selector,
   remain unchanged.
+- Replaced the dark Photoshop-like drawing surround with a theme-independent
+  light workspace and white artboard, and made the selection bar contextual for
+  text and shape formatting plus selected-object duplicate/delete. Production
+  build and TypeScript checks passed.
