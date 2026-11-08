@@ -58,15 +58,15 @@ function CategoryShortcut({
   return (
     <Link
       href={guideUrl(category.slug, query)}
-      className={`group flex min-h-[92px] items-center gap-3 rounded-xl border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${selected ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}
+      className={`group flex min-h-[58px] items-center gap-2 rounded-xl border p-2 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent sm:min-h-[92px] sm:gap-3 sm:p-4 ${selected ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}
       aria-current={selected ? "page" : undefined}
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
-        <CategoryIcon slug={category.slug} />
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground sm:h-10 sm:w-10 sm:rounded-xl">
+        <CategoryIcon slug={category.slug} size={15} />
       </span>
       <span className="min-w-0">
         <span className="block text-xs font-bold leading-tight">{category.name.replace(" Guide", "")}</span>
-        <span className="mt-1 block text-[10px] text-text-muted">{count} {count === 1 ? "Post" : "Posts"}</span>
+        <span className="mt-0.5 block text-[9px] text-text-muted sm:mt-1 sm:text-[10px]">{count} {count === 1 ? "Post" : "Posts"}</span>
       </span>
       <ArrowRight size={14} className="ml-auto shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent" aria-hidden="true" />
     </Link>
@@ -127,24 +127,24 @@ export default async function GuidePage({ searchParams }: PageProps) {
           </aside>
 
           <div className="min-w-0">
-            <section className="relative isolate mb-5 min-h-[230px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-6 py-7 text-[#172810] sm:px-9 sm:py-9 lg:min-h-[255px] lg:px-10">
-              <div className="relative z-10 max-w-[52%] sm:max-w-[48%]">
-                <span className="inline-flex rounded-full bg-[#5aa817] px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-white">MH Fashion Guide</span>
-                <h1 className="mt-4 text-4xl font-black leading-[0.95] tracking-tight sm:text-5xl">Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></h1>
-                <p className="mt-4 max-w-sm text-xs leading-relaxed text-[#355128] sm:text-sm">Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience.</p>
-                <Link href="#articles" className="mt-5 inline-flex items-center rounded-full bg-[#55a918] px-4 py-2.5 text-xs font-bold text-white shadow-sm">Browse All Guides <ArrowRight size={15} className="ml-1.5" /></Link>
+            <section className="relative isolate mb-5 min-h-[155px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-4 py-4 text-[#172810] sm:min-h-[230px] sm:px-9 sm:py-9 lg:min-h-[255px] lg:px-10">
+              <div className="relative z-10 max-w-[70%] sm:max-w-[48%]">
+                <span className="inline-flex rounded-full bg-[#5aa817] px-2 py-1 text-[8px] font-black uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[10px]">MH Fashion Guide</span>
+                <h1 className="mt-2 text-2xl font-black leading-[0.95] tracking-tight sm:mt-4 sm:text-5xl">Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></h1>
+                <p className="mt-2 max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-4 sm:text-sm">Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience.</p>
+                <Link href="#articles" className="mt-3 inline-flex items-center rounded-full bg-[#55a918] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:px-4 sm:py-2.5 sm:text-xs">Browse All Guides <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" /></Link>
               </div>
-              <div className="absolute -right-10 -top-12 h-64 w-64 rounded-full bg-[#9bda45]/50 blur-sm sm:right-10 sm:h-80 sm:w-80" />
+              <div className="absolute -right-10 -top-12 h-48 w-48 rounded-full bg-[#9bda45]/50 blur-sm sm:right-10 sm:h-80 sm:w-80" />
               <div className="absolute bottom-[-55px] right-[13%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block" aria-hidden="true">
                 <div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div>
               </div>
-              <div className="absolute bottom-4 right-5 text-3xl font-black italic text-[#54a817]/80 sm:right-12 sm:text-4xl">Your<br />Style</div>
+              <div className="absolute bottom-3 right-3 text-2xl font-black italic text-[#54a817]/80 sm:bottom-4 sm:right-12 sm:text-4xl">Your<br />Style</div>
             </section>
 
             <div className="mb-7 grid grid-cols-4 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
-              <Link href="/faq" className="group flex min-h-[92px] items-center gap-3 rounded-xl border border-border bg-bg-surface p-4 hover:border-accent/60 sm:col-span-1">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent"><Star size={20} /></span>
+              <Link href="/faq" className="group flex min-h-[58px] items-center gap-2 rounded-xl border border-border bg-bg-surface p-2 hover:border-accent/60 sm:col-span-1 sm:min-h-[92px] sm:gap-3 sm:p-4">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Star size={16} /></span>
                 <span className="text-xs font-bold leading-tight">Points &<br />Rewards</span>
               </Link>
             </div>
