@@ -156,14 +156,28 @@ Other product types get their own attribute sets and pricing formulas.
   raster images. Clipping masks use the nearest unclipped lower sibling's alpha;
   uniform mask strength remains a preview rather than a paintable mask. Photoshop's
   Blend If, channel controls, and full layer-style dialog are not implemented.
-- Text and Elements panels can insert formatted text (text, color, font size,
-  font family)
-  and colored rectangle, circle, triangle, or star objects on the active side.
-  Each inserted object gets its own layer and participates in Undo/Redo and the
-  browser-local draft. Selected text can change font family, size, weight, and
-  color from the layer panel; text can also be edited in place. Objects can be
-  dragged, resized, and rotated with Fabric controls. Node-level vector path
-  editing remains pending.
+- Text tools (`/create`): add heading, subheading, and body text; browse/search
+  fonts by style category; insert typography presets and paired font-combination
+  designs as grouped, individually editable text layers. Selected text exposes
+  font family, size, color, weight, italic, underline, alignment, and spacing
+  controls. Text objects participate in Undo/Redo, transform controls, in-place
+  editing, and browser-local drafts. The prototype uses browser/system fonts only;
+  custom font files are not bundled before the font licensing and R2 phase.
+- Products browser (`/create`): fetch actual storefront products and price ranges
+  through same-origin `GET /api/editor/products`, search the names, display the
+  product image and price, link to product details, and select a catalog item as
+  the current editor product. Product selection is retained in the browser-local
+  draft; choosing a product does not pretend that the separate mockup catalog is
+  a production product-to-mockup mapping.
+- Text catalog data lives in local versioned manifests at
+  `apps/web/public/fonts/v1/manifest.json` and
+  `apps/web/public/text-styles/v1/manifest.json`, with future R2 keys recorded.
+  No font or text-style asset is uploaded to R2 in this stage.
+- Text and Elements panels insert text plus colored rectangle, circle, triangle,
+  or star objects on the active side. Each inserted object gets its own layer and
+  participates in Undo/Redo and the browser-local draft. Objects can be dragged,
+  resized, and rotated with Fabric controls. Node-level vector path editing
+  remains pending.
 - Elements library (`/create` prototype): browse a catalog of original SVG
   graphics by category, search names/tags, choose a color, click an asset to add
   it centered on the active canvas, or drag it from the library onto a placement
@@ -297,9 +311,18 @@ mockups/{product_id}/{style_id}/{color_id}_front.png (and _back, detail_n)
 jersey-mockups/{jersey_style_id}/worn_photo.png + mapping_zones.json
 brushes/{brush_id}/texture.png
 elements/v1/manifest.json, elements/v1/{slug}.svg (planned, R2 not connected)
+fonts/v1/manifest.json, fonts/v1/{font_id}.woff2 (planned; license-cleared files only)
+text-styles/v1/manifest.json, text-styles/v1/previews/{slug}.webp (planned)
+products/{product_id}/card.webp (planned product image; metadata remains in Supabase)
 products/categories/{slug}.png, products/banners/{id}.png
 uploads/{user_id}/{upload_id}/original.jpg, upscaled.jpg
 ```
+
+Future private serving contract (not implemented): `GET /api/editor/fonts`,
+`GET /api/editor/text-styles`, and allow-listed `GET /api/editor/assets/[...assetKey]`
+to read font, preview, product-card, and mockup objects through an R2 binding.
+The current `GET /api/editor/products` route reads catalog metadata and prices
+from Supabase; it does not connect to or proxy R2.
 
 Naming: lowercase, hyphens; UUIDs for system-generated assets, slugs for
 catalog-facing items.
@@ -312,8 +335,14 @@ catalog-facing items.
 - Pillow and Sling Bag attributes and mockups.
 - Payment gateway API details; DHL integration (waiting on DHL).
 - Legal page content (Myanmar-specific clauses).
-- R2 bucket creation/connection and upload of the Elements catalog; current
-  prototype uses versioned local SVG assets and a manifest only.
+- Private R2 connection and uploads for Elements, licensed fonts, text-style
+  previews, and product/mockup assets remain deferred. The current editor uses
+  local catalogs, browser/system font fallbacks, and the storefront's existing
+  Supabase product data; no bucket, binding, or R2 upload is part of this stage.
+- The `/api/editor/products` implementation is built, but its local production-
+  server smoke test returned 503 because the Sandbox does not have the Supabase
+  URL runtime setting. Confirm live catalog retrieval in an environment where
+  the project's existing Supabase runtime settings are available.
 - Further editor tools and layer-panel features; further admin permissions.
 - Refund request flow; mobile app scope; email provider.
 
@@ -340,7 +369,12 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   The Elements flyout now includes category browsing, name/tag search, color
   choices, original SVG previews, click-to-add, and drag-to-canvas placement.
   Catalog data/assets are in `public/elements/v1` with future R2 object keys;
-  R2 itself remains disconnected by request.
+  R2 itself remains disconnected by request. The Text flyout now follows Canva's
+  heading/subheading/body and font-search flow, supplies text/font-combination
+  presets and selected-text formatting, using system fonts only. The Products
+  flyout reads real storefront products and price ranges via `/api/editor/products`,
+  supports search and selection, and uses the database image URL; product assets
+  and fonts remain outside R2 until that phase is requested.
 
 **Built, using placeholder data:** Account page (`/account`).
 
@@ -433,3 +467,14 @@ placeholders with Supabase data, cart and checkout.
   and Fill on the second, on-demand slider popovers, and visibility controls in
   the leading layer-row column before thumbnails. This is a closer layout match,
   not a claim of pixel-for-pixel Photoshop equivalence.
+- Expanded the Text flyout after researching Canva's official Text tab and Font
+  Library: heading/subheading/body insertion, font/category search, text styling,
+  and ready-made font combinations are now the implementation model. Added live
+  storefront product browsing to `/create` using the same public product and price
+  data functions as the store, with a future private-R2 asset contract for licensed
+  fonts, text-style previews, and product cards. No custom font files, R2
+  credentials, bucket, binding, public access, or upload are included. This
+  reproduces useful interaction patterns, not Canva assets or a pixel-identical
+  editor. [Canva: Add and edit text](https://www.canva.com/help/add-and-edit-text/)
+  [Canva: Format text](https://www.canva.com/help/format-text/)
+  [Canva Design School: Text and the Font Library](https://www.canva.com/design-school/resources/finding-fonts-and-using-text/)

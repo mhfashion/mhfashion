@@ -21,6 +21,11 @@ export type CanvasMark = {
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: string;
+  fontStyle?: "normal" | "italic";
+  underline?: boolean;
+  textAlign?: "left" | "center" | "right" | "justify";
+  charSpacing?: number;
+  lineHeight?: number;
   strokeWidth?: number;
   pathData?: Array<Array<string | number>>;
   originX?: "left" | "center" | "right";

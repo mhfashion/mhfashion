@@ -9,6 +9,8 @@ import LayersPanel, { type EditorLayer, type LayerDropPosition } from "@/compone
 import AttributeBar, { type AttributeSelection } from "@/components/editor/AttributeBar";
 import InteractiveCanvas, { type CanvasMark, type ShapeType } from "@/components/editor/InteractiveCanvas";
 import MockupLibrary, { type MockupId } from "@/components/editor/MockupLibrary";
+import type { TextCombination, TextFormatting } from "@/lib/editorTypography";
+import type { Product } from "@/lib/types";
 import { useCurrency } from "@/lib/currency-context";
 import { findEditorElement } from "@/lib/editorElements";
 import { useI18n } from "@/lib/i18n";
@@ -243,8 +245,30 @@ export default function EditorPage() {
     }
   };
 
-  const handleAddText = (text: string, color: string, fontSize: number, fontFamily: string) => {
-    addMark({ id: makeId("text"), kind: "Text", text, color, fontSize, fontFamily, fontWeight: "bold", x: 50, y: 48 });
+  const handleAddText = (text: string, formatting: TextFormatting) => {
+    addMark({ id: makeId("text"), kind: "Text", text, ...formatting, x: 50, y: 48 });
+  };
+
+  const handleAddTextCombination = (combination: TextCombination) => {
+    const groupId = makeId("text-group");
+    const titleId = makeId("text-title");
+    const subtitleId = makeId("text-subtitle");
+    const titleMark: CanvasMark = { id: titleId, kind: "Text", text: combination.title.text, x: 50, y: combination.title.y, ...combination.title.style };
+    const subtitleMark: CanvasMark = { id: subtitleId, kind: "Text", text: combination.subtitle.text, x: 50, y: combination.subtitle.y, ...combination.subtitle.style };
+    const group: EditorLayer = { id: groupId, name: combination.name, visible: true, locked: false, isGroup: true, blendMode: "pass-through", childIds: [titleId, subtitleId] };
+    const titleLayer: EditorLayer = { id: titleId, name: combination.title.text, visible: true, locked: false, isGroup: false, parentId: groupId };
+    const subtitleLayer: EditorLayer = { id: subtitleId, name: combination.subtitle.text, visible: true, locked: false, isGroup: false, parentId: groupId };
+    commitDocument((document) => ({
+      marks: { ...document.marks, [activeSide]: [...document.marks[activeSide], titleMark, subtitleMark] },
+      layers: { ...document.layers, [activeSide]: [...document.layers[activeSide], group, titleLayer, subtitleLayer] },
+    }));
+    setSelectedLayerId(titleId);
+    setSaveMessage(`${combination.name} added as editable text layers`);
+  };
+
+  const handleSelectProduct = (product: Product) => {
+    setSelection((current) => ({ ...current, product: product.name }));
+    setSaveMessage(`${product.name} selected for this design`);
   };
 
   const handleAddShape = (shapeType: ShapeType, color: string) => {
@@ -474,7 +498,7 @@ export default function EditorPage() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <EditorLeftRail activePanel={activePanel} onPanelChange={setActivePanel} activeTool={activeTool} onToolChange={setActiveTool} />
-        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} onUploadImage={handleUploadImage} onAddText={handleAddText} onAddShape={handleAddShape} onAddElement={handleAddElement} selectedEffects={selectedEffects} onToggleEffect={toggleSelectedEffect} /></div>}
+        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} onUploadImage={handleUploadImage} onAddText={handleAddText} onAddTextCombination={handleAddTextCombination} selectedText={selectedMark?.kind === "Text" ? selectedMark : null} onUpdateSelectedText={(patch) => { if (selectedMark?.kind === "Text") updateMark(selectedMark.id, patch); }} onAddShape={handleAddShape} onAddElement={handleAddElement} selectedProductName={selection.product} onSelectProduct={handleSelectProduct} selectedEffects={selectedEffects} onToggleEffect={toggleSelectedEffect} /></div>}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f1] dark:bg-[#111]">
           <InteractiveCanvas
             activeTool={activeTool}

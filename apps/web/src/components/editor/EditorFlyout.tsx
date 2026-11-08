@@ -2,19 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Plus, Search, X } from "lucide-react";
+import type { Product } from "@/lib/types";
+import type { TextCombination, TextFormatting } from "@/lib/editorTypography";
 import type { PanelId } from "./EditorLeftRail";
-import type { ShapeType } from "./InteractiveCanvas";
+import type { CanvasMark, ShapeType } from "./InteractiveCanvas";
+import ProductsLibrary from "./ProductsLibrary";
+import TextLibrary from "./TextLibrary";
 import { EDITOR_ELEMENTS, ELEMENT_CATEGORIES } from "@/lib/editorElements";
 
 const TITLES: Record<PanelId, string> = {
   upload: "Upload",
   elements: "Elements",
+  products: "Products",
   text: "Text",
   effects: "Effects",
   ai: "AI",
 };
 const COLORS = ["#111827", "#d4ff3f", "#ef4444", "#3b82f6", "#a855f7", "#ffffff"];
-const FONT_FAMILIES = ["Arial", "Georgia", "Times New Roman", "Courier New", "Trebuchet MS", "Impact"];
 const EFFECT_OPTIONS = ["shadow", "stroke", "glow", "blur", "sharpen"];
 const RECENT_KEY = "mhfashion-editor-element-recent-v1";
 const SHAPES: { id: ShapeType; label: string }[] = [
@@ -27,9 +31,14 @@ const SHAPES: { id: ShapeType; label: string }[] = [
 type Props = {
   panel: PanelId;
   onUploadImage: (file: File) => Promise<void>;
-  onAddText: (text: string, color: string, fontSize: number, fontFamily: string) => void;
+  onAddText: (text: string, formatting: TextFormatting) => void;
+  onAddTextCombination: (combination: TextCombination) => void;
+  selectedText: CanvasMark | null;
+  onUpdateSelectedText: (patch: Partial<TextFormatting>) => void;
   onAddShape: (shape: ShapeType, color: string) => void;
   onAddElement: (elementId: string, color: string, x?: number, y?: number) => Promise<void>;
+  selectedProductName: string;
+  onSelectProduct: (product: Product) => void;
   selectedEffects: string[];
   onToggleEffect: (effect: string) => void;
 };
@@ -45,14 +54,23 @@ function readRecentIds() {
   }
 }
 
-export default function EditorFlyout({ panel, onUploadImage, onAddText, onAddShape, onAddElement, selectedEffects, onToggleEffect }: Props) {
+export default function EditorFlyout({
+  panel,
+  onUploadImage,
+  onAddText,
+  onAddTextCombination,
+  selectedText,
+  onUpdateSelectedText,
+  onAddShape,
+  onAddElement,
+  selectedProductName,
+  onSelectProduct,
+  selectedEffects,
+  onToggleEffect,
+}: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const [text, setText] = useState("");
-  const [textColor, setTextColor] = useState(COLORS[0]);
-  const [fontSize, setFontSize] = useState(32);
-  const [fontFamily, setFontFamily] = useState("Arial");
   const [shapeColor, setShapeColor] = useState(COLORS[1]);
   const [elementColor, setElementColor] = useState(COLORS[1]);
   const [search, setSearch] = useState("");
@@ -90,14 +108,6 @@ export default function EditorFlyout({ panel, onUploadImage, onAddText, onAddSha
     }
   }
 
-  function submitText(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const value = text.trim();
-    if (!value) return;
-    onAddText(value, textColor, fontSize, fontFamily);
-    setText("");
-  }
-
   async function addElement(elementId: string, x?: number, y?: number) {
     setElementError("");
     try {
@@ -121,101 +131,59 @@ export default function EditorFlyout({ panel, onUploadImage, onAddText, onAddSha
     const matchesSearch = !query || [element.name, element.category, ...element.tags].some((value) => value.toLocaleLowerCase().includes(query));
     return inCategory && matchesSearch;
   });
+  const width = panel === "text" ? "w-80" : panel === "elements" || panel === "products" ? "w-72" : "w-52";
 
   return (
-    <div className={`${panel === "elements" ? "w-72" : "w-52"} flex-shrink-0 overflow-y-auto border-r border-border bg-bg-surface p-3`}>
+    <div className={`${width} flex-shrink-0 overflow-y-auto border-r border-border bg-bg-surface p-3`}>
       <p className="mb-2.5 text-xs font-semibold">{TITLES[panel]}</p>
 
-      {panel === "upload" && (
-        <div className="space-y-2">
-          <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileChange} className="sr-only" aria-label="Choose an image to upload" />
-          <button type="button" onClick={() => fileInput.current?.click()} disabled={uploading} className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-border-light py-6 text-[10px] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50">
-            <ImagePlus size={20} />
-            {uploading ? "Preparing image…" : "Choose an image"}
-          </button>
-          <p className="text-[9px] leading-relaxed text-text-faint">PNG, JPG or WebP · up to 10 MB. The image is resized for the editor and kept in this browser draft.</p>
-          {uploadError && <p role="alert" className="text-[9px] leading-relaxed text-red-500">{uploadError}</p>}
-          <p className="text-[9px] leading-relaxed text-text-faint">Click the image to select it, then choose Eraser and click the canvas to remove it. Remove Background and Upscale are not connected yet.</p>
+      {panel === "upload" && <div className="space-y-2">
+        <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileChange} className="sr-only" aria-label="Choose an image to upload" />
+        <button type="button" onClick={() => fileInput.current?.click()} disabled={uploading} className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-border-light py-6 text-[10px] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50">
+          <ImagePlus size={20} />{uploading ? "Preparing image…" : "Choose an image"}
+        </button>
+        <p className="text-[9px] leading-relaxed text-text-faint">PNG, JPG or WebP · up to 10 MB. The image is resized for the editor and kept in this browser draft.</p>
+        {uploadError && <p role="alert" className="text-[9px] leading-relaxed text-red-500">{uploadError}</p>}
+        <p className="text-[9px] leading-relaxed text-text-faint">Click the image to select it, then choose Eraser and click the canvas to remove it. Remove Background and Upscale are not connected yet.</p>
+      </div>}
+
+      {panel === "text" && <TextLibrary selectedText={selectedText} onAddText={onAddText} onAddCombination={onAddTextCombination} onUpdateSelectedText={onUpdateSelectedText} />}
+
+      {panel === "products" && <ProductsLibrary selectedProductName={selectedProductName} onSelectProduct={onSelectProduct} />}
+
+      {panel === "elements" && <div className="space-y-3">
+        <div className="relative">
+          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-faint" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search elements" aria-label="Search elements" className="h-9 w-full rounded-md border border-border bg-bg py-1 pl-8 pr-8 text-[10px] text-text-primary outline-none placeholder:text-text-faint focus:border-accent" />
+          {search && <button type="button" title="Clear search" aria-label="Clear search" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-faint hover:text-text-primary"><X size={13} /></button>}
         </div>
-      )}
-
-      {panel === "text" && (
-        <form onSubmit={submitText} className="space-y-3">
-          <label className="block text-[9px] text-text-muted">Text
-            <textarea value={text} onChange={(event) => setText(event.target.value)} maxLength={120} rows={4} placeholder="Type your design text…" className="mt-1 w-full resize-y rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-text-primary outline-none focus:border-accent" />
-          </label>
-          <label className="block text-[9px] text-text-muted">Font size
-            <select value={fontSize} onChange={(event) => setFontSize(Number(event.target.value))} className="mt-1 w-full rounded-md bg-bg px-2 py-1.5 text-[10px] text-text-primary">
-              {[18, 24, 32, 40, 48, 64].map((size) => <option key={size} value={size}>{size} px</option>)}
-            </select>
-          </label>
-          <label className="block text-[9px] text-text-muted">Font family
-            <select value={fontFamily} onChange={(event) => setFontFamily(event.target.value)} className="mt-1 w-full rounded-md bg-bg px-2 py-1.5 text-[10px] text-text-primary">
-              {FONT_FAMILIES.map((family) => <option key={family} value={family}>{family}</option>)}
-            </select>
-          </label>
-          <div>
-            <p className="mb-1 text-[9px] text-text-muted">Text color</p>
-            <div className="flex gap-1.5">{COLORS.map((color) => <button key={color} type="button" aria-label={`Text color ${color}`} aria-pressed={textColor === color} onClick={() => setTextColor(color)} style={{ backgroundColor: color }} className={`h-5 w-5 rounded-full border border-border ${textColor === color ? "ring-2 ring-accent ring-offset-1 ring-offset-bg-surface" : ""}`} />)}</div>
-          </div>
-          <button type="submit" disabled={!text.trim()} className="flex w-full items-center justify-center gap-1 rounded-md bg-accent px-2 py-2 text-[10px] font-bold text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40"><Plus size={13} /> Add text to canvas</button>
-          <p className="text-[9px] text-text-faint">Text is added to the center of the active side as a separate layer.</p>
-        </form>
-      )}
-
-      {panel === "elements" && (
-        <div className="space-y-3">
-          <div className="relative">
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-faint" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search elements" aria-label="Search elements" className="h-9 w-full rounded-md border border-border bg-bg py-1 pl-8 pr-8 text-[10px] text-text-primary outline-none placeholder:text-text-faint focus:border-accent" />
-            {search && <button type="button" title="Clear search" aria-label="Clear search" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-faint hover:text-text-primary"><X size={13} /></button>}
-          </div>
-
-          <div role="tablist" aria-label="Element categories" className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1">
-            {categoryTabs.map((category) => <button key={category} type="button" role="tab" aria-selected={activeCategory === category} onClick={() => setActiveCategory(category)} className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] ${activeCategory === category ? "border-accent bg-accent/10 font-semibold text-accent" : "border-border text-text-muted hover:border-accent/50"}`}>{category}</button>)}
-          </div>
-
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <p className="text-[9px] font-semibold text-text-muted">Element color</p>
-              <span className="text-[8px] text-text-faint">{visibleElements.length} items</span>
-            </div>
-            <div className="flex gap-1.5">{COLORS.map((color) => <button key={color} type="button" aria-label={`Element color ${color}`} aria-pressed={elementColor === color} onClick={() => setElementColor(color)} style={{ backgroundColor: color }} className={`h-5 w-5 rounded-full border border-border ${elementColor === color ? "ring-2 ring-accent ring-offset-1 ring-offset-bg-surface" : ""}`} />)}</div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {visibleElements.map((element) => <button key={element.id} type="button" draggable onDragStart={(event) => beginElementDrag(event, element.id)} onClick={() => void addElement(element.id)} title={`${element.name} · click to add or drag to place`} aria-label={`Add ${element.name} to canvas, or drag to position`} className="group min-w-0 overflow-hidden rounded-md border border-border bg-bg text-left transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-              <span className="relative block aspect-square overflow-hidden bg-[#202020] p-3">
-                <img src={element.assetPath} alt="" draggable={false} className="h-full w-full object-contain transition-transform group-hover:scale-105" />
-                <span aria-hidden="true" className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-bg/90 text-text-primary opacity-0 shadow-sm transition-opacity group-hover:opacity-100"><Plus size={12} /></span>
-              </span>
-              <span className="block truncate px-2 py-1.5 text-[9px] text-text-secondary">{element.name}</span>
-            </button>)}
-          </div>
-
-          {!visibleElements.length && <div className="rounded-md border border-dashed border-border px-3 py-5 text-center text-[9px] leading-relaxed text-text-faint">No matching elements. Try another keyword or category.</div>}
-          {elementError && <p role="alert" className="text-[9px] leading-relaxed text-red-500">{elementError}</p>}
-          <p className="text-[9px] leading-relaxed text-text-faint">Click to add at the center. Drag a graphic onto the canvas to place it. Added graphics become separate editable layers.</p>
+        <div role="tablist" aria-label="Element categories" className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1">
+          {categoryTabs.map((category) => <button key={category} type="button" role="tab" aria-selected={activeCategory === category} onClick={() => setActiveCategory(category)} className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] ${activeCategory === category ? "border-accent bg-accent/10 font-semibold text-accent" : "border-border text-text-muted hover:border-accent/50"}`}>{category}</button>)}
         </div>
-      )}
-
-      {panel === "effects" && (
-        <div className="space-y-1.5 text-[10px]">
-          {EFFECT_OPTIONS.map((effect) => <button key={effect} type="button" aria-pressed={selectedEffects.includes(effect)} onClick={() => onToggleEffect(effect)} className={`w-full rounded-md border px-2 py-1.5 text-left ${selectedEffects.includes(effect) ? "border-accent bg-accent/10 text-accent" : "border-border bg-bg"}`}>{effect.charAt(0).toUpperCase() + effect.slice(1)} {selectedEffects.includes(effect) ? "· On" : "· Add"}</button>)}
-          <p className="pt-1 text-[9px] text-text-faint">Effects apply to the selected layer. Select a layer first to toggle them.</p>
+        <div>
+          <div className="mb-1.5 flex items-center justify-between"><p className="text-[9px] font-semibold text-text-muted">Element color</p><span className="text-[8px] text-text-faint">{visibleElements.length} items</span></div>
+          <div className="flex gap-1.5">{COLORS.map((color) => <button key={color} type="button" aria-label={`Element color ${color}`} aria-pressed={elementColor === color} onClick={() => setElementColor(color)} style={{ backgroundColor: color }} className={`h-5 w-5 rounded-full border border-border ${elementColor === color ? "ring-2 ring-accent ring-offset-1 ring-offset-bg-surface" : ""}`} />)}</div>
         </div>
-      )}
-
-      {panel === "ai" && (
-        <div className="space-y-2">
-          <div className="rounded-md border border-border bg-bg p-2">
-            <p className="mb-1 text-[10px] font-medium">Generate image</p>
-            <textarea rows={3} placeholder="Describe what you want..." className="w-full resize-none bg-transparent text-[10px] outline-none placeholder:text-text-faint" />
-            <button type="button" className="mt-1 w-full rounded bg-accent py-1 text-[10px] font-semibold text-accent-foreground">Generate · 100 pts</button>
-          </div>
-          <p className="text-[9px] text-text-faint">300 points are granted daily. Unused daily points expire; points earned from purchases don&apos;t.</p>
+        <div className="grid grid-cols-2 gap-2">
+          {visibleElements.map((element) => <button key={element.id} type="button" draggable onDragStart={(event) => beginElementDrag(event, element.id)} onClick={() => void addElement(element.id)} title={`${element.name} · click to add or drag to place`} aria-label={`Add ${element.name} to canvas, or drag to position`} className="group min-w-0 overflow-hidden rounded-md border border-border bg-bg text-left transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <span className="relative block aspect-square overflow-hidden bg-[#202020] p-3"><img src={element.assetPath} alt="" draggable={false} className="h-full w-full object-contain transition-transform group-hover:scale-105" /><span aria-hidden="true" className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-bg/90 text-text-primary opacity-0 shadow-sm transition-opacity group-hover:opacity-100"><Plus size={12} /></span></span>
+            <span className="block truncate px-2 py-1.5 text-[9px] text-text-secondary">{element.name}</span>
+          </button>)}
         </div>
-      )}
+        {!visibleElements.length && <div className="rounded-md border border-dashed border-border px-3 py-5 text-center text-[9px] leading-relaxed text-text-faint">No matching elements. Try another keyword or category.</div>}
+        {elementError && <p role="alert" className="text-[9px] leading-relaxed text-red-500">{elementError}</p>}
+        <p className="text-[9px] leading-relaxed text-text-faint">Click to add at the center. Drag a graphic onto the canvas to place it. Added graphics become separate editable layers.</p>
+      </div>}
+
+      {panel === "effects" && <div className="space-y-1.5 text-[10px]">
+        {EFFECT_OPTIONS.map((effect) => <button key={effect} type="button" aria-pressed={selectedEffects.includes(effect)} onClick={() => onToggleEffect(effect)} className={`w-full rounded-md border px-2 py-1.5 text-left ${selectedEffects.includes(effect) ? "border-accent bg-accent/10 text-accent" : "border-border bg-bg"}`}>{effect.charAt(0).toUpperCase() + effect.slice(1)} {selectedEffects.includes(effect) ? "· On" : "· Add"}</button>)}
+        <p className="pt-1 text-[9px] text-text-faint">Effects apply to the selected layer. Select a layer first to toggle them.</p>
+      </div>}
+
+      {panel === "ai" && <div className="space-y-2">
+        <div className="rounded-md border border-border bg-bg p-2"><p className="mb-1 text-[10px] font-medium">Generate image</p><textarea rows={3} placeholder="Describe what you want…" className="w-full resize-none bg-transparent text-[10px] outline-none placeholder:text-text-faint" /><button type="button" className="mt-1 w-full rounded bg-accent py-1 text-[10px] font-semibold text-accent-foreground">Generate · 100 pts</button></div>
+        <p className="text-[9px] text-text-faint">300 points are granted daily. Unused daily points expire; points earned from purchases don&apos;t.</p>
+      </div>}
     </div>
   );
 }

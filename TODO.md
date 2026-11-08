@@ -34,3 +34,21 @@ Source of scope: `docs/PROJECT_PLAN.md` section 6.
   - Evidence: 25 original SVG catalog items are present; manifest paths and future R2 keys match; all SVGs parse; category/search, color, click, canvas-drop and Recent flows are implemented; production build passes.
 - [ ] Future R2 migration (explicitly deferred)
   - Later move `elements/v1/manifest.json` and `elements/v1/{slug}.svg` to the private `mh-fashion-assets` bucket and serve them through same-origin editor API routes.
+
+## Canva-style Text and Products browser
+
+Source of scope: `docs/PROJECT_PLAN.md` section 6.
+
+- [x] Canva-like text insertion and typography controls in `/create`
+  - Add heading, subheading, and body text from the Text panel; allow users to type custom copy before insertion.
+  - Search and browse font choices by style category; show live font previews and ready-made paired text/font designs that add as grouped, separately editable layers.
+  - For selected text, change font family, size, color, bold, italic, underline, alignment, and letter/line spacing. Preserve text editing, transforms, Undo/Redo, and browser-local draft storage.
+  - Use browser/system fonts in this phase; keep versioned font and text-style manifests with future R2 keys. Do not fetch, copy, or upload font binaries before license review and the R2 phase.
+- Evidence: the editor builds with three text-size presets, searchable category-based font previews, four grouped font combinations, and persisted Fabric text formatting; all 12 font IDs and seven preset/combo references validate against local manifests.
+- [x] Products browser for `/create`
+  - Fetch actual store product entries and price ranges from the existing public catalog source; display product images, names, and prices; support search, open the product detail page, and select a product as the editor's current target.
+  - Persist the current product choice in the browser-local draft. Keep mockup selection separate until product-to-mockup mapping is validated.
+- Evidence: `/api/editor/products` is included in the production build and calls the shared storefront query with price ranges; the UI displays image/price data, supports search/filter/details/select, restores the selected product from the existing draft selection field, and handles API unavailability without breaking the editor. The local production-server smoke test returned 503 because this Sandbox lacks the Supabase URL runtime setting, so live data retrieval still needs confirmation in the configured project runtime.
+- [ ] Verify live Products API data with the project's existing Supabase runtime configuration. No R2 connection is needed for this check.
+- [ ] Future typography and product-asset R2 migration (explicitly deferred)
+  - Later place licensed font files at `fonts/v1/{font_id}.woff2`, text-style metadata/previews under `text-styles/v1/`, and product card/mockup imagery under the planned `products/` and `mockups/` keys; serve private assets through same-origin routes. Do not connect R2, create a bucket or binding, expose a public bucket, or upload files now.

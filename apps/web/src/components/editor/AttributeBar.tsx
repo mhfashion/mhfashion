@@ -132,7 +132,7 @@ export default function AttributeBar({
       <Field label="Product">
         <Select
           value={selection.product}
-          options={PRODUCTS}
+          options={[...new Set([...PRODUCTS, selection.product])]}
           onChange={(product) => onChange({ ...selection, product })}
         />
       </Field>

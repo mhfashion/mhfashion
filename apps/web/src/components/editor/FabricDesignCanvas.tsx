@@ -213,6 +213,11 @@ async function createObject(mark: CanvasMark, fabric: typeof import("fabric")) {
       fontSize: mark.fontSize ?? 32,
       fontFamily: mark.fontFamily ?? "Arial",
       fontWeight: mark.fontWeight ?? "bold",
+      fontStyle: mark.fontStyle ?? "normal",
+      underline: mark.underline ?? false,
+      textAlign: mark.textAlign ?? "center",
+      charSpacing: mark.charSpacing ?? 0,
+      lineHeight: mark.lineHeight ?? 1.16,
       editable: true,
       splitByGrapheme: false,
     });
@@ -250,10 +255,15 @@ function objectToMark(object: FabricObject): CanvasMark | null {
     originY: object.originY as CanvasMark["originY"],
   };
   if ((mark.kind === "Text" || (mark.kind === "Clone" && mark.text)) && "text" in object) {
-    const textObject = object as FabricObject & { text?: string; fontFamily?: string; fontWeight?: string; fontSize?: number; fill?: string };
+    const textObject = object as FabricObject & { text?: string; fontFamily?: string; fontWeight?: string; fontStyle?: string; underline?: boolean; textAlign?: CanvasMark["textAlign"]; charSpacing?: number; lineHeight?: number; fontSize?: number; fill?: string };
     next.text = String(textObject.text ?? mark.text ?? "");
     next.fontFamily = textObject.fontFamily ?? mark.fontFamily ?? "Arial";
     next.fontWeight = textObject.fontWeight ?? mark.fontWeight ?? "bold";
+    next.fontStyle = textObject.fontStyle === "italic" ? "italic" : mark.fontStyle ?? "normal";
+    next.underline = textObject.underline ?? mark.underline ?? false;
+    next.textAlign = textObject.textAlign ?? mark.textAlign ?? "center";
+    next.charSpacing = textObject.charSpacing ?? mark.charSpacing ?? 0;
+    next.lineHeight = textObject.lineHeight ?? mark.lineHeight ?? 1.16;
     next.fontSize = textObject.fontSize ?? mark.fontSize ?? 32;
     next.color = typeof textObject.fill === "string" ? textObject.fill : mark.color;
   }

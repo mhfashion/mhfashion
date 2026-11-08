@@ -7,6 +7,7 @@ import {
   PenTool, Plus, Copy, Scissors, Square, SquareStack, Trash2,
 } from "lucide-react";
 import type { CanvasMark } from "./InteractiveCanvas";
+import { FONT_LIBRARY } from "@/lib/editorTypography";
 
 export type BlendMode = "pass-through" | "normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn" | "hard-light" | "soft-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity" | "lighter";
 export type EditorLayer = {
@@ -195,7 +196,7 @@ export default function LayersPanel({
           <summary className="cursor-pointer select-none px-1 py-1 text-[9px] font-semibold text-text-muted">Selected layer properties</summary>
           <div className="space-y-2 px-1 py-1.5">
             {selectedMark?.kind === "Text" && <div className="space-y-2 border-b border-border pb-2">
-              <label className="block text-[9px] text-text-muted">Font family<select aria-label="Text font family" value={selectedMark.fontFamily ?? "Arial"} onChange={(event) => onUpdateMark(selectedMark.id, { fontFamily: event.target.value })} className={`${fieldClass} mt-1 w-full`}>{["Arial", "Georgia", "Times New Roman", "Courier New", "Trebuchet MS", "Impact"].map((family) => <option key={family} value={family}>{family}</option>)}</select></label>
+              <label className="block text-[9px] text-text-muted">Font family<select aria-label="Text font family" value={selectedMark.fontFamily ?? "Arial"} onChange={(event) => onUpdateMark(selectedMark.id, { fontFamily: event.target.value })} className={`${fieldClass} mt-1 w-full`}>{FONT_LIBRARY.map((font) => <option key={font.id} value={font.family}>{font.name}</option>)}</select></label>
               <label className="block text-[9px] text-text-muted">Font size · {selectedMark.fontSize ?? 32} px<input aria-label="Text font size" type="range" min="12" max="120" value={selectedMark.fontSize ?? 32} onChange={(event) => onUpdateMark(selectedMark.id, { fontSize: Number(event.target.value) })} className="mt-1 w-full accent-lime-400" /></label>
               <label className="flex items-center justify-between text-[9px] text-text-muted">Text color<input aria-label="Text color" type="color" value={selectedMark.color ?? "#111827"} onChange={(event) => onUpdateMark(selectedMark.id, { color: event.target.value })} className="h-6 w-9 cursor-pointer rounded border border-border bg-transparent" /></label>
               <label className="flex items-center gap-2 text-[9px] text-text-muted"><input type="checkbox" checked={(selectedMark.fontWeight ?? "bold") === "bold"} onChange={(event) => onUpdateMark(selectedMark.id, { fontWeight: event.target.checked ? "bold" : "normal" })} className="accent-lime-400" /> Bold</label>

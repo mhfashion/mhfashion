@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "collection": "MH Fashion Text Styles",
+  "presets": [
+    { "id": "heading", "name": "Heading", "description": "Large display title", "placeholder": "ADD A HEADING", "fontId": "impact", "fontSize": 52, "fontWeight": "bold", "fontStyle": "normal", "underline": false, "textAlign": "center", "charSpacing": 0, "lineHeight": 1.05, "color": "#111827" },
+    { "id": "subheading", "name": "Subheading", "description": "Supporting headline", "placeholder": "Add a subheading", "fontId": "arial-black", "fontSize": 32, "fontWeight": "bold", "fontStyle": "normal", "underline": false, "textAlign": "center", "charSpacing": 20, "lineHeight": 1.15, "color": "#111827" },
+    { "id": "body", "name": "Body text", "description": "Readable supporting copy", "placeholder": "Add body text", "fontId": "arial", "fontSize": 22, "fontWeight": "normal", "fontStyle": "normal", "underline": false, "textAlign": "center", "charSpacing": 0, "lineHeight": 1.3, "color": "#111827" }
+  ],
+  "combinations": [
+    {
+      "id": "streetwear-stack",
+      "name": "Streetwear stack",
+      "previewKey": "text-styles/v1/previews/streetwear-stack.webp",
+      "title": { "text": "MAKE IT YOURS", "y": 43, "fontId": "impact", "fontSize": 46, "fontWeight": "bold", "fontStyle": "normal", "underline": false, "textAlign": "center", "charSpacing": 30, "lineHeight": 1.05, "color": "#d4ff3f" },
+      "subtitle": { "text": "MH FASHION · ORIGINALS", "y": 54, "fontId": "courier-new", "fontSize": 15, "fontWeight": "bold", "fontStyle": "normal", "underline": false, "textAlign": "center", "charSpacing": 120, "lineHeight": 1.1, "color": "#ffffff" }
+    },
+    {
+      "id": "heritage-editorial",
+      "name": "Heritage editorial",
+      "previewKey": "text-styles/v1/previews/heritage-editorial.webp",
+      "title": { "text": "EVERYDAY CLASSICS", "y": 43, "fontId": "georgia", "fontSize": 38, "fontWeight": "bold", "fontStyle": "normal", "underline": false, "textAlign": "center", "charSpacing": 0, "lineHeight": 1.12, "color": "#d4ff3f" },
+      "subtitle": { "text": "MADE TO BE WORN", "y": 54, "fontId": "palatino", "fontSize": 17, "fontWeight": "normal", "fontStyle": "italic", "underline": false, "textAlign": "center", "charSpacing": 90, "lineHeight": 1.15, "color": "#ffffff" }
+    },
+    {
+      "id": "minimal-label",
+      "name": "Minimal label",
+      "previewKey": "text-styles/v1/previews/minimal-label.webp",
+      "title": { "text": "GOOD THINGS", "y": 44, "fontId": "arial-black", "fontSize": 36, "fontWeight": "bold", "fontStyle": "normal", "underline": false, "textAlign": "center", "charSpacing": 70, "lineHeight": 1.05, "color": "#ffffff" },
+      "subtitle": { "text": "STAY ORIGINAL", "y": 54, "fontId": "tahoma", "fontSize": 16, "fontWeight": "normal", "fontStyle": "normal", "underline": false, "textAlign": "center", "charSpacing": 150, "lineHeight": 1.1, "color": "#d4ff3f" }
+    },
+    {
+      "id": "retro-type",
+      "name": "Retro type",
+      "previewKey": "text-styles/v1/previews/retro-type.webp",
+      "title": { "text": "SOUL & STYLE", "y": 43, "fontId": "impact", "fontSize": 44, "fontWeight": "bold", "fontStyle": "normal", "underline": false, "textAlign": "center", "charSpacing": 20, "lineHeight": 1.05, "color": "#ef4444" },
+      "subtitle": { "text": "A LITTLE BIT DIFFERENT", "y": 54, "fontId": "times-new-roman", "fontSize": 17, "fontWeight": "normal", "fontStyle": "italic", "underline": false, "textAlign": "center", "charSpacing": 60, "lineHeight": 1.1, "color": "#ffffff" }
+    }
+  ]
+}

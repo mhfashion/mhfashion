@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "collection": "MH Fashion Typography",
+  "sourceMode": "system-fallback",
+  "fonts": [
+    { "id": "arial", "name": "Arial", "family": "Arial", "category": "Sans Serif", "tags": ["clean", "classic", "everyday"], "source": "system", "r2Key": "fonts/v1/arial.woff2" },
+    { "id": "trebuchet", "name": "Trebuchet MS", "family": "Trebuchet MS", "category": "Sans Serif", "tags": ["friendly", "rounded", "modern"], "source": "system", "r2Key": "fonts/v1/trebuchet-ms.woff2" },
+    { "id": "tahoma", "name": "Tahoma", "family": "Tahoma", "category": "Sans Serif", "tags": ["compact", "clean", "modern"], "source": "system", "r2Key": "fonts/v1/tahoma.woff2" },
+    { "id": "georgia", "name": "Georgia", "family": "Georgia", "category": "Serif", "tags": ["editorial", "classic", "elegant"], "source": "system", "r2Key": "fonts/v1/georgia.woff2" },
+    { "id": "times-new-roman", "name": "Times New Roman", "family": "Times New Roman", "category": "Serif", "tags": ["traditional", "editorial", "classic"], "source": "system", "r2Key": "fonts/v1/times-new-roman.woff2" },
+    { "id": "palatino", "name": "Palatino Linotype", "family": "Palatino Linotype", "category": "Serif", "tags": ["book", "elegant", "warm"], "source": "system", "r2Key": "fonts/v1/palatino-linotype.woff2" },
+    { "id": "impact", "name": "Impact", "family": "Impact", "category": "Display", "tags": ["bold", "condensed", "streetwear"], "source": "system", "r2Key": "fonts/v1/impact.woff2" },
+    { "id": "arial-black", "name": "Arial Black", "family": "Arial Black", "category": "Display", "tags": ["heavy", "bold", "poster"], "source": "system", "r2Key": "fonts/v1/arial-black.woff2" },
+    { "id": "courier-new", "name": "Courier New", "family": "Courier New", "category": "Monospace", "tags": ["typewriter", "utility", "retro"], "source": "system", "r2Key": "fonts/v1/courier-new.woff2" },
+    { "id": "lucida-console", "name": "Lucida Console", "family": "Lucida Console", "category": "Monospace", "tags": ["technical", "retro", "utility"], "source": "system", "r2Key": "fonts/v1/lucida-console.woff2" },
+    { "id": "comic-sans", "name": "Comic Sans MS", "family": "Comic Sans MS", "category": "Handwritten", "tags": ["playful", "casual", "friendly"], "source": "system", "r2Key": "fonts/v1/comic-sans-ms.woff2" },
+    { "id": "brush-script", "name": "Brush Script MT", "family": "Brush Script MT", "category": "Handwritten", "tags": ["script", "expressive", "signature"], "source": "system", "r2Key": "fonts/v1/brush-script-mt.woff2" }
+  ]
+}
