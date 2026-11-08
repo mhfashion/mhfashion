@@ -110,7 +110,7 @@ Source of scope: user report that a new layer could be created but artwork could
 
 Source of scope: user screenshot and request to remove excess side space and thin the frame around the product photo area.
 
-- [x] Expand the desktop product-detail content close to the available viewport width, retaining modest page gutters instead of a narrow centered column.
-- [x] Give the product gallery a larger, balanced column next to the purchase details; keep the layout stacked and usable on small screens.
+- [x] Use the full available page width with minimal gutters and no narrow max-width; avoid broad empty side margins.
+- [x] Keep the gallery compact—280px at tablet widths and capped at 360px on desktop—while purchase details use the remaining space. On small screens, stack sections and fit the image to the viewport.
 - [x] Use subtle 1px image-frame and thumbnail borders; keep the active thumbnail accent but remove the thick outline. Preserve product controls, purchase actions, review section, and related-product behavior.
-- Evidence: the detail wrapper now fills up to 1440px, the desktop grid gives the gallery a larger proportional column and removes the 280px image cap, the main photo and thumbnails use 1px borders, and the active thumbnail no longer uses `border-2`. `npm run build` passes.
+- Evidence: the wrapper is `w-full max-w-none` with 6–8px side gutters; the gallery uses fixed 280px/360px tracks from tablet/desktop breakpoints and details fill the rest. The main photo and thumbnails retain 1px borders with no `border-2`. `npm run build` and `git diff --check` pass.

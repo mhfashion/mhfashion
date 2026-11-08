@@ -27,16 +27,16 @@ export default async function ProductDetailPage({ params }: PageProps) {
   return (
     <div>
       <Header />
-      <main className="w-full bg-bg px-3 py-3 sm:px-5 sm:py-5 lg:px-8">
-        <div className="mx-auto w-full max-w-[1440px]">
+      <main className="w-full bg-bg px-1.5 py-2 sm:px-2 sm:py-3 lg:px-2">
+        <div className="w-full max-w-none">
           <a href="/" className="mb-3 inline-flex items-center gap-1 text-[11px] font-semibold text-text-secondary hover:text-accent"><ArrowLeft size={13} /> Back to shopping</a>
-          <section className="grid gap-4 rounded-2xl border border-border/50 bg-bg-surface p-3 sm:p-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-8">
+          <section className="grid gap-2.5 rounded-xl border border-border/40 bg-bg-surface p-2 sm:grid-cols-[minmax(0,280px)_minmax(0,1fr)] sm:gap-3 sm:p-3 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:gap-4">
             <div>
               <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border/40 bg-bg">
                 {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center"><Shirt size={38} className="text-border-light" /></span>}
                 {product.isNew && <span className="absolute left-2 top-2 rounded bg-accent px-2 py-1 text-[9px] font-black text-accent-foreground">NEW</span>}
               </div>
-              <div className="mt-2.5 grid grid-cols-4 gap-2"><div className="aspect-square rounded-md border border-accent bg-bg" /><div className="aspect-square rounded-md border border-border/60 bg-bg" /><div className="aspect-square rounded-md border border-border/60 bg-bg" /><div className="aspect-square rounded-md border border-border/60 bg-bg" /></div>
+              <div className="mt-2 grid grid-cols-4 gap-1.5"><div className="aspect-square rounded-md border border-accent bg-bg" /><div className="aspect-square rounded-md border border-border/60 bg-bg" /><div className="aspect-square rounded-md border border-border/60 bg-bg" /><div className="aspect-square rounded-md border border-border/60 bg-bg" /></div>
             </div>
             <div className="min-w-0 py-0.5">
               <div className="flex items-center justify-between border-b border-border pb-1.5"><span className="text-[9px] font-bold uppercase tracking-[0.16em] text-accent">MH Fashion</span><button type="button" aria-label="Favorite product" className="text-text-secondary hover:text-accent"><Heart size={16} /></button></div>
