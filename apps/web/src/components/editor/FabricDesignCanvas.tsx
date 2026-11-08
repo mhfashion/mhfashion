@@ -28,6 +28,17 @@ const COMPOSITE: Record<string, GlobalCompositeOperation> = {
   overlay: "overlay",
   darken: "darken",
   lighten: "lighten",
+  "color-dodge": "color-dodge",
+  "color-burn": "color-burn",
+  "hard-light": "hard-light",
+  "soft-light": "soft-light",
+  difference: "difference",
+  exclusion: "exclusion",
+  hue: "hue",
+  saturation: "saturation",
+  color: "color",
+  luminosity: "luminosity",
+  lighter: "lighter",
 };
 
 type DataObject = FabricObject & { data?: CanvasMark };
@@ -47,6 +58,49 @@ function syncStacking(canvas: FabricCanvas, layers: EditorLayer[]) {
   }
 }
 
+function installGroupCompositor(canvas: FabricCanvas, getLayers: () => EditorLayer[]) {
+  const originalRenderObjects = canvas._renderObjects.bind(canvas);
+  const buffers = new Map<string, { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D }>();
+  canvas._renderObjects = (ctx: CanvasRenderingContext2D, objects: FabricObject[]) => {
+    const layers = getLayers();
+    if (!layers.some((layer) => layer.isGroup && !layer.parentId)) {
+      originalRenderObjects(ctx, objects);
+      return;
+    }
+    const renderedGroups = new Set<string>();
+    for (const object of objects) {
+      const layer = findLayer(layers, (object as DataObject).data?.id);
+      const group = layer?.parentId ? findLayer(layers, layer.parentId) : layer?.isGroup ? layer : undefined;
+      if (!group) {
+        if (!layer?.parentId) object.render(ctx);
+        continue;
+      }
+      if (renderedGroups.has(group.id)) continue;
+      renderedGroups.add(group.id);
+      const children = objects.filter((candidate) => findLayer(layers, (candidate as DataObject).data?.id)?.parentId === group.id);
+      if (!group.visible || !children.length) continue;
+      let buffer = buffers.get(group.id);
+      if (!buffer) {
+        const offscreen = document.createElement("canvas");
+        offscreen.width = BASE_WIDTH;
+        offscreen.height = BASE_HEIGHT;
+        const offscreenContext = offscreen.getContext("2d");
+        if (!offscreenContext) continue;
+        buffer = { canvas: offscreen, context: offscreenContext };
+        buffers.set(group.id, buffer);
+      }
+      const { canvas: offscreen, context: offscreenContext } = buffer;
+      offscreenContext.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+      for (const child of children) child.render(offscreenContext);
+      ctx.save();
+      ctx.globalAlpha *= ((group.opacity ?? 100) / 100) * ((group.fillOpacity ?? 100) / 100) * ((group.flow ?? 100) / 100) * ((group.hasMask ? group.maskAmount ?? 100 : 100) / 100);
+      ctx.globalCompositeOperation = COMPOSITE[group.blendMode ?? "normal"] ?? "source-over";
+      ctx.drawImage(offscreen, 0, 0);
+      ctx.restore();
+    }
+  };
+}
+
 function effectShadow(effects: string[], fabric: typeof import("fabric")) {
   if (effects.includes("glow")) return new fabric.Shadow({ color: "#d4ff3f", blur: 14, offsetX: 0, offsetY: 0 });
   if (effects.includes("shadow")) return new fabric.Shadow({ color: "rgba(0,0,0,0.42)", blur: 8, offsetX: 3, offsetY: 4 });
@@ -54,7 +108,7 @@ function effectShadow(effects: string[], fabric: typeof import("fabric")) {
 }
 
 function applyLayerStyle(object: FabricObject, layer: EditorLayer | undefined, parent: EditorLayer | undefined, fabric: typeof import("fabric")) {
-  const opacity = ((layer?.opacity ?? 100) / 100) * ((layer?.flow ?? 100) / 100) * ((layer?.hasMask ? layer.maskAmount ?? 100 : 100) / 100) * ((parent?.opacity ?? 100) / 100) * ((parent?.hasMask ? parent.maskAmount ?? 100 : 100) / 100);
+  const opacity = ((layer?.opacity ?? 100) / 100) * ((layer?.fillOpacity ?? 100) / 100) * ((layer?.flow ?? 100) / 100) * ((layer?.hasMask ? layer.maskAmount ?? 100 : 100) / 100);
   const locked = Boolean(layer?.locked || parent?.locked);
   const effects = [...(parent?.effects ?? []), ...(layer?.effects ?? [])];
   const shadow = effectShadow(effects, fabric);
@@ -63,7 +117,7 @@ function applyLayerStyle(object: FabricObject, layer: EditorLayer | undefined, p
     opacity,
     selectable: !locked,
     evented: true,
-    globalCompositeOperation: COMPOSITE[layer?.blendMode ?? parent?.blendMode ?? "normal"] ?? "source-over",
+    globalCompositeOperation: parent ? "source-over" : COMPOSITE[layer?.blendMode ?? "normal"] ?? "source-over",
     shadow,
     stroke: effects.includes("stroke") ? "#d4ff3f" : undefined,
     strokeWidth: effects.includes("stroke") ? 2 : 0,
@@ -210,6 +264,7 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
         fireRightClick: false,
         backgroundColor: "rgba(0,0,0,0)",
       });
+      installGroupCompositor(canvas, () => callbacksRef.current.layers);
       canvasRef.current = canvas;
       const wrapper = (canvas as FabricCanvas & { wrapperEl?: HTMLDivElement }).wrapperEl;
       if (wrapper) {

@@ -135,9 +135,17 @@ Other product types get their own attribute sets and pricing formulas.
   sibling reorder, drag/drop reorder, and drop into a folder group. Groups expand
   and collapse; grouping/reordering, visibility, locking, and deletion are part
   of Undo/Redo. Blend mode, opacity, flow, and effect toggles are stored per
-  layer. Shadow, stroke, and glow apply to canvas objects; blur and sharpen
-  apply to raster images. Clipping and uniform mask strength remain previews,
-  not paintable production masks.
+  layer. Blend modes include Normal, Multiply, Screen, Overlay, Darken, Lighten,
+  Color Dodge/Burn, Hard/Soft Light, Difference, Exclusion, Hue, Saturation,
+  Color, Luminosity, and Linear Dodge (Add); opacity can be set by slider or a
+  numeric 0–100% field. Group opacity cascades to child layers, while isolated
+  folder groups render their children to an offscreen surface before the group's
+  opacity, Fill, and blend mode are composited as one result. Layer Fill is a
+  separate 0–100% control from Opacity. Shadow, stroke, and glow apply to canvas
+  objects; blur and sharpen apply to raster images. Clipping and uniform mask
+  strength remain previews, not paintable production masks. Advanced Photoshop
+  edge cases (knockout, blend-if, pass-through groups, and effect-aware Fill)
+  remain outside the prototype.
 - Text and Elements panels can insert formatted text (text, color, font size,
   font family)
   and colored rectangle, circle, triangle, or star objects on the active side.
@@ -292,9 +300,10 @@ color formatting; freehand vector Pen paths; zoom and hand-pan; browser-local
 image import; text/basic-shape insertion; Undo/Redo; Save and restore via local
 storage; Front/Back draft state; layer visibility/lock, creation, duplication,
 grouping, reorder, deletion, inline rename, collapsible groups, drag/drop nesting,
-thumbnails, blend/opacity/flow, effect toggles, clipping preview, and uniform
-mask strength. Designs remain browser-local and are not yet backed by Supabase
-or R2.
+thumbnails, expanded Canvas blend modes, slider and numeric opacity controls,
+separate Fill control, isolated folder-group blending, group opacity/Fill cascade,
+flow, effect toggles, clipping preview, and uniform mask strength. Designs remain
+browser-local and are not yet backed by Supabase or R2.
 
 **Built, using placeholder data:** Account page (`/account`).
 
@@ -341,3 +350,13 @@ placeholders with Supabase data, cart and checkout.
   drag-into-group nesting. These actions update the Fabric layer stack and enter
   Undo/Redo. True Photoshop masks, clipping, raster merge, and group transforms
   remain unimplemented.
+- Expanded layer blending to standard Canvas modes including Color Dodge/Burn,
+  Hard/Soft Light, Difference/Exclusion, Hue/Saturation/Color/Luminosity, and
+  Linear Dodge (Add). Layer opacity now has both a live 0–100% slider and a
+  numeric percentage field; nested group opacity cascades to child objects.
+  Photoshop's isolated group compositing and layer Fill remain future work.
+- Added a separate 0–100% Layer Fill slider/number field and isolated folder
+  compositing: group children render together to an offscreen surface, then the
+  group blend mode, opacity, and Fill are applied once to that combined result.
+  Photoshop pass-through, knockout, blend-if, and effect-aware Fill are not yet
+  modeled.

@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import type { CanvasMark } from "./InteractiveCanvas";
 
-type BlendMode = "normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten";
+type BlendMode = "normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn" | "hard-light" | "soft-light" | "difference" | "exclusion" | "hue" | "saturation" | "color" | "luminosity" | "lighter";
 export type EditorLayer = {
   id: string;
   name: string;
@@ -35,6 +35,7 @@ export type EditorLayer = {
   parentId?: string;
   childIds?: string[];
   opacity?: number;
+  fillOpacity?: number;
   flow?: number;
   blendMode?: BlendMode;
   hasMask?: boolean;
@@ -51,6 +52,17 @@ const BLEND_MODES: { value: BlendMode; label: string }[] = [
   { value: "overlay", label: "Overlay" },
   { value: "darken", label: "Darken" },
   { value: "lighten", label: "Lighten" },
+  { value: "color-dodge", label: "Color Dodge" },
+  { value: "color-burn", label: "Color Burn" },
+  { value: "hard-light", label: "Hard Light" },
+  { value: "soft-light", label: "Soft Light" },
+  { value: "difference", label: "Difference" },
+  { value: "exclusion", label: "Exclusion" },
+  { value: "hue", label: "Hue" },
+  { value: "saturation", label: "Saturation" },
+  { value: "color", label: "Color" },
+  { value: "luminosity", label: "Luminosity" },
+  { value: "lighter", label: "Linear Dodge (Add)" },
 ];
 const EFFECTS = ["shadow", "stroke", "glow", "blur", "sharpen"];
 
@@ -188,9 +200,20 @@ export default function LayersPanel({
                 {BLEND_MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
               </select>
             </label>
-            <label className="block text-[9px] text-text-muted">Opacity · {selected.opacity ?? 100}%
-              <input aria-label="Layer opacity" type="range" min="0" max="100" value={selected.opacity ?? 100} onChange={(event) => onUpdateLayer(selected.id, { opacity: Number(event.target.value) })} className="mt-1 w-full accent-lime-400" />
-            </label>
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="layer-opacity-range" className="text-[9px] text-text-muted">Opacity</label>
+                <label className="flex items-center gap-1 text-[9px] text-text-muted"><input aria-label="Layer opacity percentage" type="number" min="0" max="100" step="1" value={selected.opacity ?? 100} onChange={(event) => { if (event.target.value !== "") onUpdateLayer(selected.id, { opacity: Math.max(0, Math.min(100, Number(event.target.value))) }); }} className="w-12 rounded border border-border bg-bg-surface px-1 py-0.5 text-right text-[10px] text-text-primary" /><span>%</span></label>
+              </div>
+              <input id="layer-opacity-range" aria-label="Layer opacity" type="range" min="0" max="100" value={selected.opacity ?? 100} onChange={(event) => onUpdateLayer(selected.id, { opacity: Number(event.target.value) })} className="mt-1 w-full accent-lime-400" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="layer-fill-range" className="text-[9px] text-text-muted">Fill</label>
+                <label className="flex items-center gap-1 text-[9px] text-text-muted"><input aria-label="Layer Fill percentage" type="number" min="0" max="100" step="1" value={selected.fillOpacity ?? 100} onChange={(event) => { if (event.target.value !== "") onUpdateLayer(selected.id, { fillOpacity: Math.max(0, Math.min(100, Number(event.target.value))) }); }} className="w-12 rounded border border-border bg-bg-surface px-1 py-0.5 text-right text-[10px] text-text-primary" /><span>%</span></label>
+              </div>
+              <input id="layer-fill-range" aria-label="Layer Fill" type="range" min="0" max="100" value={selected.fillOpacity ?? 100} onChange={(event) => onUpdateLayer(selected.id, { fillOpacity: Number(event.target.value) })} className="mt-1 w-full accent-lime-400" />
+            </div>
             <label className="block text-[9px] text-text-muted">Flow · {selected.flow ?? 100}%
               <input aria-label="Layer flow" type="range" min="0" max="100" value={selected.flow ?? 100} onChange={(event) => onUpdateLayer(selected.id, { flow: Number(event.target.value) })} className="mt-1 w-full accent-lime-400" />
             </label>
