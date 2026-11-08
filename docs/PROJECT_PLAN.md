@@ -130,7 +130,7 @@ Other product types get their own attribute sets and pricing formulas.
   Path Select, Clone Stamp/Healing Brush, Gradient, Eraser, Ruler, Rotate View,
   Hand, Zoom. Pen supports freehand vector strokes; remaining selection, paint,
   retouch, gradient, and measurement tools still need implementation.
-- Layers (current `/create` prototype): a Photoshop-style stack with type-aware
+- Layers (current `/create` prototype): a Photoshop-inspired stack with type-aware
   thumbnails, selection, inline rename, show/hide, lock/unlock, create/duplicate,
   sibling reorder, drag/drop reorder, and drop into a folder group. Groups expand
   and collapse; grouping/reordering, visibility, locking, and deletion are part
@@ -138,14 +138,17 @@ Other product types get their own attribute sets and pricing formulas.
   layer. Blend modes include Normal, Multiply, Screen, Overlay, Darken, Lighten,
   Color Dodge/Burn, Hard/Soft Light, Difference, Exclusion, Hue, Saturation,
   Color, Luminosity, and Linear Dodge (Add); opacity can be set by slider or a
-  numeric 0–100% field. Group opacity cascades to child layers, while isolated
-  folder groups render their children to an offscreen surface before the group's
-  opacity, Fill, and blend mode are composited as one result. Layer Fill is a
-  separate 0–100% control from Opacity. Shadow, stroke, and glow apply to canvas
-  objects; blur and sharpen apply to raster images. Clipping and uniform mask
-  strength remain previews, not paintable production masks. Advanced Photoshop
-  edge cases (knockout, blend-if, pass-through groups, and effect-aware Fill)
-  remain outside the prototype.
+  numeric 0–100% field. New groups default to Pass Through, so child layers keep
+  blending individually; choosing another group mode composites the group once
+  before blending it with the rest of the canvas. Fill is available only for
+  individual layers and is separate from overall opacity. The panel places the
+  selected layer's blend/opacity controls above the stack and exposes Fill below
+  opacity. Fill scales text/shape/path color alpha and raster image alpha;
+  advanced Photoshop layer-style interactions are still approximate. Shadow,
+  stroke, and glow are simplified canvas effects; blur and sharpen apply to
+  raster images. Clipping masks use the nearest unclipped lower sibling's alpha;
+  uniform mask strength remains a preview rather than a paintable mask. Photoshop's
+  Blend If, channel controls, and full layer-style dialog are not implemented.
 - Text and Elements panels can insert formatted text (text, color, font size,
   font family)
   and colored rectangle, circle, triangle, or star objects on the active side.
@@ -155,8 +158,13 @@ Other product types get their own attribute sets and pricing formulas.
   dragged, resized, and rotated with Fabric controls. Node-level vector path
   editing remains pending.
 - Production layer work remains: real pixel merge, paintable per-pixel masks,
-  true clipping masks, group transforms/recolor, and full vector/raster editing
-  require further implementation on top of the Fabric.js canvas engine.
+  group transforms/recolor, and full vector/raster editing require further
+  implementation on top of the Fabric.js canvas engine. Clipping masks now use
+  the nearest unclipped lower sibling's alpha. Embedded raster Smart Objects
+  retain source image data and transform metadata, support Replace Contents with
+  transforms preserved, Reset Transform, and Rasterize. Editing Smart Object
+  contents in a separate document, linked Smart Objects, vectors/multi-layer
+  Smart Object contents, and Photoshop Smart Filters are not implemented.
 - Editable units are Layer and Group only. Flat layers move/rotate/scale but
   keep their color. Nested layers allow per-group recolor via swatches.
 - Layer type (text vs element) is decided by whether the layer name contains
@@ -299,11 +307,13 @@ scalable and rotatable objects; in-place text editing and family/size/weight/
 color formatting; freehand vector Pen paths; zoom and hand-pan; browser-local
 image import; text/basic-shape insertion; Undo/Redo; Save and restore via local
 storage; Front/Back draft state; layer visibility/lock, creation, duplication,
-grouping, reorder, deletion, inline rename, collapsible groups, drag/drop nesting,
-thumbnails, expanded Canvas blend modes, slider and numeric opacity controls,
-separate Fill control, isolated folder-group blending, group opacity/Fill cascade,
-flow, effect toggles, clipping preview, and uniform mask strength. Designs remain
-browser-local and are not yet backed by Supabase or R2.
+  grouping, reorder, deletion, inline rename, collapsible groups, drag/drop nesting,
+  thumbnails, a Photoshop-inspired compact selected-layer control strip, blend
+  modes, opacity, per-layer Fill, Pass Through and isolated group compositing,
+  flow under layer properties, effect toggles, alpha clipping masks, embedded
+  raster Smart Object controls, and uniform mask strength. This is not a
+  Photoshop-equivalent panel or renderer. Designs remain browser-local and are
+  not yet backed by Supabase or R2.
 
 **Built, using placeholder data:** Account page (`/account`).
 
@@ -357,6 +367,26 @@ placeholders with Supabase data, cart and checkout.
   Photoshop's isolated group compositing and layer Fill remain future work.
 - Added a separate 0–100% Layer Fill slider/number field and isolated folder
   compositing: group children render together to an offscreen surface, then the
-  group blend mode, opacity, and Fill are applied once to that combined result.
-  Photoshop pass-through, knockout, blend-if, and effect-aware Fill are not yet
-  modeled.
+  group's blend mode and Opacity apply to the combined result. This first version
+  did not yet implement Photoshop Pass Through or proper Fill-vs-effects alpha;
+  those gaps were corrected in the subsequent Layers panel fidelity update.
+- Reworked the Layers panel toward Photoshop's actual panel structure: selected
+  blend/Opacity controls above a larger layer stack, Fill directly below Opacity
+  for individual layers only, compact rows with visibility/lock/thumb indicators,
+  and layer-specific text/flow/effect settings tucked under selected properties.
+  Groups now default to Pass Through and child blend modes remain individually
+  active in that mode; choosing another group mode isolates/composites children
+  as one image. Fill scales content alpha separately from overall object opacity.
+  Advanced Blend If/channel options and exact effect-aware Photoshop rendering
+  remain unimplemented; this is Photoshop-inspired, not Photoshop-equivalent.
+- Replaced the old inset-rectangle clipping preview with alpha clipping: a clipped
+  layer now uses the nearest unclipped lower sibling as its base, so transparent
+  pixels in the base hide the upper artwork. Clipped layers inherit base opacity
+  and blend mode. The panel prevents clipping when no valid lower base exists.
+- Added embedded raster Smart Objects for uploaded images. Conversion keeps the
+  original image data in the artwork model and records a transform baseline;
+  Replace Contents validates/resizes the new image while keeping its placement
+  and transforms, Reset Transform restores the saved transform, and Rasterize
+  removes the Smart Object metadata. This is not a PSD/PSB document container:
+  editable internal contents, linked assets, multi-layer/vector Smart Objects,
+  and Smart Filters remain future work.

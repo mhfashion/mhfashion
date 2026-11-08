@@ -202,6 +202,26 @@ export default function EditorPage() {
     });
   };
 
+  const handleReplaceSmartObject = async (id: string, file: File) => {
+    try {
+      const imageSrc = await prepareImage(file);
+      commitDocument((document) => {
+        const sideMarks = document.marks[activeSide];
+        const mark = sideMarks.find((item) => item.id === id);
+        const layer = document.layers[activeSide].find((item) => item.id === id);
+        if (!mark?.imageSrc || !layer?.isSmartObject) return document;
+        const replaced = { ...mark, imageSrc };
+        return {
+          ...document,
+          marks: { ...document.marks, [activeSide]: sideMarks.map((item) => item.id === id ? replaced : item) },
+        };
+      });
+      setSaveMessage("Smart Object contents replaced; transforms preserved");
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : "Could not replace Smart Object contents");
+    }
+  };
+
   const handleAddText = (text: string, color: string, fontSize: number, fontFamily: string) => {
     addMark({ id: makeId("text"), kind: "Text", text, color, fontSize, fontFamily, fontWeight: "bold", x: 50, y: 48 });
   };
@@ -299,7 +319,7 @@ export default function EditorPage() {
           visible: true,
           locked: false,
           isGroup,
-          ...(isGroup ? { childIds: [] } : {}),
+          ...(isGroup ? { childIds: [], blendMode: "pass-through" as const } : {}),
         }],
       },
     }));
@@ -341,7 +361,7 @@ export default function EditorPage() {
     const below = [...layers.slice(0, selectedIndex)].reverse().find((layer) => !layer.parentId && !layer.isGroup);
     if (!below) return;
     const groupId = makeId("group");
-    const group: EditorLayer = { id: groupId, name: `${below.name} + ${selected.name}`, visible: below.visible && selected.visible, locked: false, isGroup: true, childIds: [below.id, selected.id] };
+    const group: EditorLayer = { id: groupId, name: `${below.name} + ${selected.name}`, visible: below.visible && selected.visible, locked: false, isGroup: true, blendMode: "pass-through", childIds: [below.id, selected.id] };
     const insertIndex = layers.slice(0, selectedIndex).filter((layer) => layer.id !== below.id).length;
     const children = layers.filter((layer) => layer.id === below.id || layer.id === selected.id).map((layer) => ({ ...layer, parentId: groupId }));
     const groupedLayers = layers.filter((layer) => layer.id !== below.id && layer.id !== selected.id);
@@ -473,6 +493,7 @@ export default function EditorPage() {
               onDropLayer={dropLayer}
               selectedMark={selectedMark}
               onUpdateMark={updateMark}
+              onReplaceSmartObject={handleReplaceSmartObject}
             />
           </div>
           {mockup && <div className="border-t border-border p-3"><div className="mb-2 text-[10px] font-semibold text-accent">Mockup selected</div><button type="button" onClick={() => setMockup(null)} className="w-full rounded border border-border px-2 py-1.5 text-[10px] text-text-secondary">Remove mockup</button></div>}

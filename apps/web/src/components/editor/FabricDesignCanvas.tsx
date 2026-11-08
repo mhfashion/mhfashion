@@ -48,6 +48,32 @@ function findLayer(layers: EditorLayer[], id: string | undefined) {
   return layers.find((layer) => layer.id === id);
 }
 
+async function syncClippingMasks(canvas: FabricCanvas, layers: EditorLayer[]) {
+  const objects = canvas.getObjects();
+  for (const object of objects) {
+    const layer = findLayer(layers, (object as DataObject).data?.id);
+    if (!layer?.clipping || layer.isGroup) {
+      object.set("clipPath", undefined);
+      continue;
+    }
+    const siblings = layers.filter((candidate) => candidate.parentId === layer.parentId && !candidate.isGroup);
+    const index = siblings.findIndex((candidate) => candidate.id === layer.id);
+    const base = siblings.slice(0, index).reverse().find((candidate) => !candidate.clipping);
+    const baseObject = base && objects.find((candidate) => (candidate as DataObject).data?.id === base.id);
+    if (!baseObject) {
+      object.set("clipPath", undefined);
+      continue;
+    }
+    const clipPath = await baseObject.clone();
+    clipPath.set({ absolutePositioned: true, shadow: undefined, opacity: 1, globalCompositeOperation: "source-over" });
+    object.set({
+      opacity: (object.opacity ?? 1) * ((base.opacity ?? 100) / 100),
+      globalCompositeOperation: baseObject.globalCompositeOperation ?? "source-over",
+    });
+    object.set("clipPath", clipPath);
+  }
+}
+
 function syncStacking(canvas: FabricCanvas, layers: EditorLayer[]) {
   let stackingIndex = 0;
   const roots = layers.filter((layer) => !layer.parentId);
@@ -75,6 +101,10 @@ function installGroupCompositor(canvas: FabricCanvas, getLayers: () => EditorLay
         if (!layer?.parentId) object.render(ctx);
         continue;
       }
+      if ((group.blendMode ?? "pass-through") === "pass-through") {
+        if (layer?.parentId) object.render(ctx);
+        continue;
+      }
       if (renderedGroups.has(group.id)) continue;
       renderedGroups.add(group.id);
       const children = objects.filter((candidate) => findLayer(layers, (candidate as DataObject).data?.id)?.parentId === group.id);
@@ -93,7 +123,7 @@ function installGroupCompositor(canvas: FabricCanvas, getLayers: () => EditorLay
       offscreenContext.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
       for (const child of children) child.render(offscreenContext);
       ctx.save();
-      ctx.globalAlpha *= ((group.opacity ?? 100) / 100) * ((group.fillOpacity ?? 100) / 100) * ((group.flow ?? 100) / 100) * ((group.hasMask ? group.maskAmount ?? 100 : 100) / 100);
+      ctx.globalAlpha *= ((group.opacity ?? 100) / 100) * ((group.flow ?? 100) / 100) * ((group.hasMask ? group.maskAmount ?? 100 : 100) / 100);
       ctx.globalCompositeOperation = COMPOSITE[group.blendMode ?? "normal"] ?? "source-over";
       ctx.drawImage(offscreen, 0, 0);
       ctx.restore();
@@ -108,38 +138,38 @@ function effectShadow(effects: string[], fabric: typeof import("fabric")) {
 }
 
 function applyLayerStyle(object: FabricObject, layer: EditorLayer | undefined, parent: EditorLayer | undefined, fabric: typeof import("fabric")) {
-  const opacity = ((layer?.opacity ?? 100) / 100) * ((layer?.fillOpacity ?? 100) / 100) * ((layer?.flow ?? 100) / 100) * ((layer?.hasMask ? layer.maskAmount ?? 100 : 100) / 100);
+  const passThroughParent = parent && (parent.blendMode ?? "pass-through") === "pass-through";
+  const opacity = ((layer?.opacity ?? 100) / 100) * ((layer?.flow ?? 100) / 100) * ((layer?.hasMask ? layer.maskAmount ?? 100 : 100) / 100) * (passThroughParent ? ((parent.opacity ?? 100) / 100) * ((parent.flow ?? 100) / 100) * ((parent.hasMask ? parent.maskAmount ?? 100 : 100) / 100) : 1);
   const locked = Boolean(layer?.locked || parent?.locked);
   const effects = [...(parent?.effects ?? []), ...(layer?.effects ?? [])];
   const shadow = effectShadow(effects, fabric);
+  const mark = (object as DataObject).data;
+  const fill = Math.max(0, Math.min(100, layer?.fillOpacity ?? 100)) / 100;
+  const contentColor = (color: string | undefined) => color ? new fabric.Color(color).setAlpha(fill).toRgba() : undefined;
   object.set({
     visible: (layer?.visible ?? true) && (parent?.visible ?? true),
     opacity,
     selectable: !locked,
     evented: true,
-    globalCompositeOperation: parent ? "source-over" : COMPOSITE[layer?.blendMode ?? "normal"] ?? "source-over",
+    globalCompositeOperation: parent && !passThroughParent ? "source-over" : COMPOSITE[layer?.blendMode ?? "normal"] ?? "source-over",
     shadow,
     stroke: effects.includes("stroke") ? "#d4ff3f" : undefined,
     strokeWidth: effects.includes("stroke") ? 2 : 0,
   });
   const image = object as FabricObject & { filters?: unknown[]; applyFilters?: () => void };
-  if ((object as DataObject).data?.imageSrc && image.filters && image.applyFilters) {
+  if (mark?.imageSrc && image.filters && image.applyFilters) {
     image.filters = [
       ...(effects.includes("blur") ? [new fabric.filters.Blur({ blur: 0.08 })] : []),
       ...(effects.includes("sharpen") ? [new fabric.filters.Convolute({ matrix: [0, -1, 0, -1, 5, -1, 0, -1, 0] })] : []),
+      ...(fill < 1 ? [new fabric.filters.ColorMatrix({ matrix: [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, fill, 0], colorsOnly: false })] : []),
     ];
     image.applyFilters();
-  }
-  if (layer?.clipping) {
-    const clip = new fabric.Rect({
-      width: Math.max(1, (object.width ?? 1) * 0.9),
-      height: Math.max(1, (object.height ?? 1) * 0.9),
-      originX: "center",
-      originY: "center",
-    });
-    object.set("clipPath", clip);
-  } else {
-    object.set("clipPath", undefined);
+  } else if (mark?.kind === "Text" || (mark?.kind === "Clone" && mark.text)) {
+    object.set("fill", contentColor(mark.color ?? "#111827"));
+  } else if (mark?.kind === "Pen") {
+    object.set("stroke", contentColor(mark.color ?? "#d4ff3f"));
+  } else if (mark?.kind === "Shape" || (mark?.kind === "Clone" && mark.shapeType)) {
+    object.set("fill", contentColor(mark.color ?? "#d4ff3f"));
   }
 }
 
@@ -233,7 +263,6 @@ function objectToMark(object: FabricObject): CanvasMark | null {
     next.color = typeof pathObject.stroke === "string" ? pathObject.stroke : mark.color;
     next.strokeWidth = pathObject.strokeWidth ?? mark.strokeWidth;
   }
-  if (mark.imageSrc) next.width = (object.getScaledWidth() / BASE_WIDTH) * 100;
   return next;
 }
 
@@ -406,6 +435,7 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
           callbacksRef.current.onStatus("An object could not be loaded on the canvas");
         }
       }
+      await syncClippingMasks(targetCanvas, layers);
       const selected = targetCanvas.getObjects().find((object) => (object as DataObject).data?.id === callbacksRef.current.selectedLayerId);
       if (selected?.selectable) targetCanvas.setActiveObject(selected);
       syncStacking(targetCanvas, layers);
@@ -419,13 +449,14 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
   useEffect(() => {
     if (!fabricCanvas) return;
     const fabric = import("fabric");
-    void fabric.then((module) => {
+    void fabric.then(async (module) => {
       for (const object of fabricCanvas.getObjects()) {
         const id = (object as DataObject).data?.id;
         const layer = findLayer(layers, id);
         const parent = layer?.parentId ? findLayer(layers, layer.parentId) : undefined;
         applyLayerStyle(object, layer, parent, module);
       }
+      await syncClippingMasks(fabricCanvas, layers);
       syncStacking(fabricCanvas, layers);
       fabricCanvas.requestRenderAll();
     });
