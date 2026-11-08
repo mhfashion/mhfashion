@@ -10,6 +10,7 @@ import AttributeBar, { type AttributeSelection } from "@/components/editor/Attri
 import InteractiveCanvas, { type CanvasMark, type ShapeType } from "@/components/editor/InteractiveCanvas";
 import MockupLibrary, { type MockupId } from "@/components/editor/MockupLibrary";
 import { useCurrency } from "@/lib/currency-context";
+import { findEditorElement } from "@/lib/editorElements";
 import { useI18n } from "@/lib/i18n";
 
 type Side = "Front" | "Back";
@@ -181,13 +182,33 @@ export default function EditorPage() {
         ...document.layers,
         [activeSide]: [...document.layers[activeSide], {
           id: mark.id,
-          name: mark.kind === "Text" ? `Text: ${(mark.text ?? "").slice(0, 24)}` : mark.kind === "Shape" ? `${mark.shapeType ?? "Rectangle"} shape` : `${mark.kind} element`,
+          name: mark.elementName ?? (mark.kind === "Text" ? `Text: ${(mark.text ?? "").slice(0, 24)}` : mark.kind === "Shape" ? `${mark.shapeType ?? "Rectangle"} shape` : `${mark.kind} element`),
           visible: true,
           locked: false,
           isGroup: false,
         }],
       },
     }));
+  };
+
+  const handleAddElement = async (elementId: string, color: string, x = 50, y = 48) => {
+    const element = findEditorElement(elementId);
+    if (!element) throw new Error("This element is no longer in the catalog.");
+    if (!/^#[0-9a-f]{6}$/i.test(color)) throw new Error("Choose a valid element color.");
+    const response = await fetch(element.assetPath, { cache: "force-cache" });
+    if (!response.ok) throw new Error("The element artwork could not be loaded.");
+    const svg = (await response.text()).replaceAll("#d4ff3f", color);
+    const imageSrc = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    addMark({
+      id: makeId(`element-${element.id}`),
+      kind: "Image",
+      elementName: element.name,
+      x,
+      y,
+      imageSrc,
+      width: 28,
+    });
+    setSaveMessage(`${element.name} added to ${activeSide}`);
   };
 
   const handleUploadImage = async (file: File) => {
@@ -453,7 +474,7 @@ export default function EditorPage() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <EditorLeftRail activePanel={activePanel} onPanelChange={setActivePanel} activeTool={activeTool} onToolChange={setActiveTool} />
-        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} onUploadImage={handleUploadImage} onAddText={handleAddText} onAddShape={handleAddShape} selectedEffects={selectedEffects} onToggleEffect={toggleSelectedEffect} /></div>}
+        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} onUploadImage={handleUploadImage} onAddText={handleAddText} onAddShape={handleAddShape} onAddElement={handleAddElement} selectedEffects={selectedEffects} onToggleEffect={toggleSelectedEffect} /></div>}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f1] dark:bg-[#111]">
           <InteractiveCanvas
             activeTool={activeTool}
@@ -465,6 +486,7 @@ export default function EditorPage() {
             selectedLayerId={selectedLayerId}
             onSelectLayer={setSelectedLayerId}
             onAddMark={addMark}
+            onAddElement={handleAddElement}
             onRemoveMark={removeMark}
             onMarksChange={updateCanvasMarks}
             onClear={clearCanvas}

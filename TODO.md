@@ -21,3 +21,16 @@ Source of scope: `docs/PROJECT_PLAN.md` sections 1, 3, 7, 10 and 11.
 - [ ] Future Post Admin module (outside this page request)
   - Authenticated Post Admin can manage Guide posts, categories, SEO fields, publish/draft.
   - The repository currently has no admin authentication or permission-management system; a secure admin UI must be implemented with that module before enabling editor writes.
+
+## Editor Elements library
+
+Source of scope: `docs/PROJECT_PLAN.md` section 6.
+
+- [x] Canva-inspired Elements library for `/create`
+  - Browse original SVG graphics by category and search by names or tags.
+  - Choose a color, click a graphic to add it centered on the active canvas, or drag it onto a placement point.
+  - Added graphics become individual editable layers and remain in the browser-local draft.
+  - Keep the local manifest and SVGs under `apps/web/public/elements/v1/`; include future R2 keys in the manifest, but do not connect, create, expose, or upload to R2 until requested.
+  - Evidence: 25 original SVG catalog items are present; manifest paths and future R2 keys match; all SVGs parse; category/search, color, click, canvas-drop and Recent flows are implemented; production build passes.
+- [ ] Future R2 migration (explicitly deferred)
+  - Later move `elements/v1/manifest.json` and `elements/v1/{slug}.svg` to the private `mh-fashion-assets` bucket and serve them through same-origin editor API routes.

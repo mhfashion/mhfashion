@@ -164,6 +164,14 @@ Other product types get their own attribute sets and pricing formulas.
   color from the layer panel; text can also be edited in place. Objects can be
   dragged, resized, and rotated with Fabric controls. Node-level vector path
   editing remains pending.
+- Elements library (`/create` prototype): browse a catalog of original SVG
+  graphics by category, search names/tags, choose a color, click an asset to add
+  it centered on the active canvas, or drag it from the library onto a placement
+  point. The local catalog manifest and files live at
+  `apps/web/public/elements/v1/`; inserted vectors become editable image layers
+  and are embedded in the browser-local draft. This first stage is local only.
+  R2 connection and uploads are explicitly deferred; no R2 bucket or binding is
+  created in this stage.
 - Production layer work remains: real pixel merge, paintable per-pixel masks,
   group transforms/recolor, and full vector/raster editing require further
   implementation on top of the Fabric.js canvas engine. Clipping masks now use
@@ -179,8 +187,12 @@ Other product types get their own attribute sets and pricing formulas.
 - Clicking a canvas scopes the layers panel to that side and shows a small
   mockup preview under it.
 - Original admin SVGs are immutable; "Edit Design" creates the user's own copy.
-- Element panel shows raster thumbnails only (never raw SVG); the actual SVG is
-  served through an authenticated endpoint at insert time.
+- Planned R2 asset contract for the Elements catalog: `elements/v1/manifest.json`
+  plus `elements/v1/{slug}.svg` objects in the future `mh-fashion-assets` bucket;
+  keep the bucket private and serve through same-origin Worker routes
+  `GET /api/editor/elements` and `GET /api/editor/elements/{slug}`. The local
+  asset paths and manifest mirror this key layout. Do not add credentials,
+  bindings, public-bucket access, or uploads until the R2 phase is requested.
 - Mockup attach: Front placement copies proportionally to Back only when the
   print-area types match. Color changes apply to Front and Back together.
 - Buy Now / Add to Cart stay disabled until the mockup is attached.
@@ -284,6 +296,7 @@ designs/{design_id}/thumbnails/{layer_id}.webp
 mockups/{product_id}/{style_id}/{color_id}_front.png (and _back, detail_n)
 jersey-mockups/{jersey_style_id}/worn_photo.png + mapping_zones.json
 brushes/{brush_id}/texture.png
+elements/v1/manifest.json, elements/v1/{slug}.svg (planned, R2 not connected)
 products/categories/{slug}.png, products/banners/{id}.png
 uploads/{user_id}/{upload_id}/original.jpg, upscaled.jpg
 ```
@@ -299,6 +312,8 @@ catalog-facing items.
 - Pillow and Sling Bag attributes and mockups.
 - Payment gateway API details; DHL integration (waiting on DHL).
 - Legal page content (Myanmar-specific clauses).
+- R2 bucket creation/connection and upload of the Elements catalog; current
+  prototype uses versioned local SVG assets and a manifest only.
 - Further editor tools and layer-panel features; further admin permissions.
 - Refund request flow; mobile app scope; email provider.
 
@@ -322,6 +337,10 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   raster Smart Object controls, and uniform mask strength. This is not a
   Photoshop-equivalent panel or renderer. Designs remain browser-local and are
   not yet backed by Supabase or R2.
+  The Elements flyout now includes category browsing, name/tag search, color
+  choices, original SVG previews, click-to-add, and drag-to-canvas placement.
+  Catalog data/assets are in `public/elements/v1` with future R2 object keys;
+  R2 itself remains disconnected by request.
 
 **Built, using placeholder data:** Account page (`/account`).
 
@@ -398,6 +417,17 @@ placeholders with Supabase data, cart and checkout.
   removes the Smart Object metadata. This is not a PSD/PSB document container:
   editable internal contents, linked assets, multi-layer/vector Smart Objects,
   and Smart Filters remain future work.
+- Replaced the four-shape Elements starter with a Canva-inspired, searchable SVG
+  library: category tabs, keyword/tag matching, recent-use shortcuts, color
+  selection, click-to-add and direct drag-and-drop placement. Added a versioned
+  local asset manifest and original monochrome SVG collection. Prepared the
+  future R2 key/route contract (`elements/v1/...`, `/api/editor/elements`) but,
+  as requested, did not authenticate, create a bucket, add a Worker binding,
+  enable public access, or upload objects. Canva's documented Elements flow uses
+  search/category browsing and selection followed by reposition/resize; this
+  prototype follows that flow without copying Canva assets. [Canva: Add elements](https://www.canva.com/help/add-elements/)
+  [Cloudflare: Upload objects](https://developers.cloudflare.com/r2/objects/upload-objects/)
+  [Cloudflare: Public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/)
 - Researched Adobe's current Layers panel guidance and refined the selected-layer
   controls to match its layout: blend mode and Opacity on the first line, Lock
   and Fill on the second, on-demand slider popovers, and visibility controls in

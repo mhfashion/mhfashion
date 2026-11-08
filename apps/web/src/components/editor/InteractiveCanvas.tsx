@@ -14,6 +14,7 @@ export type CanvasMark = {
   x: number;
   y: number;
   imageSrc?: string;
+  elementName?: string;
   width?: number;
   text?: string;
   color?: string;
@@ -58,17 +59,35 @@ type Props = {
   selectedLayerId: string | null;
   onSelectLayer: (id: string | null) => void;
   onAddMark: (mark: CanvasMark) => void;
+  onAddElement: (elementId: string, color: string, x: number, y: number) => Promise<void>;
   onRemoveMark: (id: string) => void;
   onMarksChange: (marks: CanvasMark[]) => void;
   onClear: () => void;
 };
 
-export default function InteractiveCanvas({ activeTool, activeSide, onSideChange, mockupName, marks, layers, selectedLayerId, onSelectLayer, onAddMark, onRemoveMark, onMarksChange, onClear }: Props) {
+export default function InteractiveCanvas({ activeTool, activeSide, onSideChange, mockupName, marks, layers, selectedLayerId, onSelectLayer, onAddMark, onAddElement, onRemoveMark, onMarksChange, onClear }: Props) {
   const [zoom, setZoom] = useState(100);
   const [grid, setGrid] = useState(true);
   const [status, setStatus] = useState(toolMessages.move ?? "Ready");
 
   useEffect(() => setStatus(toolMessages[activeTool] ?? "Ready"), [activeTool]);
+
+  function handleElementDrop(event: React.DragEvent<HTMLDivElement>) {
+    const payload = event.dataTransfer.getData("application/x-mh-fashion-element");
+    if (!payload) return;
+    event.preventDefault();
+    try {
+      const parsed = JSON.parse(payload) as { id?: unknown; color?: unknown };
+      if (typeof parsed.id !== "string" || typeof parsed.color !== "string") return;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const x = Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100));
+      const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100));
+      setStatus("Adding element to canvas…");
+      void onAddElement(parsed.id, parsed.color, x, y).then(() => setStatus("Element added to canvas"), () => setStatus("Could not add this element"));
+    } catch {
+      setStatus("Could not add this element");
+    }
+  }
 
   return (
     <>
@@ -90,7 +109,16 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
           <span aria-live="polite">{status || toolMessages[activeTool]}</span>
           <span className="hidden items-center gap-1 sm:flex"><Eye size={12} /> Selection on</span>
         </div>
-        <div className={`relative aspect-[4/3] w-full max-w-[700px] overflow-hidden rounded-lg border border-border ${grid ? "bg-[linear-gradient(45deg,#e7e7e3_25%,transparent_25%),linear-gradient(-45deg,#e7e7e3_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#e7e7e3_75%),linear-gradient(-45deg,transparent_75%,#e7e7e3_75%)] bg-[length:22px_22px] bg-[position:0_0,0_11px,11px_-11px,-11px_0px] dark:bg-[#202020] dark:bg-none" : "bg-[#f3f3f0] dark:bg-[#202020]"}`}>
+        <div
+          className={`relative aspect-[4/3] w-full max-w-[700px] overflow-hidden rounded-lg border border-border ${grid ? "bg-[linear-gradient(45deg,#e7e7e3_25%,transparent_25%),linear-gradient(-45deg,#e7e7e3_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#e7e7e3_75%),linear-gradient(-45deg,transparent_75%,#e7e7e3_75%)] bg-[length:22px_22px] bg-[position:0_0,0_11px,11px_-11px,-11px_0px] dark:bg-[#202020] dark:bg-none" : "bg-[#f3f3f0] dark:bg-[#202020]"}`}
+          onDragOver={(event) => {
+            if (Array.from(event.dataTransfer.types).includes("application/x-mh-fashion-element")) {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "copy";
+            }
+          }}
+          onDrop={handleElementDrop}
+        >
           <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center">
             <div className="relative flex h-[72%] w-[43%] min-w-[150px] items-center justify-center rounded-[45%_45%_9%_9%] border border-dashed border-text-muted/30 bg-white/35 dark:bg-white/5">
               <div className="absolute top-[9%] h-5 w-14 rounded-b-full border-b border-dashed border-text-muted/40" />
