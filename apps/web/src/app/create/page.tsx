@@ -6,11 +6,10 @@ import Header from "@/components/Header";
 import EditorLeftRail, { type PanelId, type ToolId } from "@/components/editor/EditorLeftRail";
 import EditorFlyout from "@/components/editor/EditorFlyout";
 import LayersPanel, { type EditorLayer, type LayerDropPosition } from "@/components/editor/LayersPanel";
-import AttributeBar, { type AttributeSelection } from "@/components/editor/AttributeBar";
+import AttributeBar, { PRODUCT_OPTIONS, type AttributeSelection } from "@/components/editor/AttributeBar";
 import InteractiveCanvas, { type CanvasMark, type ShapeType } from "@/components/editor/InteractiveCanvas";
 import MockupLibrary, { type MockupId } from "@/components/editor/MockupLibrary";
 import type { TextCombination, TextFormatting } from "@/lib/editorTypography";
-import type { Product } from "@/lib/types";
 import { useCurrency } from "@/lib/currency-context";
 import { findEditorElement } from "@/lib/editorElements";
 import { useI18n } from "@/lib/i18n";
@@ -145,7 +144,11 @@ export default function EditorPage() {
         setMockup(saved.mockup ?? null);
       }
       if (saved.selection && typeof saved.selection === "object") {
-        setSelection({ ...DEFAULT_SELECTION, ...saved.selection });
+        const restoredSelection = { ...DEFAULT_SELECTION, ...saved.selection };
+        if (!PRODUCT_OPTIONS.some((product) => product === restoredSelection.product)) {
+          restoredSelection.product = DEFAULT_SELECTION.product;
+        }
+        setSelection(restoredSelection);
       }
       setSaveMessage("Saved draft restored");
     } catch {
@@ -296,13 +299,17 @@ export default function EditorPage() {
     setSaveMessage(`${combination.name} added as editable text layers`);
   };
 
-  const handleSelectProduct = (product: Product) => {
-    setSelection((current) => ({ ...current, product: product.name }));
-    setSaveMessage(`${product.name} selected for this design`);
-  };
-
   const handleAddShape = (shapeType: ShapeType, color: string) => {
     addMark({ id: makeId("shape"), kind: "Shape", shapeType, color, x: 50, y: 48 });
+  };
+
+  const duplicateSelectedMark = (mark: CanvasMark) => {
+    addMark({
+      ...mark,
+      id: makeId("copy"),
+      x: Math.max(0, Math.min(100, mark.x + 4)),
+      y: Math.max(0, Math.min(100, mark.y + 4)),
+    });
   };
 
   const removeMark = (id: string) => commitDocument((document) => ({
@@ -526,8 +533,25 @@ export default function EditorPage() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <EditorLeftRail activePanel={activePanel} onPanelChange={setActivePanel} activeTool={activeTool} onToolChange={setActiveTool} />
-        {activePanel && <div className="hidden lg:block"><EditorFlyout panel={activePanel} onUploadImage={handleUploadImage} onAddText={handleAddText} onAddTextCombination={handleAddTextCombination} selectedText={selectedMark?.kind === "Text" ? selectedMark : null} onUpdateSelectedText={(patch) => { if (selectedMark?.kind === "Text") updateMark(selectedMark.id, patch); }} onAddShape={handleAddShape} onAddElement={handleAddElement} selectedProductName={selection.product} onSelectProduct={handleSelectProduct} selectedEffects={selectedEffects} onToggleEffect={toggleSelectedEffect} /></div>}
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f1] dark:bg-[#111]">
+        {activePanel && (
+          <div className="hidden lg:block">
+            <EditorFlyout
+              panel={activePanel}
+              onUploadImage={handleUploadImage}
+              onAddText={handleAddText}
+              onAddTextCombination={handleAddTextCombination}
+              selectedText={selectedMark?.kind === "Text" ? selectedMark : null}
+              onUpdateSelectedText={(patch) => {
+                if (selectedMark?.kind === "Text") updateMark(selectedMark.id, patch);
+              }}
+              onAddShape={handleAddShape}
+              onAddElement={handleAddElement}
+              selectedEffects={selectedEffects}
+              onToggleEffect={toggleSelectedEffect}
+            />
+          </div>
+        )}
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f3f4f6] dark:bg-[#f3f4f6]">
           <InteractiveCanvas
             activeTool={activeTool}
             activeSide={activeSide}
@@ -540,6 +564,8 @@ export default function EditorPage() {
             onAddMark={addMark}
             onAddElement={handleAddElement}
             onRemoveMark={removeMark}
+            onUpdateMark={updateMark}
+            onDuplicateMark={duplicateSelectedMark}
             onMarksChange={updateCanvasMarks}
             onClear={clearCanvas}
             toolColor={toolColor}

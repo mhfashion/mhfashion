@@ -2,18 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Plus, Search, X } from "lucide-react";
-import type { Product } from "@/lib/types";
 import type { TextCombination, TextFormatting } from "@/lib/editorTypography";
 import type { PanelId } from "./EditorLeftRail";
 import type { CanvasMark, ShapeType } from "./InteractiveCanvas";
-import ProductsLibrary from "./ProductsLibrary";
 import TextLibrary from "./TextLibrary";
 import { EDITOR_ELEMENTS, ELEMENT_CATEGORIES } from "@/lib/editorElements";
 
 const TITLES: Record<PanelId, string> = {
   upload: "Upload",
   elements: "Elements",
-  products: "Products",
   text: "Text",
   effects: "Effects",
   ai: "AI",
@@ -37,8 +34,6 @@ type Props = {
   onUpdateSelectedText: (patch: Partial<TextFormatting>) => void;
   onAddShape: (shape: ShapeType, color: string) => void;
   onAddElement: (elementId: string, color: string, x?: number, y?: number) => Promise<void>;
-  selectedProductName: string;
-  onSelectProduct: (product: Product) => void;
   selectedEffects: string[];
   onToggleEffect: (effect: string) => void;
 };
@@ -63,8 +58,6 @@ export default function EditorFlyout({
   onUpdateSelectedText,
   onAddShape,
   onAddElement,
-  selectedProductName,
-  onSelectProduct,
   selectedEffects,
   onToggleEffect,
 }: Props) {
@@ -131,7 +124,7 @@ export default function EditorFlyout({
     const matchesSearch = !query || [element.name, element.category, ...element.tags].some((value) => value.toLocaleLowerCase().includes(query));
     return inCategory && matchesSearch;
   });
-  const width = panel === "text" ? "w-80" : panel === "elements" || panel === "products" ? "w-72" : "w-52";
+  const width = panel === "text" ? "w-80" : panel === "elements" ? "w-72" : "w-52";
 
   return (
     <div className={`${width} flex-shrink-0 overflow-y-auto border-r border-border bg-bg-surface p-3`}>
@@ -148,8 +141,6 @@ export default function EditorFlyout({
       </div>}
 
       {panel === "text" && <TextLibrary selectedText={selectedText} onAddText={onAddText} onAddCombination={onAddTextCombination} onUpdateSelectedText={onUpdateSelectedText} />}
-
-      {panel === "products" && <ProductsLibrary selectedProductName={selectedProductName} onSelectProduct={onSelectProduct} />}
 
       {panel === "elements" && <div className="space-y-3">
         <div className="relative">

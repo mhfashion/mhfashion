@@ -6,7 +6,6 @@ import {
   Type,
   Wand2,
   Sparkles,
-  ShoppingBag,
   Move,
   SquareDashed,
   Lasso,
@@ -23,7 +22,7 @@ import {
   RotateCw,
 } from "lucide-react";
 
-export type PanelId = "upload" | "elements" | "products" | "text" | "effects" | "ai";
+export type PanelId = "upload" | "elements" | "text" | "effects" | "ai";
 export type ToolId =
   | "move"
   | "marquee"
@@ -44,7 +43,6 @@ export type ToolId =
 const PANELS: { id: PanelId; label: string; Icon: React.ElementType }[] = [
   { id: "upload", label: "Upload", Icon: Upload },
   { id: "elements", label: "Elements", Icon: Shapes },
-  { id: "products", label: "Products", Icon: ShoppingBag },
   { id: "text", label: "Text", Icon: Type },
   { id: "effects", label: "Effects", Icon: Wand2 },
   { id: "ai", label: "AI", Icon: Sparkles },

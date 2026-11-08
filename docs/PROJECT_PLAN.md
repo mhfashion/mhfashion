@@ -42,6 +42,9 @@ Fonts: woff2 for web, otf for the future mobile app.
   `npx wrangler deploy`).
 - Supabase: Claude writes SQL migrations (`supabase/migrations/`); the owner
   runs them in the SQL Editor.
+- Current Cloudflare build toolchain: Next.js 15.5.29, `@opennextjs/cloudflare`
+  1.20.16, and Wrangler 4.158.0. Keep the lockfile aligned with these versions;
+  the OpenNext Worker build is validated with `npm run cf:build --workspace=apps/web`.
 - Standalone Cloudflare Worker scripts are NOT committed to the repo; Claude
   hands over the code and the owner deploys it in Cloudflare.
 - Secrets (`.env.local`, API keys, tokens) never go into GitHub.
@@ -122,6 +125,11 @@ Other product types get their own attribute sets and pricing formulas.
   the right; Front and Back canvases side by side (transparent background);
   attribute bar along the bottom.
 - Top bar: Undo/Redo, live price, Save / Add to Cart / Buy Now.
+- Drawing workspace (owner-requested Canva-inspired pass): keep the work area
+  light and the artboard white regardless of site theme, with the transparency
+  grid optional and off by default. The selection bar becomes contextual: text
+  exposes font/size/color/emphasis/alignment, shapes expose geometry/fill, and
+  selected artwork exposes duplicate/delete actions.
 - Canvas engine (current prototype): Fabric.js 6 renders browser-side editable
   objects with selection, move, scale, rotate, in-place text editing, zoom, and
   hand-pan. The Pen tool now draws vector paths. Transform and path edits are
@@ -187,12 +195,11 @@ Other product types get their own attribute sets and pricing formulas.
   controls. Text objects participate in Undo/Redo, transform controls, in-place
   editing, and browser-local drafts. The prototype uses browser/system fonts only;
   custom font files are not bundled before the font licensing and R2 phase.
-- Products browser (`/create`): fetch actual storefront products and price ranges
-  through same-origin `GET /api/editor/products`, search the names, display the
-  product image and price, link to product details, and select a catalog item as
-  the current editor product. Product selection is retained in the browser-local
-  draft; choosing a product does not pretend that the separate mockup catalog is
-  a production product-to-mockup mapping.
+- Product browser removal: at the owner's request, `/create` no longer has a
+  Products sidebar panel or fetches/selects a catalog product from that panel.
+  Storefront product pages/catalog and the editor's bottom Product attribute
+  selector remain unchanged. Drafts containing a former catalog name that is not
+  a valid Product attribute option restore with the default product type.
 - Text catalog data lives in local versioned manifests at
   `apps/web/public/fonts/v1/manifest.json` and
   `apps/web/public/text-styles/v1/manifest.json`, with future R2 keys recorded.
@@ -360,13 +367,10 @@ catalog-facing items.
 - Payment gateway API details; DHL integration (waiting on DHL).
 - Legal page content (Myanmar-specific clauses).
 - Private R2 connection and uploads for Elements, licensed fonts, text-style
-  previews, and product/mockup assets remain deferred. The current editor uses
-  local catalogs, browser/system font fallbacks, and the storefront's existing
-  Supabase product data; no bucket, binding, or R2 upload is part of this stage.
-- The `/api/editor/products` implementation is built, but its local production-
-  server smoke test returned 503 because the Sandbox does not have the Supabase
-  URL runtime setting. Confirm live catalog retrieval in an environment where
-  the project's existing Supabase runtime settings are available.
+  previews, and product/mockup assets remain deferred. The editor uses its local
+  Elements catalog and browser/system font fallbacks; the storefront continues
+  to use its existing Supabase product data. No bucket, binding, or R2 upload is
+  part of this stage.
 - Further editor tools and layer-panel features; further admin permissions.
 - Refund request flow; mobile app scope; email provider.
 
@@ -396,9 +400,9 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   R2 itself remains disconnected by request. The Text flyout now follows Canva's
   heading/subheading/body and font-search flow, supplies text/font-combination
   presets and selected-text formatting, using system fonts only. The Products
-  flyout reads real storefront products and price ranges via `/api/editor/products`,
-  supports search and selection, and uses the database image URL; product assets
-  and fonts remain outside R2 until that phase is requested.
+  sidebar was removed by owner request; storefront product catalog and detail
+  pages remain available, while product assets and fonts stay outside R2 until
+  that phase is requested.
 
 **Built, using placeholder data:** Account page (`/account`).
 
@@ -522,3 +526,11 @@ placeholders with Supabase data, cart and checkout.
   of silently redirecting artwork. Eraser clears the object but retains the now-
   blank layer for reuse; Undo/Redo keeps the pre-existing layer. Production build
   and whitespace checks passed.
+- Removed the editor Products sidebar panel, its catalog component, and its
+  editor-only products API/helper at the owner's request. Storefront catalog and
+  product detail pages, plus the editor's bottom Product attribute selector,
+  remain unchanged.
+- Replaced the dark Photoshop-like drawing surround with a theme-independent
+  light workspace and white artboard, and made the selection bar contextual for
+  text and shape formatting plus selected-object duplicate/delete. Production
+  build and TypeScript checks passed.

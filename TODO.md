@@ -35,7 +35,7 @@ Source of scope: `docs/PROJECT_PLAN.md` section 6.
 - [ ] Future R2 migration (explicitly deferred)
   - Later move `elements/v1/manifest.json` and `elements/v1/{slug}.svg` to the private `mh-fashion-assets` bucket and serve them through same-origin editor API routes.
 
-## Canva-style Text and Products browser
+## Canva-style Text browser
 
 Source of scope: `docs/PROJECT_PLAN.md` section 6.
 
@@ -45,13 +45,17 @@ Source of scope: `docs/PROJECT_PLAN.md` section 6.
   - For selected text, change font family, size, color, bold, italic, underline, alignment, and letter/line spacing. Preserve text editing, transforms, Undo/Redo, and browser-local draft storage.
   - Use browser/system fonts in this phase; keep versioned font and text-style manifests with future R2 keys. Do not fetch, copy, or upload font binaries before license review and the R2 phase.
 - Evidence: the editor builds with three text-size presets, searchable category-based font previews, four grouped font combinations, and persisted Fabric text formatting; all 12 font IDs and seven preset/combo references validate against local manifests.
-- [x] Products browser for `/create`
-  - Fetch actual store product entries and price ranges from the existing public catalog source; display product images, names, and prices; support search, open the product detail page, and select a product as the editor's current target.
-  - Persist the current product choice in the browser-local draft. Keep mockup selection separate until product-to-mockup mapping is validated.
-- Evidence: `/api/editor/products` is included in the production build and calls the shared storefront query with price ranges; the UI displays image/price data, supports search/filter/details/select, restores the selected product from the existing draft selection field, and handles API unavailability without breaking the editor. The local production-server smoke test returned 503 because this Sandbox lacks the Supabase URL runtime setting, so live data retrieval still needs confirmation in the configured project runtime.
-- [ ] Verify live Products API data with the project's existing Supabase runtime configuration. No R2 connection is needed for this check.
 - [ ] Future typography and product-asset R2 migration (explicitly deferred)
   - Later place licensed font files at `fonts/v1/{font_id}.woff2`, text-style metadata/previews under `text-styles/v1/`, and product card/mockup imagery under the planned `products/` and `mockups/` keys; serve private assets through same-origin routes. Do not connect R2, create a bucket or binding, expose a public bucket, or upload files now.
+
+## Editor Products panel removal
+
+Source of scope: owner request to remove Products below Elements in the editor.
+
+- [x] Remove the Products entry and browser from `/create`, along with the editor-only products endpoint and query helper.
+- [x] Keep storefront product browsing/detail pages and the editor's bottom Product attribute selector unchanged.
+- [x] Normalize older drafts that saved a catalog item name into the Product attribute selector back to the default product type.
+- Evidence: no Products panel/library or `/api/editor/products` route remains in the editor; storefront product routes are untouched, and restored drafts only keep valid Product attribute options.
 
 ## Canvas tool palette
 
@@ -64,6 +68,23 @@ Source of scope: `docs/PROJECT_PLAN.md` section 6 and the `/create` toolbar.
   - Ruler drag displays a transient pixel-distance and angle measurement. Rotate View drag rotates the canvas view without changing artwork; Reset View restores orientation/zoom. Hand pans; Zoom click magnifies and Shift-click reduces, with existing zoom buttons retained.
   - Show tool-specific cursor/status/options; keep added design changes in layers/history/drafts and keep navigation/measurement overlays out of saved artwork. Document the vector/object-level limits rather than claiming raster Photoshop behavior.
 - Evidence: `npm run build` passed; no inactive-tool placeholder messages remain; a read-only review found no P0/P1 issues. The review's Clone Stamp lock gap and Magic Wand raster-status ambiguity were corrected. Ruler visuals are transient overlays and are not included in saved marks/history; pixel-level raster selection/erasing and path-anchor editing remain out of scope.
+
+## Cloudflare Worker build compatibility
+
+Source of scope: Cloudflare's Workers Build check rejected the previous Next.js version before compiling the application.
+
+- [x] Upgrade Next.js to the patched 15.5.29 release, OpenNext Cloudflare to 1.20.16, and Wrangler to 4.158.0; keep the application on Next.js 15.
+- [x] Update the lockfile and verify a clean install produces the same Cloudflare build.
+- Evidence: `npm ci --no-audit --no-fund`, `npm run cf:build --workspace=apps/web`, `npm run build`, and `npm run test:guide` pass; no unsupported-version bypass flag is used. The existing compatibility-date warning is unchanged.
+
+## Canva-style workspace and selection toolbar
+
+Source of scope: owner request to remove the dark Photoshop-like backing from the drawing area and make the red-circled bar work like Canva.
+
+- [x] Use a light neutral workspace and white artboard regardless of site dark mode; keep the transparency grid optional and off by default.
+- [x] Make the selection bar contextual: text exposes font, size, color, emphasis, and alignment; shapes expose type and fill; selected artwork exposes duplicate/delete actions.
+- [x] Remove developer-facing canvas-engine labeling from the drawing workspace footer.
+- Evidence: production build and TypeScript checks pass; selected artwork edits route through the existing history-backed update callback.
 
 ## Persistent Photoshop-style Layers Box
 
