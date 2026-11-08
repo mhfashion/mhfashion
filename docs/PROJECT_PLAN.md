@@ -344,16 +344,14 @@ brushes/{brush_id}/texture.png
 elements/v1/manifest.json, elements/v1/{slug}.svg (planned, R2 not connected)
 fonts/v1/manifest.json, fonts/v1/{font_id}.woff2 (planned; license-cleared files only)
 text-styles/v1/manifest.json, text-styles/v1/previews/{slug}.webp (planned)
-products/{product_id}/card.webp (planned product image; metadata remains in Supabase)
 products/categories/{slug}.png, products/banners/{id}.png
 uploads/{user_id}/{upload_id}/original.jpg, upscaled.jpg
 ```
 
 Future private serving contract (not implemented): `GET /api/editor/fonts`,
 `GET /api/editor/text-styles`, and allow-listed `GET /api/editor/assets/[...assetKey]`
-to read font, preview, product-card, and mockup objects through an R2 binding.
-The current `GET /api/editor/products` route reads catalog metadata and prices
-from Supabase; it does not connect to or proxy R2.
+to read licensed font, text-style preview, and mockup objects through an R2
+binding. No editor product-catalog API is defined.
 
 Naming: lowercase, hyphens; UUIDs for system-generated assets, slugs for
 catalog-facing items.
@@ -367,7 +365,7 @@ catalog-facing items.
 - Payment gateway API details; DHL integration (waiting on DHL).
 - Legal page content (Myanmar-specific clauses).
 - Private R2 connection and uploads for Elements, licensed fonts, text-style
-  previews, and product/mockup assets remain deferred. The editor uses its local
+  previews, and mockup assets remain deferred. The editor uses its local
   Elements catalog and browser/system font fallbacks; the storefront continues
   to use its existing Supabase product data. No bucket, binding, or R2 upload is
   part of this stage.
@@ -401,8 +399,8 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   heading/subheading/body and font-search flow, supplies text/font-combination
   presets and selected-text formatting, using system fonts only. The Products
   sidebar was removed by owner request; storefront product catalog and detail
-  pages remain available, while product assets and fonts stay outside R2 until
-  that phase is requested.
+  pages remain available. R2 remains disconnected; licensed custom fonts await
+  the future typography phase.
 
 **Built, using placeholder data:** Account page (`/account`).
 

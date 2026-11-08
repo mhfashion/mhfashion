@@ -35,7 +35,7 @@ Source of scope: `docs/PROJECT_PLAN.md` section 6.
 - [ ] Future R2 migration (explicitly deferred)
   - Later move `elements/v1/manifest.json` and `elements/v1/{slug}.svg` to the private `mh-fashion-assets` bucket and serve them through same-origin editor API routes.
 
-## Canva-style Text browser
+## Canva-style Text tools
 
 Source of scope: `docs/PROJECT_PLAN.md` section 6.
 
@@ -45,8 +45,8 @@ Source of scope: `docs/PROJECT_PLAN.md` section 6.
   - For selected text, change font family, size, color, bold, italic, underline, alignment, and letter/line spacing. Preserve text editing, transforms, Undo/Redo, and browser-local draft storage.
   - Use browser/system fonts in this phase; keep versioned font and text-style manifests with future R2 keys. Do not fetch, copy, or upload font binaries before license review and the R2 phase.
 - Evidence: the editor builds with three text-size presets, searchable category-based font previews, four grouped font combinations, and persisted Fabric text formatting; all 12 font IDs and seven preset/combo references validate against local manifests.
-- [ ] Future typography and product-asset R2 migration (explicitly deferred)
-  - Later place licensed font files at `fonts/v1/{font_id}.woff2`, text-style metadata/previews under `text-styles/v1/`, and product card/mockup imagery under the planned `products/` and `mockups/` keys; serve private assets through same-origin routes. Do not connect R2, create a bucket or binding, expose a public bucket, or upload files now.
+- [ ] Future typography R2 migration (explicitly deferred)
+  - Later place license-cleared font files at `fonts/v1/{font_id}.woff2` and text-style metadata/previews under `text-styles/v1/`; serve those private assets through same-origin routes. Do not connect R2, create a bucket or binding, expose a public bucket, or upload files now.
 
 ## Editor Products panel removal
 
