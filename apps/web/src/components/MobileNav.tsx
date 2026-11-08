@@ -25,11 +25,6 @@ const NAV_LINKS = [
   { label: "Guide", href: "/guide" },
 ];
 
-const SHOP_LINKS = [
-  { label: "All Products", href: "/products" },
-  { label: "Best Sellers", href: "/best-sellers" },
-];
-
 const COLLECTION_LINKS = [
   { label: "T-Shirt", href: "/collections?category=t-shirts" },
   { label: "Cup", href: "/collections?category=cups" },
@@ -185,11 +180,6 @@ export default function MobileNav() {
           </button>
 
           {/* Footer-equivalent groups, mirrored here for quick access */}
-          <GroupHeading>{t("footer.shop")}</GroupHeading>
-          {SHOP_LINKS.map((link) => (
-            <LinkRow key={link.href} {...link} onClick={close} />
-          ))}
-
           <GroupHeading>{t("footer.help")}</GroupHeading>
           {HELP_LINKS.map((link) => (
             <LinkRow key={link.href} {...link} onClick={close} />
