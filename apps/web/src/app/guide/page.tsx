@@ -95,8 +95,8 @@ export default async function GuidePage({ searchParams }: PageProps) {
     <div>
       <Header />
       <main className="w-full bg-bg px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
-        <div className="mx-auto grid w-full max-w-[1480px] gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="hidden xl:flex xl:flex-col xl:gap-4">
+        <div className="mx-auto grid w-full max-w-[1480px] gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <aside className="hidden lg:flex lg:flex-col lg:gap-4">
             <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#69b917] via-[#4a9d0f] to-[#25720b] p-5 text-white shadow-sm">
               <BookOpen size={34} strokeWidth={2.5} aria-hidden="true" />
               <h2 className="mt-5 text-2xl font-black leading-none">MH Fashion<br />Guide</h2>
@@ -140,7 +140,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <div className="absolute bottom-3 right-3 text-2xl font-black italic text-[#54a817]/80 sm:bottom-4 sm:right-12 sm:text-4xl">Your<br />Style</div>
             </section>
 
-            <div className="mb-7 grid grid-cols-4 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:hidden">
+            <div className="mb-7 grid grid-cols-4 gap-2 sm:grid-cols-4 lg:grid-cols-5 lg:hidden">
               {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
               <Link href="/faq" className="group flex min-h-[58px] items-center gap-2 rounded-xl border border-border bg-bg-surface p-2 hover:border-accent/60 sm:col-span-1 sm:min-h-[92px] sm:gap-3 sm:p-4">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Star size={16} /></span>
