@@ -22,19 +22,12 @@ const NAV_LINKS = [
   { label: "Popular", href: "/popular" },
   { label: "MH Fashion", href: "/mh-fashion" },
   { label: "Nyein", href: "/nyein" },
-  { label: "Singular", href: "/singular" },
-  { label: "Kids", href: "/kids" },
-  { label: "Streetwear", href: "/streetwear" },
-  { label: "Sport", href: "/sport" },
-  { label: "Accessories", href: "/accessories" },
   { label: "Guide", href: "/guide" },
 ];
 
 const SHOP_LINKS = [
   { label: "All Products", href: "/products" },
-  { label: "New Arrivals", href: "/new" },
   { label: "Best Sellers", href: "/best-sellers" },
-  { label: "Collections", href: "/collections" },
 ];
 
 const COLLECTION_LINKS = [
