@@ -129,6 +129,14 @@ export default function AttributeBar({
 
   return (
     <div className="border-t border-border px-4 py-2.5 flex items-center gap-4 flex-wrap">
+      <Field label="Product">
+        <Select
+          value={selection.product}
+          options={PRODUCTS}
+          onChange={(product) => onChange({ ...selection, product })}
+        />
+      </Field>
+
       <Field label="Mockup">
         {mockupName ? (
           <div className="flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/5 px-1.5 py-1">
