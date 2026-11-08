@@ -628,9 +628,12 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
         }
         if (tool === "eraser") {
           const id = targetMark?.id;
-          if (id && !layerIsLocked(callbacksRef.current.layers, id)) callbacksRef.current.onRemoveMark(id);
+          if (id && !layerIsLocked(callbacksRef.current.layers, id)) {
+            callbacksRef.current.onRemoveMark(id);
+            callbacksRef.current.onStatus("Artwork erased; the layer remains empty and reusable");
+          }
           else if (id) callbacksRef.current.onStatus("This layer is locked");
-          else callbacksRef.current.onStatus("Click an object to erase its whole layer; pixel erasing is not included");
+          else callbacksRef.current.onStatus("Click artwork to erase the object and keep its layer; pixel erasing is not included");
           return;
         }
         if (tool === "clone-stamp") {

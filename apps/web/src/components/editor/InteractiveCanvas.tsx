@@ -50,7 +50,7 @@ const toolMessages: Partial<Record<ToolId, string>> = {
   "path-select": "Click and move a whole Pen path; anchor editing is not available",
   "clone-stamp": "Select or click an object, then click to stamp a copy",
   gradient: "Drag on empty canvas for a gradient shape or drag across text/vector artwork to fill it",
-  eraser: "Click an object to remove that whole layer",
+  eraser: "Erase the object but keep its layer available for drawing again",
   ruler: "Drag to measure canvas-pixel distance and angle",
   "rotate-view": "Drag to rotate the canvas view without changing artwork",
   hand: "Drag to pan the canvas view",
@@ -130,7 +130,7 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
           {activeTool === "rotate-view" && <button type="button" onClick={() => { setZoom(100); setResetViewToken((value) => value + 1); }} className="rounded border border-border px-2 py-1 text-text-primary">Reset view</button>}
           {activeTool === "zoom" && <span>Click: zoom in · Shift-click: zoom out</span>}
           {activeTool === "clone-stamp" && <span>Select or click a source layer</span>}
-          {activeTool === "eraser" && <span>Removes the whole clicked object</span>}
+          {activeTool === "eraser" && <span>Removes the clicked artwork; keeps the layer empty and reusable</span>}
           {activeTool === "lasso" && <span>Freeform select by object center</span>}
           {activeTool === "path-select" && <span>Selects whole vector paths</span>}
           {activeTool === "eyedropper" && <span>Sample a color from visible artwork</span>}

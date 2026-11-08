@@ -178,20 +178,49 @@ export default function EditorPage() {
   };
 
   const addMark = (mark: CanvasMark) => {
-    setSelectedLayerId(mark.id);
+    const sideLayers = history.present.layers[activeSide];
+    const selected = sideLayers.find((layer) => layer.id === selectedLayerId);
+    if (selected?.isGroup) {
+      setSaveMessage("Folders cannot be drawn on directly. Select or create a content layer first.");
+      return;
+    }
+
+    const isBlankTarget = Boolean(selected && !selected.isGroup && !history.present.marks[activeSide].some((item) => item.id === selected.id));
+    if (isBlankTarget && selected) {
+      let ancestor: EditorLayer | undefined = selected;
+      const visited = new Set<string>();
+      while (ancestor) {
+        if (ancestor.locked) {
+          setSaveMessage("This layer or its parent group is locked. Unlock it before adding artwork.");
+          return;
+        }
+        if (!ancestor.parentId || visited.has(ancestor.id)) break;
+        visited.add(ancestor.id);
+        ancestor = sideLayers.find((layer) => layer.id === ancestor?.parentId);
+      }
+    }
+
+    const targetId = isBlankTarget && selected ? selected.id : null;
+    const insertedMark = targetId ? { ...mark, id: targetId } : mark;
+    const layerName = mark.elementName ?? (mark.kind === "Text" ? `Text: ${(mark.text ?? "").slice(0, 24)}` : mark.kind === "Shape" ? `${mark.shapeType ?? "Rectangle"} shape` : `${mark.kind} element`);
+    setSelectedLayerId(insertedMark.id);
     commitDocument((document) => ({
-      marks: { ...document.marks, [activeSide]: [...document.marks[activeSide], mark] },
+      ...document,
+      marks: { ...document.marks, [activeSide]: [...document.marks[activeSide], insertedMark] },
       layers: {
         ...document.layers,
-        [activeSide]: [...document.layers[activeSide], {
-          id: mark.id,
-          name: mark.elementName ?? (mark.kind === "Text" ? `Text: ${(mark.text ?? "").slice(0, 24)}` : mark.kind === "Shape" ? `${mark.shapeType ?? "Rectangle"} shape` : `${mark.kind} element`),
-          visible: true,
-          locked: false,
-          isGroup: false,
-        }],
+        [activeSide]: targetId
+          ? document.layers[activeSide].map((layer) => layer.id === targetId && /^Layer \d+$/.test(layer.name) ? { ...layer, name: layerName } : layer)
+          : [...document.layers[activeSide], {
+              id: insertedMark.id,
+              name: layerName,
+              visible: true,
+              locked: false,
+              isGroup: false,
+            }],
       },
     }));
+    setSaveMessage(targetId ? `Artwork added to ${selected?.name ?? "the selected layer"}` : "Artwork added on a new layer");
   };
 
   const handleAddElement = async (elementId: string, color: string, x = 50, y = 48) => {
@@ -277,13 +306,10 @@ export default function EditorPage() {
   };
 
   const removeMark = (id: string) => commitDocument((document) => ({
+    ...document,
     marks: {
       ...document.marks,
       [activeSide]: document.marks[activeSide].filter((mark) => mark.id !== id),
-    },
-    layers: {
-      ...document.layers,
-      [activeSide]: document.layers[activeSide].filter((layer) => layer.id !== id),
     },
   }));
 
@@ -370,6 +396,7 @@ export default function EditorPage() {
       },
     }));
     setSelectedLayerId(id);
+    setSaveMessage(isGroup ? "Group created" : "Blank layer created and selected. Choose Pen, Shape, or Gradient to add artwork.");
   };
 
   const duplicateLayer = () => {

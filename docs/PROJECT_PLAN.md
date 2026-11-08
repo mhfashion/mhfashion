@@ -136,7 +136,8 @@ Other product types get their own attribute sets and pricing formulas.
   drag creates the chosen vector geometry; Pen draws configurable editable strokes;
   Gradient creates editable fills for text/vector objects or a gradient rectangle.
   Clone Stamp duplicates unlocked objects and respects inherited group locks;
-  Eraser removes a whole object, not pixels; Eyedropper samples rendered canvas
+  Eraser removes artwork while keeping its layer available, not individual pixels;
+  Eyedropper samples rendered canvas
   color. Ruler reports pixel distance/angle without saving its overlay. Rotate View
   changes only the viewport; Hand pans; Zoom click/Shift-click adjusts scale and
   Reset View restores orientation/zoom. These are usable object-level editor tools,
@@ -171,6 +172,14 @@ Other product types get their own attribute sets and pricing formulas.
   raster images. Clipping masks use the nearest unclipped lower sibling's alpha;
   uniform mask strength remains a preview rather than a paintable mask. Photoshop's
   Blend If, channel controls, and full layer-style dialog are not implemented.
+- Drawing on a new layer: the first single-object insertion (freehand Pen,
+  canvas Shape/Gradient, single text, image, or Elements content) reuses the selected
+  unlocked, empty, non-group layer's ID and keeps its existing layer settings.
+  Creating a blank layer selects it and prompts the user to choose Pen, Shape,
+  or Gradient. A locked target or locked ancestor rejects the edit with a message. Eraser
+  removes that layer's artwork but leaves the layer itself available as an empty
+  target; the Layers delete action removes the layer node. The current object
+  model still places each subsequent independent object on its own layer.
 - Text tools (`/create`): add heading, subheading, and body text; browse/search
   fonts by style category; insert typography presets and paired font-combination
   designs as grouped, individually editable text layers. Selected text exposes
@@ -507,3 +516,9 @@ placeholders with Supabase data, cart and checkout.
   without inserting rows or opening sliders. Slider popovers require their own
   explicit control, close on layer changes, and advanced properties remain
   collapsed unless the user opens them. Build validation passed.
+- Fixed drawing on newly created layers: the first single object inserted into an
+  unlocked selected blank layer now uses that layer's ID and preserves its layer
+  settings; locked layers/ancestors and folders show explicit messages instead
+  of silently redirecting artwork. Eraser clears the object but retains the now-
+  blank layer for reuse; Undo/Redo keeps the pre-existing layer. Production build
+  and whitespace checks passed.
