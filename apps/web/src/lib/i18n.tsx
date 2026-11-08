@@ -8,7 +8,7 @@ type Dictionary = Record<string, string>;
 
 const en: Dictionary = {
   "nav.new": "New", "nav.popular": "Popular", "nav.collections": "Collections", "nav.guide": "Guide",
-  "nav.mhFashion": "MH Fashion", "nav.singular": "Singular", "nav.kids": "Kids", "nav.streetwear": "Streetwear", "nav.sport": "Sport", "nav.accessories": "Accessories",
+  "nav.mhFashion": "MH Fashion", "nav.nyein": "Nyein", "nav.singular": "Singular", "nav.kids": "Kids", "nav.streetwear": "Streetwear", "nav.sport": "Sport", "nav.accessories": "Accessories",
   "nav.allProducts": "All Products", "nav.newArrivals": "New Arrivals", "nav.bestSellers": "Best Sellers", "nav.collectionsPlural": "Collections",
   "nav.faq": "FAQ", "nav.contact": "Contact Form", "nav.shipping": "Shipping Info", "nav.returns": "Returns & Exchanges", "nav.sizeGuide": "Size Guide",
   "nav.about": "About Us", "nav.terms": "Terms of Use", "nav.privacy": "Privacy Policy", "nav.cookies": "Cookie Policy",
@@ -22,7 +22,7 @@ const en: Dictionary = {
 
 const my: Dictionary = {
   ...en,
-  "nav.new": "အသစ်", "nav.popular": "လူကြိုက်များ", "nav.collections": "စုစည်းမှုများ", "nav.guide": "လမ်းညွှန်", "nav.kids": "ကလေးများ", "nav.accessories": "အသုံးအဆောင်များ",
+  "nav.new": "အသစ်", "nav.popular": "လူကြိုက်များ", "nav.collections": "စုစည်းမှုများ", "nav.guide": "လမ်းညွှန်", "nav.kids": "ကလေးများ", "nav.accessories": "အသုံးအဆောင်များ", "nav.nyein": "Nyein",
   "actions.search": "ရှာဖွေရန်", "actions.searchProducts": "ထုတ်ကုန်များ ရှာဖွေရန်...", "actions.wishlist": "ဆန္ဒစာရင်း", "actions.cart": "ခြင်းတောင်း", "actions.account": "အကောင့်", "actions.create": "ဒီဇိုင်းဖန်တီးရန်", "actions.currency": "ငွေကြေး", "actions.theme": "အပြင်အဆင်ပြောင်းရန်", "actions.darkMode": "အမှောင်မုဒ်", "actions.lightMode": "အလင်းမုဒ်", "actions.toggleMenu": "မီနူးဖွင့်ရန်", "actions.subscribe": "စာရင်းသွင်းရန်",
   "product.buy": "ဝယ်ရန်", "product.buyNow": "ယခုဝယ်ရန်", "product.addToCart": "ခြင်းတောင်းထဲထည့်ရန်", "product.addedToCart": "ခြင်းတောင်းထဲ ထည့်ပြီးပါပြီ", "product.editDesign": "ဒီဇိုင်းပြင်ရန်",
   "footer.shop": "ဝယ်ယူရန်", "footer.help": "အကူအညီ", "footer.legal": "ဥပဒေ", "footer.newsletter": "သတင်းလွှာ", "footer.discount": "ပထမဆုံးအော်ဒါတွင် ၁၀% လျှော့စျေးရယူပါ", "footer.email": "အီးမေးလ်ထည့်ပါ", "footer.myanmarPayment": "မြန်မာ ငွေပေးချေမှု", "footer.download": "အက်ပ်ဒေါင်းလုဒ်လုပ်ရန်", "footer.internationalPayment": "နိုင်ငံတကာ ငွေပေးချေမှု", "footer.rights": "မူပိုင်ခွင့်အားလုံး ရှိသည်။",

@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { label: "New", href: "/new" },
   { label: "Popular", href: "/popular" },
   { label: "MH Fashion", href: "/mh-fashion" },
+  { label: "Nyein", href: "/nyein" },
   { label: "Singular", href: "/singular" },
   { label: "Kids", href: "/kids" },
   { label: "Streetwear", href: "/streetwear" },
@@ -34,6 +35,15 @@ const SHOP_LINKS = [
   { label: "New Arrivals", href: "/new" },
   { label: "Best Sellers", href: "/best-sellers" },
   { label: "Collections", href: "/collections" },
+];
+
+const COLLECTION_LINKS = [
+  { label: "T-Shirt", href: "/collections?category=t-shirts" },
+  { label: "Cup", href: "/collections?category=cups" },
+  { label: "Kids", href: "/collections?category=kids" },
+  { label: "Phone Covers", href: "/collections?category=phone-covers" },
+  { label: "Bags", href: "/collections?category=bags" },
+  { label: "Hoodies", href: "/collections?category=hoodies" },
 ];
 
 const HELP_LINKS = [
@@ -127,6 +137,11 @@ export default function MobileNav() {
       >
         <nav className="text-sm pt-1">
           {NAV_LINKS.map((link) => (
+            <LinkRow key={link.href} {...link} onClick={close} />
+          ))}
+
+          <GroupHeading>Collections</GroupHeading>
+          {COLLECTION_LINKS.map((link) => (
             <LinkRow key={link.href} {...link} onClick={close} />
           ))}
 

@@ -6,12 +6,12 @@ import HeaderActions from "./HeaderActions";
 import { useI18n } from "@/lib/i18n";
 
 const COLLECTIONS = [
-  { label: "MH Fashion", href: "/mh-fashion" },
-  { label: "Singular", href: "/singular" },
-  { label: "Kids", href: "/kids" },
-  { label: "Streetwear", href: "/streetwear" },
-  { label: "Sport", href: "/sport" },
-  { label: "Accessories", href: "/accessories" },
+  { label: "T-Shirt", href: "/collections?category=t-shirts" },
+  { label: "Cup", href: "/collections?category=cups" },
+  { label: "Kids", href: "/collections?category=kids" },
+  { label: "Phone Covers", href: "/collections?category=phone-covers" },
+  { label: "Bags", href: "/collections?category=bags" },
+  { label: "Hoodies", href: "/collections?category=hoodies" },
 ];
 
 export default function Header() {
@@ -51,6 +51,9 @@ export default function Header() {
                   </div>
                 </div>
               </div>
+
+              <a href="/mh-fashion" className="hover:text-accent whitespace-nowrap">{t("nav.mhFashion")}</a>
+              <a href="/nyein" className="hover:text-accent whitespace-nowrap">{t("nav.nyein")}</a>
 
               <a href="/guide" className="hover:text-accent">{t("nav.guide")}</a>
             </nav>
