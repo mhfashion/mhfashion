@@ -152,10 +152,14 @@ Other product types get their own attribute sets and pricing formulas.
   numeric 0–100% field. New groups default to Pass Through, so child layers keep
   blending individually; choosing another group mode composites the group once
   before blending it with the rest of the canvas. Fill is available only for
-  individual layers and is separate from overall opacity. The selected-layer
-  strip follows Photoshop's control order: blend mode and Opacity share the first
-  row; Lock controls and Fill share the second row; percent fields open compact
-  sliders on demand. Layer visibility is placed before each thumbnail. Locking
+  individual layers and is separate from overall opacity. The right-side Layers
+  Box is mounted at editor load, including before any layer is selected. Its
+  blend/Opacity and Lock/Fill rows keep fixed positions; without an eligible
+  selection they show neutral defaults and remain disabled. Selecting a layer
+  changes values only: it must not insert/expand these rows or open a popover.
+  Opacity/Fill sliders open only through their explicit chevrons and close when
+  selection changes; the advanced properties accordion stays closed until the
+  user opens it. Layer visibility is placed before each thumbnail. Locking
   is still a single all-or-nothing toggle; Photoshop's separate transparent-
   pixel, image-pixel, position, and all-lock modes are not yet implemented. Adobe
   documents the blend menu at the top and Fill below Opacity; see [Set layer
@@ -496,3 +500,10 @@ placeholders with Supabase data, cart and checkout.
   remain object-level rather than pixel/anchor editing. The Next.js production
   build passed; a read-only review found no P0/P1 issues and its lock/raster-status
   findings were corrected before delivery.
+- Stabilized the Photoshop-style Layers Box after user feedback: the right dock
+  remains visible from editor load, with its header, layer list, and fixed
+  Blend/Opacity and Lock/Fill rows present before selection. Empty-state controls
+  show neutral values and are disabled; selecting a layer updates their values
+  without inserting rows or opening sliders. Slider popovers require their own
+  explicit control, close on layer changes, and advanced properties remain
+  collapsed unless the user opens them. Build validation passed.

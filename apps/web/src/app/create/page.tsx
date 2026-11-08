@@ -519,7 +519,7 @@ export default function EditorPage() {
             onToolColorChange={setToolColor}
           />
         </main>
-        <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-l border-border bg-bg-surface lg:flex">
+        <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-l border-border bg-bg-surface md:flex">
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="border-b border-border p-3">
               <div className="mb-2 text-xs font-bold">Mockup</div>

@@ -53,15 +53,15 @@ function displayName(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function PanelPercentControl({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function PanelPercentControl({ label, value, onChange, disabled = false }: { label: string; value: number; onChange: (value: number) => void; disabled?: boolean }) {
   const [sliderOpen, setSliderOpen] = useState(false);
   return <div className="relative flex h-6 shrink-0 items-center rounded border border-border bg-bg-surface" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSliderOpen(false); }}>
-    <input aria-label={`${label} percentage`} type="number" min="0" max="100" value={value} onChange={(event) => { if (event.target.value !== "") onChange(Math.max(0, Math.min(100, Number(event.target.value)))); }} className="h-full w-9 bg-transparent px-1 text-right text-[10px] text-text-primary outline-none" />
+    <input aria-label={`${label} percentage`} type="number" min="0" max="100" disabled={disabled} value={value} onChange={(event) => { if (event.target.value !== "") onChange(Math.max(0, Math.min(100, Number(event.target.value)))); }} className="h-full w-9 bg-transparent px-1 text-right text-[10px] text-text-primary outline-none disabled:cursor-not-allowed disabled:opacity-50" />
     <span className="pr-0.5 text-[9px] text-text-muted">%</span>
-    <button type="button" aria-label={`Adjust ${label.toLowerCase()} with slider`} aria-expanded={sliderOpen} onClick={() => setSliderOpen((open) => !open)} className="flex h-full items-center border-l border-border px-1 text-text-muted hover:bg-bg"><ChevronDown size={11} /></button>
-    {sliderOpen && <div className="absolute right-0 top-[calc(100%+4px)] z-30 w-36 rounded-md border border-border bg-bg-surface p-2 shadow-xl">
+    <button type="button" disabled={disabled} aria-label={`Adjust ${label.toLowerCase()} with slider`} aria-expanded={!disabled && sliderOpen} onClick={() => setSliderOpen((open) => !open)} className="flex h-full items-center border-l border-border px-1 text-text-muted hover:bg-bg disabled:cursor-not-allowed disabled:opacity-40"><ChevronDown size={11} /></button>
+    {sliderOpen && !disabled && <div className="absolute right-0 top-[calc(100%+4px)] z-30 w-36 rounded-md border border-border bg-bg-surface p-2 shadow-xl">
       <div className="mb-1 flex justify-between text-[9px] text-text-muted"><span>{label}</span><span>{value}%</span></div>
-      <input aria-label={`${label} slider`} type="range" min="0" max="100" value={value} onChange={(event) => onChange(Number(event.target.value))} className="block h-3 w-full accent-lime-400" />
+      <input aria-label={`${label} slider`} type="range" min="0" max="100" disabled={disabled} value={value} onChange={(event) => onChange(Number(event.target.value))} className="block h-3 w-full accent-lime-400" />
     </div>}
   </div>;
 }
@@ -153,20 +153,20 @@ export default function LayersPanel({
         <span className="text-[9px] text-text-faint">{layers.length} items</span>
       </div>
 
-      {selected && <div className="relative z-10 shrink-0 space-y-1 border-b border-border bg-bg px-2.5 py-1.5">
+      <div className="relative z-10 shrink-0 space-y-1 border-b border-border bg-bg px-2.5 py-1.5">
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="layer-blend-mode">Blend mode</label>
-          <select id="layer-blend-mode" aria-label="Layer blend mode" value={selectedMode} onChange={(event) => onUpdateLayer(selected.id, { blendMode: event.target.value as BlendMode })} className={`${fieldClass} h-6 flex-1 text-[10px]`}>
-            {(selected.isGroup ? GROUP_BLEND_MODES : LAYER_BLEND_MODES).map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
+          <select id="layer-blend-mode" aria-label="Layer blend mode" disabled={!selected} value={selectedMode} onChange={(event) => { if (selected) onUpdateLayer(selected.id, { blendMode: event.target.value as BlendMode }); }} className={`${fieldClass} h-6 flex-1 text-[10px] disabled:cursor-not-allowed disabled:opacity-50`}>
+            {(selected?.isGroup ? GROUP_BLEND_MODES : LAYER_BLEND_MODES).map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
           </select>
-          <div className="flex shrink-0 items-center gap-1 text-[9px] text-text-muted"><span>Opacity</span><PanelPercentControl label="Opacity" value={selected.opacity ?? 100} onChange={(value) => onUpdateLayer(selected.id, { opacity: value })} /></div>
+          <div className="flex shrink-0 items-center gap-1 text-[9px] text-text-muted"><span>Opacity</span><PanelPercentControl key={`${selected?.id ?? "none"}-opacity`} label="Opacity" value={selected?.opacity ?? 100} disabled={!selected} onChange={(value) => { if (selected) onUpdateLayer(selected.id, { opacity: value }); }} /></div>
         </div>
         <div className="flex items-center gap-1.5 border-t border-border/70 pt-1">
           <span className="text-[9px] text-text-muted">Lock</span>
-          <button type="button" title={selected.locked ? "Unlock layer" : "Lock layer"} aria-label={selected.locked ? "Unlock selected layer" : "Lock selected layer"} onClick={() => onUpdateLayer(selected.id, { locked: !selected.locked })} className={`rounded p-1 hover:bg-bg-surface ${selected.locked ? "text-accent" : "text-text-secondary"}`}>{selected.locked ? <Lock size={13} /> : <LockOpen size={13} />}</button>
-          {!selected.isGroup && <div className="ml-auto flex items-center gap-1 text-[9px] text-text-muted"><span>Fill</span><PanelPercentControl label="Fill" value={selected.fillOpacity ?? 100} onChange={(value) => onUpdateLayer(selected.id, { fillOpacity: value })} /></div>}
+          <button type="button" disabled={!selected} title={selected?.locked ? "Unlock layer" : "Lock layer"} aria-label={selected?.locked ? "Unlock selected layer" : "Lock selected layer"} onClick={() => { if (selected) onUpdateLayer(selected.id, { locked: !selected.locked }); }} className={`rounded p-1 hover:bg-bg-surface disabled:cursor-not-allowed disabled:opacity-40 ${selected?.locked ? "text-accent" : "text-text-secondary"}`}>{selected?.locked ? <Lock size={13} /> : <LockOpen size={13} />}</button>
+          <div className="ml-auto flex items-center gap-1 text-[9px] text-text-muted"><span>Fill</span><PanelPercentControl key={`${selected?.id ?? "none"}-fill`} label="Fill" value={selected?.fillOpacity ?? 100} disabled={!selected || selected.isGroup} onChange={(value) => { if (selected && !selected.isGroup) onUpdateLayer(selected.id, { fillOpacity: value }); }} /></div>
         </div>
-      </div>}
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
         {!visibleLayers.length && <p className="px-2 py-6 text-center text-[10px] text-text-faint">No layers yet. Add a layer or upload an image.</p>}
@@ -192,9 +192,9 @@ export default function LayersPanel({
           })}
         </div>
 
-        {selected && <details open={showProperties} onToggle={(event) => setShowProperties(event.currentTarget.open)} className="mt-2 border-t border-border pt-1.5">
-          <summary className="cursor-pointer select-none px-1 py-1 text-[9px] font-semibold text-text-muted">Selected layer properties</summary>
-          <div className="space-y-2 px-1 py-1.5">
+        <details open={showProperties} onToggle={(event) => setShowProperties(event.currentTarget.open)} className="mt-2 border-t border-border pt-1.5">
+          <summary className="cursor-pointer select-none px-1 py-1 text-[9px] font-semibold text-text-muted">Layer properties</summary>
+          {selected ? <div className="space-y-2 px-1 py-1.5">
             {selectedMark?.kind === "Text" && <div className="space-y-2 border-b border-border pb-2">
               <label className="block text-[9px] text-text-muted">Font family<select aria-label="Text font family" value={selectedMark.fontFamily ?? "Arial"} onChange={(event) => onUpdateMark(selectedMark.id, { fontFamily: event.target.value })} className={`${fieldClass} mt-1 w-full`}>{FONT_LIBRARY.map((font) => <option key={font.id} value={font.family}>{font.name}</option>)}</select></label>
               <label className="block text-[9px] text-text-muted">Font size · {selectedMark.fontSize ?? 32} px<input aria-label="Text font size" type="range" min="12" max="120" value={selectedMark.fontSize ?? 32} onChange={(event) => onUpdateMark(selectedMark.id, { fontSize: Number(event.target.value) })} className="mt-1 w-full accent-lime-400" /></label>
@@ -216,8 +216,8 @@ export default function LayersPanel({
             {!selected.isGroup && <label className="block text-[9px] text-text-muted">Flow · {selected.flow ?? 100}%<input aria-label="Layer flow" type="range" min="0" max="100" value={selected.flow ?? 100} onChange={(event) => onUpdateLayer(selected.id, { flow: Number(event.target.value) })} className="mt-1 w-full accent-lime-400" /></label>}
             <div className="flex flex-wrap gap-1"><button type="button" disabled={!canToggleClipping} onClick={() => onUpdateLayer(selected.id, { clipping: !selected.clipping })} title="Use the nearest unclipped layer below as the alpha base" className={`rounded border px-1.5 py-1 text-[9px] disabled:opacity-40 ${selected.clipping ? "border-accent text-accent" : "border-border text-text-secondary"}`}>{selected.clipping ? "Release clipping mask" : "Create clipping mask"}</button>{selected.hasMask && <label className="block w-full text-[9px] text-text-muted">Mask density · {selected.maskAmount ?? 100}%<input aria-label="Layer mask density" type="range" min="0" max="100" value={selected.maskAmount ?? 100} onChange={(event) => onUpdateLayer(selected.id, { maskAmount: Number(event.target.value) })} className="mt-1 w-full accent-lime-400" /></label>}</div>
             <div className="space-y-1 border-t border-border pt-2"><div className="flex gap-1"><select aria-label="Choose layer effect" value={effectToAdd} onChange={(event) => setEffectToAdd(event.target.value)} className={`${fieldClass} flex-1`}>{EFFECTS.map((effect) => <option key={effect} value={effect}>{displayName(effect)}</option>)}</select><button type="button" onClick={() => onUpdateLayer(selected.id, { effects: effects.includes(effectToAdd) ? effects : [...effects, effectToAdd] })} className="rounded bg-bg-surface px-2 text-[9px]">Add</button></div>{effects.length > 0 && <div className="flex flex-wrap gap-1">{effects.map((effect) => <button type="button" key={effect} onClick={() => onUpdateLayer(selected.id, { effects: effects.filter((item) => item !== effect) })} title="Remove effect" className="rounded bg-accent/10 px-1.5 py-0.5 text-[8px] text-accent">{displayName(effect)} ×</button>)}</div>}</div>
-          </div>
-        </details>}
+          </div> : <p className="px-1 py-2 text-[9px] text-text-faint">Select a layer to view its advanced properties.</p>}
+        </details>
       </div>
 
       <div className="flex shrink-0 items-center justify-around border-t border-border p-1.5 text-text-secondary">
