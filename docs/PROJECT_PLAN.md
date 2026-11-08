@@ -141,9 +141,16 @@ Other product types get their own attribute sets and pricing formulas.
   numeric 0–100% field. New groups default to Pass Through, so child layers keep
   blending individually; choosing another group mode composites the group once
   before blending it with the rest of the canvas. Fill is available only for
-  individual layers and is separate from overall opacity. The panel places the
-  selected layer's blend/opacity controls above the stack and exposes Fill below
-  opacity. Fill scales text/shape/path color alpha and raster image alpha;
+  individual layers and is separate from overall opacity. The selected-layer
+  strip follows Photoshop's control order: blend mode and Opacity share the first
+  row; Lock controls and Fill share the second row; percent fields open compact
+  sliders on demand. Layer visibility is placed before each thumbnail. Locking
+  is still a single all-or-nothing toggle; Photoshop's separate transparent-
+  pixel, image-pixel, position, and all-lock modes are not yet implemented. Adobe
+  documents the blend menu at the top and Fill below Opacity; see [Set layer
+  opacity and blending modes](https://helpx.adobe.com/photoshop/desktop/create-manage-layers/apply-layer-effects/set-layer-opacity-and-blending-modes.html)
+  and [Work with the Layers panel](https://helpx.adobe.com/photoshop/desktop/create-manage-layers/get-started-layers/work-with-the-layers-panel.html).
+  Fill scales text/shape/path color alpha and raster image alpha;
   advanced Photoshop layer-style interactions are still approximate. Shadow,
   stroke, and glow are simplified canvas effects; blur and sharpen apply to
   raster images. Clipping masks use the nearest unclipped lower sibling's alpha;
@@ -308,7 +315,8 @@ color formatting; freehand vector Pen paths; zoom and hand-pan; browser-local
 image import; text/basic-shape insertion; Undo/Redo; Save and restore via local
 storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   grouping, reorder, deletion, inline rename, collapsible groups, drag/drop nesting,
-  thumbnails, a Photoshop-inspired compact selected-layer control strip, blend
+  thumbnails, a Photoshop-inspired compact selected-layer control strip with the
+  blend/Opacity and Lock/Fill row arrangement, blend
   modes, opacity, per-layer Fill, Pass Through and isolated group compositing,
   flow under layer properties, effect toggles, alpha clipping masks, embedded
   raster Smart Object controls, and uniform mask strength. This is not a
@@ -390,3 +398,8 @@ placeholders with Supabase data, cart and checkout.
   removes the Smart Object metadata. This is not a PSD/PSB document container:
   editable internal contents, linked assets, multi-layer/vector Smart Objects,
   and Smart Filters remain future work.
+- Researched Adobe's current Layers panel guidance and refined the selected-layer
+  controls to match its layout: blend mode and Opacity on the first line, Lock
+  and Fill on the second, on-demand slider popovers, and visibility controls in
+  the leading layer-row column before thumbnails. This is a closer layout match,
+  not a claim of pixel-for-pixel Photoshop equivalence.

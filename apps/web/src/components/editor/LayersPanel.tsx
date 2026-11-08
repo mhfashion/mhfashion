@@ -52,6 +52,19 @@ function displayName(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function PanelPercentControl({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  const [sliderOpen, setSliderOpen] = useState(false);
+  return <div className="relative flex h-6 shrink-0 items-center rounded border border-border bg-bg-surface" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSliderOpen(false); }}>
+    <input aria-label={`${label} percentage`} type="number" min="0" max="100" value={value} onChange={(event) => { if (event.target.value !== "") onChange(Math.max(0, Math.min(100, Number(event.target.value)))); }} className="h-full w-9 bg-transparent px-1 text-right text-[10px] text-text-primary outline-none" />
+    <span className="pr-0.5 text-[9px] text-text-muted">%</span>
+    <button type="button" aria-label={`Adjust ${label.toLowerCase()} with slider`} aria-expanded={sliderOpen} onClick={() => setSliderOpen((open) => !open)} className="flex h-full items-center border-l border-border px-1 text-text-muted hover:bg-bg"><ChevronDown size={11} /></button>
+    {sliderOpen && <div className="absolute right-0 top-[calc(100%+4px)] z-30 w-36 rounded-md border border-border bg-bg-surface p-2 shadow-xl">
+      <div className="mb-1 flex justify-between text-[9px] text-text-muted"><span>{label}</span><span>{value}%</span></div>
+      <input aria-label={`${label} slider`} type="range" min="0" max="100" value={value} onChange={(event) => onChange(Number(event.target.value))} className="block h-3 w-full accent-lime-400" />
+    </div>}
+  </div>;
+}
+
 function LayerThumbnail({ layer, mark }: { layer: EditorLayer; mark?: CanvasMark }) {
   if (layer.isGroup) return <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded border border-border bg-bg-surface text-accent"><FolderOpen size={14} /></span>;
   if (mark?.imageSrc) return <span className="h-7 w-9 shrink-0 overflow-hidden rounded border border-border bg-bg-surface"><img src={mark.imageSrc} alt="" className="h-full w-full object-contain" /></span>;
@@ -131,10 +144,6 @@ export default function LayersPanel({
     setDraggedId(null);
     setDropHint(null);
   }
-  function updatePercent(key: "opacity" | "fillOpacity", value: string) {
-    if (!selected || value === "") return;
-    onUpdateLayer(selected.id, { [key]: Math.max(0, Math.min(100, Number(value))) });
-  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col border-t border-border">
@@ -143,27 +152,18 @@ export default function LayersPanel({
         <span className="text-[9px] text-text-faint">{layers.length} items</span>
       </div>
 
-      {selected && <div className="shrink-0 space-y-1.5 border-b border-border bg-bg px-2.5 py-2">
-        <div className="grid grid-cols-[minmax(0,1fr)_72px] items-center gap-1.5">
+      {selected && <div className="relative z-10 shrink-0 space-y-1 border-b border-border bg-bg px-2.5 py-1.5">
+        <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="layer-blend-mode">Blend mode</label>
-          <select id="layer-blend-mode" aria-label="Layer blend mode" value={selectedMode} onChange={(event) => onUpdateLayer(selected.id, { blendMode: event.target.value as BlendMode })} className={fieldClass}>
+          <select id="layer-blend-mode" aria-label="Layer blend mode" value={selectedMode} onChange={(event) => onUpdateLayer(selected.id, { blendMode: event.target.value as BlendMode })} className={`${fieldClass} h-6 flex-1 text-[10px]`}>
             {(selected.isGroup ? GROUP_BLEND_MODES : LAYER_BLEND_MODES).map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
           </select>
-          <label className="flex items-center gap-1 text-[9px] text-text-muted">Opacity
-            <input aria-label="Layer opacity percentage" type="number" min="0" max="100" value={selected.opacity ?? 100} onChange={(event) => updatePercent("opacity", event.target.value)} className={`${fieldClass} w-11 px-1 text-right`} />%
-          </label>
+          <div className="flex shrink-0 items-center gap-1 text-[9px] text-text-muted"><span>Opacity</span><PanelPercentControl label="Opacity" value={selected.opacity ?? 100} onChange={(value) => onUpdateLayer(selected.id, { opacity: value })} /></div>
         </div>
-        <input aria-label="Layer opacity" type="range" min="0" max="100" value={selected.opacity ?? 100} onChange={(event) => onUpdateLayer(selected.id, { opacity: Number(event.target.value) })} className="block h-3 w-full accent-lime-400" />
-        {!selected.isGroup && <div className="grid grid-cols-[42px_minmax(0,1fr)_44px] items-center gap-1.5 border-t border-border/70 pt-1.5">
-          <span className="text-[9px] text-text-muted">Fill</span>
-          <input aria-label="Layer Fill" type="range" min="0" max="100" value={selected.fillOpacity ?? 100} onChange={(event) => onUpdateLayer(selected.id, { fillOpacity: Number(event.target.value) })} className="h-3 w-full accent-lime-400" />
-          <input aria-label="Layer Fill percentage" type="number" min="0" max="100" value={selected.fillOpacity ?? 100} onChange={(event) => updatePercent("fillOpacity", event.target.value)} className={`${fieldClass} w-11 px-1 text-right`} />
-        </div>}
-        <div className="flex items-center gap-1 border-t border-border/70 pt-1">
-          <span className="mr-auto text-[9px] text-text-muted">Lock</span>
+        <div className="flex items-center gap-1.5 border-t border-border/70 pt-1">
+          <span className="text-[9px] text-text-muted">Lock</span>
           <button type="button" title={selected.locked ? "Unlock layer" : "Lock layer"} aria-label={selected.locked ? "Unlock selected layer" : "Lock selected layer"} onClick={() => onUpdateLayer(selected.id, { locked: !selected.locked })} className={`rounded p-1 hover:bg-bg-surface ${selected.locked ? "text-accent" : "text-text-secondary"}`}>{selected.locked ? <Lock size={13} /> : <LockOpen size={13} />}</button>
-          <button type="button" title={selected.visible ? "Hide layer" : "Show layer"} aria-label={selected.visible ? "Hide selected layer" : "Show selected layer"} onClick={() => onUpdateLayer(selected.id, { visible: !selected.visible })} className="rounded p-1 text-text-secondary hover:bg-bg-surface">{selected.visible ? <Eye size={13} /> : <EyeOff size={13} />}</button>
-          <span className="ml-1 max-w-[90px] truncate text-[9px] text-text-faint" title={selected.name}>{selected.name}</span>
+          {!selected.isGroup && <div className="ml-auto flex items-center gap-1 text-[9px] text-text-muted"><span>Fill</span><PanelPercentControl label="Fill" value={selected.fillOpacity ?? 100} onChange={(value) => onUpdateLayer(selected.id, { fillOpacity: value })} /></div>}
         </div>
       </div>}
 
@@ -182,11 +182,11 @@ export default function LayersPanel({
               onDragOver={(event) => handleDragOver(event, layer)} onDrop={(event) => dropOnLayer(event, layer)}
               className={`flex min-h-9 items-center gap-1 rounded px-1 ${selectedLayerId === layer.id ? "bg-accent/10 ring-1 ring-accent/40" : "hover:bg-bg-surface"} ${nested ? "ml-4" : ""} ${dropStyle} ${draggedId === layer.id ? "opacity-40" : ""}`}>
               {layer.isGroup ? <button type="button" title={collapsed ? "Expand group" : "Collapse group"} aria-label={collapsed ? "Expand group" : "Collapse group"} onClick={() => setCollapsedGroups((current) => { const next = new Set(current); next.has(layer.id) ? next.delete(layer.id) : next.add(layer.id); return next; })} className="shrink-0 text-text-muted">{collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}</button> : <span className="w-[13px] shrink-0" />}
+              <button type="button" title={layer.visible ? "Hide layer" : "Show layer"} aria-label={layer.visible ? "Hide layer" : "Show layer"} onClick={() => onUpdateLayer(layer.id, { visible: !layer.visible })} className="shrink-0 text-text-muted hover:text-text-primary">{layer.visible ? <Eye size={13} /> : <EyeOff size={13} />}</button>
               {renamingId === layer.id ? <div className="flex min-w-0 flex-1 items-center gap-1.5"><LayerThumbnail layer={layer} mark={mark} /><input autoFocus value={draftName} onChange={(event) => setDraftName(event.target.value)} onBlur={() => finishRename(layer)} onKeyDown={(event) => { if (event.key === "Enter") finishRename(layer); if (event.key === "Escape") setRenamingId(null); }} className="min-w-0 flex-1 rounded border border-accent bg-bg px-1 py-0.5 text-[10px] outline-none" /></div> : <button type="button" aria-pressed={selectedLayerId === layer.id} onClick={() => onSelectLayer(layer.id)} onDoubleClick={() => { setRenamingId(layer.id); setDraftName(layer.name); }} className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[10px]">
                 <LayerThumbnail layer={layer} mark={mark} /><span className="min-w-0 flex-1 truncate" title={`${layer.name} · double-click to rename`}>{layer.name}</span>{layer.isSmartObject && <span title="Embedded Smart Object"><Box size={11} className="shrink-0 text-accent" /></span>}{layer.clipping && <span title="Clipped to base layer below"><SquareStack size={11} className="shrink-0 text-accent" /></span>}{layer.hasMask && <Scissors size={11} className="shrink-0 text-text-muted" />}{(layer.effects?.length ?? 0) > 0 && <span className="shrink-0 text-[9px] font-semibold text-text-muted">fx</span>}
               </button>}
-              <button type="button" title={layer.visible ? "Hide layer" : "Show layer"} aria-label={layer.visible ? "Hide layer" : "Show layer"} onClick={() => onUpdateLayer(layer.id, { visible: !layer.visible })} className="shrink-0 text-text-muted hover:text-text-primary">{layer.visible ? <Eye size={12} /> : <EyeOff size={12} />}</button>
-              <button type="button" title={layer.locked ? "Unlock layer" : "Lock layer"} aria-label={layer.locked ? "Unlock layer" : "Lock layer"} onClick={() => onUpdateLayer(layer.id, { locked: !layer.locked })} className="shrink-0 text-text-muted hover:text-text-primary">{layer.locked ? <Lock size={12} /> : <LockOpen size={12} />}</button>
+              {layer.locked && <button type="button" title="Unlock layer" aria-label="Unlock layer" onClick={() => onUpdateLayer(layer.id, { locked: false })} className="shrink-0 text-accent"><Lock size={12} /></button>}
             </div>;
           })}
         </div>
