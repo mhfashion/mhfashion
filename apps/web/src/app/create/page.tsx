@@ -31,11 +31,14 @@ export default function EditorPage() {
   const [layers, setLayers] = useState(INITIAL_LAYERS);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("f1");
   const [mockup, setMockup] = useState<MockupId | null>(null);
+  const [mockupLibraryOpen, setMockupLibraryOpen] = useState(false);
   const [selection, setSelection] = useState<AttributeSelection>({ product: "T-shirt", printMethod: "DTF", fabricType: "Combed Cotton", knitStructure: "Single Jersey", gsm: "180", color: "Navy", cutting: "Crew Neck", size: "M" });
 
   const toggleLayerField = (side: Side, id: string, field: "visible" | "locked") => setLayers((prev) => ({ ...prev, [side]: prev[side].map((layer) => layer.id === id ? { ...layer, [field]: !layer[field] } : layer) }));
   const addLayer = (name: string, id: string) => setLayers((prev) => ({ ...prev, [activeSide]: [...prev[activeSide], { id, name, visible: true, locked: false, isGroup: false }] }));
   const removeLayer = (id: string) => setLayers((prev) => ({ ...prev, [activeSide]: prev[activeSide].filter((layer) => layer.id !== id) }));
+  const mockupName = mockup ? ({ studio: "Studio T-shirt", flatlay: "Flat lay tee", hoodie: "Classic hoodie", oversized: "Oversized tee", cap: "Cotton cap", tote: "Canvas tote" }[mockup] ?? "Mockup") : null;
+  const chooseMockup = (id: MockupId) => { setMockup(id); setMockupLibraryOpen(false); };
 
   return (
     <div className="flex h-screen min-h-[680px] flex-col overflow-hidden bg-bg">
@@ -51,15 +54,16 @@ export default function EditorPage() {
         {activePanel && <EditorFlyout panel={activePanel} />}
 
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f4f4f1] dark:bg-[#111]">
-          <InteractiveCanvas activeTool={activeTool} activeSide={activeSide} onAddLayer={addLayer} onRemoveLayer={removeLayer} />
+          <InteractiveCanvas activeTool={activeTool} activeSide={activeSide} mockupName={mockupName} onAddLayer={addLayer} onRemoveLayer={removeLayer} />
         </main>
 
         <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-l border-border bg-bg-surface lg:flex">
-          <div className="min-h-0 flex-1 overflow-y-auto"><MockupLibrary selected={mockup} onSelect={setMockup} /><LayersPanel side={activeSide} layers={layers[activeSide]} selectedLayerId={selectedLayerId} onSelectLayer={setSelectedLayerId} onToggleVisible={(id) => toggleLayerField(activeSide, id, "visible")} onToggleLock={(id) => toggleLayerField(activeSide, id, "locked")} /></div>
+          <div className="min-h-0 flex-1 overflow-y-auto"><MockupLibrary selected={mockup} onSelect={chooseMockup} /><LayersPanel side={activeSide} layers={layers[activeSide]} selectedLayerId={selectedLayerId} onSelectLayer={setSelectedLayerId} onToggleVisible={(id) => toggleLayerField(activeSide, id, "visible")} onToggleLock={(id) => toggleLayerField(activeSide, id, "locked")} /></div>
           {mockup && <div className="border-t border-border p-3"><div className="mb-2 text-[10px] font-semibold text-accent">Mockup selected</div><button onClick={() => setMockup(null)} className="w-full rounded border border-border px-2 py-1.5 text-[10px] text-text-secondary">Remove mockup</button></div>}
         </aside>
       </div>
-      <div className="shrink-0 border-t border-border bg-bg"><AttributeBar selection={selection} onChange={setSelection} /></div>
+      <div className="shrink-0 border-t border-border bg-bg"><AttributeBar selection={selection} onChange={setSelection} mockupName={mockupName} onAddMockup={() => setMockupLibraryOpen(true)} onRemoveMockup={() => setMockup(null)} /></div>
+      {mockupLibraryOpen && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center"><div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-bg-surface shadow-2xl"><div className="flex items-center justify-between border-b border-border px-3 py-2"><span className="text-xs font-bold">Add a mockup</span><button type="button" onClick={() => setMockupLibraryOpen(false)} className="text-lg text-text-muted">×</button></div><MockupLibrary selected={mockup} onSelect={chooseMockup} /></div></div>}
     </div>
   );
 }

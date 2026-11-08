@@ -93,9 +93,15 @@ function Select({
 export default function AttributeBar({
   selection,
   onChange,
+  mockupName,
+  onAddMockup,
+  onRemoveMockup,
 }: {
   selection: AttributeSelection;
   onChange: (next: AttributeSelection) => void;
+  mockupName?: string | null;
+  onAddMockup?: () => void;
+  onRemoveMockup?: () => void;
 }) {
   const fabricOptions = FABRIC_BY_PRINT_METHOD[selection.printMethod] ?? [];
   const knitOptions = KNIT_BY_FABRIC[selection.fabricType] ?? [];
@@ -123,12 +129,18 @@ export default function AttributeBar({
 
   return (
     <div className="border-t border-border px-4 py-2.5 flex items-center gap-4 flex-wrap">
-      <Field label="Product">
-        <Select
-          value={selection.product}
-          options={PRODUCTS}
-          onChange={(product) => onChange({ ...selection, product })}
-        />
+      <Field label="Mockup">
+        {mockupName ? (
+          <div className="flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/5 px-1.5 py-1">
+            <span className="max-w-24 truncate text-[10px] font-semibold text-accent">{mockupName}</span>
+            <button type="button" onClick={onAddMockup} className="text-[9px] text-text-secondary hover:text-accent">Replace</button>
+            <button type="button" onClick={onRemoveMockup} className="text-[9px] text-text-muted hover:text-accent">×</button>
+          </div>
+        ) : (
+          <button type="button" onClick={onAddMockup} className="flex items-center gap-1 rounded-md border border-dashed border-accent px-2 py-1 text-[10px] font-semibold text-accent hover:bg-accent/10">
+            <span className="text-sm leading-none">+</span> Add mockup
+          </button>
+        )}
       </Field>
 
       <Field label="Print Method">
