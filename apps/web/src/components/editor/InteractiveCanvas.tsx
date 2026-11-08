@@ -27,6 +27,9 @@ export type CanvasMark = {
   charSpacing?: number;
   lineHeight?: number;
   strokeWidth?: number;
+  shapeWidth?: number;
+  shapeHeight?: number;
+  gradient?: { startColor: string; endColor: string; angle: number };
   pathData?: Array<Array<string | number>>;
   originX?: "left" | "center" | "right";
   originY?: "top" | "center" | "bottom";
@@ -38,20 +41,20 @@ export type CanvasMark = {
 
 const toolMessages: Partial<Record<ToolId, string>> = {
   move: "Select and drag objects; use corner handles to resize or rotate",
-  marquee: "Drag over objects to select a group",
-  lasso: "Lasso selection is not available yet",
-  "magic-wand": "Magic Wand is not available yet",
-  eyedropper: "Eyedropper is not available yet",
-  shape: "Click an empty canvas area to add a rectangle",
+  marquee: "Drag a rectangle to select multiple objects",
+  lasso: "Draw around object centers to make a freeform selection",
+  "magic-wand": "Click a color to select matching vector objects",
+  eyedropper: "Click visible artwork to sample its rendered color",
+  shape: "Drag to draw the selected editable shape",
   pen: "Draw freehand vector strokes on the canvas",
-  "path-select": "Path selection is not available yet",
-  "clone-stamp": "Click an empty area to duplicate the latest object",
-  gradient: "Gradient tool is not available yet",
-  eraser: "Click an object to remove it",
-  ruler: "Ruler tool is not available yet",
-  "rotate-view": "Rotate the selected object with its rotation handle",
-  hand: "Hand-pan mode",
-  zoom: "Use the zoom controls above the canvas",
+  "path-select": "Click and move a whole Pen path; anchor editing is not available",
+  "clone-stamp": "Select or click an object, then click to stamp a copy",
+  gradient: "Drag on empty canvas for a gradient shape or drag across text/vector artwork to fill it",
+  eraser: "Click an object to remove that whole layer",
+  ruler: "Drag to measure canvas-pixel distance and angle",
+  "rotate-view": "Drag to rotate the canvas view without changing artwork",
+  hand: "Drag to pan the canvas view",
+  zoom: "Click the canvas to zoom in; Shift-click to zoom out",
 };
 
 type Props = {
@@ -68,11 +71,18 @@ type Props = {
   onRemoveMark: (id: string) => void;
   onMarksChange: (marks: CanvasMark[]) => void;
   onClear: () => void;
+  toolColor: string;
+  onToolColorChange: (color: string) => void;
 };
 
-export default function InteractiveCanvas({ activeTool, activeSide, onSideChange, mockupName, marks, layers, selectedLayerId, onSelectLayer, onAddMark, onAddElement, onRemoveMark, onMarksChange, onClear }: Props) {
+export default function InteractiveCanvas({ activeTool, activeSide, onSideChange, mockupName, marks, layers, selectedLayerId, onSelectLayer, onAddMark, onAddElement, onRemoveMark, onMarksChange, onClear, toolColor, onToolColorChange }: Props) {
   const [zoom, setZoom] = useState(100);
   const [grid, setGrid] = useState(true);
+  const [shapeType, setShapeType] = useState<ShapeType>("rectangle");
+  const [penWidth, setPenWidth] = useState(6);
+  const [gradientEndColor, setGradientEndColor] = useState("#111827");
+  const [magicWandTolerance, setMagicWandTolerance] = useState(48);
+  const [resetViewToken, setResetViewToken] = useState(0);
   const [status, setStatus] = useState(toolMessages.move ?? "Ready");
 
   useEffect(() => setStatus(toolMessages[activeTool] ?? "Ready"), [activeTool]);
@@ -99,6 +109,31 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
       <div className="flex shrink-0 items-center justify-between border-b border-border bg-bg px-3 py-1.5">
         <div className="flex items-center gap-1 rounded bg-bg-surface p-0.5">
           {(["Front", "Back"] as const).map((side) => <button key={side} type="button" onClick={() => { onSideChange(side); onSelectLayer(null); }} className={`rounded px-3 py-1 text-[10px] font-semibold ${activeSide === side ? "bg-accent text-accent-foreground" : "text-text-muted"}`}>{side}</button>)}
+        </div>
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 overflow-x-auto px-2 text-[9px] text-text-muted">
+          {activeTool === "shape" && <>
+            <select aria-label="Shape type" value={shapeType} onChange={(event) => setShapeType(event.target.value as ShapeType)} className="max-w-24 rounded border border-border bg-bg px-1.5 py-1">
+              <option value="rectangle">Rectangle</option><option value="circle">Circle</option><option value="triangle">Triangle</option><option value="star">Star</option>
+            </select>
+            <input aria-label="Shape color" title="Shape color" type="color" value={toolColor} onChange={(event) => onToolColorChange(event.target.value)} className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0.5" />
+          </>}
+          {activeTool === "pen" && <>
+            <input aria-label="Pen color" title="Pen color" type="color" value={toolColor} onChange={(event) => onToolColorChange(event.target.value)} className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0.5" />
+            <label className="flex items-center gap-1">Width <input aria-label="Pen width" type="range" min="1" max="32" value={penWidth} onChange={(event) => setPenWidth(Number(event.target.value))} className="w-16" /><span>{penWidth}</span></label>
+          </>}
+          {activeTool === "gradient" && <>
+            <label className="flex items-center gap-1">From <input aria-label="Gradient start color" type="color" value={toolColor} onChange={(event) => onToolColorChange(event.target.value)} className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0.5" /></label>
+            <label className="flex items-center gap-1">To <input aria-label="Gradient end color" type="color" value={gradientEndColor} onChange={(event) => setGradientEndColor(event.target.value)} className="h-6 w-6 cursor-pointer rounded border border-border bg-transparent p-0.5" /></label>
+          </>}
+          {activeTool === "magic-wand" && <label className="flex items-center gap-1">Tolerance <input aria-label="Magic Wand color tolerance" type="range" min="0" max="180" value={magicWandTolerance} onChange={(event) => setMagicWandTolerance(Number(event.target.value))} className="w-16" /><span>{magicWandTolerance}</span></label>}
+          {activeTool === "ruler" && <span>Drag to measure in canvas pixels</span>}
+          {activeTool === "rotate-view" && <button type="button" onClick={() => { setZoom(100); setResetViewToken((value) => value + 1); }} className="rounded border border-border px-2 py-1 text-text-primary">Reset view</button>}
+          {activeTool === "zoom" && <span>Click: zoom in · Shift-click: zoom out</span>}
+          {activeTool === "clone-stamp" && <span>Select or click a source layer</span>}
+          {activeTool === "eraser" && <span>Removes the whole clicked object</span>}
+          {activeTool === "lasso" && <span>Freeform select by object center</span>}
+          {activeTool === "path-select" && <span>Selects whole vector paths</span>}
+          {activeTool === "eyedropper" && <span>Sample a color from visible artwork</span>}
         </div>
         <div className="flex items-center gap-2 text-text-muted">
           <button type="button" title="Toggle grid" aria-pressed={grid} onClick={() => setGrid((value) => !value)}><Grid3X3 size={14} /></button>
@@ -142,6 +177,14 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
             onRemoveMark={onRemoveMark}
             onMarksChange={onMarksChange}
             onStatus={setStatus}
+            toolColor={toolColor}
+            shapeType={shapeType}
+            penWidth={penWidth}
+            gradientEndColor={gradientEndColor}
+            magicWandTolerance={magicWandTolerance}
+            onColorSampled={onToolColorChange}
+            onZoomChange={(nextZoom) => setZoom(Math.max(40, Math.min(180, nextZoom)))}
+            resetViewToken={resetViewToken}
           />
         </div>
         <div className="flex items-center gap-2 rounded-md border border-border bg-bg px-2 py-1.5 text-[10px] text-text-secondary">

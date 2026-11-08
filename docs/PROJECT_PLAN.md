@@ -126,10 +126,21 @@ Other product types get their own attribute sets and pricing formulas.
   objects with selection, move, scale, rotate, in-place text editing, zoom, and
   hand-pan. The Pen tool now draws vector paths. Transform and path edits are
   stored as object data and enter Undo/Redo and browser-local Save/restore.
-- Tools palette: Move, Marquee, Lasso, Magic Wand, Eyedropper, Shape, Pen,
-  Path Select, Clone Stamp/Healing Brush, Gradient, Eraser, Ruler, Rotate View,
-  Hand, Zoom. Pen supports freehand vector strokes; remaining selection, paint,
-  retouch, gradient, and measurement tools still need implementation.
+- Canvas tools (implemented in this prototype): Move, Marquee, Lasso, Magic Wand,
+  Eyedropper, Shape, Pen, Path Select, Clone Stamp, Gradient, Eraser, Ruler,
+  Rotate View, Hand, and Zoom are all active. Marquee uses rectangular multi-select;
+  Lasso selects object centers within a freeform outline; Magic Wand selects
+  vector/text objects by sampled fill-color tolerance and explicitly reports a
+  whole-image selection on raster artwork (not matching pixel ranges). Path Select
+  selects/transforms a complete Pen path; anchor-node editing remains later. Shape
+  drag creates the chosen vector geometry; Pen draws configurable editable strokes;
+  Gradient creates editable fills for text/vector objects or a gradient rectangle.
+  Clone Stamp duplicates unlocked objects and respects inherited group locks;
+  Eraser removes a whole object, not pixels; Eyedropper samples rendered canvas
+  color. Ruler reports pixel distance/angle without saving its overlay. Rotate View
+  changes only the viewport; Hand pans; Zoom click/Shift-click adjusts scale and
+  Reset View restores orientation/zoom. These are usable object-level editor tools,
+  not a claim of Photoshop's pixel/retouch engine.
 - Layers (current `/create` prototype): a Photoshop-inspired stack with type-aware
   thumbnails, selection, inline rename, show/hide, lock/unlock, create/duplicate,
   sibling reorder, drag/drop reorder, and drop into a folder group. Groups expand
@@ -478,3 +489,10 @@ placeholders with Supabase data, cart and checkout.
   editor. [Canva: Add and edit text](https://www.canva.com/help/add-and-edit-text/)
   [Canva: Format text](https://www.canva.com/help/format-text/)
   [Canva Design School: Text and the Font Library](https://www.canva.com/design-school/resources/finding-fonts-and-using-text/)
+- Activated all 14 non-Move canvas tools with tool-specific pointer behavior,
+  color/width/tolerance settings, status feedback, and history-backed artwork edits.
+  Ruler overlays are excluded from saved marks; Rotate View/Hand/Zoom operate only
+  on the viewport. Path Select, Magic Wand, Clone Stamp, and Eraser explicitly
+  remain object-level rather than pixel/anchor editing. The Next.js production
+  build passed; a read-only review found no P0/P1 issues and its lock/raster-status
+  findings were corrected before delivery.

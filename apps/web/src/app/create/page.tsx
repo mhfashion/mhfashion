@@ -109,6 +109,7 @@ export default function EditorPage() {
   const { t } = useI18n();
   const [activePanel, setActivePanel] = useState<PanelId | null>("elements");
   const [activeTool, setActiveTool] = useState<ToolId>("move");
+  const [toolColor, setToolColor] = useState("#d4ff3f");
   const [activeSide, setActiveSide] = useState<Side>("Front");
   const [history, setHistory] = useState<HistoryState>({
     present: EMPTY_DOCUMENT,
@@ -514,6 +515,8 @@ export default function EditorPage() {
             onRemoveMark={removeMark}
             onMarksChange={updateCanvasMarks}
             onClear={clearCanvas}
+            toolColor={toolColor}
+            onToolColorChange={setToolColor}
           />
         </main>
         <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-l border-border bg-bg-surface lg:flex">
