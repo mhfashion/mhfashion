@@ -98,11 +98,6 @@ export default function MobileNav() {
           </span>
         </div>
         <div className="flex items-center gap-3 text-text-secondary">
-          <div className="flex items-center gap-1 text-[9px] font-semibold">
-            <button onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : ""}>EN</button>
-            <span>/</span>
-            <button onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : ""}>MM</button>
-          </div>
           <Search size={17} />
           <NotificationBell />
         </div>
