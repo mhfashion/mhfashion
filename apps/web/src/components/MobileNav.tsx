@@ -106,7 +106,7 @@ export default function MobileNav() {
           <div className="flex items-center gap-1 text-[9px] font-semibold">
             <button onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : ""}>EN</button>
             <span>/</span>
-            <button onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : ""}>မြန်မာ</button>
+            <button onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : ""}>MM</button>
           </div>
           <Search size={17} />
           <NotificationBell />
@@ -132,6 +132,15 @@ export default function MobileNav() {
           {NAV_LINKS.map((link) => (
             <LinkRow key={link.href} {...link} onClick={close} />
           ))}
+
+          <div className="flex items-center justify-between border-b border-border/40 px-4 py-2.5 text-xs">
+            <span className="text-text-muted">Language</span>
+            <div className="flex items-center gap-1.5 font-semibold">
+              <button type="button" onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : "text-text-secondary"}>EN</button>
+              <span className="text-border-light">/</span>
+              <button type="button" onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : "text-text-secondary"}>MM</button>
+            </div>
+          </div>
 
           <GroupHeading>Collections</GroupHeading>
           {COLLECTION_LINKS.map((link) => (
