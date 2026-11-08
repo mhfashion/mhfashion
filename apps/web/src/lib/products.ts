@@ -93,24 +93,6 @@ export async function getBestSellers(limit = 6): Promise<Product[]> {
   return rows.map((r) => toProduct(r, ranges));
 }
 
-export async function getEditorProducts(limit = 48): Promise<Product[]> {
-  const supabase = getServerSupabase();
-  const boundedLimit = Math.max(1, Math.min(60, Math.floor(limit)));
-  const { data, error } = await supabase
-    .from("products")
-    .select("id, name, slug, image_url, is_new")
-    .order("created_at", { ascending: false })
-    .limit(boundedLimit);
-
-  if (error) {
-    console.error("getEditorProducts failed:", error.message);
-    return [];
-  }
-  const rows = (data ?? []) as ProductRow[];
-  const ranges = await getPriceRanges(rows.map((row) => row.id));
-  return rows.map((row) => toProduct(row, ranges));
-}
-
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase

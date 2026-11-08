@@ -23,7 +23,7 @@ export type AttributeSelection = {
   size: string;
 };
 
-const PRODUCTS = ["T-shirt", "Hoodie", "Streetwear", "Cup", "Phone Cover"];
+export const PRODUCT_OPTIONS = ["T-shirt", "Hoodie", "Streetwear", "Cup", "Phone Cover"] as const;
 const PRINT_METHODS = ["DTF", "Sublimation"];
 
 // Sublimation only bonds properly to polyester, so cotton options disappear.
@@ -132,7 +132,7 @@ export default function AttributeBar({
       <Field label="Product">
         <Select
           value={selection.product}
-          options={[...new Set([...PRODUCTS, selection.product])]}
+          options={[...new Set([...PRODUCT_OPTIONS, selection.product])]}
           onChange={(product) => onChange({ ...selection, product })}
         />
       </Field>
