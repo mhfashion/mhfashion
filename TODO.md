@@ -117,3 +117,24 @@ Source of scope: user screenshot and request to remove excess side space and thi
 - [x] Add a Product details box formatted as a compact table using the real product type and customization fields. The catalog has no free-form description column; do not invent material/specification claims.
 - [x] Keep the Reviews title and rating summary visible, but collapse review cards by default so the section does not dominate page height.
 - Evidence: the wrapper is `w-full max-w-none` with 6–8px side gutters; the gallery uses 280px/360px tracks at larger breakpoints and a centered 200px cap on narrow phones. The Product details card is a semantic table with description, type, and customization rows, built from existing catalog data; review cards are inside a closed-by-default `<details>`. Production `npm run build` passes.
+
+## MH Fashion admin dashboard and frontend demo account
+
+Source of scope: owner request and supplied Google Drive dashboard references (`MH Fashion Admin Dashboard-1.png` and `MH Fashion Admin Dashboard-2.png`).
+
+- [x] Build an `/admin` dashboard with a dark left navigation, light main workspace, top search/profile bar, KPI cards, sales/order visualizations, top-selling products, recent orders, and an activity feed inspired by the references.
+- [x] Make the dashboard usable on desktop and mobile, and clearly label local sample metrics as preview data rather than live store analytics.
+- [x] Provide `/admin/login` and `/admin/register` frontend pages so an administrator can create one local demo account in the current browser, sign in, sign out, and return to the dashboard. Ask for a name, email, password, and password confirmation on registration; validate matching passwords and require at least eight characters.
+- [x] Keep the demo account/session in browser local storage only, gate the preview dashboard client-side, and state clearly that this is not secure authentication: no Supabase, server-side authorization, email verification, or live data is connected. Warn users not to use a real or reused password.
+- [x] Keep admin routes out of search indexing and retain mobile behavior without the storefront bottom navigation.
+- Evidence: responsive `/admin` route has a collapsible mobile sidebar, stacked narrow-screen cards/tables, and a search input that filters sample products/orders. `/admin/login` and `/admin/register` use a shared accessible form component; local demo passwords are salted and SHA-256 hashed, and the client-only gate is explicitly described as bypassable. Browser QA verified create-account → dashboard → sign-out → login; the disposable QA account/session was removed. Preview-only labels are visible; other admin modules are marked unavailable. Production build and HTTP route/manifest checks pass.
+
+## Permanent website publishing
+
+- [x] Install dependencies with `npm ci` from the committed root lockfile and build the Cloudflare Worker with `npm run cf:build --workspace=apps/web` (Next.js 15.5.29, OpenNext Cloudflare 1.20.16).
+- [x] Validate the generated Worker with `npx wrangler deploy --dry-run` (about 1.16 MiB gzip) and local Cloudflare preview: `/`, `/admin/login`, `/admin/register`, `/admin`, and `/manus-routes.json` returned HTTP 200 with Supabase keys absent.
+- [x] Make the public catalog loader return an empty result rather than throwing when Supabase URL/key are not configured; the storefront already displays “Products will appear here soon.”
+- [ ] Deploy is blocked until Cloudflare credentials are available and a deploy trigger is configured: the previous GitHub Actions deploy run failed at the required-secret check for `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; no deploy workflow is present on current `main`, and this environment's Wrangler is unauthenticated.
+- [ ] Connect Supabase and run the project migrations/seeds to show real products. Until then the storefront shell works, but catalog sections stay empty.
+- [ ] Resolve production dependency security advisories before public launch. `npm audit --workspace=apps/web --omit=dev` reports 8 advisories, including high-severity Fabric SVG-export XSS and a critical `tar` transitive advisory. The dry-run fix proposes breaking upgrades (`fabric` 6 → 7.4.0 and `next` → 16.4.6); update and regression-test the Fabric.js editor before deploying.
+- Evidence: OpenNext worker build and Wrangler dry-run passed after clean lockfile install; local Worker preview returned 200 on all listed routes. Production publication has not yet occurred.

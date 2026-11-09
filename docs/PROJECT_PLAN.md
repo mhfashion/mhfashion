@@ -342,6 +342,18 @@ Other product types get their own attribute sets and pricing formulas.
   status updates, Jersey mapping setup, mockup uploads, settlement report.
 - Both lists are expected to grow as the app gets used.
 
+**Admin dashboard UI (`/admin`, first visual pass):** follow the supplied MH
+Fashion references with a dark left navigation, light dashboard workspace, top
+search/profile bar, KPI cards, sales and order-status visualizations, top-selling
+products, recent orders, and activity feed. Use responsive layouts and clearly
+identify local sample metrics as preview data. This UI shell does not establish
+secure admin authentication, authorization, or live analytics. Frontend `/admin/login`
+and `/admin/register` pages may use one browser-local demo account/session to
+preview the flow, with explicit warnings and no real/reused passwords. This
+client-only gate is bypassable and is not a security boundary. Replace it with
+Supabase Auth and server-side role checks before handling real admin accounts or
+data; connect live analytics only after that secure foundation exists.
+
 ## 11. Growth & Notifications
 
 - SEO with structured data and clean URLs; verified-purchase reviews (no admin
@@ -559,3 +571,20 @@ placeholders with Supabase data, cart and checkout.
   light workspace and white artboard, and made the selection bar contextual for
   text and shape formatting plus selected-object duplicate/delete. Production
   build and TypeScript checks passed.
+- Added the initial `/admin` dashboard UI based on the supplied references:
+  responsive dark navigation, light KPI/analytics workspace, sample-data label,
+  order/product tables, and activity panels. Added `/admin/login` and
+  `/admin/register` as frontend-only demo account pages backed by browser local
+  storage, plus a client-side route gate and sign-out. These are not secure
+  authentication/authorization and use no Supabase or live analytics. Production
+  build passed; admin routes and the synchronized route manifest returned HTTP
+  200. Browser QA verified create → dashboard → sign out → login and removed the
+  disposable test account/session afterward.
+
+
+## Current production publishing status (2026-11-10)
+
+- The lockfile installs Next.js 15.5.29 and OpenNext Cloudflare 1.20.16. After a clean `npm ci`, `npm run cf:build --workspace=apps/web` succeeded, and `npx wrangler deploy --dry-run` succeeded with a 1.16 MiB compressed Worker bundle. Local Worker preview returned HTTP 200 for `/`, `/admin/login`, `/admin/register`, `/admin`, and `/manus-routes.json` without Supabase keys.
+- The catalog loader now degrades gracefully when Supabase URL/key are absent, so the visual storefront shell can render its existing empty-catalog message. Real product listings remain unavailable until Supabase is configured and migrations/seeds are applied.
+- No live Cloudflare deployment has been made. Wrangler is unauthenticated in this environment. GitHub Actions run [42306302512](https://github.com/mhfashion/mhfashion/actions/runs/42306302512) stopped at a check for missing `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; no deployment workflow exists on current `main`, so the deploy trigger and credentials must be configured.
+- Public launch is also gated on production dependency review: `npm audit --workspace=apps/web --omit=dev` reports 8 advisories, including Fabric.js SVG-export XSS and a critical transitive `tar` advisory. The suggested automatic fix requires breaking major upgrades (`fabric` 6 to 7.4.0 and `next` to 16.4.6); preserve the Fabric.js 6 editor behavior by doing an explicit upgrade and regression pass rather than forcing these changes during a dashboard task.

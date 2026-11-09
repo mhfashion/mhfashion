@@ -4,10 +4,10 @@ import type { Product } from "./types";
 // Server-side client — safe to use the anon key here since catalog data
 // (products, pricing) has no RLS restriction; it's meant to be public.
 function getServerSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) return null;
+  return createClient(url, anonKey);
 }
 
 type ProductRow = {
@@ -33,6 +33,7 @@ type PriceRangeRow = {
 async function getPriceRanges(productIds: string[]): Promise<Map<string, PriceRangeRow>> {
   if (productIds.length === 0) return new Map();
   const supabase = getServerSupabase();
+  if (!supabase) return new Map();
   const { data, error } = await supabase
     .from("product_price_ranges")
     .select("product_id, price_min_ks, price_max_ks")
@@ -62,6 +63,7 @@ function toProduct(row: ProductRow, ranges: Map<string, PriceRangeRow>): Product
 
 export async function getNewArrivals(limit = 6): Promise<Product[]> {
   const supabase = getServerSupabase();
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from("products")
     .select("id, name, slug, image_url, is_new")
@@ -80,6 +82,7 @@ export async function getNewArrivals(limit = 6): Promise<Product[]> {
 
 export async function getBestSellers(limit = 6): Promise<Product[]> {
   const supabase = getServerSupabase();
+  if (!supabase) return [];
   // No sales-count metric yet — placeholder: non-"new" products, oldest first.
   const { data, error } = await supabase
     .from("products")
@@ -99,6 +102,7 @@ export async function getBestSellers(limit = 6): Promise<Product[]> {
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const supabase = getServerSupabase();
+  if (!supabase) return null;
   const { data, error } = await supabase
     .from("products")
     .select("id, name, slug, image_url, is_new, product_type, is_customizable")
