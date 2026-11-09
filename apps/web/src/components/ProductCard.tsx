@@ -23,7 +23,7 @@ export default function ProductCard({ product }: { product: Product }) {
         )}
 
         {product.isNew && (
-          <span className="absolute left-1.5 top-1.5 rounded bg-accent px-1 py-0.5 text-[7px] font-bold text-accent-foreground">NEW</span>
+          <span className="absolute left-1.5 top-1.5 rounded bg-accent px-1 py-0.5 text-[6px] font-bold text-accent-foreground sm:text-[7px]">NEW</span>
         )}
 
         <button
@@ -35,16 +35,16 @@ export default function ProductCard({ product }: { product: Product }) {
           aria-label="Favorite"
           className="absolute right-1.5 top-1.5"
         >
-          <Heart size={15} fill={favorited ? "currentColor" : "none"} className={favorited ? "text-accent" : "text-text-primary"} />
+          <Heart size={13} className={`${favorited ? "text-accent" : "text-text-primary"} sm:h-[15px] sm:w-[15px]`} fill={favorited ? "currentColor" : "none"} />
         </button>
       </a>
 
-      <a href={productUrl} className="mt-1 block shrink-0 truncate text-[10px]">{product.name}</a>
-      <div className="mt-1.5 shrink-0 rounded-md border border-border bg-bg-surface p-1.5 shadow-sm">
-        <span className="block truncate px-1 text-[10px] font-semibold text-text-primary">
+      <a href={productUrl} className="mt-0.5 block shrink-0 truncate text-[9px] sm:mt-1 sm:text-[10px]">{product.name}</a>
+      <div className="mt-1 shrink-0 rounded-md border border-border bg-bg-surface p-1 shadow-sm sm:mt-1.5 sm:p-1.5">
+        <span className="block truncate px-0.5 text-[8px] font-semibold text-text-primary sm:px-1 sm:text-[10px]">
           {formatRangeKs(product.priceMinKs, product.priceMaxKs)}
         </span>
-        <a href={productUrl} className="mt-1.5 block rounded-md bg-accent px-2 py-1.5 text-center text-[10px] font-bold text-accent-foreground transition-opacity hover:opacity-85">
+        <a href={productUrl} className="mt-1 block rounded-md bg-accent px-1.5 py-1 text-center text-[8px] font-bold text-accent-foreground transition-opacity hover:opacity-85 sm:mt-1.5 sm:px-2 sm:py-1.5 sm:text-[10px]">
           {t("product.buy")}
         </a>
       </div>
