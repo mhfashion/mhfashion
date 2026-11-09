@@ -57,17 +57,17 @@ function CategoryShortcut({
   return (
     <Link
       href={guideUrl(category.slug, query)}
-      className={`group flex min-h-[58px] min-w-[108px] shrink-0 items-center gap-2 rounded-xl border p-2 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent sm:min-h-[92px] sm:min-w-[150px] sm:gap-3 sm:p-4 ${selected ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}
+      className={`group flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border p-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent sm:min-h-[92px] sm:min-w-[150px] sm:flex-none sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4 ${selected ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}
       aria-current={selected ? "page" : undefined}
     >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground sm:h-10 sm:w-10 sm:rounded-xl">
-        <CategoryIcon slug={category.slug} size={15} />
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground sm:h-10 sm:w-10 sm:rounded-xl">
+        <CategoryIcon slug={category.slug} size={13} />
       </span>
       <span className="min-w-0">
-        <span className="block text-xs font-bold leading-tight">{category.name.replace(" Guide", "")}</span>
-        <span className="mt-0.5 block text-[9px] text-text-muted sm:mt-1 sm:text-[10px]">{count} {count === 1 ? "Post" : "Posts"}</span>
+        <span className="block truncate text-center text-[8px] font-bold leading-tight sm:text-left sm:text-xs">{category.name.replace(" Guide", "")}</span>
+        <span className="mt-0.5 block text-center text-[7px] text-text-muted sm:mt-1 sm:text-left sm:text-[10px]">{count} {count === 1 ? "Post" : "Posts"}</span>
       </span>
-      <ArrowRight size={14} className="ml-auto shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent" aria-hidden="true" />
+      <ArrowRight size={14} className="ml-auto hidden shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:block" aria-hidden="true" />
     </Link>
   );
 }
@@ -140,17 +140,17 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <div className="absolute bottom-3 right-3 text-2xl font-black italic text-[#54a817]/80 sm:bottom-4 sm:right-12 sm:text-4xl">Your<br />Style</div>
             </section>
 
-            <div className="mb-7 flex gap-2 overflow-hidden lg:hidden">
-              <Link href={guideUrl("", query)} className={`group flex min-h-[58px] min-w-[108px] shrink-0 items-center gap-2 rounded-xl border p-2 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:min-h-[92px] sm:min-w-[150px] sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><BookOpen size={15} /></span>
-                <span className="text-[10px] font-bold leading-tight sm:text-xs">All Guides</span>
+            <div className="mb-7 flex gap-1 overflow-hidden lg:hidden">
+              <Link href={guideUrl("", query)} className={`group flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border p-1 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:min-h-[92px] sm:min-w-[150px] sm:flex-none sm:flex-row sm:justify-start sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><BookOpen size={13} /></span>
+                <span className="text-center text-[8px] font-bold leading-tight sm:text-left sm:text-xs">All Guides</span>
               </Link>
-              <div className="min-w-0 flex-1 overflow-x-auto pb-1">
-                <div className="flex w-max gap-2">
+              <div className="min-w-0 flex-1 overflow-hidden pb-1">
+                <div className="flex w-full gap-1">
                   {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
-                  <Link href="/faq" className="group flex min-h-[58px] min-w-[108px] shrink-0 items-center gap-2 rounded-xl border border-border bg-bg-surface p-2 hover:border-accent/60 sm:min-h-[92px] sm:min-w-[150px] sm:gap-3 sm:p-4">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Star size={15} /></span>
-                    <span className="text-xs font-bold leading-tight">Points &<br />Rewards</span>
+                  <Link href="/faq" className="group flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-bg-surface p-1 hover:border-accent/60 sm:min-h-[92px] sm:min-w-[150px] sm:flex-none sm:flex-row sm:justify-start sm:gap-3 sm:p-4">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Star size={13} /></span>
+                    <span className="text-center text-[8px] font-bold leading-tight sm:text-left sm:text-xs">Points &<br />Rewards</span>
                   </Link>
                 </div>
               </div>
