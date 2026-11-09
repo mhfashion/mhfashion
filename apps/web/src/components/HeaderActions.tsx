@@ -16,6 +16,7 @@ import { useCurrency } from "@/lib/currency-context";
 import { useCart } from "@/lib/cart-context";
 import { useI18n } from "@/lib/i18n";
 import NotificationBell from "./NotificationBell";
+import CartBox from "./CartBox";
 
 export default function HeaderActions() {
   const { theme, toggleTheme } = useTheme();
@@ -23,12 +24,17 @@ export default function HeaderActions() {
   const { itemCount } = useCart();
   const { locale, setLocale, t } = useI18n();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const cartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setSearchOpen(false);
+      }
+      if (cartRef.current && !cartRef.current.contains(e.target as Node)) {
+        setCartOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -102,14 +108,17 @@ export default function HeaderActions() {
           <Pencil size={15} />
         </a>
 
-        <a href="/cart" aria-label={t("actions.cart")} className="relative">
+        <div ref={cartRef} className="relative">
+          <button type="button" onClick={() => setCartOpen((open) => !open)} aria-label={t("actions.cart")} className="relative">
           <ShoppingCart size={18} />
           {itemCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">
               {itemCount}
             </span>
           )}
-        </a>
+          </button>
+          {cartOpen && <CartBox onClose={() => setCartOpen(false)} />}
+        </div>
 
         <a href="/account" aria-label={t("actions.account")}>
           <User size={18} />
