@@ -14,7 +14,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="group">
-      <a href={productUrl} className="relative block aspect-square overflow-hidden rounded-lg bg-bg-surface">
+      <a href={productUrl} className="relative block aspect-[4/3] overflow-hidden rounded-lg bg-bg-surface sm:aspect-square">
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
