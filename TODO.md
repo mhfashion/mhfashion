@@ -113,4 +113,7 @@ Source of scope: user screenshot and request to remove excess side space and thi
 - [x] Use the full available page width with minimal gutters and no narrow max-width; avoid broad empty side margins.
 - [x] Keep the gallery compact—280px at tablet widths and capped at 360px on desktop—while purchase details use the remaining space. On small screens, stack sections and fit the image to the viewport.
 - [x] Use subtle 1px image-frame and thumbnail borders; keep the active thumbnail accent but remove the thick outline. Preserve product controls, purchase actions, review section, and related-product behavior.
-- Evidence: the wrapper is `w-full max-w-none` with 6–8px side gutters; the gallery uses fixed 280px/360px tracks from tablet/desktop breakpoints and details fill the rest. The main photo and thumbnails retain 1px borders with no `border-2`. `npm run build` and `git diff --check` pass.
+- [x] On narrow phones, center the product photo and thumbnails in a compact 200px gallery; keep purchase details full-width below it.
+- [x] Add a Product details box using the real product type and customization fields. The product table has no free-form description column; do not invent material/specification claims.
+- [x] Keep the Reviews title and rating summary visible, but collapse review cards by default so the section does not dominate page height.
+- Evidence: the wrapper is `w-full max-w-none` with 6–8px side gutters; the gallery uses 280px/360px tracks at larger breakpoints and a centered 200px cap on narrow phones. Borders remain 1px. The overview is built from `product_type` and `is_customizable`; review cards are inside a closed-by-default `<details>`. Production `npm run build` passes.

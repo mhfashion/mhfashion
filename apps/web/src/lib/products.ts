@@ -16,6 +16,8 @@ type ProductRow = {
   slug: string;
   image_url: string | null;
   is_new: boolean;
+  product_type?: string | null;
+  is_customizable?: "full" | "partial" | "none" | null;
 };
 
 type PriceRangeRow = {
@@ -51,6 +53,8 @@ function toProduct(row: ProductRow, ranges: Map<string, PriceRangeRow>): Product
     slug: row.slug,
     imageUrl: row.image_url ?? undefined,
     isNew: row.is_new,
+    productType: row.product_type ?? undefined,
+    isCustomizable: row.is_customizable ?? undefined,
     priceMinKs: range?.price_min_ks ?? 0,
     priceMaxKs: range?.price_max_ks ?? 0,
   };
@@ -97,7 +101,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   const supabase = getServerSupabase();
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, slug, image_url, is_new")
+    .select("id, name, slug, image_url, is_new, product_type, is_customizable")
     .eq("slug", slug)
     .single();
 

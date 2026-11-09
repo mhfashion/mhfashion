@@ -114,6 +114,13 @@ Other product types get their own attribute sets and pricing formulas.
   Stack the regions on small screens, with the image fitting the viewport width.
 - Keep photo frames and thumbnail outlines to subtle 1px borders. The active
   thumbnail may use the accent color, but should not become a thick frame.
+- On narrow phones, center the main photo and thumbnail row in a compact 200px
+  gallery rather than letting a square image occupy the full viewport width.
+- Add an "About this product" box using the actual catalog `product_type` and
+  `is_customizable` fields. The current products schema has no free-form
+  description column, so do not invent fabric/specification claims.
+- Keep the Reviews heading and rating summary visible, but collapse the review
+  cards by default so they do not dominate the page height.
 
 ## 5. Mockup / Preview System
 
@@ -391,9 +398,12 @@ Ks/$ toggles, notification dropdown, category marquee.
 
 **Product detail pages (`/products/[slug]`):** use the full available page width
 with minimal gutters and a compact gallery (280px at tablet widths, capped near
-360px on desktop) beside details that fill the remaining space. Photo and
-thumbnail borders are subtle 1px; the selected thumbnail uses a thin accent
-border. Small screens stack the gallery above product details.
+360px on desktop) beside details that fill the remaining space. On narrow phones,
+center the main image and thumbnails in a 200px gallery. Photo and thumbnail
+borders remain subtle 1px. A Product details box summarizes the catalog's actual
+product type and customization status; the current schema has no free-form
+description field, so the page avoids unsupported material/specification claims.
+The Reviews title and rating stay visible while the review cards start collapsed.
 
 **Editor prototype (`/create`):** Fabric.js canvas with selectable, movable,
 scalable and rotatable objects; in-place text editing and family/size/weight/

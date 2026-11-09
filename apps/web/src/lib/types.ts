@@ -4,6 +4,8 @@ export type Product = {
   slug: string;
   imageUrl?: string;
   isNew?: boolean;
+  productType?: string;
+  isCustomizable?: "full" | "partial" | "none";
   priceMinKs: number;
   priceMaxKs: number;
 };
