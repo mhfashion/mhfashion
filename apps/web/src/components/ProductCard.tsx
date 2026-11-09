@@ -13,8 +13,8 @@ export default function ProductCard({ product }: { product: Product }) {
   const productUrl = `/products/${product.slug}`;
 
   return (
-    <div className="group">
-      <a href={productUrl} className="relative block aspect-square overflow-hidden rounded-lg bg-bg-surface">
+    <div className="group flex h-full aspect-square min-h-0 flex-col">
+      <a href={productUrl} className="relative block min-h-0 flex-1 overflow-hidden rounded-lg bg-bg-surface">
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
@@ -39,8 +39,8 @@ export default function ProductCard({ product }: { product: Product }) {
         </button>
       </a>
 
-      <a href={productUrl} className="mt-1 block truncate text-[10px]">{product.name}</a>
-      <div className="mt-1.5 rounded-md border border-border bg-bg-surface p-1.5 shadow-sm">
+      <a href={productUrl} className="mt-1 block shrink-0 truncate text-[10px]">{product.name}</a>
+      <div className="mt-1.5 shrink-0 rounded-md border border-border bg-bg-surface p-1.5 shadow-sm">
         <span className="block truncate px-1 text-[10px] font-semibold text-text-primary">
           {formatRangeKs(product.priceMinKs, product.priceMaxKs)}
         </span>
