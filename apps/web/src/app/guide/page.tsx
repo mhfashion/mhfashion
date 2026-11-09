@@ -140,16 +140,20 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <div className="absolute bottom-3 right-3 text-2xl font-black italic text-[#54a817]/80 sm:bottom-4 sm:right-12 sm:text-4xl">Your<br />Style</div>
             </section>
 
-            <div className="mb-7 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+            <div className="mb-7 flex gap-2 overflow-hidden lg:hidden">
               <Link href={guideUrl("", query)} className={`group flex min-h-[58px] min-w-[108px] shrink-0 items-center gap-2 rounded-xl border p-2 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:min-h-[92px] sm:min-w-[150px] sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><BookOpen size={15} /></span>
                 <span className="text-[10px] font-bold leading-tight sm:text-xs">All Guides</span>
               </Link>
-              {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
-              <Link href="/faq" className="group flex min-h-[58px] min-w-[108px] shrink-0 items-center gap-2 rounded-xl border border-border bg-bg-surface p-2 hover:border-accent/60 sm:min-h-[92px] sm:min-w-[150px] sm:gap-3 sm:p-4">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Star size={15} /></span>
-                <span className="text-xs font-bold leading-tight">Points &<br />Rewards</span>
-              </Link>
+              <div className="min-w-0 flex-1 overflow-x-auto pb-1">
+                <div className="flex w-max gap-2">
+                  {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
+                  <Link href="/faq" className="group flex min-h-[58px] min-w-[108px] shrink-0 items-center gap-2 rounded-xl border border-border bg-bg-surface p-2 hover:border-accent/60 sm:min-h-[92px] sm:min-w-[150px] sm:gap-3 sm:p-4">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Star size={15} /></span>
+                    <span className="text-xs font-bold leading-tight">Points &<br />Rewards</span>
+                  </Link>
+                </div>
+              </div>
             </div>
 
             <section id="articles" aria-labelledby="articles-heading" className="scroll-mt-24">
@@ -158,12 +162,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
                   <h2 id="articles-heading" className="border-l-4 border-accent pl-3 text-xl font-black"><GuideLabel id="guide.latest" fallback="Latest Guides" /></h2>
                   <p className="mt-1 pl-4 text-xs text-text-muted">{posts.length} {posts.length === 1 ? "post" : "posts"}{activeCategory ? ` in ${activeCategory.name}` : ""}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <form action="/guide#articles" method="get" className="flex items-center rounded-full border border-border bg-bg-surface px-3 py-1.5" role="search">
-                    {selectedCategory && <input type="hidden" name="category" value={selectedCategory} />}
-                    <Search size={14} className="mr-2 text-text-muted" aria-hidden="true" />
-                    <input name="q" defaultValue={query} maxLength={200} placeholder="Search guides..." className="w-28 bg-transparent text-xs outline-none placeholder:text-text-muted sm:w-40" aria-label="Search guides" />
-                  </form>
+                <div className="flex items-center justify-end">
                   {(query || selectedCategory) ? <Link href="/guide#articles" className="flex items-center gap-1 text-xs font-semibold text-accent"><X size={13} /> Clear</Link> : <Link href={guideUrl("", "")} className="hidden text-xs font-semibold text-accent sm:inline-flex sm:items-center">View All Posts <ArrowRight size={14} className="ml-1" /></Link>}
                 </div>
               </div>
