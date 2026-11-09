@@ -77,11 +77,24 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
           <section aria-labelledby="product-details-title" className="mt-2.5 rounded-xl border border-border bg-bg-surface p-3 sm:p-3.5">
             <h2 id="product-details-title" className="text-sm font-black">Product details</h2>
-            <p className="mt-1.5 text-[11px] leading-5 text-text-secondary">{productOverview.description}</p>
-            <dl className="mt-2 flex flex-wrap gap-1.5">
-              <div className="rounded-md border border-border/60 px-2 py-1"><dt className="text-[9px] text-text-muted">Type</dt><dd className="text-[10px] font-semibold">{productOverview.productType}</dd></div>
-              <div className="rounded-md border border-border/60 px-2 py-1"><dt className="text-[9px] text-text-muted">Customization</dt><dd className="text-[10px] font-semibold">{productOverview.customizationLabel}</dd></div>
-            </dl>
+            <div className="mt-2 overflow-hidden rounded-lg border border-border/60">
+              <table className="w-full table-fixed text-left text-[10px]">
+                <tbody className="divide-y divide-border/60">
+                  <tr>
+                    <th scope="row" className="w-24 bg-bg/50 px-2.5 py-2 align-top font-semibold text-text-muted sm:w-32">Description</th>
+                    <td className="break-words px-2.5 py-2 leading-4 text-text-secondary">{productOverview.description}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row" className="bg-bg/50 px-2.5 py-2 align-top font-semibold text-text-muted">Product type</th>
+                    <td className="break-words px-2.5 py-2 leading-4 text-text-secondary">{productOverview.productType}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row" className="bg-bg/50 px-2.5 py-2 align-top font-semibold text-text-muted">Customization</th>
+                    <td className="break-words px-2.5 py-2 leading-4 text-text-secondary">{productOverview.customizationLabel}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </section>
 
           <section className="mt-2.5 rounded-xl border border-border bg-bg-surface p-2.5 sm:p-3">

@@ -116,9 +116,10 @@ Other product types get their own attribute sets and pricing formulas.
   thumbnail may use the accent color, but should not become a thick frame.
 - On narrow phones, center the main photo and thumbnail row in a compact 200px
   gallery rather than letting a square image occupy the full viewport width.
-- Add an "About this product" box using the actual catalog `product_type` and
-  `is_customizable` fields. The current products schema has no free-form
-  description column, so do not invent fabric/specification claims.
+- Present product information in a compact, accessible table using the actual
+  catalog `product_type` and `is_customizable` fields. The current products
+  schema has no free-form description column, so do not invent
+  fabric/specification claims.
 - Keep the Reviews heading and rating summary visible, but collapse the review
   cards by default so they do not dominate the page height.
 
