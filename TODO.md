@@ -118,18 +118,18 @@ Source of scope: user screenshot and request to remove excess side space and thi
 - [x] Keep the Reviews title and rating summary visible, but collapse review cards by default so the section does not dominate page height.
 - Evidence: the wrapper is `w-full max-w-none` with 6–8px side gutters; the gallery uses 280px/360px tracks at larger breakpoints and a centered 200px cap on narrow phones. The Product details card is a semantic table with description, type, and customization rows, built from existing catalog data; review cards are inside a closed-by-default `<details>`. Production `npm run build` passes.
 
-## MH Fashion admin dashboard and frontend demo account
+## MH Fashion admin dashboard and frontend demo session
 
 Source of scope: owner request and supplied Google Drive dashboard references (`MH Fashion Admin Dashboard-1.png` and `MH Fashion Admin Dashboard-2.png`).
 
 - [x] Build an `/admin` dashboard with a dark left navigation, light main workspace, top search/profile bar, KPI cards, sales/order visualizations, top-selling products, recent orders, and an activity feed inspired by the references.
 - [x] Make the dashboard usable on desktop and mobile, and clearly label local sample metrics as preview data rather than live store analytics.
-- [x] Provide `/admin/login` and `/admin/register` frontend pages so an administrator can create one local demo account in the current browser, sign in, sign out, and return to the dashboard. Ask for a name, email, password, and password confirmation on registration; validate matching passwords and require at least eight characters.
+- [x] The earlier prototype provided `/admin/login` and `/admin/register`, but latest `main` closes public self-registration: the `/admin/register` page and its login link are removed. Do not re-open registration without an explicit request.
 - [x] Keep the demo account/session in browser local storage only, gate the preview dashboard client-side, and state clearly that this is not secure authentication: no Supabase, server-side authorization, email verification, or live data is connected. Warn users not to use a real or reused password.
 - [x] Keep admin routes out of search indexing and retain mobile behavior without the storefront bottom navigation.
-- Evidence: responsive `/admin` route has a collapsible mobile sidebar, stacked narrow-screen cards/tables, and a search input that filters sample products/orders. `/admin/login` and `/admin/register` use a shared accessible form component; local demo passwords are salted and SHA-256 hashed, and the client-only gate is explicitly described as bypassable. Browser QA verified create-account → dashboard → sign-out → login; the disposable QA account/session was removed. Preview-only labels are visible; other admin modules are marked unavailable. Production build and HTTP route/manifest checks pass.
+- Evidence: responsive `/admin` route has a collapsible mobile sidebar, stacked narrow-screen cards/tables, and a search input that filters sample products/orders. The earlier demo-account flow was browser-tested and the disposable account/session was removed. Current `main` keeps `/admin/login` as a local demo session, removes `/admin/register` from the route manifest, and labels dashboard data as preview-only. Migration `0007_create_super_admin_roles.sql` prepares a Supabase role schema; Supabase Auth and server-side authorization are not yet connected, so this UI is not production security.
 
-## Permanent website publishing
+## Permanent website publishing (historical snapshot, 2026-11-10; superseded by the current status below)
 
 - [x] Install dependencies with `npm ci` from the committed root lockfile and build the Cloudflare Worker with `npm run cf:build --workspace=apps/web` (Next.js 15.5.29, OpenNext Cloudflare 1.20.16).
 - [x] Validate the generated Worker with `npx wrangler deploy --dry-run` (about 1.16 MiB gzip) and local Cloudflare preview: `/`, `/admin/login`, `/admin/register`, `/admin`, and `/manus-routes.json` returned HTTP 200 with Supabase keys absent.
@@ -138,3 +138,16 @@ Source of scope: owner request and supplied Google Drive dashboard references (`
 - [ ] Connect Supabase and run the project migrations/seeds to show real products. Until then the storefront shell works, but catalog sections stay empty.
 - [ ] Resolve production dependency security advisories before public launch. `npm audit --workspace=apps/web --omit=dev` reports 8 advisories, including high-severity Fabric SVG-export XSS and a critical `tar` transitive advisory. The dry-run fix proposes breaking upgrades (`fabric` 6 → 7.4.0 and `next` → 16.4.6); update and regression-test the Fabric.js editor before deploying.
 - Evidence: OpenNext worker build and Wrangler dry-run passed after clean lockfile install; local Worker preview returned 200 on all listed routes. Production publication has not yet occurred.
+
+
+## Current security and deployment status (2026-11-11)
+
+- [x] Upgrade the web stack to Next.js 16.4.6, React/React DOM 19.3.1, Fabric.js 7.4.0, OpenNext Cloudflare 1.20.16, and Wrangler 4.158.0; update the Next.js 16 TypeScript and ESLint configuration/commands.
+- [x] Migrate canvas pointer reads to Fabric 7 `getScenePoint`, preserve left/top positioning for temporary selection overlays, and disable middle-click canvas gestures explicitly.
+- [x] Regression-test the editor in browser: add an SVG Starburst, create a rectangle with the Shape tool, confirm object counts 1 → 2, Undo 2 → 1, Redo 1 → 2, verify Save confirmation, then clear the disposable design. No Fabric runtime errors were reported.
+- [x] Run `npm audit --workspace=apps/web --omit=dev --audit-level=moderate` (zero production advisories), `npm run test:guide` (9/9), Next.js production build, standalone TypeScript check, `npm run test:guide:http` against the production server (5/5, including `/cart` in the route manifest), `npm run cf:build --workspace=apps/web`, and `npx wrangler deploy --dry-run` (about 1.21 MiB gzip). Lint exits successfully with 41 compatibility warnings.
+- [ ] Resolve full-tree build/lint-tool advisories before treating the entire dependency tree as clean. The current full audit reports 4 high and 10 moderate findings in build/lint tooling; automatic fixes propose incompatible major downgrades to OpenNext 0.3.0, eslint-config-next 15.5.29, or ESLint 9.39.5. No forced downgrade was applied.
+- [x] Add `.github/workflows/deploy-cloudflare.yml` for main pushes and manual dispatch, with Node 22, unit and production HTTP tests, production audit, typecheck, Next/OpenNext build, Wrangler dry-run, and deploy. Secret presence is checked without displaying values; actual Cloudflare credentials are scoped to the main-branch deploy step only.
+- [ ] Push the workflow and upgrade to `main`, then verify the GitHub Actions run against the existing production URL, `https://mhfashion.mhfashionmm.workers.dev`. The base site is live (`curl` returned HTTP 200), but this upgrade has not deployed. Current `main` has no workflow; the new workflow remains on this branch. The owner reports adding `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, but `gh secret list` returns HTTP 403, so the workflow's own check must establish their availability.
+- [ ] Connect Supabase and apply catalog migrations/seeds before claiming real product listings; until then the storefront shows its empty-catalog state.
+- Evidence: final Next.js and Cloudflare builds, dry-run, 9 unit tests, and 5 production HTTP tests passed. The existing public homepage returned HTTP 200 via curl; the security upgrade still awaits deployment.

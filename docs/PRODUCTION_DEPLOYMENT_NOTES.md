@@ -1,23 +1,27 @@
-# Production Deployment Notes
+# Production Upgrade and Publishing Notes
 
-Updated 2026-11-10 while preparing the GitHub push and Cloudflare deployment.
+## Security reference material
 
-## Current target and verified build
+- Fabric.js 7 migration guide: https://fabricjs.com/docs/upgrading/upgrading-to-fabric-70/
+- Fabric.js stored-SVG XSS advisory: https://github.com/advisories/GHSA-hfvx-25r5-qc3w
+- Fabric.js gradient SVG serialization advisory: https://github.com/advisories/GHSA-w22m-hvvm-xmwx
+- Next.js 16 upgrade guide: https://nextjs.org/docs/app/guides/upgrading/version-16
+- Next.js security release reference: https://nextjs.org/blog/november-2026-security-release
+- OpenNext Cloudflare deployment guide: https://opennext.js.org/cloudflare
 
-The repository targets a Cloudflare Worker defined in `apps/web/wrangler.jsonc`. A clean `npm ci` installed the root lockfile's Next.js 15.5.29 and OpenNext Cloudflare 1.20.16. `npm run cf:build --workspace=apps/web` passed. `npx wrangler deploy --dry-run` passed with a 1.16 MiB compressed Worker bundle. The local Cloudflare Worker preview returned HTTP 200 for `/`, `/admin/login`, `/admin/register`, `/admin`, and `/manus-routes.json`.
+Fabric.js 7 changes object-origin defaults and removes legacy Canvas pointer/dimension methods. The project upgrade targets Fabric.js 7.4.0, which includes the cited SVG serialization fixes; app pointer reads now use `getScenePoint`, transient overlays keep their intended left/top positioning, and middle-click handling is explicit. Next.js 16.4.6 and React/React DOM 19.3.1 build successfully with the updated app type configuration.
 
-The previous local OpenNext failure used a stale sandbox dependency (`next@15.5.25`) rather than the version pinned in the lockfile. Reinstalling with `npm ci` resolved that mismatch.
+## Verified upgrade and regression results (2026-11-11)
 
-## Remaining production requirements
+- `npm audit --workspace=apps/web --omit=dev --audit-level=moderate` reports zero production vulnerabilities. The complete tree still reports 4 high and 10 moderate build/lint-tool findings; no forced major downgrade was applied.
+- `npm run test:guide` passed 9/9. `npm run test:guide:http` passed 5/5 against the production Next server, including SSR, search, 404 behavior, and the synchronized route manifest (`/cart` included, closed `/admin/register` excluded).
+- Next.js production build and standalone TypeScript check passed. OpenNext Cloudflare build and Wrangler dry-run passed; Worker upload size was about 1.21 MiB gzip. Wrangler reports the existing `compatibility_date` of 2025-04-01 is old and emits non-fatal duplicate-key warnings in generated Fabric/OpenNext output; review these separately rather than making an untested compatibility-date change.
+- Browser testing added a vector SVG element and created a rectangle with the Shape tool, verified object count 1 → 2, Undo 2 → 1 and Redo 1 → 2, confirmed Save, then cleared the disposable test canvas. No Fabric runtime errors were reported.
 
-This environment has no Cloudflare API token/account ID, and `wrangler whoami` reports that Wrangler is not authenticated. The latest recorded GitHub deployment run, [run 42306302512](https://github.com/mhfashion/mhfashion/actions/runs/42306302512), failed at its required-secret check before build/deploy. The historical workflow at commit `4c7738f4f9159a8b3c676f33df31d96c06af8232` required repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. No deployment workflow is present on current `main`, so either restore a GitHub deploy workflow or configure Cloudflare Workers Builds before publication.
+## Publishing state
 
-The current runtime has no `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Product queries now return an empty result rather than throwing when those settings are missing, allowing the storefront shell to render its existing “Products will appear here soon” state. Real catalog data still requires those public Supabase settings and the project's migrations/seed data.
+The current project plan records the production site as `https://mhfashion.mhfashionmm.workers.dev`; an unauthenticated `curl` request from this sandbox returned HTTP 200. The security upgrade is not yet deployed. Latest remote `main` contains no deploy workflow, so `.github/workflows/deploy-cloudflare.yml` is restored on `chore/secure-fabric7-next16`. It is designed to trigger on web/lockfile changes to `main` or manual dispatch and runs production audit, unit/HTTP regressions, typecheck, Next/OpenNext builds, Wrangler dry-run, then deployment. Cloudflare secret presence is checked without printing values; actual token and account ID are provided only to the main-branch deploy step.
 
-`npm audit --workspace=apps/web --omit=dev` currently reports 8 production dependency advisories, including a high-severity Fabric.js SVG-export XSS advisory and a critical transitive `tar` advisory. `npm audit fix --dry-run` proposes breaking upgrades, including Fabric.js 6 to 7.4.0 and Next.js to 16.4.6. Do not force those changes without regression-testing the Fabric.js editor; resolve these findings before serving public production traffic.
+The owner reports that `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` were added as GitHub Secrets. `gh secret list` returns HTTP 403 for this CLI, so secret metadata was not independently inspected; the workflow's own safe preflight must confirm availability after push.
 
-## Compatibility references
-
-Next.js lists 16.x as Active LTS and 15.x as Maintenance LTS, with Next.js 15 security releases extended through 2027-01-31: [Next.js Support Policy](https://nextjs.org/support-policy). Its November 2026 security release identifies Next.js 15.5.29 and 16.4.5 as patched releases: [November 2026 Security Release](https://nextjs.org/blog/november-2026-security-release).
-
-The OpenNext Cloudflare adapter supports all Next.js 16 minor/patch versions and the latest minors of Next.js 14/15: [OpenNext Cloudflare compatibility](https://opennext.js.org/cloudflare). Cloudflare recommends vinext for new Next.js projects but says to use the OpenNext guide to maintain an existing OpenNext application: [Cloudflare OpenNext adapter guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/opennext/).
+Latest `main` also closes public `/admin/register` and adds `supabase/migrations/0007_create_super_admin_roles.sql`. The upgrade preserves that change and does not apply the migration. The admin dashboard still uses its browser-local demo session, not Supabase Auth or server-side authorization. Supabase catalog credentials and migrations/seeds also remain unconfigured in this task, so real product listings are not yet guaranteed.

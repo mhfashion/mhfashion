@@ -414,6 +414,7 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
         selection: true,
         stopContextMenu: true,
         fireRightClick: false,
+        fireMiddleClick: false,
         backgroundColor: "rgba(0,0,0,0)",
       });
       installGroupCompositor(canvas, () => callbacksRef.current.layers);
@@ -483,7 +484,7 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
         if (points.length < 2) return;
         const path = points.map((point, index) => [index ? "L" : "M", point.x, point.y] as Array<string | number>);
         path.push(["Z"]);
-        addToolOverlay(new fabric.Path(path as never, { fill: "rgba(212,255,63,0.08)", stroke: "#d4ff3f", strokeWidth: 1, strokeDashArray: [5, 3] }));
+        addToolOverlay(new fabric.Path(path as never, { originX: "left", originY: "top", fill: "rgba(212,255,63,0.08)", stroke: "#d4ff3f", strokeWidth: 1, strokeDashArray: [5, 3] }));
       };
       const drawDragPreview = (gesture: ToolGesture) => {
         clearToolOverlays();
@@ -492,9 +493,9 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
         const width = Math.max(2, Math.abs(gesture.current.x - gesture.start.x));
         const height = Math.max(2, Math.abs(gesture.current.y - gesture.start.y));
         if (gesture.kind === "shape") {
-          addToolOverlay(new fabric.Rect({ left, top, width, height, fill: "rgba(212,255,63,0.12)", stroke: "#d4ff3f", strokeWidth: 1, strokeDashArray: [5, 3] }));
+          addToolOverlay(new fabric.Rect({ left, top, width, height, originX: "left", originY: "top", fill: "rgba(212,255,63,0.12)", stroke: "#d4ff3f", strokeWidth: 1, strokeDashArray: [5, 3] }));
         } else if (gesture.kind === "gradient") {
-          const preview = new fabric.Rect({ left, top, width, height, stroke: "#d4ff3f", strokeWidth: 1, strokeDashArray: [5, 3] });
+          const preview = new fabric.Rect({ left, top, width, height, originX: "left", originY: "top", stroke: "#d4ff3f", strokeWidth: 1, strokeDashArray: [5, 3] });
           const angle = (Math.atan2(gesture.current.y - gesture.start.y, gesture.current.x - gesture.start.x) * 180) / Math.PI;
           preview.set("fill", createGradientFill(preview, { startColor: callbacksRef.current.toolColor, endColor: callbacksRef.current.gradientEndColor, angle }, 0.78, fabric));
           addToolOverlay(preview);
@@ -539,7 +540,7 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
       });
       canvas.on("mouse:down", (event) => {
         const tool = callbacksRef.current.activeTool;
-        const pointer = canvas?.getPointer(event.e);
+        const pointer = canvas?.getScenePoint(event.e);
         if (!canvas || !pointer) return;
         const nativeEvent = event.e as MouseEvent;
         const target = event.target as DataObject | undefined;
@@ -686,7 +687,7 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
           return;
         }
         if (!gesture) return;
-        const current = canvas.getPointer(event.e);
+        const current = canvas.getScenePoint(event.e);
         gesture.current = current;
         if (gesture.kind === "lasso") {
           const points = gesture.points ?? [gesture.start];

@@ -638,7 +638,7 @@ This section records the current repository state and overrides earlier draft bu
 
 ### 15.5 Editor current prototype state and boundaries
 
-- `/create` uses Fabric.js 6 in the browser with local draft persistence, Front/Back state, Undo/Redo, Save/restore, image import, text presets/font search, original local SVG Elements catalog, responsive rails/flyouts, contextual toolbar, layers management, and separate Product/Mockup selection.
+- `/create` uses Fabric.js 7.4.0 in the browser with local draft persistence, Front/Back state, Undo/Redo, Save/restore, image import, text presets/font search, original local SVG Elements catalog, responsive rails/flyouts, contextual toolbar, layers management, and separate Product/Mockup selection. Canvas pointer reads use `getScenePoint`; object-level tools were browser-regression-tested after the v7 upgrade.
 - Mockup selection is intentionally deferred until the separate Mockup control is selected. Product selection remains a separate bottom attribute control. Attaching a mockup displays the selected mockup placement preview.
 - The Products sidebar/library was removed by request; storefront product catalog/detail routes remain unchanged.
 - Object-level editor tools are implemented, but this is not a Photoshop-equivalent pixel editor. Pixel-level raster masks/merge/eraser, node-level path editing, complete production mockup rendering, account-backed drafts and R2 asset uploads remain deferred.
@@ -646,7 +646,7 @@ This section records the current repository state and overrides earlier draft bu
 
 ### 15.6 Data, deployment and validation record
 
-- Supabase migrations currently include `0001_initial_schema.sql` through `0006_guide_post_cover_image.sql`; Guide content/cover-image schema is present and public reads use published-content rules with starter fallback.
+- Supabase migrations include `0001_initial_schema.sql` through `0007_create_super_admin_roles.sql`; migration 0007 defines the application-role table for Supabase Auth users. This task did not apply any migration. Guide content/cover-image schema is present and public reads use published-content rules with starter fallback.
 - GitHub repository is `mhfashion/mhfashion`, working branch and deployment branch are `main`, and production is `https://mhfashion.mhfashionmm.workers.dev`.
 - Production deployment is GitHub-to-Cloudflare Workers through OpenNext. Recent successful production commits include `2b29f96` (Home mobile Hero), `f7ac7f9` (Guide row/search), `2cff8f9` (remove Price Range), `dcb4bb7` (compact product cards), `d3af660` (compact Guide cards), and `0b9e4e3` (cart page/cart box).
 - Latest audited repository HEAD at the time of this addendum is `0b9e4e3`; TypeScript validation and `git diff --check` passed for the cart implementation, and live route checks returned HTTP 200 for the key storefront routes.
@@ -674,3 +674,29 @@ This section records the current repository state and overrides earlier draft bu
 - Public admin registration is closed. The `/admin/register` route and its login-screen link were removed, and the route manifest no longer exposes that page.
 - Super Admin promotion is controlled by the Supabase `public.user_roles` table. Only a user created through the Supabase Auth administrator flow should be assigned `role = 'super_admin'`; passwords are never stored in `public` tables.
 - The current `/admin/login` and `/admin` UI still use the inherited browser-local demo session and are not yet connected to Supabase Auth/RLS. This is explicitly not production security; the next implementation step is to replace the demo session with Supabase Auth and enforce `public.is_super_admin()` server-side before exposing live admin data.
+
+
+## Security upgrade and deployment preparation (2026-11-11)
+
+The web stack is upgraded on this work branch from Next.js 15/Fabric.js 6 to Next.js 16.4.6, React/React DOM 19.3.1, and Fabric.js 7.4.0, while retaining OpenNext Cloudflare 1.20.16 and Wrangler 4.158.0. The Next.js 16 TypeScript setup and ESLint CLI/flat configuration were updated. Fabric pointer reads now use `getScenePoint`; temporary selection overlays preserve their intended `left`/`top` coordinates, and middle-click canvas gestures are explicitly disabled.
+
+Validation passed: Next.js production build and standalone TypeScript check; `npm run test:guide` (9 tests); `npm run test:guide:http` against the production server (5 tests); `npm run cf:build --workspace=apps/web`; and `npx wrangler deploy --dry-run` (about 1.21 MiB gzip). Browser regression added a Starburst and a rectangle through the Shape tool, confirmed object counts 1 → 2, Undo 2 → 1, Redo 1 → 2, verified Save, then cleared the disposable canvas. No Fabric runtime errors were reported. The final route manifest includes `/cart` and excludes the closed `/admin/register` route. Lint exits successfully with compatibility warnings.
+
+The production-only audit is clear: `npm audit --workspace=apps/web --omit=dev --audit-level=moderate` reports zero vulnerabilities. The full tree still reports 4 high and 10 moderate findings in build/lint tooling, including OpenNext's transitive minifier/glob chain and ESLint/TypeScript-ESLint dependencies. No forced audit fix was applied because npm proposes incompatible major downgrades (OpenNext Cloudflare 0.3.0, `eslint-config-next` 15.5.29, or ESLint 9.39.5); full build-toolchain remediation remains open.
+
+The current project plan records production at `https://mhfashion.mhfashionmm.workers.dev`; an unauthenticated `curl` request from the sandbox returned HTTP 200. The upgraded code has not yet been deployed. The latest remote `main` has no deploy workflow, so `.github/workflows/deploy-cloudflare.yml` was restored on `chore/secure-fabric7-next16`. It triggers on app/lockfile changes to `main` or manual dispatch, uses Node 22, and runs production audit, guide unit/HTTP tests, typecheck, Next/OpenNext builds, Wrangler dry-run, then deploys. Secret presence is checked without printing values; the actual Cloudflare token/account ID are scoped only to the main-branch deploy step. The owner reports adding both secrets, but `gh secret list` returns HTTP 403 in this environment; the workflow must confirm access after push.
+
+Latest `main` also closes public `/admin/register` and adds migration `0007_create_super_admin_roles.sql`. This task preserves those changes and does not reopen registration or apply the migration. The admin UI still uses a browser-local demo session, not Supabase Auth/server-side authorization; the real product catalog also remains dependent on Supabase configuration and applied migrations/seeds.
+
+
+## Security upgrade and deployment preparation (2026-11-11)
+
+The web stack is upgraded on this work branch from Next.js 15/Fabric.js 6 to Next.js 16.4.6, React/React DOM 19.3.1, and Fabric.js 7.4.0, while retaining OpenNext Cloudflare 1.20.16 and Wrangler 4.158.0. The Next.js 16 TypeScript setup and ESLint CLI/flat configuration were updated. Fabric pointer reads now use `getScenePoint`; temporary selection overlays preserve their intended `left`/`top` coordinates, and middle-click canvas gestures are explicitly disabled.
+
+Validation passed: Next.js production build and standalone TypeScript check; `npm run test:guide` (9 tests); `npm run test:guide:http` against the production server (5 tests); `npm run cf:build --workspace=apps/web`; and `npx wrangler deploy --dry-run` (about 1.21 MiB gzip). Browser regression added a Starburst and a rectangle through the Shape tool, confirmed object counts 1 → 2, Undo 2 → 1, Redo 1 → 2, verified Save, then cleared the disposable canvas. No Fabric runtime errors were reported. The final route manifest includes `/cart` and excludes the closed `/admin/register` route. Lint exits successfully with compatibility warnings.
+
+The production-only audit is clear: `npm audit --workspace=apps/web --omit=dev --audit-level=moderate` reports zero vulnerabilities. The full tree still reports 4 high and 10 moderate findings in build/lint tooling. No forced audit fix was applied because npm proposes incompatible major downgrades (OpenNext Cloudflare 0.3.0, `eslint-config-next` 15.5.29, or ESLint 9.39.5); full build-toolchain remediation remains open.
+
+The existing production URL recorded in this plan, `https://mhfashion.mhfashionmm.workers.dev`, returned HTTP 200 to `curl` from this sandbox. The security-upgrade branch has not yet been deployed. Latest remote `main` has no deploy workflow, so `.github/workflows/deploy-cloudflare.yml` was restored on `chore/secure-fabric7-next16`. It triggers on app/lockfile changes to `main` or manual dispatch, uses Node 22, and runs production audit, guide unit/HTTP tests, typecheck, Next/OpenNext builds, Wrangler dry-run, then deploys. Secret presence is checked without printing values; the actual Cloudflare token/account ID are scoped only to the main-branch deploy step. The owner reports adding both secrets, but `gh secret list` returns HTTP 403 in this environment; the workflow must confirm access after push.
+
+Latest `main` also closes public `/admin/register` and adds migration `0007_create_super_admin_roles.sql`. This task preserves those changes and does not apply the migration. The admin UI still uses a browser-local demo session, not Supabase Auth/server-side authorization. Supabase catalog credentials and migrations/seeds remain unverified, so real product listings are not guaranteed by this upgrade.
