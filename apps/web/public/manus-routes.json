@@ -3,7 +3,6 @@
     { "path": "/", "title": "Home" },
     { "path": "/admin", "title": "Admin Dashboard Preview" },
     { "path": "/admin/login", "title": "Admin Sign In" },
-    { "path": "/admin/register", "title": "Create Admin Demo Account" },
     { "path": "/account", "title": "My Account" },
     { "path": "/cart", "title": "Cart" },
     { "path": "/collections", "title": "Collections" },

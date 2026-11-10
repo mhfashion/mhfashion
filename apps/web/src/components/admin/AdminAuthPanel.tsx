@@ -51,7 +51,7 @@ export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
         : await signInDemoAdmin(email, password);
 
       if (!session) {
-        setError(hasAccount ? "Email or password is incorrect." : "No demo account exists in this browser yet. Create one first.");
+        setError(hasAccount ? "Email or password is incorrect." : "No authorized admin account exists in this browser.");
         setPending(false);
         return;
       }
@@ -115,9 +115,7 @@ export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
               </button>
             </form>}
 
-            <p className="mt-5 text-center text-[10px] text-[#7e8894]">
-              {isRegister ? <>Already registered? <Link href="/admin/login" className="font-bold text-[#4d9729] hover:underline">Sign in</Link></> : <>Need a demo account? <Link href="/admin/register" className="font-bold text-[#4d9729] hover:underline">Create one</Link></>}
-            </p>
+            <p className="mt-5 text-center text-[10px] text-[#7e8894]">Only an authorized admin account can access this workspace.</p>
 
             {isRegister && hasAccount && <div className="mt-3 flex items-center justify-center gap-1 text-[9px] text-[#856d29]"><LockKeyhole size={11} /> This browser already has a demo account. <Link href="/admin/login" className="font-bold underline">Sign in</Link>.</div>}
             <p className="mt-6 text-center text-[9px] leading-4 text-[#a0a8b2]">Frontend prototype only. Supabase Auth and server-side admin authorization are not connected yet.</p>

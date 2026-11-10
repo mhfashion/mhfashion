@@ -667,3 +667,10 @@ This section records the current repository state and overrides earlier draft bu
 - The public `apps/web/public/manus-routes.json` has been synchronized with the complete App Router page set: Home, Account, Cart, Collections, Create, Guide, Guide Article, MH Fashion, New, Nyein, Popular and Product detail.
 - The Guide HTTP fixture was synchronized with the current UI and catalog output: the visible filter action is `Clear`, the visible search form remains removed, and the current published/starter article title is asserted without requiring the old `Starter handbook` wording.
 - Final audit evidence after a clean development-server restart: `npm run test:guide` passed 9/9, `npm run test:guide:http` passed 5/5, `npm run build` passed compile/lint/typecheck/static generation, and `git diff --check` passed. The initial HTTP failures were caused by testing before a server was running and then by a dev server sharing `.next` with a concurrent build; neither represented an application route failure.
+
+
+### 15.9 Super Admin access hardening
+
+- Public admin registration is closed. The `/admin/register` route and its login-screen link were removed, and the route manifest no longer exposes that page.
+- Super Admin promotion is controlled by the Supabase `public.user_roles` table. Only a user created through the Supabase Auth administrator flow should be assigned `role = 'super_admin'`; passwords are never stored in `public` tables.
+- The current `/admin/login` and `/admin` UI still use the inherited browser-local demo session and are not yet connected to Supabase Auth/RLS. This is explicitly not production security; the next implementation step is to replace the demo session with Supabase Auth and enforce `public.is_super_admin()` server-side before exposing live admin data.
