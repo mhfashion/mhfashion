@@ -588,3 +588,82 @@ placeholders with Supabase data, cart and checkout.
 - The catalog loader now degrades gracefully when Supabase URL/key are absent, so the visual storefront shell can render its existing empty-catalog message. Real product listings remain unavailable until Supabase is configured and migrations/seeds are applied.
 - No live Cloudflare deployment has been made. Wrangler is unauthenticated in this environment. GitHub Actions run [42306302512](https://github.com/mhfashion/mhfashion/actions/runs/42306302512) stopped at a check for missing `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; no deployment workflow exists on current `main`, so the deploy trigger and credentials must be configured.
 - Public launch is also gated on production dependency review: `npm audit --workspace=apps/web --omit=dev` reports 8 advisories, including Fabric.js SVG-export XSS and a critical transitive `tar` advisory. The suggested automatic fix requires breaking major upgrades (`fabric` 6 to 7.4.0 and `next` to 16.4.6); preserve the Fabric.js 6 editor behavior by doing an explicit upgrade and regression pass rather than forcing these changes during a dashboard task.
+
+---
+
+## 15. Current Implementation Addendum (audited 2026-11-10)
+
+This section records the current repository state and overrides earlier draft bullets where they conflict with the implemented UI. It is the current source of truth for the storefront prototype.
+
+### 15.1 Current route map
+
+- `/` — full-width Home page with compact mobile Hero, circular auto-moving category marquee, Popular Products, New Arrivals, two promotional cards, and the preserved desktop Footer.
+- `/new` — latest products only; no filter controls; responsive product grid.
+- `/popular` — best-selling products only; no filter controls; responsive product grid.
+- `/collections` — collection/category browsing page with compact horizontal category cards on phone.
+- `/mh-fashion` — MH Fashion collection page with category navigation, search/sort controls, responsive grid and sidebar filters. The Price Range fieldset/slider has been intentionally removed; Category, Size and In Stock controls remain presentational until filter behavior is connected.
+- `/nyein` — separate Nyein destination placeholder awaiting its final content/layout direction.
+- `/guide` and `/guide/[slug]` — server-rendered categorized Guide/blog listing and detail pages with Supabase/starter-data fallback, cover images, metadata and readable article layouts.
+- `/products/[slug]` — compact marketplace-style product detail with gallery, actual catalog details table, options, reviews, related products and Buy Now/Add to Cart/Edit Design actions.
+- `/create` — browser-local Fabric.js editor prototype with responsive desktop/phone workspace, tools, layers, text/elements, Product and separate Mockup controls.
+- `/cart` — client-side cart page with persistent localStorage items, quantity controls, item removal, clear cart, subtotal/total and empty state.
+- `/account` — responsive account prototype with profile, order/design/wishlist/points/settings presentation using placeholder/local state where backend data is not yet connected.
+
+### 15.2 Global UI decisions that must not regress
+
+- Use full-width layouts with only small responsive gutters; do not reintroduce broad empty side margins.
+- Do not add the removed breadcrumbs to the Guide or storefront layouts.
+- Preserve the existing Header/Footer text and links unless a later explicit request changes them.
+- Desktop Footer is intentionally rendered on Home only; non-Home pages do not duplicate the full Footer.
+- Phone bottom navigation owns Home, Popular, Create, Cart and Account. Do not duplicate those destinations in the phone side drawer. The drawer uses EN/MM and copyright text instead of a duplicate Account shortcut.
+- Desktop Header retains the floating pill, navigation, search, notification, wishlist, $/Ks toggle, theme toggle, Create icon, cart count/box and account icon. Phone header does not show EN/MM; the language switcher belongs in the side drawer.
+- English/Myanmar translation is implemented through the locale provider and localStorage persistence. Visible language control is EN/MM, not EN/မြန်မာ.
+- Product image areas and complete product card boxes are 1:1 square on phone and desktop. Product cards remain marketplace-style grids: two columns on phone, three on tablet, and wider grids on desktop. Compact mobile typography/padding is intentional.
+- Home and other page Hero banners use compact mobile heights (Home approximately 155px; catalog/Guide heroes use the aligned compact mobile rules) while desktop banners remain larger.
+
+### 15.3 Guide-specific decisions
+
+- Guide shortcut cards are compact on phone. `All Guides` is the first fixed card and the remaining categories/Points & Rewards are presented in the same compact row; desktop uses the sidebar navigation and does not duplicate the shortcut row.
+- Guide search UI was intentionally removed from both desktop and phone. Category filtering/query support remains in the data layer only if needed for future content management, but the current visible search form must not be restored without an explicit request.
+- Guide posts support cover images, categories, detail pages, metadata, starter fallback data, and Supabase published-content reads. Post Admin CRUD/auth remains future work.
+
+### 15.4 Cart and commerce prototype state
+
+- `CartProvider` is mounted at the root and persists `CartItem[]` to localStorage under `mh-fashion-cart-items`, with the legacy count key kept for compatibility.
+- Cart actions currently implemented: add item, increment/decrement quantity, remove item, clear cart, item count badge, CartBox preview, full `/cart` page, subtotal/total display and empty state.
+- Desktop Header cart icon opens `CartBox`; mobile bottom navigation links to `/cart`.
+- Product detail Buy Now adds the product then navigates to `/cart`; Add to Cart stays on the detail page with confirmation state.
+- Checkout, payment, delivery fee calculation, discount codes, address autofill, order creation and provider integrations are not implemented yet. The checkout button is a clearly marked UI placeholder and must not be described as a completed payment flow.
+- Product-card Buy remains a link to the product detail page, not a direct cart action.
+
+### 15.5 Editor current prototype state and boundaries
+
+- `/create` uses Fabric.js 6 in the browser with local draft persistence, Front/Back state, Undo/Redo, Save/restore, image import, text presets/font search, original local SVG Elements catalog, responsive rails/flyouts, contextual toolbar, layers management, and separate Product/Mockup selection.
+- Mockup selection is intentionally deferred until the separate Mockup control is selected. Product selection remains a separate bottom attribute control. Attaching a mockup displays the selected mockup placement preview.
+- The Products sidebar/library was removed by request; storefront product catalog/detail routes remain unchanged.
+- Object-level editor tools are implemented, but this is not a Photoshop-equivalent pixel editor. Pixel-level raster masks/merge/eraser, node-level path editing, complete production mockup rendering, account-backed drafts and R2 asset uploads remain deferred.
+- Local Elements, fonts and text-style manifests are versioned under `public/`; R2 is explicitly not connected and no credentials/bindings/public bucket should be added until the R2 phase is requested.
+
+### 15.6 Data, deployment and validation record
+
+- Supabase migrations currently include `0001_initial_schema.sql` through `0006_guide_post_cover_image.sql`; Guide content/cover-image schema is present and public reads use published-content rules with starter fallback.
+- GitHub repository is `mhfashion/mhfashion`, working branch and deployment branch are `main`, and production is `https://mhfashion.mhfashionmm.workers.dev`.
+- Production deployment is GitHub-to-Cloudflare Workers through OpenNext. Recent successful production commits include `2b29f96` (Home mobile Hero), `f7ac7f9` (Guide row/search), `2cff8f9` (remove Price Range), `dcb4bb7` (compact product cards), `d3af660` (compact Guide cards), and `0b9e4e3` (cart page/cart box).
+- Latest audited repository HEAD at the time of this addendum is `0b9e4e3`; TypeScript validation and `git diff --check` passed for the cart implementation, and live route checks returned HTTP 200 for the key storefront routes.
+
+### 15.7 Remaining work explicitly recorded
+
+- Complete real checkout/payment/order flow and connect it to the cart UI.
+- Add authentication and account-backed design/cart/order persistence.
+- Implement secure Post Admin and other admin modules.
+- Connect production mockup assets, R2 private asset routes, licensed fonts/text assets and upload flows.
+- Finish production-grade pixel editing, real masks/merge, node editing, AI tools and editor automated tests.
+- Replace placeholder Nyein content and account data with finalized requirements.
+- Add final SEO/structured-data, accessibility and phone/desktop visual QA as pages evolve.
+
+
+### 15.8 Audit follow-up
+
+- The public `apps/web/public/manus-routes.json` has been synchronized with the complete App Router page set: Home, Account, Cart, Collections, Create, Guide, Guide Article, MH Fashion, New, Nyein, Popular and Product detail.
+- The Guide HTTP fixture was synchronized with the current UI and catalog output: the visible filter action is `Clear`, the visible search form remains removed, and the current published/starter article title is asserted without requiring the old `Starter handbook` wording.
+- Final audit evidence after a clean development-server restart: `npm run test:guide` passed 9/9, `npm run test:guide:http` passed 5/5, `npm run build` passed compile/lint/typecheck/static generation, and `git diff --check` passed. The initial HTTP failures were caused by testing before a server was running and then by a dev server sharing `.next` with a concurrent build; neither represented an application route failure.

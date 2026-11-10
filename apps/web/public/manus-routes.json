@@ -5,14 +5,15 @@
     { "path": "/admin/login", "title": "Admin Sign In" },
     { "path": "/admin/register", "title": "Create Admin Demo Account" },
     { "path": "/account", "title": "My Account" },
-    { "path": "/create", "title": "Create Design" },
+    { "path": "/cart", "title": "Cart" },
     { "path": "/collections", "title": "Collections" },
+    { "path": "/create", "title": "Create Design" },
+    { "path": "/guide", "title": "Guide" },
+    { "path": "/guide/:slug", "title": "Guide Article" },
     { "path": "/mh-fashion", "title": "MH Fashion" },
     { "path": "/new", "title": "New Arrivals" },
     { "path": "/nyein", "title": "Nyein Collection" },
     { "path": "/popular", "title": "Popular Products" },
-    { "path": "/products/:slug", "title": "Product Details" },
-    { "path": "/guide", "title": "Guide" },
-    { "path": "/guide/:slug", "title": "Guide Article" }
+    { "path": "/products/:slug", "title": "Product Details" }
   ]
 }

@@ -17,7 +17,7 @@ test("guide landing serves article content and categories without JavaScript", a
   assert.equal(result.response.status, 200);
   assert.match(result.visible, /Product Guide/);
   assert.match(result.visible, /Payment Guide/);
-  assert.match(result.visible, /Starter handbook/);
+  assert.match(result.visible, /How MH Fashion products are organized/);
   assert.equal(new Set(result.articleLinks).size, 8);
   assert.match(result.visible, /<h1\b/);
   assert.match(result.html, /MH Fashion Guide — Products, Design &amp; Payment/);
@@ -31,7 +31,7 @@ test("guide category and text search compose on the server", async () => {
   const query = await page("/guide?category=payment-guide&q=KBZPay");
   assert.equal(query.response.status, 200);
   assert.deepEqual([...new Set(query.articleLinks)], ["/guide/payment-options-at-checkout"]);
-  assert.match(query.visible, /Clear filters/);
+  assert.match(query.visible, /Clear/);
   const empty = await page("/guide?q=keyword-that-does-not-exist");
   assert.equal(empty.response.status, 200);
   assert.match(empty.visible, /No guides match your search/);
@@ -62,5 +62,21 @@ test("route manifest is served as JSON and matches implemented pages", async () 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type"), /json/);
   const manifest = await response.json();
-  assert.deepEqual(manifest.routes.map((route) => route.path), ["/", "/account", "/create", "/guide", "/guide/:slug"]);
+  assert.deepEqual(manifest.routes.map((route) => route.path), [
+    "/",
+    "/admin",
+    "/admin/login",
+    "/admin/register",
+    "/account",
+    "/cart",
+    "/collections",
+    "/create",
+    "/guide",
+    "/guide/:slug",
+    "/mh-fashion",
+    "/new",
+    "/nyein",
+    "/popular",
+    "/products/:slug",
+  ]);
 });
