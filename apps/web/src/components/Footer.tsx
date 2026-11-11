@@ -5,8 +5,8 @@ import { useI18n } from "@/lib/i18n";
 export default function Footer() {
   const { t } = useI18n();
   return (
-    <footer className="hidden md:block px-6 md:px-8 py-6 border-t border-border mt-6">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-5 pb-5 border-b border-border">
+    <footer className="mt-6 border-t border-border px-4 py-4 md:px-8 md:py-6">
+      <div className="hidden md:grid grid-cols-2 md:grid-cols-5 gap-5 pb-5 border-b border-border">
         <div className="col-span-2 md:col-span-1">
           <p className="font-bold text-sm mb-2">MH FASHION.</p>
           <p className="text-[10px] text-text-muted leading-relaxed">
@@ -78,7 +78,7 @@ export default function Footer() {
 
       {/* Payment methods (split Myanmar / International) + app download,
           mirroring the reference layout the user provided. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-5 border-b border-border">
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-4 py-5 border-b border-border">
         <div>
           <p className="text-[10px] font-semibold text-text-muted mb-2">
             {t("footer.myanmarPayment")}
@@ -121,7 +121,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <p className="text-[9px] text-text-faint text-center pt-4">
+      <p className="text-[9px] text-text-faint text-center pt-1 md:pt-4">
         © {new Date().getFullYear()} MH Fashion. {t("footer.rights")}
       </p>
     </footer>

@@ -280,7 +280,8 @@ Other product types get their own attribute sets and pricing formulas.
 - **Mobile/tablet:** hamburger + logo + search + notifications on top; a
   partial-width drawer slides in below the header (scrollable) holding nav, the
   footer groups (Shop, Help, Legal, newsletter, payments, app links) and
-  Account. The full footer is hidden on these sizes.
+  Account. Full footer links/payment panels are hidden on these sizes, while a
+  compact copyright strip remains visible at the bottom of storefront pages.
 - **Homepage:** Hero (doubles as admin ad slot, falls back to the default
   banner) → Shop by Category (auto-scrolling marquee, loops seamlessly) → New
   Arrivals → Best Sellers → Shop by Collection → Footer.
@@ -597,7 +598,7 @@ This section records the current repository state and overrides earlier draft bu
 
 ### 15.1 Current route map
 
-- `/` — full-width Home page with compact mobile Hero, circular auto-moving category marquee, Popular Products, New Arrivals, two promotional cards, and the preserved desktop Footer.
+- `/` — full-width Home page with compact mobile Hero, circular auto-moving category marquee, Popular Products, New Arrivals, two promotional cards, and the shared site-wide Footer (compact copyright strip on phones).
 - `/new` — latest products only; no filter controls; responsive product grid.
 - `/popular` — best-selling products only; no filter controls; responsive product grid.
 - `/collections` — collection/category browsing page with compact horizontal category cards on phone.
@@ -614,7 +615,7 @@ This section records the current repository state and overrides earlier draft bu
 - Use full-width layouts with only small responsive gutters; do not reintroduce broad empty side margins.
 - Do not add the removed breadcrumbs to the Guide or storefront layouts.
 - Preserve the existing Header/Footer text and links unless a later explicit request changes them.
-- Desktop Footer is intentionally rendered on Home only; non-Home pages do not duplicate the full Footer.
+- The shared Footer appears on storefront routes, including product detail; full links/payment panels show on desktop and a compact copyright strip remains visible on phones. Internal `/admin` pages omit the storefront footer.
 - Phone bottom navigation owns Home, Popular, Create, Cart and Account. Do not duplicate those destinations in the phone side drawer. The drawer uses EN/MM and copyright text instead of a duplicate Account shortcut.
 - Desktop Header retains the floating pill, navigation, search, notification, wishlist, $/Ks toggle, theme toggle, Create icon, cart count/box and account icon. Phone header does not show EN/MM; the language switcher belongs in the side drawer.
 - English/Myanmar translation is implemented through the locale provider and localStorage persistence. Visible language control is EN/MM, not EN/မြန်မာ.
@@ -709,3 +710,11 @@ Following the supplied Popular Products reference, the shared “You may also li
 
 
 The final no-outer-frame adjustment was pushed as `28867d9`. Its automatic deployment run [#43081587376](https://github.com/mhfashion/mhfashion/actions/runs/43081587376) confirmed the two Cloudflare repository secrets are still unavailable to GitHub Actions and stopped before build/deploy; production has not received this visual correction.
+
+
+## Storefront Footer and copyright regression fix (2026-11-12)
+
+- Added the shared `SiteFooter` to the root storefront shell so all customer-facing routes, including `/products/[slug]`, render the Footer after page content. Internal `/admin` routes remain excluded.
+- Kept the full links, newsletter, and payment panels desktop-only, but made the copyright strip visible on both desktop and phone layouts. The existing mobile bottom-navigation clearance remains in place.
+- Removed the homepage-only Footer instance to avoid duplication and corrected the global/footer behavior notes above.
+- Validation: `npm run build` passed on Next.js 16.4.6 and `git diff --check` passed. GitHub sync and the resulting Cloudflare Actions deployment check are pending; no secret values were inspected or handled.
