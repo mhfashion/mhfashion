@@ -698,3 +698,6 @@ Commit `9cb5e21` is now on `main`, and the Cloudflare workflow is active. The ba
 ## Product detail recommendation card treatment (2026-11-12)
 
 On `/products/[slug]`, each product in “You may also like” now renders with its own outer border, contrasting inset background, padding and visible grid gap. The card treatment is opt-in on `ProductCard`, so other product grids retain their existing appearance. The Next.js production build passed, the existing guide tests passed 9/9, and lint reported zero errors (41 existing compatibility warnings).
+
+
+The card-source update was pushed as `b6501ef`; its automatic Actions run [#43080318814](https://github.com/mhfashion/mhfashion/actions/runs/43080318814) also stopped at the Cloudflare secret-presence check. Therefore the independent-card styling is available in `main` but is not yet on the live site; production remains on the previous version until Actions can read the required repository secrets and a deployment succeeds.

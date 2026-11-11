@@ -166,3 +166,8 @@ Source of scope: owner request and supplied Google Drive dashboard references (`
 
 - [x] On `/products/[slug]`, keep each item under “You may also like” in its own visible card with an independent outline, inset spacing, and separation from neighboring items. Preserve the shared recommendation section and leave other product grids unchanged.
 - Evidence: Next.js 16 production build passed; `npm run test:guide` passed 9/9; lint exited with 0 errors and 41 existing warnings; `git diff --check` passed.
+
+
+## Card update publishing status (2026-11-12)
+
+The recommendation-card fix is on `main` as `b6501ef`. GitHub Actions run [#43080318814](https://github.com/mhfashion/mhfashion/actions/runs/43080318814) again stopped at the required-secret gate: both Cloudflare secrets were unavailable to the workflow. Production continues to return HTTP 200 but still serves the prior version. The fix will become live only after the secrets are added at the repository Actions scope and the deployment workflow passes.
