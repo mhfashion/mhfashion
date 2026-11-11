@@ -280,7 +280,8 @@ Other product types get their own attribute sets and pricing formulas.
 - **Mobile/tablet:** hamburger + logo + search + notifications on top; a
   partial-width drawer slides in below the header (scrollable) holding nav, the
   footer groups (Shop, Help, Legal, newsletter, payments, app links) and
-  Account. The full footer is hidden on these sizes.
+  Account. The full Footer panel is hidden on these sizes, but a separate
+  copyright strip remains at the bottom of every web app view.
 - **Homepage:** Hero (doubles as admin ad slot, falls back to the default
   banner) → Shop by Category (auto-scrolling marquee, loops seamlessly) → New
   Arrivals → Best Sellers → Shop by Collection → Footer.
@@ -597,7 +598,7 @@ This section records the current repository state and overrides earlier draft bu
 
 ### 15.1 Current route map
 
-- `/` — full-width Home page with compact mobile Hero, circular auto-moving category marquee, Popular Products, New Arrivals, two promotional cards, and the preserved desktop Footer.
+- `/` — full-width Home page with compact mobile Hero, circular auto-moving category marquee, Popular Products, New Arrivals, two promotional cards, and the full desktop Footer; the separate copyright strip appears at the end of every view.
 - `/new` — latest products only; no filter controls; responsive product grid.
 - `/popular` — best-selling products only; no filter controls; responsive product grid.
 - `/collections` — collection/category browsing page with compact horizontal category cards on phone.
@@ -615,6 +616,7 @@ This section records the current repository state and overrides earlier draft bu
 - Do not add the removed breadcrumbs to the Guide or storefront layouts.
 - Preserve the existing Header/Footer text and links unless a later explicit request changes them.
 - Desktop Footer is intentionally rendered on Home only; non-Home pages do not duplicate the full Footer.
+- The copyright strip is separate from the full Footer and must appear at the very bottom of every web app view, on phone and desktop, including non-Home pages.
 - Phone bottom navigation owns Home, Popular, Create, Cart and Account. Do not duplicate those destinations in the phone side drawer. The drawer uses EN/MM and copyright text instead of a duplicate Account shortcut.
 - Desktop Header retains the floating pill, navigation, search, notification, wishlist, $/Ks toggle, theme toggle, Create icon, cart count/box and account icon. Phone header does not show EN/MM; the language switcher belongs in the side drawer.
 - English/Myanmar translation is implemented through the locale provider and localStorage persistence. Visible language control is EN/MM, not EN/မြန်မာ.
@@ -711,6 +713,6 @@ Following the supplied Popular Products reference, the shared “You may also li
 The final no-outer-frame adjustment was pushed as `28867d9`. Its automatic deployment run [#43081587376](https://github.com/mhfashion/mhfashion/actions/runs/43081587376) confirmed the two Cloudflare repository secrets are still unavailable to GitHub Actions and stopped before build/deploy; production has not received this visual correction.
 
 
-## Footer placement correction after plan review (2026-11-12)
+## Footer and copyright placement clarification (2026-11-12)
 
-The site-wide Footer change in commit `54ee3ed` contradicted the Home-only rule in section 15.2. It has been reverted: the desktop Footer is rendered on `/` only, remains hidden on phone sizes, and is no longer appended to product detail or other non-Home routes. The mobile navigation drawer continues to contain its planned copyright text. The correction passed `npm run build` on Next.js 16.4.6 and `git diff --check`, and was pushed to `main` as `0cdcf92`. Actions run [#43083635677](https://github.com/mhfashion/mhfashion/actions/runs/43083635677) stopped at `Check required Cloudflare secrets` before deployment; no secret values were inspected or handled.
+The requirements are separate: the full links/payment Footer remains on `/` only and is hidden on phones; a compact copyright strip must appear at the very bottom of every web app view, including non-Home routes and phone views. `CopyrightBar` is mounted after route content; on Home desktop it follows the full Footer. The full Footer no longer renders its own copyright row, preventing duplication.
