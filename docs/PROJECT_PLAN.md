@@ -280,14 +280,16 @@ Other product types get their own attribute sets and pricing formulas.
 - **Mobile/tablet:** hamburger + logo + search + notifications on top; a
   partial-width drawer slides in below the header (scrollable) holding nav, the
   footer groups (Shop, Help, Legal, newsletter, payments, app links) and
-  Account. The full Footer panel is hidden on these sizes, but a separate
-  copyright strip remains at the bottom of every web app view.
+  Account. The full Footer panel is hidden on these sizes; the separate
+  copyright strip remains visible.
 - **Homepage:** Hero (doubles as admin ad slot, falls back to the default
   banner) → Shop by Category (auto-scrolling marquee, loops seamlessly) → New
   Arrivals → Best Sellers → Shop by Collection → Footer.
-- **Footer (desktop):** brand, Shop, Help, Legal, newsletter; Myanmar payment
-  (KBZPay, Wave Pay, AYA Pay), app download links, international payment
-  (Visa, Mastercard); copyright.
+- **Footer (desktop, Home only):** brand, Shop, Help, Legal, newsletter;
+  Myanmar payment (KBZPay, Wave Pay, AYA Pay), app download links and
+  international payment (Visa, Mastercard).
+- **Copyright:** a separate strip at the very bottom of every web app view on
+  desktop and mobile, including non-Home routes.
 - **Product card:** compact image, name, price range, wishlist heart on every
   card.
 - **Product detail:** breadcrumb, gallery, all attribute selectors, price,
