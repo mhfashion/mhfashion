@@ -171,3 +171,9 @@ Source of scope: owner request and supplied Google Drive dashboard references (`
 ## Card update publishing status (2026-11-12)
 
 The recommendation-card fix is on `main` as `b6501ef`. GitHub Actions run [#43080318814](https://github.com/mhfashion/mhfashion/actions/runs/43080318814) again stopped at the required-secret gate: both Cloudflare secrets were unavailable to the workflow. Production continues to return HTTP 200 but still serves the prior version. The fix will become live only after the secrets are added at the repository Actions scope and the deployment workflow passes.
+
+
+## Unframed recommendations section (2026-11-12)
+
+- [x] Match the supplied Popular Products reference: “You may also like” itself has no surrounding border, surface panel, or inset padding; the heading sits above separate recommendation cards, each retaining its own subtle border and gap.
+- Evidence: Next.js 16 production build passed and `git diff --check` passed.

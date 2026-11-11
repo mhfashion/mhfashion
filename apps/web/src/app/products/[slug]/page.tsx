@@ -111,7 +111,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           </section>
 
           {related.length > 0 && (
-            <section className="mt-4 rounded-xl border border-border bg-bg-surface p-3 sm:p-4">
+            <section className="mt-4">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-black">You may also like</h2>
                 <a href="/popular" className="text-[10px] font-semibold text-accent">View all</a>
