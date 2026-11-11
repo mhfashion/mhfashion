@@ -706,3 +706,6 @@ The card-source update was pushed as `b6501ef`; its automatic Actions run [#4308
 ## Unframed recommendation section refinement (2026-11-12)
 
 Following the supplied Popular Products reference, the shared “You may also like” section no longer has an outer border, surface panel, or inset padding. Its heading and grid sit directly in the page flow; individual product cards retain their own subtle outline and spacing. The Next.js 16 production build passed after the change.
+
+
+The final no-outer-frame adjustment was pushed as `28867d9`. Its automatic deployment run [#43081587376](https://github.com/mhfashion/mhfashion/actions/runs/43081587376) confirmed the two Cloudflare repository secrets are still unavailable to GitHub Actions and stopped before build/deploy; production has not received this visual correction.

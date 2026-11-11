@@ -177,3 +177,8 @@ The recommendation-card fix is on `main` as `b6501ef`. GitHub Actions run [#4308
 
 - [x] Match the supplied Popular Products reference: “You may also like” itself has no surrounding border, surface panel, or inset padding; the heading sits above separate recommendation cards, each retaining its own subtle border and gap.
 - Evidence: Next.js 16 production build passed and `git diff --check` passed.
+
+
+## Latest unframed-section publication result (2026-11-12)
+
+The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43081587376](https://github.com/mhfashion/mhfashion/actions/runs/43081587376) again found `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` unavailable and stopped before build/deploy. The live page is therefore unchanged until those secrets are available to the workflow.
