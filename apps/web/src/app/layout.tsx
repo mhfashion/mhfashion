@@ -4,7 +4,6 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { CurrencyProvider } from "@/lib/currency-context";
 import { CartProvider } from "@/lib/cart-context";
 import { LocaleProvider } from "@/lib/i18n";
-import SiteFooter from "@/components/SiteFooter";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
 export const metadata: Metadata = {
@@ -28,10 +27,7 @@ export default function RootLayout({
           <LocaleProvider>
             <CurrencyProvider>
               <CartProvider>
-                <div className="pb-16 md:pb-0">
-                  {children}
-                  <SiteFooter />
-                </div>
+                <div className="pb-16 md:pb-0">{children}</div>
                 <MobileBottomNav />
               </CartProvider>
             </CurrencyProvider>
