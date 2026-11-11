@@ -8,6 +8,8 @@ export default function CopyrightBar() {
   const { t } = useI18n();
   const isHome = pathname === "/";
 
+  if (pathname === "/create" || pathname?.startsWith("/create/")) return null;
+
   return (
     <footer
       className={`mt-auto border-t border-border px-4 py-3 md:px-8 ${

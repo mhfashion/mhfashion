@@ -281,15 +281,16 @@ Other product types get their own attribute sets and pricing formulas.
   partial-width drawer slides in below the header (scrollable) holding nav, the
   footer groups (Shop, Help, Legal, newsletter, payments, app links) and
   Account. The full Footer panel is hidden on these sizes; the separate
-  copyright strip remains visible.
+  copyright strip remains visible on storefront views. The `/create` editor is
+  intentionally excluded.
 - **Homepage:** Hero (doubles as admin ad slot, falls back to the default
   banner) → Shop by Category (auto-scrolling marquee, loops seamlessly) → New
   Arrivals → Best Sellers → Shop by Collection → Footer.
 - **Footer (desktop, Home only):** brand, Shop, Help, Legal, newsletter;
   Myanmar payment (KBZPay, Wave Pay, AYA Pay), app download links and
   international payment (Visa, Mastercard).
-- **Copyright:** a separate strip at the very bottom of every web app view on
-  desktop and mobile, including non-Home routes.
+- **Copyright:** a separate strip at the very bottom of every non-editor web app
+  view on desktop and mobile, including non-Home routes; `/create` is excluded.
 - **Product card:** compact image, name, price range, wishlist heart on every
   card.
 - **Product detail:** breadcrumb, gallery, all attribute selectors, price,
@@ -600,7 +601,7 @@ This section records the current repository state and overrides earlier draft bu
 
 ### 15.1 Current route map
 
-- `/` — full-width Home page with compact mobile Hero, circular auto-moving category marquee, Popular Products, New Arrivals, two promotional cards, and the full desktop Footer; the separate copyright strip appears at the end of every view.
+- `/` — full-width Home page with compact mobile Hero, circular auto-moving category marquee, Popular Products, New Arrivals, two promotional cards, and the full desktop Footer; the separate copyright strip appears at the end of every non-editor view.
 - `/new` — latest products only; no filter controls; responsive product grid.
 - `/popular` — best-selling products only; no filter controls; responsive product grid.
 - `/collections` — collection/category browsing page with compact horizontal category cards on phone.
@@ -608,7 +609,7 @@ This section records the current repository state and overrides earlier draft bu
 - `/nyein` — separate Nyein destination placeholder awaiting its final content/layout direction.
 - `/guide` and `/guide/[slug]` — server-rendered categorized Guide/blog listing and detail pages with Supabase/starter-data fallback, cover images, metadata and readable article layouts.
 - `/products/[slug]` — compact marketplace-style product detail with gallery, actual catalog details table, options, reviews, related products and Buy Now/Add to Cart/Edit Design actions.
-- `/create` — browser-local Fabric.js editor prototype with responsive desktop/phone workspace, tools, layers, text/elements, Product and separate Mockup controls.
+- `/create` — browser-local Fabric.js editor prototype with responsive desktop/phone workspace, tools, layers, text/elements, Product and separate Mockup controls. No site copyright strip or Footer is shown in this editor workspace.
 - `/cart` — client-side cart page with persistent localStorage items, quantity controls, item removal, clear cart, subtotal/total and empty state.
 - `/account` — responsive account prototype with profile, order/design/wishlist/points/settings presentation using placeholder/local state where backend data is not yet connected.
 
@@ -618,8 +619,8 @@ This section records the current repository state and overrides earlier draft bu
 - Do not add the removed breadcrumbs to the Guide or storefront layouts.
 - Preserve the existing Header/Footer text and links unless a later explicit request changes them.
 - Desktop Footer is intentionally rendered on Home only; non-Home pages do not duplicate the full Footer.
-- The copyright strip is separate from the full Footer and must appear at the very bottom of every web app view, on phone and desktop, including non-Home pages.
-- Canonical placement: mount `CopyrightBar` exactly once from `apps/web/src/app/layout.tsx`, after route content and before the fixed mobile navigation; do not implement it separately in page components or rely on drawer text. The root shell uses `min-h-screen flex flex-col`, route content uses `flex-1`, and the strip uses `mt-auto`: short views push it to the viewport bottom, while long views place it after the page content. Keep `pb-16 md:pb-0` on the root shell so the phone strip is not covered by the fixed bottom navigation. The copyright stays in normal document flow, not a fixed overlay.
+- The copyright strip is separate from the full Footer and must appear at the very bottom of every non-editor web app view, on phone and desktop, including non-Home pages. `/create` and nested editor routes have no CopyrightBar.
+- Canonical placement: mount `CopyrightBar` exactly once from `apps/web/src/app/layout.tsx`, after route content and before the fixed mobile navigation; do not implement it separately in page components or rely on drawer text. `CopyrightBar` returns `null` for `/create` and its nested routes. The root shell uses `min-h-screen flex flex-col`, route content uses `flex-1`, and the strip uses `mt-auto`: short views push it to the viewport bottom, while long views place it after the page content. Keep `pb-16 md:pb-0` on the root shell so the phone strip is not covered by the fixed bottom navigation. The copyright stays in normal document flow, not a fixed overlay.
 - The full `Footer` belongs only in `apps/web/src/app/page.tsx` after Home content and remains desktop-only (`hidden md:block`). It must not be mounted from the root layout. Its information/payment panels sit above the separate global copyright strip on Home desktop.
 - Phone bottom navigation owns Home, Popular, Create, Cart and Account. Do not duplicate those destinations in the phone side drawer. The drawer uses EN/MM and copyright text instead of a duplicate Account shortcut.
 - Desktop Header retains the floating pill, navigation, search, notification, wishlist, $/Ks toggle, theme toggle, Create icon, cart count/box and account icon. Phone header does not show EN/MM; the language switcher belongs in the side drawer.
@@ -719,10 +720,10 @@ The final no-outer-frame adjustment was pushed as `28867d9`. Its automatic deplo
 
 ## Footer and copyright placement clarification (2026-11-12)
 
-The requirements are separate: the full links/payment Footer remains on `/` only and is hidden on phones; a compact copyright strip must appear at the very bottom of every web app view, including non-Home routes and phone views. `CopyrightBar` is mounted after route content; on Home desktop it follows the full Footer. The full Footer no longer renders its own copyright row, preventing duplication.
+The requirements are separate: the full links/payment Footer remains on `/` only and is hidden on phones; a compact copyright strip appears at the very bottom of every non-editor web app view, including non-Home routes and phone views. `/create` is an explicit exception and displays neither Footer nor CopyrightBar. `CopyrightBar` is mounted after route content; on Home desktop it follows the full Footer. The full Footer no longer renders its own copyright row, preventing duplication.
 
 ### Implementation details and task record
 
-`apps/web/src/components/Footer.tsx` remains the complete brand/navigation/newsletter/payment panel, rendered only by the Home page (`apps/web/src/app/page.tsx`) and hidden below the desktop breakpoint. Its former copyright row was removed. `apps/web/src/components/CopyrightBar.tsx` owns the dynamic-year copyright text and localized rights label; `apps/web/src/app/layout.tsx` mounts it once after every route's content. The Home desktop strip removes its extra top border/padding where it follows the full Footer; on Home phones and all non-Home routes it remains the only footer-like strip. The root flex shell keeps the strip at the bottom of short pages and after the content of long pages, with mobile-nav clearance. It is present on all App Router views, including `/create` and `/admin`.
+`apps/web/src/components/Footer.tsx` remains the complete brand/navigation/newsletter/payment panel, rendered only by the Home page (`apps/web/src/app/page.tsx`) and hidden below the desktop breakpoint. Its former copyright row was removed. `apps/web/src/components/CopyrightBar.tsx` owns the dynamic-year copyright text and localized rights label; `apps/web/src/app/layout.tsx` mounts it once after route content except when the path is `/create` or nested beneath it. The Home desktop strip removes its extra top border/padding where it follows the full Footer; on Home phones and other non-Home routes it remains the only footer-like strip. The root flex shell keeps the strip at the bottom of short pages and after the content of long pages, with mobile-nav clearance. The editor is intentionally free of any site CopyrightBar.
 
-Work history: the first attempt (`54ee3ed`) incorrectly moved the entire Footer to every route. That was reverted (`0cdcf92`) to honor the Home-only full-Footer rule. The final implementation separates the always-present copyright into `CopyrightBar` (`24cb280`); the plan was clarified to state both requirements independently. Validation passed with `npm run build` on Next.js 16.4.6 and `git diff --check`. GitHub Actions run [#43084640207](https://github.com/mhfashion/mhfashion/actions/runs/43084640207) stopped at `Check required Cloudflare secrets` before deployment, so the final code is on `main` but has not reached production. No secret values were inspected or handled.
+Work history: the first attempt (`54ee3ed`) incorrectly moved the entire Footer to every route. That was reverted (`0cdcf92`) to honor the Home-only full-Footer rule. The final implementation separates the copyright into `CopyrightBar` (`24cb280`); the latest user clarification excludes the `/create` editor from this otherwise global strip. The plan now states both route rules and the component ownership explicitly. The editor-exclusion correction passed `npm run build` on Next.js 16.4.6 and `git diff --check`. GitHub Actions run [#43084640207](https://github.com/mhfashion/mhfashion/actions/runs/43084640207) stopped at `Check required Cloudflare secrets` before deployment; no secret values were inspected or handled.
