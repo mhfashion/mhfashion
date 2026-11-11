@@ -110,7 +110,17 @@ export default async function ProductDetailPage({ params }: PageProps) {
             </details>
           </section>
 
-          {related.length > 0 && <section className="mt-4 rounded-xl border border-border bg-bg-surface p-3 sm:p-4"><div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-black">You may also like</h2><a href="/popular" className="text-[10px] font-semibold text-accent">View all</a></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{related.map((item) => <ProductCard key={item.id} product={item} />)}</div></section>}
+          {related.length > 0 && (
+            <section className="mt-4 rounded-xl border border-border bg-bg-surface p-3 sm:p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-black">You may also like</h2>
+                <a href="/popular" className="text-[10px] font-semibold text-accent">View all</a>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                {related.map((item) => <ProductCard key={item.id} product={item} boxed />)}
+              </div>
+            </section>
+          )}
         </div>
       </main>
 

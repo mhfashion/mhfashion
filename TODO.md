@@ -160,3 +160,9 @@ Source of scope: owner request and supplied Google Drive dashboard references (`
 - [ ] Add those exact names as repository-level Actions secrets in `mhfashion/mhfashion` → Settings → Secrets and variables → Actions → Repository secrets. If stored as Environment secrets, identify the Environment name so the workflow can reference it. Never send secret values in chat.
 - [ ] After GitHub exposes both values to Actions, rerun the workflow and verify its CI checks, Cloudflare deploy, and the public Worker response.
 - Evidence: workflow run [#42882789084](https://github.com/mhfashion/mhfashion/actions/runs/42882789084), attempt 2, stopped at the secret-presence step; no GitHub-hosted tests/build/deploy ran. Local production audit, tests, typecheck, Next/OpenNext builds, Wrangler dry-run, and editor browser regressions passed.
+
+
+## Product detail recommendations (2026-11-12)
+
+- [x] On `/products/[slug]`, keep each item under “You may also like” in its own visible card with an independent outline, inset spacing, and separation from neighboring items. Preserve the shared recommendation section and leave other product grids unchanged.
+- Evidence: Next.js 16 production build passed; `npm run test:guide` passed 9/9; lint exited with 0 errors and 41 existing warnings; `git diff --check` passed.

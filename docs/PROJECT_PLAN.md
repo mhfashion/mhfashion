@@ -693,3 +693,8 @@ Latest `main` also closes public `/admin/register` and adds migration `0007_crea
 ## Cloudflare deployment follow-up (2026-11-12)
 
 Commit `9cb5e21` is now on `main`, and the Cloudflare workflow is active. The base production site, `https://mhfashion.mhfashionmm.workers.dev`, responds with HTTP 200. Both the push-triggered run and its rerun stopped at the safe secret-presence check: GitHub Actions saw `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as missing. The hosted unit/build/deploy steps did not run, so the upgrade is not yet live; the existing production version remains in service. The CLI cannot inspect repository secret metadata (HTTP 403), and no secret values were read. Add both names under the repository's Settings → Secrets and variables → Actions → Repository secrets, or provide the GitHub Environment name if they were added as environment-scoped secrets, then rerun the workflow. Local audit, typecheck, guide tests, Next build, Worker build and dry-run passed.
+
+
+## Product detail recommendation card treatment (2026-11-12)
+
+On `/products/[slug]`, each product in “You may also like” now renders with its own outer border, contrasting inset background, padding and visible grid gap. The card treatment is opt-in on `ProductCard`, so other product grids retain their existing appearance. The Next.js production build passed, the existing guide tests passed 9/9, and lint reported zero errors (41 existing compatibility warnings).

@@ -6,15 +6,15 @@ import type { Product } from "@/lib/types";
 import { useCurrency } from "@/lib/currency-context";
 import { useI18n } from "@/lib/i18n";
 
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({ product, boxed = false }: { product: Product; boxed?: boolean }) {
   const [favorited, setFavorited] = useState(false);
   const { formatRangeKs } = useCurrency();
   const { t } = useI18n();
   const productUrl = `/products/${product.slug}`;
 
   return (
-    <div className="group flex h-full aspect-square min-h-0 flex-col">
-      <a href={productUrl} className="relative block min-h-0 flex-1 overflow-hidden rounded-lg bg-bg-surface">
+    <article className={`group flex h-full aspect-square min-h-0 flex-col ${boxed ? "rounded-xl border border-border/70 bg-bg p-2 shadow-sm transition-colors hover:border-accent/50 sm:p-2.5" : ""}`}>
+      <a href={productUrl} className={`relative block min-h-0 flex-1 overflow-hidden rounded-lg ${boxed ? "border border-border/60 bg-bg-surface" : "bg-bg-surface"}`}>
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
@@ -40,7 +40,7 @@ export default function ProductCard({ product }: { product: Product }) {
       </a>
 
       <a href={productUrl} className="mt-0.5 block shrink-0 truncate text-[9px] sm:mt-1 sm:text-[10px]">{product.name}</a>
-      <div className="mt-1 shrink-0 rounded-md border border-border bg-bg-surface p-1 shadow-sm sm:mt-1.5 sm:p-1.5">
+      <div className={`mt-1 shrink-0 ${boxed ? "" : "rounded-md border border-border bg-bg-surface p-1 shadow-sm sm:mt-1.5 sm:p-1.5"}`}>
         <span className="block truncate px-0.5 text-[8px] font-semibold text-text-primary sm:px-1 sm:text-[10px]">
           {formatRangeKs(product.priceMinKs, product.priceMaxKs)}
         </span>
@@ -48,6 +48,6 @@ export default function ProductCard({ product }: { product: Product }) {
           {t("product.buy")}
         </a>
       </div>
-    </div>
+    </article>
   );
 }
