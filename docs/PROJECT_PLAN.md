@@ -458,6 +458,10 @@ product type and customization status; the current schema has no free-form
 description field, so the page avoids unsupported material/specification claims.
 The Reviews title and rating stay visible while the review cards start collapsed.
 
+**Current editor-shell change (2026-11-13):** The storefront `Header` is temporarily
+hidden on `/create`; the `KittlCanvas` workspace remains. This changes only the
+site Header's visibility and leaves editor-owned controls intact.
+
 **Editor prototype (`/create`):** Fabric.js 7.4.0 canvas with selectable, movable,
 scalable and rotatable objects; in-place text editing and family/size/weight/
 color formatting; freehand vector Pen paths; zoom and hand-pan; browser-local
