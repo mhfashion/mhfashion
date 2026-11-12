@@ -116,6 +116,7 @@ export default function EditorPage() {
     future: [],
   });
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>([]);
   const [mockup, setMockup] = useState<MockupId | null>(null);
   const [mockupLibraryOpen, setMockupLibraryOpen] = useState(false);
   const [mobileLayersOpen, setMobileLayersOpen] = useState(false);
@@ -208,6 +209,7 @@ export default function EditorPage() {
     const insertedMark = targetId ? { ...mark, id: targetId } : mark;
     const layerName = mark.elementName ?? (mark.kind === "Text" ? `Text: ${(mark.text ?? "").slice(0, 24)}` : mark.kind === "Shape" ? `${mark.shapeType ?? "Rectangle"} shape` : `${mark.kind} element`);
     setSelectedLayerId(insertedMark.id);
+    setSelectedLayerIds([insertedMark.id]);
     commitDocument((document) => ({
       ...document,
       marks: { ...document.marks, [activeSide]: [...document.marks[activeSide], insertedMark] },
@@ -297,6 +299,7 @@ export default function EditorPage() {
       layers: { ...document.layers, [activeSide]: [...document.layers[activeSide], group, titleLayer, subtitleLayer] },
     }));
     setSelectedLayerId(titleId);
+    setSelectedLayerIds([titleId]);
     setSaveMessage(`${combination.name} added as editable text layers`);
   };
 
@@ -347,6 +350,17 @@ export default function EditorPage() {
         [activeSide]: document.layers[activeSide].map((layer) => layer.id === id ? { ...layer, ...patch } : layer),
       },
     }));
+
+  const updateLayers = (ids: string[], patch: Partial<EditorLayer>) => {
+    if (!ids.length) return;
+    commitDocument((document) => ({
+      ...document,
+      layers: {
+        ...document.layers,
+        [activeSide]: document.layers[activeSide].map((layer) => ids.includes(layer.id) ? { ...layer, ...patch } : layer),
+      },
+    }));
+  };
 
   const dropLayer = (sourceId: string, targetId: string, position: LayerDropPosition) => commitDocument((document) => {
     const layers = document.layers[activeSide];
@@ -404,6 +418,7 @@ export default function EditorPage() {
       },
     }));
     setSelectedLayerId(id);
+    setSelectedLayerIds([id]);
     setSaveMessage(isGroup ? "Group created" : "Blank layer created and selected. Choose Pen, Shape, or Gradient to add artwork.");
   };
 
@@ -432,6 +447,7 @@ export default function EditorPage() {
       layers: { ...document.layers, [activeSide]: [...document.layers[activeSide], ...clones] },
     }));
     setSelectedLayerId(idMap.get(selected.id) ?? null);
+    setSelectedLayerIds(idMap.get(selected.id) ? [idMap.get(selected.id)!] : []);
   };
 
   const mergeDown = () => {
@@ -455,19 +471,23 @@ export default function EditorPage() {
       },
     }));
     setSelectedLayerId(groupId);
+    setSelectedLayerIds([groupId]);
   };
 
   const deleteLayer = () => {
-    if (!selectedLayerId) return;
+    const selectedIds = selectedLayerIds.length ? selectedLayerIds : selectedLayerId ? [selectedLayerId] : [];
+    if (!selectedIds.length) return;
     const layers = history.present.layers[activeSide];
-    const selected = layers.find((layer) => layer.id === selectedLayerId);
-    if (!selected) return;
-    const removeIds = new Set([selected.id, ...(selected.isGroup ? layers.filter((layer) => layer.parentId === selected.id).map((layer) => layer.id) : [])]);
+    const removeIds = new Set(selectedIds);
+    for (const selectedId of selectedIds) {
+      layers.filter((layer) => layer.parentId === selectedId).forEach((layer) => removeIds.add(layer.id));
+    }
     commitDocument((document) => ({
       marks: { ...document.marks, [activeSide]: document.marks[activeSide].filter((mark) => !removeIds.has(mark.id)) },
       layers: { ...document.layers, [activeSide]: document.layers[activeSide].filter((layer) => !removeIds.has(layer.id)).map((layer) => layer.childIds ? { ...layer, childIds: layer.childIds.filter((childId) => !removeIds.has(childId)) } : layer) },
     }));
     setSelectedLayerId(null);
+    setSelectedLayerIds([]);
   };
 
   const moveLayer = (direction: -1 | 1) => {
@@ -589,8 +609,11 @@ export default function EditorPage() {
               layers={history.present.layers[activeSide]}
               marks={history.present.marks[activeSide]}
               selectedLayerId={selectedLayerId}
-              onSelectLayer={setSelectedLayerId}
+              selectedLayerIds={selectedLayerIds}
+              onSelectLayer={(id) => { setSelectedLayerIds([id]); setSelectedLayerId(id); }}
+              onSelectLayers={(ids) => { setSelectedLayerIds(ids); setSelectedLayerId(ids[ids.length - 1] ?? null); }}
               onUpdateLayer={updateLayer}
+              onUpdateLayers={updateLayers}
               onAddLayer={() => addLayer(false)}
               onAddGroup={() => addLayer(true)}
               onDuplicate={duplicateLayer}

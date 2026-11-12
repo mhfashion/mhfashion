@@ -421,7 +421,7 @@ Selection tools follow Photoshop's separation between selecting a layer/object a
 
 The canonical model remains `EditorLayer[]` plus `CanvasMark[]`, with Fabric objects carrying a stable `data.id`. The Layers box owns presentation state (`query`, `filter`, collapsed groups, hover, focus, drop hint); the document owns composition state (`visible`, `locked`, `parentId`, `childIds`, `opacity`, `fillOpacity`, `flow`, `blendMode`, masks, effects, and source metadata). Canvas event handlers consult the document state before setting `selectable` or `evented`. Every row action calls `commitDocument`, so visibility, lock, reorder, group, mask metadata, and property changes share Undo/Redo and local-draft persistence.
 
-The first implementation slice is intentionally narrow: add Move Auto-select controls, enforce the selected-layer policy in Fabric hit testing, add Layers-box search/type filtering, and preserve all current row operations. The next slice will add multi-row selection, group isolation, keyboard stack movement, independent lock modes, and mask companion nodes. Pixel brushes, pixel masks, and Photoshop-compatible PSD import are not implied by this plan.
+The first implementation slice now includes Move Auto-select controls, selected-layer policy in Fabric hit testing, Layers-box search/type filtering, Shift multi-selection, bulk hide/lock actions, group-aware multi-delete, and history-backed state updates. The next slice will add contiguous range selection, group isolation, keyboard stack movement, independent lock modes, and mask companion nodes. Pixel brushes, pixel masks, and Photoshop-compatible PSD import are not implied by this plan.
 
 ## 10. Text and typography system
 

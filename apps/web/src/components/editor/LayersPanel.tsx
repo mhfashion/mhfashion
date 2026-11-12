@@ -77,7 +77,7 @@ function LayerThumbnail({ layer, mark }: { layer: EditorLayer; mark?: CanvasMark
 }
 
 export default function LayersPanel({
-  side, layers, marks, selectedLayerId, onSelectLayer, onUpdateLayer,
+  side, layers, marks, selectedLayerId, selectedLayerIds, onSelectLayer, onSelectLayers, onUpdateLayer, onUpdateLayers,
   onAddLayer, onAddGroup, onDuplicate, onMergeDown, onDelete, onMove,
   onRenameLayer, onDropLayer, selectedMark, onUpdateMark,
   onReplaceSmartObject,
@@ -86,8 +86,11 @@ export default function LayersPanel({
   layers: EditorLayer[];
   marks: CanvasMark[];
   selectedLayerId: string | null;
+  selectedLayerIds?: string[];
   onSelectLayer: (id: string) => void;
+  onSelectLayers?: (ids: string[]) => void;
   onUpdateLayer: (id: string, update: Partial<EditorLayer>) => void;
+  onUpdateLayers?: (ids: string[], update: Partial<EditorLayer>) => void;
   onAddLayer: () => void;
   onAddGroup: () => void;
   onDuplicate: () => void;
@@ -110,6 +113,8 @@ export default function LayersPanel({
   const [layerFilter, setLayerFilter] = useState<LayerFilter>("all");
   const [effectToAdd, setEffectToAdd] = useState(EFFECTS[0]);
   const selected = layers.find((layer) => layer.id === selectedLayerId) ?? null;
+  const activeSelection = selectedLayerIds?.length ? selectedLayerIds : selectedLayerId ? [selectedLayerId] : [];
+  const hasMultiSelection = activeSelection.length > 1;
   const selectedIndex = selected ? layers.findIndex((layer) => layer.id === selected.id) : -1;
   const selectedSiblings = selected ? layers.filter((layer) => layer.parentId === selected.parentId && !layer.isGroup) : [];
   const selectedSiblingIndex = selected ? selectedSiblings.findIndex((layer) => layer.id === selected.id) : -1;
@@ -187,6 +192,7 @@ export default function LayersPanel({
       </div>
 
       <div className="relative z-10 shrink-0 space-y-1 border-b border-border bg-bg px-2.5 py-1.5">
+        {hasMultiSelection && <div className="flex items-center justify-between border-b border-border/70 pb-1 text-[9px] text-accent"><span>{activeSelection.length} layers selected</span><div className="flex gap-1"><button type="button" onClick={() => onUpdateLayers?.(activeSelection, { visible: false })} className="rounded border border-border px-1.5 py-0.5 text-text-secondary hover:bg-bg-surface">Hide</button><button type="button" onClick={() => onUpdateLayers?.(activeSelection, { locked: true })} className="rounded border border-border px-1.5 py-0.5 text-text-secondary hover:bg-bg-surface">Lock</button></div></div>}
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="layer-blend-mode">Blend mode</label>
           <select id="layer-blend-mode" aria-label="Layer blend mode" disabled={!selected} value={selectedMode} onChange={(event) => { if (selected) onUpdateLayer(selected.id, { blendMode: event.target.value as BlendMode }); }} className={`${fieldClass} h-6 flex-1 text-[10px] disabled:cursor-not-allowed disabled:opacity-50`}>
@@ -214,10 +220,10 @@ export default function LayersPanel({
               onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", layer.id); setDraggedId(layer.id); }}
               onDragEnd={() => { setDraggedId(null); setDropHint(null); }}
               onDragOver={(event) => handleDragOver(event, layer)} onDrop={(event) => dropOnLayer(event, layer)}
-              className={`flex min-h-9 items-center gap-1 rounded px-1 ${selectedLayerId === layer.id ? "bg-accent/10 ring-1 ring-accent/40" : "hover:bg-bg-surface"} ${nested ? "ml-4" : ""} ${dropStyle} ${draggedId === layer.id ? "opacity-40" : ""}`}>
+              className={`flex min-h-9 items-center gap-1 rounded px-1 ${activeSelection.includes(layer.id) ? "bg-accent/10 ring-1 ring-accent/40" : "hover:bg-bg-surface"} ${nested ? "ml-4" : ""} ${dropStyle} ${draggedId === layer.id ? "opacity-40" : ""}`}>
               {layer.isGroup ? <button type="button" title={collapsed ? "Expand group" : "Collapse group"} aria-label={collapsed ? "Expand group" : "Collapse group"} onClick={() => setCollapsedGroups((current) => { const next = new Set(current); next.has(layer.id) ? next.delete(layer.id) : next.add(layer.id); return next; })} className="shrink-0 text-text-muted">{collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}</button> : <span className="w-[13px] shrink-0" />}
               <button type="button" title={layer.visible ? "Hide layer" : "Show layer"} aria-label={layer.visible ? "Hide layer" : "Show layer"} onClick={() => onUpdateLayer(layer.id, { visible: !layer.visible })} className="shrink-0 text-text-muted hover:text-text-primary">{layer.visible ? <Eye size={13} /> : <EyeOff size={13} />}</button>
-              {renamingId === layer.id ? <div className="flex min-w-0 flex-1 items-center gap-1.5"><LayerThumbnail layer={layer} mark={mark} /><input autoFocus value={draftName} onChange={(event) => setDraftName(event.target.value)} onBlur={() => finishRename(layer)} onKeyDown={(event) => { if (event.key === "Enter") finishRename(layer); if (event.key === "Escape") setRenamingId(null); }} className="min-w-0 flex-1 rounded border border-accent bg-bg px-1 py-0.5 text-[10px] outline-none" /></div> : <button type="button" aria-pressed={selectedLayerId === layer.id} onClick={() => onSelectLayer(layer.id)} onDoubleClick={() => { setRenamingId(layer.id); setDraftName(layer.name); }} className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[10px]">
+              {renamingId === layer.id ? <div className="flex min-w-0 flex-1 items-center gap-1.5"><LayerThumbnail layer={layer} mark={mark} /><input autoFocus value={draftName} onChange={(event) => setDraftName(event.target.value)} onBlur={() => finishRename(layer)} onKeyDown={(event) => { if (event.key === "Enter") finishRename(layer); if (event.key === "Escape") setRenamingId(null); }} className="min-w-0 flex-1 rounded border border-accent bg-bg px-1 py-0.5 text-[10px] outline-none" /></div> : <button type="button" aria-pressed={activeSelection.includes(layer.id)} onClick={(event) => { if (event.shiftKey && onSelectLayers) { const next = activeSelection.includes(layer.id) ? activeSelection.filter((id) => id !== layer.id) : [...activeSelection, layer.id]; onSelectLayers(next); } else onSelectLayer(layer.id); }} onDoubleClick={() => { setRenamingId(layer.id); setDraftName(layer.name); }} className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-[10px]">
                 <LayerThumbnail layer={layer} mark={mark} /><span className="min-w-0 flex-1 truncate" title={`${layer.name} · double-click to rename`}>{layer.name}</span>{layer.isSmartObject && <span title="Embedded Smart Object"><Box size={11} className="shrink-0 text-accent" /></span>}{layer.clipping && <span title="Clipped to base layer below"><SquareStack size={11} className="shrink-0 text-accent" /></span>}{layer.hasMask && <Scissors size={11} className="shrink-0 text-text-muted" />}{(layer.effects?.length ?? 0) > 0 && <span className="shrink-0 text-[9px] font-semibold text-text-muted">fx</span>}
               </button>}
               {layer.locked && <button type="button" title="Unlock layer" aria-label="Unlock layer" onClick={() => onUpdateLayer(layer.id, { locked: false })} className="shrink-0 text-accent"><Lock size={12} /></button>}
