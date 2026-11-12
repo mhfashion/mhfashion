@@ -154,14 +154,12 @@ Other product types get their own attribute sets and pricing formulas.
 
 ## 6. Editor (`/create`)
 
-**Detailed editor specification:** [`docs/EDITOR_PLAN.md`](./EDITOR_PLAN.md). This
-document is the implementation-oriented editor plan: it combines the useful,
-documented interaction patterns of Kittl, Photoshop, and Illustrator with MH
-Fashion's product/mockup/print-export requirements. It starts with the Move tool
-and defines selection, transforms, vector/raster editing, layers, masks, text,
-effects, snapping, mockups, export, keyboard behavior, persistence, phases, and
-production acceptance criteria. These are planned capabilities, not a claim that
-all of them are already implemented.
+**Standalone editor plan:** [`docs/EDITOR_PLAN.md`](./EDITOR_PLAN.md). This is
+the canonical, independently maintained editor document. Keep the full editor
+specification, Fabric.js implementation logic, future updates, milestones, and
+acceptance criteria there; this product plan keeps only this short reference so
+the two plans do not drift or become unnecessarily duplicated. These are planned
+capabilities, not a claim that all of them are already implemented.
 
 - Layout: left rail (Upload, Elements, Text, Effects, AI) with the tools
   palette stacked below it; Canva-style flyout panel on click; layers panel on

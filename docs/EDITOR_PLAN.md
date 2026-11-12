@@ -1,9 +1,18 @@
 # MH Fashion Editor Plan
 
-**Status:** Planning baseline for `/create`  
-**Date:** 2026-11-12  
-**Parent plan:** [`PROJECT_PLAN.md`](./PROJECT_PLAN.md) §6  
+**Status:** Standalone, continuously updatable planning document for `/create`
+
+**Date:** 2026-11-12
+
+**Parent-plan reference:** [`PROJECT_PLAN.md`](./PROJECT_PLAN.md) §6
+
+**Canonical owner:** This file is the source of truth for editor-specific behavior, implementation logic, milestones, and acceptance criteria. Future editor updates should be made here first; `PROJECT_PLAN.md` should keep only a short summary and link.
+
 **Implementation boundary:** This document defines the behavior MH Fashion should build. It does not claim that every item below is already implemented.
+
+## Standalone maintenance policy
+
+Keep this document independent from the broader product plan so editor work can evolve without making `PROJECT_PLAN.md` difficult to maintain. Add new editor tools, Fabric.js implementation details, interaction rules, data contracts, export behavior, performance constraints, and tests to this file. When a major editor milestone changes the product status, update the short reference note in `PROJECT_PLAN.md`; do not duplicate the full editor specification there.
 
 ## 1. Product direction
 
