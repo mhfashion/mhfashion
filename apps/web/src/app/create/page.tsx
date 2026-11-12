@@ -569,10 +569,10 @@ export default function EditorPage() {
         </div>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 gap-2 overflow-hidden bg-[#17191a] p-2">
         <EditorLeftRail activePanel={activePanel} onPanelChange={setActivePanel} activeTool={activeTool} onToolChange={setActiveTool} />
         {activePanel && (
-          <div className="fixed inset-x-0 bottom-[4.25rem] z-40 lg:static lg:block">
+          <div className="fixed inset-x-0 bottom-[4.25rem] z-40 lg:static lg:block lg:py-0">
             <EditorFlyout
               panel={activePanel}
               onUploadImage={handleUploadImage}
@@ -589,7 +589,7 @@ export default function EditorPage() {
             />
           </div>
         )}
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f3f4f6] dark:bg-[#f3f4f6]">
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-black/10 bg-[#e7e8e5] shadow-inner dark:bg-[#e7e8e5]">
           <InteractiveCanvas
             activeTool={activeTool}
             activeSide={activeSide}
@@ -610,12 +610,12 @@ export default function EditorPage() {
             onToolColorChange={setToolColor}
           />
         </main>
-        <div className="flex shrink-0 items-center gap-1 border-l border-border bg-bg-surface px-1 md:hidden">
+        <div className="flex shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-[#202324] px-1 md:hidden">
           <button type="button" onClick={() => setActivePanel(activePanel === "elements" ? null : "elements")} className={`flex min-w-12 flex-col items-center gap-0.5 rounded px-1.5 py-1 text-[8px] ${activePanel === "elements" ? "text-accent" : "text-text-muted"}`}><span className="text-sm leading-none">＋</span><span>Assets</span></button>
           <button type="button" onClick={() => setMobileLayersOpen((value) => !value)} className={`flex min-w-12 flex-col items-center gap-0.5 rounded px-1.5 py-1 text-[8px] ${mobileLayersOpen ? "bg-accent/10 text-accent" : "text-text-muted"}`}><Layers2 size={15} /><span>Layers</span></button>
           <button type="button" onClick={() => setMockupLibraryOpen(true)} className="flex min-w-12 flex-col items-center gap-0.5 rounded px-1.5 py-1 text-[8px] text-text-muted"><span className="text-sm leading-none">◇</span><span>Mockup</span></button>
         </div>
-        <aside className={`${mobileLayersOpen ? "fixed" : "hidden"} inset-x-2 bottom-[4.25rem] z-30 max-h-[70dvh] flex-col overflow-hidden rounded-t-xl border border-border bg-bg-surface shadow-2xl md:static md:inset-auto md:bottom-auto md:z-auto md:flex md:max-h-none md:w-64 md:shrink-0 md:rounded-none md:border-b-0 md:border-l md:border-t-0 md:shadow-none`}>
+        <aside className={`${mobileLayersOpen ? "fixed" : "hidden"} inset-x-2 bottom-[4.25rem] z-30 max-h-[70dvh] flex-col overflow-hidden rounded-t-xl border border-border bg-bg-surface shadow-2xl md:static md:inset-auto md:bottom-auto md:z-auto md:flex md:max-h-none md:w-[18rem] md:shrink-0 md:rounded-xl md:border md:shadow-none`}>
           <div className="min-h-0 flex-1 overflow-y-auto">
             <HistoryPanel past={historyLabels.past} future={historyLabels.future} current={historyLabels.current} onUndo={undo} onRedo={redo} />
             <div className="border-b border-border p-3">

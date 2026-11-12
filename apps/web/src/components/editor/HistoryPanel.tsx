@@ -13,7 +13,7 @@ type Props = {
 export default function HistoryPanel({ past, future, current, onUndo, onRedo }: Props) {
   const entries = [...past.slice(-12).reverse(), current];
   return (
-    <section aria-label="History" className="shrink-0 border-b border-border bg-bg-surface">
+    <section aria-label="History" className="shrink-0 border-b border-border bg-[#fbfcfa]">
       <div className="flex h-8 items-center justify-between border-b border-border px-2.5">
         <div className="flex items-center gap-1.5 text-[10px] font-semibold text-text-secondary"><History size={12} /> History</div>
         <span className="text-[9px] text-text-faint">{past.length} undo · {future.length} redo</span>

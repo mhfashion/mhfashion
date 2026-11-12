@@ -127,8 +127,8 @@ export default function EditorFlyout({
   const width = panel === "text" ? "w-full sm:w-80" : panel === "elements" ? "w-full sm:w-72" : "w-full sm:w-52";
 
   return (
-    <div className={`${width} max-h-[58dvh] flex-shrink-0 overflow-y-auto rounded-t-xl border border-border bg-bg-surface p-3 shadow-2xl sm:max-h-none sm:rounded-none sm:border-y-0 sm:border-l-0 sm:border-r sm:shadow-none`}>
-      <div className="mb-2.5 flex items-center justify-between"><p className="text-xs font-semibold">{TITLES[panel]}</p><span className="h-1 w-10 rounded-full bg-border sm:hidden" aria-hidden="true" /></div>
+    <div className={`${width} max-h-[58dvh] flex-shrink-0 overflow-y-auto rounded-t-xl border border-border bg-[#fbfcfa] p-3 shadow-2xl sm:max-h-none sm:rounded-xl sm:border sm:shadow-xl`}>
+      <div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-bold tracking-tight text-text-primary">{TITLES[panel]}</p><p className="mt-0.5 text-[9px] text-text-faint">Build your garment composition</p></div><span className="h-1 w-10 rounded-full bg-border sm:hidden" aria-hidden="true" /></div>
 
       {panel === "upload" && <div className="space-y-2">
         <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileChange} className="sr-only" aria-label="Choose an image to upload" />

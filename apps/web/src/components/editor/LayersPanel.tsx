@@ -174,7 +174,7 @@ export default function LayersPanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col border-t border-border">
+    <div className="flex min-h-0 flex-1 flex-col bg-[#fbfcfa]">
       <div className="flex h-8 shrink-0 items-center justify-between border-b border-border px-2.5">
         <div><p className="text-[10px] font-semibold text-text-secondary">Layers · {side}</p><p className="text-[8px] text-text-faint">Drag rows to reorder</p></div>
         <span className="text-[9px] text-text-faint">{layers.length} items</span>

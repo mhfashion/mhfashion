@@ -78,7 +78,7 @@ export default function EditorLeftRail({
   onToolChange: (id: ToolId) => void;
 }) {
   return (
-    <div className="w-12 flex-shrink-0 border-r border-border flex flex-col items-center gap-2 py-2 sm:w-16 sm:gap-2.5 sm:py-3 overflow-y-auto">
+    <div className="w-12 flex-shrink-0 overflow-y-auto rounded-xl border border-white/10 bg-[#202324] py-2 text-white sm:w-16 sm:gap-2.5 sm:py-3">
       {PANELS.map(({ id, label, Icon }) => {
         const active = activePanel === id;
         return (
@@ -86,10 +86,10 @@ export default function EditorLeftRail({
             key={id}
             onClick={() => onPanelChange(active ? null : id)}
             title={label}
-            className={`flex flex-col items-center gap-1 w-full py-1.5 rounded-md text-[8px] ${
+            className={`mx-1 flex w-[calc(100%-0.5rem)] flex-col items-center gap-1 rounded-lg py-2 text-[8px] transition-colors ${
               active
-                ? "text-accent bg-bg-surface"
-                : "text-text-secondary hover:text-text-primary"
+                ? "bg-accent text-accent-foreground shadow-sm"
+                : "text-white/55 hover:bg-white/10 hover:text-white"
             }`}
           >
             <Icon size={15} />
@@ -98,7 +98,7 @@ export default function EditorLeftRail({
         );
       })}
 
-      <div className="w-8 border-t border-border my-1" />
+      <div className="mx-2 my-2 border-t border-white/10" />
 
       {/* Photoshop-style tools palette — one tool active at a time */}
       {TOOLS.map(({ id, label, Icon }) => {
@@ -108,10 +108,10 @@ export default function EditorLeftRail({
             key={id}
             onClick={() => onToolChange(id)}
             title={label}
-            className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${
+            className={`mx-auto flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${
               active
-                ? "bg-accent text-accent-foreground"
-                : "text-text-secondary hover:text-text-primary"
+                ? "bg-accent text-accent-foreground shadow-sm"
+                : "text-white/60 hover:bg-white/10 hover:text-white"
             }`}
           >
             <Icon size={14} />
