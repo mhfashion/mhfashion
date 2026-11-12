@@ -10,19 +10,24 @@
 
 **Implementation boundary:** This document defines the behavior MH Fashion should build. It does not claim that every item below is already implemented.
 
+**Unified product direction:** [`UNIFIED_EDITOR_VISION.md`](./UNIFIED_EDITOR_VISION.md) is the canonical product-level synthesis of Kittl-style creation, Photoshop-style professional control, Canva-style templates/brand workflow, and MH Fashion production constraints. This file remains the detailed implementation contract.
+
 ## Standalone maintenance policy
 
 Keep this document independent from the broader product plan so editor work can evolve without making `PROJECT_PLAN.md` difficult to maintain. Add new editor tools, Fabric.js implementation details, interaction rules, data contracts, export behavior, performance constraints, and tests to this file. When a major editor milestone changes the product status, update the short reference note in `PROJECT_PLAN.md`; do not duplicate the full editor specification there.
 
 ## 1. Product direction
 
-MH Fashion should combine three useful editor patterns without copying any product's proprietary interface or assets:
+MH Fashion should combine four useful editor patterns without copying any product's proprietary interface or assets:
 
 - **Kittl-style accessibility:** quick canvas actions, direct manipulation, artboard-first workflows, contextual controls, simple alignment, useful text transformations, mockup attachment, and fast export. Kittl documents selection, move, rotate, scale, zoom, pan, undo/redo, layer management, alignment, text transformations, mockups, and export as connected editor workflows. [1] [2] [3] [4] [5] [6]
 - **Photoshop-style non-destructive composition:** a predictable layer stack, groups, visibility, locking, opacity, blend modes, masks, Smart Objects, adjustment/effect ownership, and history-backed changes. Photoshop's documented model combines Smart Objects, Smart Filters, adjustment layers, and masks so edits can remain reversible. [7]
+- **Canva-style discovery and brand workflow:** searchable templates, low-friction asset insertion, mobile-friendly Layers access, reusable brand logos/colors/fonts/assets, approved templates, and safe multi-layer rearrangement. Canva documents Layers access from Position, drag insertion lines, multi-layer selection, and Brand Kits for shared brand assets. [21] [22]
 - **Illustrator-style vector precision:** object selection versus path selection, editable anchors and handles, Pen/Curvature workflows, Shape Builder operations, artboards, Smart Guides, snapping, measurements, and precise export. Illustrator separates object-level selection from anchor/path editing and exposes guides for alignment, spacing, measurements, and transformations. [8] [9] [10]
 
 The result should feel like **MH Fashion Design Studio**: easy enough for a first-time T-shirt designer, but structurally reliable enough for production artwork and print export.
+
+The three primary experiences must share one document model, one selection system, one Layer tree, one History system, one autosave path, and one production validator. Detailed mode behavior, template/brand tokens, scene-graph migration, and implementation phases are maintained in [`UNIFIED_EDITOR_VISION.md`](./UNIFIED_EDITOR_VISION.md).
 
 ## 2. Current implementation baseline
 
@@ -742,6 +747,8 @@ The editor is production-ready only when all of the following are true:
 [18]: https://helpx.adobe.com/cn/photoshop-elements/desktop/keyboard-shortcuts/keys-layers-panel.html "Photoshop Layers panel keyboard shortcuts"
 [19]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/apply-layer-effects/set-layer-opacity-and-blending-modes.html "Photoshop Set layer opacity and blending modes"
 [20]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/smart-objects/create-embedded-smart-objects.html "Photoshop Create embedded Smart Objects"
+[21]: https://www.canva.com/help/finding-and-arranging-layers/ "Canva Finding and arranging layers"
+[22]: https://www.canva.com/help/brand-kit/ "Canva Set up Brand Kits"
 
 
 ## Appendix A — Fabric.js implementation logic
