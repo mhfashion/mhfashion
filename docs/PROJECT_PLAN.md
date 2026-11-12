@@ -22,31 +22,47 @@ Anything not yet decided lives in section 13 (Open / Deferred).
 
 | Layer | Choice |
 |---|---|
-| Frontend | Next.js (App Router) + TypeScript + Tailwind CSS |
-| Editor engine | Fabric.js (vector + raster hybrid) |
-| Backend | Node.js (NestJS or Express — decided at implementation) |
-| Database / Auth | Supabase (PostgreSQL) |
-| Storage | Cloudflare R2 |
-| Hosting | Cloudflare Workers via OpenNext adapter (flexible later) |
+| Frontend | Next.js 16.4.6 (App Router) + React 19.3.1 + TypeScript 5.9.3 + Tailwind CSS 3.4.19 |
+| Editor engine | Fabric.js 7.4.0 (vector + raster hybrid) |
+| Backend | Next.js server layer only — App Router server components and route handlers calling `@supabase/supabase-js` / `@supabase/ssr`. No separate NestJS or Express service exists in the repo. |
+| Database / Auth | Supabase (PostgreSQL, Auth, RLS) |
+| Storage | Cloudflare R2 (contracted, not connected yet — see sections 12 and 13) |
+| Hosting | Cloudflare Workers via `@opennextjs/cloudflare` 1.20.16 + Wrangler 4.158.0 |
+| Node runtime | Node.js 22 (the deploy workflow pins `node-version: 22`) |
 | AI | Hugging Face (Remove Background, Upscale); own GPU server via API (image generation, later) |
 | Mobile (provisional) | React Native |
 | Email (provisional) | Resend |
 
 Fonts: woff2 for web, otf for the future mobile app.
 
+Versions above are the installed resolutions in `package-lock.json` (verified
+2026-11-12); `apps/web/package.json` holds the matching semver ranges. Update
+this table whenever a dependency major/minor changes.
+
 ## 3. Dev Workflow
 
-- Claude writes all code (web + app); no Cursor.
-- GitHub: `mhfashion/mhfashion`. Cloudflare builds from `main` automatically
-  (root directory `apps/web`, build `npx opennextjs-cloudflare build`, deploy
-  `npx wrangler deploy`).
-- Supabase: Claude writes SQL migrations (`supabase/migrations/`); the owner
-  runs them in the SQL Editor.
-- Current Cloudflare build toolchain: Next.js 15.5.29, `@opennextjs/cloudflare`
-  1.20.16, and Wrangler 4.158.0. Keep the lockfile aligned with these versions;
-  the OpenNext Worker build is validated with `npm run cf:build --workspace=apps/web`.
-- Standalone Cloudflare Worker scripts are NOT committed to the repo; Claude
-  hands over the code and the owner deploys it in Cloudflare.
+- The AI coding assistant (Claude / Manus) writes all code (web + app); no Cursor.
+- GitHub: `mhfashion/mhfashion`. Production deploys run through the committed
+  GitHub Actions workflow `.github/workflows/deploy-cloudflare.yml` on pushes to
+  `main` that touch `apps/web/**`, `package.json`, `package-lock.json`, or the
+  workflow itself (plus manual dispatch). Cloudflare's own Git integration is not
+  deploying current `main` either — the live build predates the current HEAD — so
+  this workflow is the path to fix. As of 2026-11-12 every run stops at the
+  secret-presence check, and pushes to `main` do not reach production.
+- The workflow runs, in order: secret check → `npm ci` → production audit →
+  `npm run test:guide` → `npm run build --workspace=apps/web` →
+  `npm run test:guide:http` against a local production server → `tsc --noEmit`
+  → `npm run cf:build --workspace=apps/web` → `wrangler deploy --dry-run` →
+  `wrangler deploy` (main only). It needs the repository secrets
+  `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+- Supabase: the AI assistant writes SQL migrations (`supabase/migrations/`); the
+  owner runs them in the SQL Editor. Migrations `0001`–`0007` are committed.
+- Current build toolchain: Next.js 16.4.6, React 19.3.1, Fabric.js 7.4.0,
+  `@opennextjs/cloudflare` 1.20.16, Wrangler 4.158.0, ESLint 10.14.0 (flat
+  config). Keep the lockfile aligned with these versions; the OpenNext Worker
+  build is validated with `npm run cf:build --workspace=apps/web`.
+- Standalone Cloudflare Worker scripts are NOT committed to the repo; the
+  assistant hands over the code and the owner deploys it in Cloudflare.
 - Secrets (`.env.local`, API keys, tokens) never go into GitHub.
 
 ## 4. Product & Attribute System
@@ -148,7 +164,7 @@ Other product types get their own attribute sets and pricing formulas.
   grid optional and off by default. The selection bar becomes contextual: text
   exposes font/size/color/emphasis/alignment, shapes expose geometry/fill, and
   selected artwork exposes duplicate/delete actions.
-- Canvas engine (current prototype): Fabric.js 6 renders browser-side editable
+- Canvas engine (current prototype): Fabric.js 7.4.0 renders browser-side editable
   objects with selection, move, scale, rotate, in-place text editing, zoom, and
   hand-pan. The Pen tool now draws vector paths. Transform and path edits are
   stored as object data and enter Undo/Redo and browser-local Save/restore.
@@ -351,9 +367,10 @@ Fashion references with a dark left navigation, light dashboard workspace, top
 search/profile bar, KPI cards, sales and order-status visualizations, top-selling
 products, recent orders, and activity feed. Use responsive layouts and clearly
 identify local sample metrics as preview data. This UI shell does not establish
-secure admin authentication, authorization, or live analytics. Frontend `/admin/login`
-and `/admin/register` pages may use one browser-local demo account/session to
-preview the flow, with explicit warnings and no real/reused passwords. This
+secure admin authentication, authorization, or live analytics. The frontend
+`/admin/login` page may use one browser-local demo account/session to preview the
+flow, with explicit warnings and no real/reused passwords; public registration is
+closed and no `/admin/register` route exists. This
 client-only gate is bypassable and is not a security boundary. Replace it with
 Supabase Auth and server-side role checks before handling real admin accounts or
 data; connect live analytics only after that secure foundation exists.
@@ -408,10 +425,22 @@ catalog-facing items.
 
 ## 14. Build Status
 
-**Done and live** (mhfashion.mhfashionmm.workers.dev):
-scaffold and Cloudflare deploy, Supabase schema (migrations 0001–0004), homepage
-with live product data, sticky header, mobile drawer, footer, dark/light and
-Ks/$ toggles, notification dropdown, category marquee.
+**Live in production** (mhfashion.mhfashionmm.workers.dev, currently serving the
+pre-upgrade build described below): scaffold and Cloudflare deploy, the Supabase
+schema migrations `0001`–`0007` (Guide content and Super Admin roles included;
+whether each migration is applied is owner-managed), homepage with live product
+data, sticky header, mobile drawer, footer, dark/light and Ks/$ toggles,
+notification dropdown, category marquee, Guide listing and article pages, product
+detail, and the cart page. Probed on 2026-11-12: `/`, `/new`, `/popular`,
+`/collections`, `/mh-fashion`, `/nyein`, `/guide`, `/guide/how-apparel-options-narrow-down`,
+`/products/butterfly-effect`, `/cart`, `/account`, `/create` and `/admin/login` return 200;
+`/admin/register` returns 404.
+
+**In `main`, not yet deployed:** the Next.js 16.4.6 / React 19.3.1 / Fabric.js
+7.4.0 upgrade, the restored Cloudflare deploy workflow, the related-product card
+and section styling, and the Footer/CopyrightBar corrections (commits `9cb5e21`
+through `6de8616`). Every workflow run since `9cb5e21` stops at the
+secret-presence check, so production keeps serving the last successful build.
 
 **Product detail pages (`/products/[slug]`):** use the full available page width
 with minimal gutters and a compact gallery (280px at tablet widths, capped near
@@ -422,7 +451,7 @@ product type and customization status; the current schema has no free-form
 description field, so the page avoids unsupported material/specification claims.
 The Reviews title and rating stay visible while the review cards start collapsed.
 
-**Editor prototype (`/create`):** Fabric.js canvas with selectable, movable,
+**Editor prototype (`/create`):** Fabric.js 7.4.0 canvas with selectable, movable,
 scalable and rotatable objects; in-place text editing and family/size/weight/
 color formatting; freehand vector Pen paths; zoom and hand-pan; browser-local
 image import; text/basic-shape insertion; Undo/Redo; Save and restore via local
@@ -453,8 +482,10 @@ node-level path editing, remaining tool implementations, server/account design
 storage, production mockups, live price, Add to Cart, Buy Now, AI tools, and
 editor-specific automated tests.
 
-**Next:** Auth (email / Google / Facebook), product detail page, replace
-placeholders with Supabase data, cart and checkout.
+**Next:** Supabase Auth (email / Google / Facebook), replace the browser-local
+admin demo session with real Super Admin authorization and server-side checks,
+then checkout / payment / order creation on top of the existing cart, followed by
+the R2 phase and the remaining editor production work.
 
 ---
 
@@ -584,9 +615,27 @@ placeholders with Supabase data, cart and checkout.
   build passed; admin routes and the synchronized route manifest returned HTTP
   200. Browser QA verified create → dashboard → sign out → login and removed the
   disposable test account/session afterward.
+- Plan accuracy sync (2026-11-12): replaced the provisional stack table and the
+  §3 toolchain bullet with the versions actually installed in `package-lock.json`
+  (Next.js 16.4.6, React 19.3.1, TypeScript 5.9.3, Tailwind CSS 3.4.19, Fabric.js
+  7.4.0, `@opennextjs/cloudflare` 1.20.16, Wrangler 4.158.0, ESLint 10.14.0,
+  Node 22). Recorded the real Next.js server-layer backend instead of the
+  undecided NestJS/Express entry, and corrected the editor engine reference from
+  Fabric.js 6 to 7.4.0.
+- Build-status and deployment corrections (2026-11-12): §14 now separates what
+  production actually serves from what is merged on `main` but undeployed, the
+  migration range is `0001`–`0007`, and the "Next" list reflects the remaining
+  work (Supabase Auth, secure admin authorization, checkout/payment/orders, R2).
+  §15.6 records HEAD `6de8616`, the eight workflow runs that stopped at the
+  Cloudflare secret check, and the verified live route responses.
 
 
 ## Production publishing status snapshot (2026-11-10; superseded by the current follow-up below)
+
+> Historical record. The versions and audit results below were current on
+> 2026-11-10 and are kept as written. The stack has since moved to Next.js
+> 16.4.6 / React 19.3.1 / Fabric.js 7.4.0 (see section 2 and the security
+> upgrade record below), and the dependency gate described here is closed.
 
 - The lockfile installs Next.js 15.5.29 and OpenNext Cloudflare 1.20.16. After a clean `npm ci`, `npm run cf:build --workspace=apps/web` succeeded, and `npx wrangler deploy --dry-run` succeeded with a 1.16 MiB compressed Worker bundle. Local Worker preview returned HTTP 200 for `/`, `/admin/login`, `/admin/register`, `/admin`, and `/manus-routes.json` without Supabase keys.
 - The catalog loader now degrades gracefully when Supabase URL/key are absent, so the visual storefront shell can render its existing empty-catalog message. Real product listings remain unavailable until Supabase is configured and migrations/seeds are applied.
@@ -655,8 +704,9 @@ This section records the current repository state and overrides earlier draft bu
 
 - Supabase migrations include `0001_initial_schema.sql` through `0007_create_super_admin_roles.sql`; migration 0007 defines the application-role table for Supabase Auth users. This task did not apply any migration. Guide content/cover-image schema is present and public reads use published-content rules with starter fallback.
 - GitHub repository is `mhfashion/mhfashion`, working branch and deployment branch are `main`, and production is `https://mhfashion.mhfashionmm.workers.dev`.
-- Production deployment is GitHub-to-Cloudflare Workers through OpenNext. Recent successful production commits include `2b29f96` (Home mobile Hero), `f7ac7f9` (Guide row/search), `2cff8f9` (remove Price Range), `dcb4bb7` (compact product cards), `d3af660` (compact Guide cards), and `0b9e4e3` (cart page/cart box).
-- Latest audited repository HEAD at the time of this addendum is `0b9e4e3`; TypeScript validation and `git diff --check` passed for the cart implementation, and live route checks returned HTTP 200 for the key storefront routes.
+- Production deployment is GitHub-to-Cloudflare Workers through OpenNext, driven by `.github/workflows/deploy-cloudflare.yml` (push to `main` or manual dispatch, Node 22). Production commits delivered before the deploy workflow broke include `2b29f96` (Home mobile Hero), `f7ac7f9` (Guide row/search), `2cff8f9` (remove Price Range), `dcb4bb7` (compact product cards), `d3af660` (compact Guide cards), and `0b9e4e3` (cart page/cart box).
+- Current repository HEAD is `6de8616` on `main` (2026-11-12). The full range `9cb5e21` → `6de8616` (Next 16 / Fabric 7 upgrade, restored deploy workflow, related-product styling, Footer and CopyrightBar fixes) is merged but **not deployed**: all eight workflow runs from `42306302512` to `43087062859` failed at `Check required Cloudflare secrets`, reporting `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as missing.
+- The live Worker still serves the pre-upgrade build. Verified from the sandbox on 2026-11-12: every storefront route plus `/cart`, `/account`, `/create` and `/admin/login` returns HTTP 200, and `/admin/register` returns HTTP 404, which places the live build at or after the `0b9e4e3` era but before `9cb5e21`.
 
 ### 15.7 Remaining work explicitly recorded
 
@@ -727,3 +777,39 @@ The requirements are separate: the full links/payment Footer remains on `/` only
 `apps/web/src/components/Footer.tsx` remains the complete brand/navigation/newsletter/payment panel, rendered only by the Home page (`apps/web/src/app/page.tsx`) and hidden below the desktop breakpoint. Its former copyright row was removed. `apps/web/src/components/CopyrightBar.tsx` owns the dynamic-year copyright text and localized rights label; `apps/web/src/app/layout.tsx` mounts it once after route content except when the path is `/create` or nested beneath it. The Home desktop strip removes its extra top border/padding where it follows the full Footer; on Home phones and other non-Home routes it remains the only footer-like strip. The root flex shell keeps the strip at the bottom of short pages and after the content of long pages, with mobile-nav clearance. The editor is intentionally free of any site CopyrightBar.
 
 Work history: the first attempt (`54ee3ed`) incorrectly moved the entire Footer to every route. That was reverted (`0cdcf92`) to honor the Home-only full-Footer rule. The final implementation separates the copyright into `CopyrightBar` (`24cb280`); the latest user clarification excludes the `/create` editor from this otherwise global strip. The editor-exclusion correction passed `npm run build` on Next.js 16.4.6 and `git diff --check`, and was pushed as `6de8616`. Actions run [#43087062859](https://github.com/mhfashion/mhfashion/actions/runs/43087062859) stopped at `Check required Cloudflare secrets` before deployment; no secret values were inspected or handled.
+
+
+## Plan accuracy sync (2026-11-12)
+
+This pass did not change scope or decisions. It corrected places where the plan
+described an older state than the repository and the deployed site.
+
+**Sources checked:** `apps/web/package.json` and `package-lock.json` for installed
+versions; `apps/web/src/app/**/page.tsx` and `apps/web/public/manus-routes.json`
+for the route set; `supabase/migrations/` for the migration range;
+`.github/workflows/deploy-cloudflare.yml` for the deploy path; `gh run list` and
+`gh run view --log-failed` for CI outcomes; and HTTP probes of
+`https://mhfashion.mhfashionmm.workers.dev` for what production currently serves.
+
+**What changed**
+
+| Area | Was | Now |
+|---|---|---|
+| Stack table (§2) | Next.js/Tailwind unversioned, Fabric.js unversioned, backend "NestJS or Express — decided at implementation" | Installed versions recorded; backend described as the Next.js server layer with Supabase clients, since no separate service exists |
+| Toolchain (§3) | Next.js 15.5.29 | Next.js 16.4.6, React 19.3.1, Fabric.js 7.4.0, ESLint 10.14.0, Node 22; deploy path described as the committed Actions workflow |
+| Editor engine (§6) | "Fabric.js 6 renders browser-side editable objects" | Fabric.js 7.4.0 |
+| Admin (§10) | `/admin/login` and `/admin/register` demo pages | `/admin/login` only; public registration closed, no register route |
+| Build status (§14) | Everything listed as "Done and live"; migrations `0001`–`0004`; "Next" listed product detail and cart, which already exist | Live build vs. merged-but-undeployed split, migrations `0001`–`0007`, current remaining work |
+| Deployment record (§15.6) | HEAD `0b9e4e3`; deployment described as working | HEAD `6de8616`; range `9cb5e21`→`6de8616` merged but not deployed; live build identified by route probes |
+
+**What deliberately stayed as written:** the dated snapshots and Change Log
+entries keep the versions that were true when they were written, because they are
+the audit trail. They are labelled historical where the numbers no longer apply.
+`docs/architecture.md` remains the early draft that section 1 says this plan
+supersedes; it was not rewritten.
+
+**Still open after this sync:** the Cloudflare repository secrets
+(`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) are not visible to Actions, so
+no commit after `9cb5e21` is live; `docs/architecture.md` still describes the
+pre-build architecture; and section 15.8 keeps the test counts from its own run
+date rather than tracking the latest build.
