@@ -80,7 +80,7 @@ The user can toggle these overlays. They are not exported into the clean SVG/PNG
 
 ### 3.4 Responsive UI/UX layout contract
 
-Current user-directed step (2026-11-13): temporarily hide the storefront site `Header` on `/create`. Keep the existing editor canvas/workspace rendered; this is not a redesign or removal of controls owned by the editor itself. Apply later changes only when the user specifies them. Responsive work applies to the editor workspace: tools, asset flyout, canvas, Layers/Properties, mockup controls, and product attributes.
+Current user-directed step (2026-11-13): temporarily hide the storefront site `Header` on `/create`. Keep the existing editor canvas/workspace rendered; this is not a redesign or removal of controls owned by the editor itself. Ctrl+wheel over the editor viewport must prevent Chrome page zoom and zoom the editor canvas instead, using a native non-passive wheel listener; do not suppress browser zoom outside the editor canvas or across unrelated routes. Apply later changes only when the user specifies them. Responsive work applies to the editor workspace: tools, asset flyout, canvas, Layers/Properties, mockup controls, and product attributes.
 
 On **Web/Desktop**, the workspace uses a compact three-zone composition: a narrow left tool rail, an optional asset flyout, a flexible center canvas, and a right Layers/Properties dock. The right dock keeps the layer tree available without forcing a separate navigation page. Widths are constrained so the canvas remains the visual priority; long controls scroll inside their own panel instead of making the whole document scroll.
 

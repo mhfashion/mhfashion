@@ -459,8 +459,10 @@ description field, so the page avoids unsupported material/specification claims.
 The Reviews title and rating stay visible while the review cards start collapsed.
 
 **Current editor-shell change (2026-11-13):** The storefront `Header` is temporarily
-hidden on `/create`; the `KittlCanvas` workspace remains. This changes only the
-site Header's visibility and leaves editor-owned controls intact.
+hidden on `/create`; the `KittlCanvas` workspace remains. Ctrl+wheel over the
+canvas suppresses Chrome page zoom and controls editor canvas zoom through a
+non-passive native wheel listener. Browser zoom remains unchanged outside the
+editor viewport. These changes leave other editor controls intact.
 
 **Editor prototype (`/create`):** Fabric.js 7.4.0 canvas with selectable, movable,
 scalable and rotatable objects; in-place text editing and family/size/weight/

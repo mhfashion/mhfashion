@@ -1,7 +1,7 @@
 "use client";
 
 import { Maximize2, Shirt } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Size = { width: number; height: number };
 
@@ -15,11 +15,19 @@ export default function KittlCanvas() {
   const [zoom, setZoom] = useState(1);
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  function handleCanvasWheel(event: React.WheelEvent<HTMLDivElement>) {
-    if (!event.ctrlKey) return;
-    event.preventDefault();
-    setZoom((current) => Math.max(0.25, Math.min(3, current - event.deltaY * 0.002)));
-  }
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const handleCanvasWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      setZoom((current) => Math.max(0.25, Math.min(3, current - event.deltaY * 0.002)));
+    };
+
+    viewport.addEventListener("wheel", handleCanvasWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", handleCanvasWheel);
+  }, []);
 
   function startResize(event: React.PointerEvent<HTMLButtonElement>) {
     event.stopPropagation();
@@ -41,7 +49,7 @@ export default function KittlCanvas() {
 
   return (
     <main className="h-full min-h-0 overflow-hidden bg-[#eef0f5]" onPointerMove={resize} onPointerUp={endResize}>
-      <div ref={viewportRef} onWheel={handleCanvasWheel} className="flex h-full w-full items-center justify-center overflow-auto p-6 sm:p-12">
+      <div ref={viewportRef} className="flex h-full w-full items-center justify-center overflow-auto p-6 sm:p-12">
         <div style={{ width: `${size.width * zoom}px`, height: `${size.height * zoom}px` }} className="relative shrink-0">
           <div
           role="application"
