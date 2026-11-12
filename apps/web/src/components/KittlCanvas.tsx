@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 type Size = { width: number; height: number };
 
 type ResizeState = { startX: number; startY: number; width: number; height: number };
+type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 
 export default function KittlCanvas() {
   const [size, setSize] = useState<Size>({ width: 720, height: 540 });
@@ -13,21 +14,89 @@ export default function KittlCanvas() {
   const [mockupAttached, setMockupAttached] = useState(false);
   const [resizeState, setResizeState] = useState<ResizeState | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const panStartRef = useRef<PanStart | null>(null);
+  const panGestureRef = useRef(false);
 
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
-    const handleCanvasWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey) return;
+    const handleViewportWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) return;
       event.preventDefault();
-      setZoom((current) => Math.max(0.25, Math.min(3, current - event.deltaY * 0.002)));
+      if (event.altKey) {
+        setZoom((current) => Math.max(0.25, Math.min(3, current - event.deltaY * 0.002)));
+      } else {
+        setPan((current) => ({
+          x: current.x - event.deltaX,
+          y: current.y - event.deltaY,
+        }));
+      }
     };
 
-    viewport.addEventListener("wheel", handleCanvasWheel, { passive: false });
-    return () => viewport.removeEventListener("wheel", handleCanvasWheel);
+    const isTypingTarget = (target: EventTarget | null) =>
+      target instanceof HTMLElement &&
+      (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName));
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || isTypingTarget(event.target)) return;
+      event.preventDefault();
+      setSpaceHeld(true);
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code === "Space") setSpaceHeld(false);
+    };
+    const handleWindowBlur = () => setSpaceHeld(false);
+
+    viewport.addEventListener("wheel", handleViewportWheel, { passive: false });
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleWindowBlur);
+    return () => {
+      viewport.removeEventListener("wheel", handleViewportWheel);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
   }, []);
+
+  function startPan(event: React.PointerEvent<HTMLDivElement>) {
+    if (!spaceHeld || event.button !== 0) return;
+    if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    panStartRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      panX: pan.x,
+      panY: pan.y,
+    };
+    panGestureRef.current = true;
+    setIsPanning(true);
+  }
+
+  function movePan(event: React.PointerEvent<HTMLDivElement>) {
+    const start = panStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    setPan({
+      x: start.panX + event.clientX - start.startX,
+      y: start.panY + event.clientY - start.startY,
+    });
+  }
+
+  function endPan(event: React.PointerEvent<HTMLDivElement>) {
+    if (panStartRef.current?.pointerId !== event.pointerId) return;
+    panStartRef.current = null;
+    setIsPanning(false);
+    window.setTimeout(() => {
+      panGestureRef.current = false;
+    }, 0);
+  }
 
   function startResize(event: React.PointerEvent<HTMLButtonElement>) {
     event.stopPropagation();
@@ -49,12 +118,25 @@ export default function KittlCanvas() {
 
   return (
     <main className="h-full min-h-0 overflow-hidden bg-[#eef0f5]" onPointerMove={resize} onPointerUp={endResize}>
-      <div ref={viewportRef} className="flex h-full w-full items-center justify-center overflow-auto p-6 sm:p-12">
-        <div style={{ width: `${size.width * zoom}px`, height: `${size.height * zoom}px` }} className="relative shrink-0">
+      <div
+        ref={viewportRef}
+        onPointerDown={startPan}
+        onPointerMove={movePan}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
+        className={`flex h-full w-full items-center justify-center overflow-hidden p-6 sm:p-12 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
+      >
+        <div style={{ width: `${size.width * zoom}px`, height: `${size.height * zoom}px`, transform: `translate(${pan.x}px, ${pan.y}px)` }} className="relative shrink-0">
           <div
           role="application"
           aria-label="Design canvas"
-          onClick={() => setSelected(true)}
+          onClick={(event) => {
+            if (spaceHeld || panGestureRef.current) {
+              event.preventDefault();
+              return;
+            }
+            setSelected(true);
+          }}
           className={`relative shrink-0 bg-white shadow-[0_14px_45px_rgba(28,31,38,0.14)] transition-[width,height] duration-75 ${selected ? "ring-1 ring-[#8f96a3]" : ""}`}
           style={{ width: `${size.width}px`, height: `${size.height}px`, transform: `scale(${zoom})`, transformOrigin: "top left" }}
         >
