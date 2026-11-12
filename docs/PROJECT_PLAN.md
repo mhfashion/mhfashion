@@ -439,7 +439,7 @@ detail, and the cart page. Probed on 2026-11-12: `/`, `/new`, `/popular`,
 **In `main`, not yet deployed:** the Next.js 16.4.6 / React 19.3.1 / Fabric.js
 7.4.0 upgrade, the restored Cloudflare deploy workflow, the related-product card
 and section styling, and the Footer/CopyrightBar corrections (commits `9cb5e21`
-through `6de8616`). Every workflow run since `9cb5e21` stops at the
+through `47e63fb`). Every workflow run since `9cb5e21` stops at the
 secret-presence check, so production keeps serving the last successful build.
 
 **Product detail pages (`/products/[slug]`):** use the full available page width
@@ -626,7 +626,7 @@ the R2 phase and the remaining editor production work.
   production actually serves from what is merged on `main` but undeployed, the
   migration range is `0001`–`0007`, and the "Next" list reflects the remaining
   work (Supabase Auth, secure admin authorization, checkout/payment/orders, R2).
-  §15.6 records HEAD `6de8616`, the eight workflow runs that stopped at the
+  §15.6 records HEAD `47e63fb`, the eight workflow runs that stopped at the
   Cloudflare secret check, and the verified live route responses.
 
 
@@ -705,7 +705,7 @@ This section records the current repository state and overrides earlier draft bu
 - Supabase migrations include `0001_initial_schema.sql` through `0007_create_super_admin_roles.sql`; migration 0007 defines the application-role table for Supabase Auth users. This task did not apply any migration. Guide content/cover-image schema is present and public reads use published-content rules with starter fallback.
 - GitHub repository is `mhfashion/mhfashion`, working branch and deployment branch are `main`, and production is `https://mhfashion.mhfashionmm.workers.dev`.
 - Production deployment is GitHub-to-Cloudflare Workers through OpenNext, driven by `.github/workflows/deploy-cloudflare.yml` (push to `main` or manual dispatch, Node 22). Production commits delivered before the deploy workflow broke include `2b29f96` (Home mobile Hero), `f7ac7f9` (Guide row/search), `2cff8f9` (remove Price Range), `dcb4bb7` (compact product cards), `d3af660` (compact Guide cards), and `0b9e4e3` (cart page/cart box).
-- Current repository HEAD is `6de8616` on `main` (2026-11-12). The full range `9cb5e21` → `6de8616` (Next 16 / Fabric 7 upgrade, restored deploy workflow, related-product styling, Footer and CopyrightBar fixes) is merged but **not deployed**: all eight workflow runs from `42306302512` to `43087062859` failed at `Check required Cloudflare secrets`, reporting `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as missing.
+- Current repository HEAD was `47e63fb` on `main` before this documentation sync (2026-11-11), and the sync commit `20a210a` follows it. The full range `9cb5e21` → `47e63fb` (Next 16 / Fabric 7 upgrade, restored deploy workflow, related-product styling, Footer and CopyrightBar fixes) is merged but **not deployed**: all eight workflow runs from `42306302512` to `43087062859` failed at `Check required Cloudflare secrets`, reporting `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as missing.
 - The live Worker still serves the pre-upgrade build. Verified from the sandbox on 2026-11-12: every storefront route plus `/cart`, `/account`, `/create` and `/admin/login` returns HTTP 200, and `/admin/register` returns HTTP 404, which places the live build at or after the `0b9e4e3` era but before `9cb5e21`.
 
 ### 15.7 Remaining work explicitly recorded
@@ -800,7 +800,7 @@ for the route set; `supabase/migrations/` for the migration range;
 | Editor engine (§6) | "Fabric.js 6 renders browser-side editable objects" | Fabric.js 7.4.0 |
 | Admin (§10) | `/admin/login` and `/admin/register` demo pages | `/admin/login` only; public registration closed, no register route |
 | Build status (§14) | Everything listed as "Done and live"; migrations `0001`–`0004`; "Next" listed product detail and cart, which already exist | Live build vs. merged-but-undeployed split, migrations `0001`–`0007`, current remaining work |
-| Deployment record (§15.6) | HEAD `0b9e4e3`; deployment described as working | HEAD `6de8616`; range `9cb5e21`→`6de8616` merged but not deployed; live build identified by route probes |
+| Deployment record (§15.6) | HEAD `0b9e4e3`; deployment described as working | HEAD `47e63fb`; range `9cb5e21`→`47e63fb` merged but not deployed; live build identified by route probes |
 
 **What deliberately stayed as written:** the dated snapshots and Change Log
 entries keep the versions that were true when they were written, because they are
