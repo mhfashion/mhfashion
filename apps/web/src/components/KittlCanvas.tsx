@@ -1,7 +1,7 @@
 "use client";
 
 import { Maximize2, Shirt } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type Size = { width: number; height: number };
 
@@ -12,6 +12,14 @@ export default function KittlCanvas() {
   const [selected, setSelected] = useState(false);
   const [mockupAttached, setMockupAttached] = useState(false);
   const [resizeState, setResizeState] = useState<ResizeState | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  function handleCanvasWheel(event: React.WheelEvent<HTMLDivElement>) {
+    if (!event.ctrlKey) return;
+    event.preventDefault();
+    setZoom((current) => Math.max(0.25, Math.min(3, current - event.deltaY * 0.002)));
+  }
 
   function startResize(event: React.PointerEvent<HTMLButtonElement>) {
     event.stopPropagation();
@@ -33,13 +41,14 @@ export default function KittlCanvas() {
 
   return (
     <main className="h-full min-h-0 overflow-hidden bg-[#eef0f5]" onPointerMove={resize} onPointerUp={endResize}>
-      <div className="flex h-full w-full items-center justify-center overflow-auto p-6 sm:p-12">
-        <div
+      <div ref={viewportRef} onWheel={handleCanvasWheel} className="flex h-full w-full items-center justify-center overflow-auto p-6 sm:p-12">
+        <div style={{ width: `${size.width * zoom}px`, height: `${size.height * zoom}px` }} className="relative shrink-0">
+          <div
           role="application"
           aria-label="Design canvas"
           onClick={() => setSelected(true)}
           className={`relative shrink-0 bg-white shadow-[0_14px_45px_rgba(28,31,38,0.14)] transition-[width,height] duration-75 ${selected ? "ring-1 ring-[#8f96a3]" : ""}`}
-          style={{ width: `${size.width}px`, height: `${size.height}px` }}
+          style={{ width: `${size.width}px`, height: `${size.height}px`, transform: `scale(${zoom})`, transformOrigin: "top left" }}
         >
           {mockupAttached && <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
             <div className="relative h-[82%] w-[48%] min-w-[190px] rounded-[46%_46%_10%_10%] border border-[#d8dbe1] bg-[#f7f8fa] shadow-inner">
@@ -56,6 +65,7 @@ export default function KittlCanvas() {
           </div>}
 
           {selected && <button type="button" aria-label="Resize canvas" title="Drag to resize canvas" onPointerDown={startResize} className="absolute -bottom-1.5 -right-1.5 z-10 flex h-4 w-4 cursor-se-resize items-center justify-center rounded-full border border-white bg-[#68707d] text-white shadow-sm"><Maximize2 size={9} /></button>}
+          </div>
         </div>
       </div>
     </main>
