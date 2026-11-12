@@ -160,7 +160,7 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
           <button type="button" title="Deselect objects" onClick={() => onSelectLayer(null)}><Monitor size={14} /></button>
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-auto p-2 sm:p-5">
+      <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-2 overflow-hidden bg-[#d9dbd8] p-2 sm:p-5">
         <div className="flex w-full max-w-[700px] items-center gap-2 overflow-x-auto rounded-lg border border-black/5 bg-[#f8f9f6] px-2.5 py-1.5 text-[10px] text-slate-700 shadow-sm">
           <span className="flex shrink-0 items-center gap-1.5 font-semibold capitalize text-slate-900">
             {selectedMark ? selectedMark.kind : <><MousePointer2 size={13} /> {activeTool.replace("-", " ")}</>}
@@ -201,44 +201,52 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
             <span className="hidden max-w-28 truncate text-[9px] text-slate-400 sm:inline" aria-live="polite">{status}</span>
           </div>
         </div>
-        <div
-          className={`relative aspect-[4/3] w-full max-w-[700px] overflow-hidden rounded-xl border border-slate-200 shadow-sm ${grid ? "bg-[linear-gradient(45deg,#e7e7e3_25%,transparent_25%),linear-gradient(-45deg,#e7e7e3_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#e7e7e3_75%),linear-gradient(-45deg,transparent_75%,#e7e7e3_75%)] bg-[length:22px_22px] bg-[position:0_0,0_11px,11px_-11px,-11px_0px]" : "bg-white"}`}
-          onDragOver={(event) => {
-            if (Array.from(event.dataTransfer.types).includes("application/x-mh-fashion-element")) {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = "copy";
-            }
-          }}
-          onDrop={handleElementDrop}
-        >
-          <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center">
-            <div className="relative flex h-[72%] w-[43%] min-w-[150px] items-center justify-center rounded-[45%_45%_9%_9%] border border-dashed border-slate-300 bg-white/70">
-              <div className="absolute top-[9%] h-5 w-14 rounded-b-full border-b border-dashed border-slate-300" />
-              <span className="absolute bottom-3 text-[8px] text-slate-500">{mockupName ? `${mockupName} · ` : "Transparent canvas · "}{activeSide}</span>
-              {!mockupName && <span className="flex h-20 w-20 items-center justify-center rounded border border-dashed border-accent/40 text-center text-[9px] font-semibold text-accent/80"><ImagePlus size={14} className="mr-1" /> Mockup</span>}
+        <div className="relative flex min-h-0 w-full max-w-[980px] flex-1 items-center justify-center overflow-auto rounded-xl border border-black/5 bg-[#cfd2ce] p-5 shadow-inner sm:p-10">
+          <div className="relative aspect-[4/3] w-[min(88vw,760px)] min-w-[300px] max-w-full shrink-0 overflow-visible">
+            <div className="pointer-events-none absolute -top-5 left-0 right-0 flex justify-between px-1 text-[8px] font-medium text-slate-500"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+            <div className="pointer-events-none absolute -bottom-5 left-0 text-[8px] font-medium text-slate-500">{activeSide} artboard</div>
+            <div className="pointer-events-none absolute -left-5 top-0 bottom-0 flex flex-col justify-between py-1 text-[8px] font-medium text-slate-500"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+            <div
+              className={`relative h-full w-full overflow-hidden rounded-[2px] border border-black/10 bg-white shadow-[0_18px_45px_rgba(31,35,32,0.22)] ${grid ? "bg-[linear-gradient(45deg,#e7e7e3_25%,transparent_25%),linear-gradient(-45deg,#e7e7e3_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#e7e7e3_75%),linear-gradient(-45deg,transparent_75%,#e7e7e3_75%)] bg-[length:22px_22px] bg-[position:0_0,0_11px,11px_-11px,-11px_0px]" : ""}`}
+              onDragOver={(event) => {
+                if (Array.from(event.dataTransfer.types).includes("application/x-mh-fashion-element")) {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "copy";
+                }
+              }}
+              onDrop={handleElementDrop}
+            >
+              <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center">
+                <div className="relative flex h-[72%] w-[43%] min-w-[150px] items-center justify-center rounded-[45%_45%_9%_9%] border border-dashed border-slate-300 bg-white/70">
+                  <div className="absolute top-[9%] h-5 w-14 rounded-b-full border-b border-dashed border-slate-300" />
+                  <span className="absolute bottom-3 text-[8px] text-slate-500">{mockupName ? `${mockupName} · ` : "Transparent canvas · "}{activeSide}</span>
+                  {!mockupName && <span className="flex h-20 w-20 items-center justify-center rounded border border-dashed border-accent/40 text-center text-[9px] font-semibold text-accent/80"><ImagePlus size={14} className="mr-1" /> Mockup</span>}
+                </div>
+              </div>
+              <FabricDesignCanvas
+                activeTool={activeTool}
+                marks={marks}
+                layers={layers}
+                selectedLayerId={selectedLayerId}
+                zoom={zoom}
+                onSelectLayer={onSelectLayer}
+                onAddMark={onAddMark}
+                onRemoveMark={onRemoveMark}
+                onMarksChange={onMarksChange}
+                onStatus={setStatus}
+                toolColor={toolColor}
+                shapeType={shapeType}
+                penWidth={penWidth}
+                gradientEndColor={gradientEndColor}
+                magicWandTolerance={magicWandTolerance}
+                moveAutoSelect={moveAutoSelect}
+                onColorSampled={onToolColorChange}
+                onZoomChange={(nextZoom) => setZoom(Math.max(40, Math.min(180, nextZoom)))}
+                resetViewToken={resetViewToken}
+              />
             </div>
           </div>
-          <FabricDesignCanvas
-            activeTool={activeTool}
-            marks={marks}
-            layers={layers}
-            selectedLayerId={selectedLayerId}
-            zoom={zoom}
-            onSelectLayer={onSelectLayer}
-            onAddMark={onAddMark}
-            onRemoveMark={onRemoveMark}
-            onMarksChange={onMarksChange}
-            onStatus={setStatus}
-            toolColor={toolColor}
-            shapeType={shapeType}
-            penWidth={penWidth}
-            gradientEndColor={gradientEndColor}
-            magicWandTolerance={magicWandTolerance}
-            moveAutoSelect={moveAutoSelect}
-            onColorSampled={onToolColorChange}
-            onZoomChange={(nextZoom) => setZoom(Math.max(40, Math.min(180, nextZoom)))}
-            resetViewToken={resetViewToken}
-          />
+          <div className="pointer-events-none absolute bottom-2 right-3 rounded bg-white/80 px-2 py-1 text-[8px] text-slate-500 shadow-sm">{zoom}% · {activeSide}</div>
         </div>
         <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] text-slate-600 shadow-sm">
           <span>{marks.length} object{marks.length === 1 ? "" : "s"}</span>
