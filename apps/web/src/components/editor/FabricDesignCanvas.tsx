@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Canvas as FabricCanvas, FabricObject } from "fabric";
 import type { ToolId } from "./EditorLeftRail";
 import type { EditorLayer } from "./LayersPanel";
-import type { CanvasMark, ShapeType } from "./InteractiveCanvas";
+import type { CanvasMark, MoveAutoSelect, ShapeType } from "./InteractiveCanvas";
 import { applySceneDelta, movableObjects, objectId } from "./editorMove";
 
 type Props = {
@@ -23,6 +23,7 @@ type Props = {
   penWidth: number;
   gradientEndColor: string;
   magicWandTolerance: number;
+  moveAutoSelect: MoveAutoSelect;
   onColorSampled: (color: string) => void;
   onZoomChange: (zoom: number) => void;
   resetViewToken: number;
@@ -387,10 +388,10 @@ function objectToMark(object: FabricObject): CanvasMark | null {
   return next;
 }
 
-export default function FabricDesignCanvas({ activeTool, marks, layers, selectedLayerId, zoom, onSelectLayer, onAddMark, onRemoveMark, onMarksChange, onStatus, toolColor, shapeType, penWidth, gradientEndColor, magicWandTolerance, onColorSampled, onZoomChange, resetViewToken }: Props) {
+export default function FabricDesignCanvas({ activeTool, marks, layers, selectedLayerId, zoom, onSelectLayer, onAddMark, onRemoveMark, onMarksChange, onStatus, toolColor, shapeType, penWidth, gradientEndColor, magicWandTolerance, moveAutoSelect, onColorSampled, onZoomChange, resetViewToken }: Props) {
   const elementRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<FabricCanvas | null>(null);
-  const callbacksRef = useRef({ onSelectLayer, onAddMark, onRemoveMark, onMarksChange, onStatus, onColorSampled, onZoomChange, activeTool, marks, layers, selectedLayerId, toolColor, shapeType, penWidth, gradientEndColor, magicWandTolerance, zoom });
+  const callbacksRef = useRef({ onSelectLayer, onAddMark, onRemoveMark, onMarksChange, onStatus, onColorSampled, onZoomChange, activeTool, marks, layers, selectedLayerId, toolColor, shapeType, penWidth, gradientEndColor, magicWandTolerance, moveAutoSelect, zoom });
   const localSignatureRef = useRef<string | null>(null);
   const suppressSelectionEventsRef = useRef(false);
   const panRef = useRef<{ x: number; y: number; active: boolean }>({ x: 0, y: 0, active: false });
@@ -399,7 +400,7 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
   const viewAngleRef = useRef(0);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
 
-  callbacksRef.current = { onSelectLayer, onAddMark, onRemoveMark, onMarksChange, onStatus, onColorSampled, onZoomChange, activeTool, marks, layers, selectedLayerId, toolColor, shapeType, penWidth, gradientEndColor, magicWandTolerance, zoom };
+  callbacksRef.current = { onSelectLayer, onAddMark, onRemoveMark, onMarksChange, onStatus, onColorSampled, onZoomChange, activeTool, marks, layers, selectedLayerId, toolColor, shapeType, penWidth, gradientEndColor, magicWandTolerance, moveAutoSelect, zoom };
 
   useEffect(() => {
     let disposed = false;
@@ -550,6 +551,19 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
         const nativeEvent = event.e as MouseEvent;
         const target = event.target as DataObject | undefined;
         const targetMark = target?.data;
+
+        if (tool === "move" && targetMark) {
+          const targetLayer = findLayer(callbacksRef.current.layers, targetMark.id);
+          const targetId = callbacksRef.current.moveAutoSelect === "group" && targetLayer?.parentId
+            ? targetLayer.parentId
+            : targetMark.id;
+          if (callbacksRef.current.moveAutoSelect === "off" && callbacksRef.current.selectedLayerId !== targetMark.id) {
+            callbacksRef.current.onStatus("Auto-select is Off · choose a different layer from the Layers panel");
+          } else if (!layerIsLocked(callbacksRef.current.layers, targetId)) {
+            callbacksRef.current.onSelectLayer(targetId);
+            if (callbacksRef.current.moveAutoSelect === "group" && targetId !== targetMark.id) callbacksRef.current.onStatus("Group selected · drag to move the group context");
+          }
+        }
 
         if (tool === "hand") {
           panRef.current = { x: nativeEvent.clientX, y: nativeEvent.clientY, active: true };
@@ -875,8 +889,8 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
         applyLayerStyle(object, layer, parent, fabric);
         const locked = layerIsLocked(layers, id);
         const pathObject = mark?.kind === "Pen" || Boolean(mark?.pathData);
-        const selectable = !locked && (
-          activeTool === "move" || activeTool === "marquee" || activeTool === "magic-wand"
+          const selectable = !locked && (
+            (activeTool === "move" && (callbacksRef.current.moveAutoSelect !== "off" || id === callbacksRef.current.selectedLayerId)) || activeTool === "marquee" || activeTool === "magic-wand"
           || (activeTool === "path-select" && pathObject)
         );
         const eventedTools: ToolId[] = ["move", "marquee", "path-select", "clone-stamp", "gradient", "eraser", "magic-wand", "eyedropper"];

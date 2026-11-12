@@ -375,6 +375,42 @@ The current embedded raster Smart Object metadata should become a formal source-
 
 Future linked Smart Objects may reference private R2 assets, but missing-link states must be explicit and must never silently render a blank layer. Photoshop documents embedded and linked Smart Objects, replacing contents, resetting transforms, and rasterizing as separate operations. [7] [15]
 
+### 9.7 Photoshop-style Layers box contract
+
+The Layers box should borrow Photoshop's interaction model without copying Adobe's visual assets or proprietary implementation. The panel is a composition control surface, not merely a list of objects. Its stack order is explicit, its row state is always visible, and every destructive or non-destructive operation maps to an application-state transaction.
+
+**Layer row anatomy:** each row contains a visibility control, an optional expand/collapse control, a thumbnail, a human-readable name, a type or group badge, and lock/mask/effect/clipping indicators. Visibility and lock are persistent row controls rather than hover-only affordances. Selecting the thumbnail/name selects the layer; double-clicking the name enters rename mode. A group row selects the group at the first level, while its disclosure control expands children without changing selection. Photoshop exposes visibility, locking, stacking, grouping, and layer selection as separate layer-panel operations. [16] [17]
+
+**Panel header:** the header keeps the active side and item count visible. Under it, MH Fashion adds a search field and a type filter for All, Text, Shape, Path, Image, Group, Smart Object, Mask, and Effect. Filtering is presentation-only: it must never change document order, selection, visibility, export inclusion, or persisted layer data. If a group contains a matching descendant, the group remains visible as context. A clear action restores the complete tree.
+
+**Selection and multi-selection:** clicking a row selects it; `Shift` selects a contiguous range and `Ctrl/Cmd` toggles non-contiguous rows. The application stores selected IDs separately from Fabric's active object so a panel selection remains stable when the canvas is re-rendered. A locked or hidden layer can be selected from the panel for reveal/unlock, but it cannot become an editable canvas target until the restriction is removed.
+
+**Visibility and lock semantics:** the eye icon controls rendering only. It does not delete content and it does not change the source mark. The lock icon blocks canvas transforms, keyboard nudges, numeric property edits, reordering when the operation would violate a locked ancestor, and destructive actions. A group lock applies to descendants. When an action is rejected, the status message identifies whether the cause is the selected layer, an ancestor group, the product template, or a mockup/system layer.
+
+**Stacking and drag behavior:** the panel renders the topmost layer first, matching the canvas compositor's order. Dragging a row displays a before/inside/after insertion marker. Dropping into a group changes `parentId`; dropping before/after changes sibling order. A group cannot be nested inside its own descendant, a content layer cannot be inserted into a locked group, and invalid drops are no-ops with an explanatory status message. Keyboard layer order commands use `Alt/Option + [` and `]` for selection movement and `Ctrl/Cmd + [` and `]` for stack movement, with MH Fashion shortcuts documented in the help surface. [18]
+
+**Group isolation:** double-clicking a group row or group artwork enters isolation mode. The panel keeps the group context visible, dims unrelated rows, and routes canvas clicks only to the group's descendants. `Esc` exits isolation before clearing selection. Group blend mode defaults to Pass Through; choosing another mode composites children first and then blends the group result with the layer below.
+
+**Non-destructive property strip:** Opacity applies to the complete rendered layer; Fill applies to base artwork before selected effects; Flow is reserved for brush/raster tools; Blend Mode controls compositing. Numeric changes are clamped, validated, and committed as one history transaction. The panel must never silently rasterize a vector, text, or Smart Object to make a property possible. Photoshop documents opacity and blending as layer-panel properties and distinguishes non-destructive masks, Smart Objects, and Smart Filters. [14] [19]
+
+**Smart Object and mask affordances:** a Smart Object row shows a source badge and preserves its placement transform when contents are replaced. A mask row is represented as a child/companion node with its own selected state, visibility, density, link, disable, invert, apply, and delete commands. The first MH Fashion implementation may expose metadata and preview controls while pixel mask painting remains a later raster milestone; the UI must label that boundary instead of implying unsupported Photoshop parity. [15] [20]
+
+**MH Fashion design adaptation:** use the existing compact right-dock language—dark text, pale surfaces, lime accent, dense but readable rows—and add Photoshop's information hierarchy rather than reproducing its desktop chrome. The row should preserve a minimum 36px hit target, keyboard focus ring, tooltip/aria label, and visible selected/hover/drop states. On narrow screens, properties collapse below the layer tree; the layer search/filter remains available.
+
+### 9.8 Photoshop-inspired tool behavior contract
+
+The tool palette is organized by behavior: Select, Draw, Modify, Navigate, and Measure. The Move tool is first-class. Its options bar exposes Auto-select Off, Layer, or Group; locked-layer ignoring; current-side versus all-visible-layer scope; and optional transparent-pixel picking for raster images. Photoshop documents Layer and Group as distinct Auto Select modes, and arrow keys as layer nudges. [11] [16]
+
+For the current Fabric object editor, these options apply to object selection and group context rather than pixel selection. Auto-select Off keeps canvas hit-testing on the selected layer; Layer selects the topmost eligible object; Group selects the nearest editable parent context. `Shift` constrains a drag to its dominant axis, `Alt/Option` duplicates on drag, `Space` temporarily pans, `Ctrl/Cmd` temporarily bypasses snapping, and `V` activates Move. A raster-only behavior is explicitly marked unavailable until the tile-based pixel engine exists.
+
+Selection tools follow Photoshop's separation between selecting a layer/object and editing its contents. Marquee and Lasso select objects in the current milestone; later raster selections will produce masks or alpha selections rather than deleting pixels. Magic Wand remains vector color matching until a real raster selection buffer is implemented. Eraser and Clone Stamp must continue to report their object-level behavior instead of claiming pixel parity.
+
+### 9.9 Implementation mapping
+
+The canonical model remains `EditorLayer[]` plus `CanvasMark[]`, with Fabric objects carrying a stable `data.id`. The Layers box owns presentation state (`query`, `filter`, collapsed groups, hover, focus, drop hint); the document owns composition state (`visible`, `locked`, `parentId`, `childIds`, `opacity`, `fillOpacity`, `flow`, `blendMode`, masks, effects, and source metadata). Canvas event handlers consult the document state before setting `selectable` or `evented`. Every row action calls `commitDocument`, so visibility, lock, reorder, group, mask metadata, and property changes share Undo/Redo and local-draft persistence.
+
+The first implementation slice is intentionally narrow: add Move Auto-select controls, enforce the selected-layer policy in Fabric hit testing, add Layers-box search/type filtering, and preserve all current row operations. The next slice will add multi-row selection, group isolation, keyboard stack movement, independent lock modes, and mask companion nodes. Pixel brushes, pixel masks, and Photoshop-compatible PSD import are not implied by this plan.
+
 ## 10. Text and typography system
 
 Text must remain editable until the user explicitly converts it to outlines or rasterizes it.
@@ -681,6 +717,11 @@ The editor is production-ready only when all of the following are true:
 [13]: https://helpx.adobe.com/photoshop/desktop/create-masks/layer-masks/add-layer-masks.html "Photoshop Add and edit layer masks"
 [14]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/apply-layer-effects/set-layer-opacity-and-blending-modes.html "Photoshop Set layer opacity and blending modes"
 [15]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/smart-objects/smart-objects-overview-and-benefits.html "Photoshop Smart Objects overview and benefits"
+[16]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/transform-manipulate-layers/reorder-and-move-layers.html "Photoshop Reorder and move layers"
+[17]: https://helpx.adobe.com/il_en/photoshop/using/create-layers-groups.html "Photoshop Create layers and groups"
+[18]: https://helpx.adobe.com/cn/photoshop-elements/desktop/keyboard-shortcuts/keys-layers-panel.html "Photoshop Layers panel keyboard shortcuts"
+[19]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/apply-layer-effects/set-layer-opacity-and-blending-modes.html "Photoshop Set layer opacity and blending modes"
+[20]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/smart-objects/create-embedded-smart-objects.html "Photoshop Create embedded Smart Objects"
 
 
 ## Appendix A — Fabric.js implementation logic

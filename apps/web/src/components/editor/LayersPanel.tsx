@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import {
   ArrowDown, ArrowUp, Box, ChevronDown, ChevronRight, Eye, EyeOff,
   FolderClosed, FolderOpen, Image as ImageIcon, Layers2, Lock, LockOpen,
-  PenTool, Plus, Copy, Scissors, Square, SquareStack, Trash2,
+  PenTool, Plus, Copy, Scissors, Search, Square, SquareStack, Trash2, X,
 } from "lucide-react";
 import type { CanvasMark } from "./InteractiveCanvas";
 import { FONT_LIBRARY } from "@/lib/editorTypography";
@@ -47,6 +47,7 @@ const GROUP_BLEND_MODES: ModeOption[] = [
   { value: "pass-through", label: "Pass Through" }, ...LAYER_BLEND_MODES,
 ];
 const EFFECTS = ["shadow", "stroke", "glow", "blur", "sharpen"];
+type LayerFilter = "all" | "text" | "shape" | "path" | "image" | "group" | "smart" | "masked" | "effects";
 const fieldClass = "min-w-0 rounded border border-border bg-bg-surface px-1.5 py-1 text-[10px] text-text-primary outline-none focus:border-accent";
 
 function displayName(value: string) {
@@ -105,6 +106,8 @@ export default function LayersPanel({
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{ id: string; position: LayerDropPosition } | null>(null);
   const [showProperties, setShowProperties] = useState(false);
+  const [layerQuery, setLayerQuery] = useState("");
+  const [layerFilter, setLayerFilter] = useState<LayerFilter>("all");
   const [effectToAdd, setEffectToAdd] = useState(EFFECTS[0]);
   const selected = layers.find((layer) => layer.id === selectedLayerId) ?? null;
   const selectedIndex = selected ? layers.findIndex((layer) => layer.id === selected.id) : -1;
@@ -121,6 +124,25 @@ export default function LayersPanel({
     if (!layer.isGroup || collapsedGroups.has(layer.id)) return [layer];
     return [layer, ...(children.get(layer.id) ?? []).reverse()];
   }), [layers, collapsedGroups, children]);
+  const filteredLayers = useMemo(() => {
+    const query = layerQuery.trim().toLowerCase();
+    const matches = (layer: EditorLayer) => {
+      const mark = marks.find((item) => item.id === layer.id);
+      const typeMatches = layerFilter === "all"
+        || (layerFilter === "group" && layer.isGroup)
+        || (layerFilter === "smart" && layer.isSmartObject)
+        || (layerFilter === "masked" && layer.hasMask)
+        || (layerFilter === "effects" && Boolean(layer.effects?.length))
+        || (layerFilter === "text" && (mark?.kind === "Text" || mark?.kind === "TextOnPath"))
+        || (layerFilter === "shape" && mark?.kind === "Shape")
+        || (layerFilter === "path" && mark?.kind === "Pen")
+        || (layerFilter === "image" && Boolean(mark?.imageSrc));
+      return typeMatches && (!query || `${layer.name} ${mark?.kind ?? ""}`.toLowerCase().includes(query));
+    };
+    if (layerFilter === "all" && !query) return visibleLayers;
+    const matchingIds = new Set(layers.filter(matches).map((layer) => layer.id));
+    return visibleLayers.filter((layer) => matchingIds.has(layer.id) || (layer.isGroup && (children.get(layer.id) ?? []).some((child) => matchingIds.has(child.id))));
+  }, [children, layerFilter, layerQuery, layers, marks, visibleLayers]);
   const effects = selected?.effects ?? [];
   const selectedMode = selected ? (selected.blendMode ?? (selected.isGroup ? "pass-through" : "normal")) : "normal";
 
@@ -153,6 +175,17 @@ export default function LayersPanel({
         <span className="text-[9px] text-text-faint">{layers.length} items</span>
       </div>
 
+      <div className="shrink-0 space-y-1.5 border-b border-border bg-bg px-2.5 py-2">
+        <div className="flex items-center gap-1.5 rounded border border-border bg-bg-surface px-1.5">
+          <Search size={12} className="shrink-0 text-text-muted" />
+          <input aria-label="Search layers" value={layerQuery} onChange={(event) => setLayerQuery(event.target.value)} placeholder="Search layers" className="h-6 min-w-0 flex-1 bg-transparent text-[10px] outline-none placeholder:text-text-faint" />
+          {layerQuery && <button type="button" aria-label="Clear layer search" onClick={() => setLayerQuery("")} className="text-text-muted hover:text-text-primary"><X size={12} /></button>}
+        </div>
+        <select aria-label="Filter layers by type" value={layerFilter} onChange={(event) => setLayerFilter(event.target.value as LayerFilter)} className={`${fieldClass} h-6 w-full text-[10px]`}>
+          <option value="all">All layers</option><option value="text">Text</option><option value="shape">Shapes</option><option value="path">Paths</option><option value="image">Images</option><option value="group">Groups</option><option value="smart">Smart Objects</option><option value="masked">Masked</option><option value="effects">With effects</option>
+        </select>
+      </div>
+
       <div className="relative z-10 shrink-0 space-y-1 border-b border-border bg-bg px-2.5 py-1.5">
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="layer-blend-mode">Blend mode</label>
@@ -171,7 +204,7 @@ export default function LayersPanel({
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
         {!visibleLayers.length && <p className="px-2 py-6 text-center text-[10px] text-text-faint">No layers yet. Add a layer or upload an image.</p>}
         <div className="flex flex-col gap-px">
-          {visibleLayers.map((layer) => {
+          {filteredLayers.map((layer) => {
             const nested = Boolean(layer.parentId);
             const mark = marks.find((item) => item.id === layer.id);
             const isDropTarget = dropHint?.id === layer.id;
@@ -190,6 +223,7 @@ export default function LayersPanel({
               {layer.locked && <button type="button" title="Unlock layer" aria-label="Unlock layer" onClick={() => onUpdateLayer(layer.id, { locked: false })} className="shrink-0 text-accent"><Lock size={12} /></button>}
             </div>;
           })}
+          {!filteredLayers.length && <p className="px-2 py-4 text-center text-[10px] text-text-faint">No layers match this search.</p>}
         </div>
 
         <details open={showProperties} onToggle={(event) => setShowProperties(event.currentTarget.open)} className="mt-2 border-t border-border pt-1.5">

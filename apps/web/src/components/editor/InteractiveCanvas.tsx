@@ -9,6 +9,7 @@ import { DEFAULT_FONT, FONT_LIBRARY } from "@/lib/editorTypography";
 
 type Side = "Front" | "Back";
 export type ShapeType = "rectangle" | "circle" | "triangle" | "star";
+export type MoveAutoSelect = "off" | "layer" | "group";
 export type CanvasMark = {
   id: string;
   kind: "Text" | "TextOnPath" | "Shape" | "Pen" | "Clone" | "Image";
@@ -92,6 +93,7 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
   const [gradientEndColor, setGradientEndColor] = useState("#111827");
   const [magicWandTolerance, setMagicWandTolerance] = useState(48);
   const [resetViewToken, setResetViewToken] = useState(0);
+  const [moveAutoSelect, setMoveAutoSelect] = useState<MoveAutoSelect>("layer");
   const [status, setStatus] = useState(toolMessages.move ?? "Ready");
   const selectedMark = marks.find((mark) => mark.id === selectedLayerId) ?? null;
 
@@ -139,6 +141,7 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
             <label className="flex items-center gap-1">From <input aria-label="Gradient start color" type="color" value={toolColor} onChange={(event) => onToolColorChange(event.target.value)} className="h-6 w-6 cursor-pointer rounded border border-slate-200 bg-white p-0.5" /></label>
             <label className="flex items-center gap-1">To <input aria-label="Gradient end color" type="color" value={gradientEndColor} onChange={(event) => setGradientEndColor(event.target.value)} className="h-6 w-6 cursor-pointer rounded border border-slate-200 bg-white p-0.5" /></label>
           </>}
+          {activeTool === "move" && <label className="flex items-center gap-1">Auto-select <select aria-label="Move tool auto-select" value={moveAutoSelect} onChange={(event) => setMoveAutoSelect(event.target.value as MoveAutoSelect)} className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px]"><option value="off">Off</option><option value="layer">Layer</option><option value="group">Group</option></select></label>}
           {activeTool === "magic-wand" && <label className="flex items-center gap-1">Tolerance <input aria-label="Magic Wand color tolerance" type="range" min="0" max="180" value={magicWandTolerance} onChange={(event) => setMagicWandTolerance(Number(event.target.value))} className="w-16" /><span>{magicWandTolerance}</span></label>}
           {activeTool === "ruler" && <span>Drag to measure in canvas pixels</span>}
           {activeTool === "rotate-view" && <button type="button" onClick={() => { setZoom(100); setResetViewToken((value) => value + 1); }} className="rounded border border-slate-200 px-2 py-1 text-slate-700">Reset view</button>}
@@ -231,6 +234,7 @@ export default function InteractiveCanvas({ activeTool, activeSide, onSideChange
             penWidth={penWidth}
             gradientEndColor={gradientEndColor}
             magicWandTolerance={magicWandTolerance}
+            moveAutoSelect={moveAutoSelect}
             onColorSampled={onToolColorChange}
             onZoomChange={(nextZoom) => setZoom(Math.max(40, Math.min(180, nextZoom)))}
             resetViewToken={resetViewToken}
