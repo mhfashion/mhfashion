@@ -32,14 +32,14 @@ export default function KittlCanvas() {
   }
 
   return (
-    <main className="h-[calc(100dvh-4rem)] min-h-[420px] overflow-hidden bg-[#eef0f5]" onPointerMove={resize} onPointerUp={endResize}>
+    <main className="h-full min-h-0 overflow-hidden bg-[#eef0f5]" onPointerMove={resize} onPointerUp={endResize}>
       <div className="flex h-full w-full items-center justify-center overflow-auto p-6 sm:p-12">
         <div
           role="application"
           aria-label="Design canvas"
           onClick={() => setSelected(true)}
           className={`relative shrink-0 bg-white shadow-[0_14px_45px_rgba(28,31,38,0.14)] transition-[width,height] duration-75 ${selected ? "ring-1 ring-[#8f96a3]" : ""}`}
-          style={{ width: `${size.width}px`, height: `${size.height}px`, maxWidth: "calc(100vw - 3rem)", maxHeight: "calc(100dvh - 7rem)" }}
+          style={{ width: `${size.width}px`, height: `${size.height}px` }}
         >
           {mockupAttached && <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
             <div className="relative h-[82%] w-[48%] min-w-[190px] rounded-[46%_46%_10%_10%] border border-[#d8dbe1] bg-[#f7f8fa] shadow-inner">
