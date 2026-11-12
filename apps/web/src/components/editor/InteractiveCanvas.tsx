@@ -11,7 +11,7 @@ type Side = "Front" | "Back";
 export type ShapeType = "rectangle" | "circle" | "triangle" | "star";
 export type CanvasMark = {
   id: string;
-  kind: "Text" | "Shape" | "Pen" | "Clone" | "Image";
+  kind: "Text" | "TextOnPath" | "Shape" | "Pen" | "Clone" | "Image";
   x: number;
   y: number;
   imageSrc?: string;
@@ -38,6 +38,12 @@ export type CanvasMark = {
   angle?: number;
   scaleX?: number;
   scaleY?: number;
+  pathId?: string;
+  startOffset?: number;
+  baselineOffset?: number;
+  pathAlignment?: "left" | "center" | "right";
+  pathSide?: "normal" | "reverse";
+  keepUpright?: boolean;
 };
 
 const toolMessages: Partial<Record<ToolId, string>> = {

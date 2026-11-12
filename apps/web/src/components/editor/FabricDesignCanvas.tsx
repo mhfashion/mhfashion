@@ -5,6 +5,7 @@ import type { Canvas as FabricCanvas, FabricObject } from "fabric";
 import type { ToolId } from "./EditorLeftRail";
 import type { EditorLayer } from "./LayersPanel";
 import type { CanvasMark, ShapeType } from "./InteractiveCanvas";
+import { applySceneDelta, movableObjects, objectId } from "./editorMove";
 
 type Props = {
   activeTool: ToolId;
@@ -314,7 +315,7 @@ async function createObject(mark: CanvasMark, fabric: typeof import("fabric")) {
     });
   }
 
-  if (mark.kind === "Text" || (mark.kind === "Clone" && mark.text)) {
+  if (mark.kind === "Text" || mark.kind === "TextOnPath" || (mark.kind === "Clone" && mark.text)) {
     return new fabric.IText(mark.text ?? "Text", {
       ...common,
       fill: mark.color ?? "#111827",
@@ -364,7 +365,7 @@ function objectToMark(object: FabricObject): CanvasMark | null {
     originX: object.originX as CanvasMark["originX"],
     originY: object.originY as CanvasMark["originY"],
   };
-  if ((mark.kind === "Text" || (mark.kind === "Clone" && mark.text)) && "text" in object) {
+  if ((mark.kind === "Text" || mark.kind === "TextOnPath" || (mark.kind === "Clone" && mark.text)) && "text" in object) {
     const textObject = object as FabricObject & { text?: string; fontFamily?: string; fontWeight?: string; fontStyle?: string; underline?: boolean; textAlign?: CanvasMark["textAlign"]; charSpacing?: number; lineHeight?: number; fontSize?: number; fill?: string };
     next.text = String(textObject.text ?? mark.text ?? "");
     next.fontFamily = textObject.fontFamily ?? mark.fontFamily ?? "Arial";
@@ -508,6 +509,10 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
       };
 
       canvas.on("object:modified", persist);
+      canvas.on("object:moving", (event) => {
+        const id = objectId(event.target);
+        if (id) callbacksRef.current.onStatus("Moving artwork… release to save this move");
+      });
       canvas.on("text:changed", persist);
       canvas.on("path:created", (event) => {
         const path = (event as unknown as { path?: DataObject & { path?: Array<Array<string | number>>; left?: number; top?: number; originX?: CanvasMark["originX"]; originY?: CanvasMark["originY"]; stroke?: string; strokeWidth?: number } }).path;
@@ -908,6 +913,36 @@ export default function FabricDesignCanvas({ activeTool, marks, layers, selected
     }
     fabricCanvas.requestRenderAll();
   }, [fabricCanvas, selectedLayerId]);
+
+  useEffect(() => {
+    if (!fabricCanvas) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT" || target?.isContentEditable) return;
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+      const activeObjects = fabricCanvas.getActiveObjects();
+      if (!activeObjects.length) return;
+      const editable = movableObjects(activeObjects, callbacksRef.current.layers);
+      if (editable.length !== activeObjects.length) {
+        callbacksRef.current.onStatus("This selection contains a locked layer and cannot be nudged");
+        return;
+      }
+      const step = event.shiftKey ? 10 : 1;
+      const delta = {
+        x: event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0,
+        y: event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0,
+      };
+      event.preventDefault();
+      applySceneDelta(editable, delta);
+      const next = fabricCanvas.getObjects().map(objectToMark).filter((mark): mark is CanvasMark => Boolean(mark));
+      localSignatureRef.current = JSON.stringify(next);
+      callbacksRef.current.onMarksChange(next);
+      callbacksRef.current.onStatus(`Moved ${delta.x || delta.y} design unit${Math.abs(delta.x || delta.y) === 1 ? "" : "s"}`);
+      fabricCanvas.requestRenderAll();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [fabricCanvas]);
 
   useEffect(() => {
     if (!fabricCanvas) return;

@@ -69,7 +69,7 @@ function PanelPercentControl({ label, value, onChange, disabled = false }: { lab
 function LayerThumbnail({ layer, mark }: { layer: EditorLayer; mark?: CanvasMark }) {
   if (layer.isGroup) return <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded border border-border bg-bg-surface text-accent"><FolderOpen size={14} /></span>;
   if (mark?.imageSrc) return <span className="h-7 w-9 shrink-0 overflow-hidden rounded border border-border bg-bg-surface"><img src={mark.imageSrc} alt="" className="h-full w-full object-contain" /></span>;
-  if (mark?.kind === "Text") return <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded border border-border bg-bg-surface text-[12px] font-bold" style={{ color: mark.color ?? "#111827", fontFamily: mark.fontFamily ?? "Arial" }}>Aa</span>;
+  if (mark?.kind === "Text" || mark?.kind === "TextOnPath") return <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded border border-border bg-bg-surface text-[12px] font-bold" style={{ color: mark.color ?? "#111827", fontFamily: mark.fontFamily ?? "Arial" }}>Aa</span>;
   if (mark?.kind === "Pen") return <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded border border-border bg-bg-surface"><PenTool size={14} style={{ color: mark.color ?? "#d4ff3f" }} /></span>;
   if (mark?.kind === "Shape") return <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded border border-border bg-bg-surface"><Square size={14} style={{ color: mark.color ?? "#d4ff3f", fill: mark.color ?? "#d4ff3f" }} /></span>;
   return <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded border border-border bg-bg-surface text-text-muted"><ImageIcon size={14} /></span>;
