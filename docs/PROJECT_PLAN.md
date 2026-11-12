@@ -154,6 +154,15 @@ Other product types get their own attribute sets and pricing formulas.
 
 ## 6. Editor (`/create`)
 
+**Detailed editor specification:** [`docs/EDITOR_PLAN.md`](./EDITOR_PLAN.md). This
+document is the implementation-oriented editor plan: it combines the useful,
+documented interaction patterns of Kittl, Photoshop, and Illustrator with MH
+Fashion's product/mockup/print-export requirements. It starts with the Move tool
+and defines selection, transforms, vector/raster editing, layers, masks, text,
+effects, snapping, mockups, export, keyboard behavior, persistence, phases, and
+production acceptance criteria. These are planned capabilities, not a claim that
+all of them are already implemented.
+
 - Layout: left rail (Upload, Elements, Text, Effects, AI) with the tools
   palette stacked below it; Canva-style flyout panel on click; layers panel on
   the right; Front and Back canvases side by side (transparent background);
@@ -628,6 +637,15 @@ the R2 phase and the remaining editor production work.
   work (Supabase Auth, secure admin authorization, checkout/payment/orders, R2).
   §15.6 records HEAD `47e63fb`, the eight workflow runs that stopped at the
   Cloudflare secret check, and the verified live route responses.
+- Detailed Editor Plan added (2026-11-12): created `docs/EDITOR_PLAN.md` and
+  linked it from §6. It defines the planned MH Fashion editor system from Move
+  tool behavior onward, including selection and transforms, snapping/guides,
+  vector anchor editing and Shape Builder, raster selection roadmap, layers and
+  non-destructive masks/Smart Objects, text transformations, effects, mockups,
+  production export, shortcuts, persistence, accessibility, phased delivery,
+  and acceptance criteria. It uses official Kittl, Photoshop, and Illustrator
+  documentation as behavioral references without copying proprietary assets or
+  UI.
 
 
 ## Production publishing status snapshot (2026-11-10; superseded by the current follow-up below)
