@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Redo2, Undo2 } from "lucide-react";
+import { Layers2, Redo2, Undo2 } from "lucide-react";
 import Header from "@/components/Header";
 import EditorLeftRail, { type PanelId, type ToolId } from "@/components/editor/EditorLeftRail";
 import EditorFlyout from "@/components/editor/EditorFlyout";
@@ -106,7 +106,7 @@ async function prepareImage(file: File): Promise<string> {
 export default function EditorPage() {
   const { formatKs } = useCurrency();
   const { t } = useI18n();
-  const [activePanel, setActivePanel] = useState<PanelId | null>("elements");
+  const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [activeTool, setActiveTool] = useState<ToolId>("move");
   const [toolColor, setToolColor] = useState("#d4ff3f");
   const [activeSide, setActiveSide] = useState<Side>("Front");
@@ -118,6 +118,7 @@ export default function EditorPage() {
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [mockup, setMockup] = useState<MockupId | null>(null);
   const [mockupLibraryOpen, setMockupLibraryOpen] = useState(false);
+  const [mobileLayersOpen, setMobileLayersOpen] = useState(false);
   const [selection, setSelection] = useState<AttributeSelection>(DEFAULT_SELECTION);
   const [saveMessage, setSaveMessage] = useState("");
 
@@ -531,10 +532,10 @@ export default function EditorPage() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <EditorLeftRail activePanel={activePanel} onPanelChange={setActivePanel} activeTool={activeTool} onToolChange={setActiveTool} />
         {activePanel && (
-          <div className="hidden lg:block">
+          <div className="fixed inset-x-0 bottom-[4.25rem] z-40 lg:static lg:block">
             <EditorFlyout
               panel={activePanel}
               onUploadImage={handleUploadImage}
@@ -572,7 +573,12 @@ export default function EditorPage() {
             onToolColorChange={setToolColor}
           />
         </main>
-        <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-l border-border bg-bg-surface md:flex">
+        <div className="flex shrink-0 items-center gap-1 border-l border-border bg-bg-surface px-1 md:hidden">
+          <button type="button" onClick={() => setActivePanel(activePanel === "elements" ? null : "elements")} className={`flex min-w-12 flex-col items-center gap-0.5 rounded px-1.5 py-1 text-[8px] ${activePanel === "elements" ? "text-accent" : "text-text-muted"}`}><span className="text-sm leading-none">＋</span><span>Assets</span></button>
+          <button type="button" onClick={() => setMobileLayersOpen((value) => !value)} className={`flex min-w-12 flex-col items-center gap-0.5 rounded px-1.5 py-1 text-[8px] ${mobileLayersOpen ? "bg-accent/10 text-accent" : "text-text-muted"}`}><Layers2 size={15} /><span>Layers</span></button>
+          <button type="button" onClick={() => setMockupLibraryOpen(true)} className="flex min-w-12 flex-col items-center gap-0.5 rounded px-1.5 py-1 text-[8px] text-text-muted"><span className="text-sm leading-none">◇</span><span>Mockup</span></button>
+        </div>
+        <aside className={`${mobileLayersOpen ? "fixed" : "hidden"} inset-x-2 bottom-[4.25rem] z-30 max-h-[70dvh] flex-col overflow-hidden rounded-t-xl border border-border bg-bg-surface shadow-2xl md:static md:inset-auto md:bottom-auto md:z-auto md:flex md:max-h-none md:w-64 md:shrink-0 md:rounded-none md:border-b-0 md:border-l md:border-t-0 md:shadow-none`}>
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="border-b border-border p-3">
               <div className="mb-2 text-xs font-bold">Mockup</div>

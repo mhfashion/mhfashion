@@ -124,11 +124,11 @@ export default function EditorFlyout({
     const matchesSearch = !query || [element.name, element.category, ...element.tags].some((value) => value.toLocaleLowerCase().includes(query));
     return inCategory && matchesSearch;
   });
-  const width = panel === "text" ? "w-80" : panel === "elements" ? "w-72" : "w-52";
+  const width = panel === "text" ? "w-full sm:w-80" : panel === "elements" ? "w-full sm:w-72" : "w-full sm:w-52";
 
   return (
-    <div className={`${width} flex-shrink-0 overflow-y-auto border-r border-border bg-bg-surface p-3`}>
-      <p className="mb-2.5 text-xs font-semibold">{TITLES[panel]}</p>
+    <div className={`${width} max-h-[58dvh] flex-shrink-0 overflow-y-auto rounded-t-xl border border-border bg-bg-surface p-3 shadow-2xl sm:max-h-none sm:rounded-none sm:border-y-0 sm:border-l-0 sm:border-r sm:shadow-none`}>
+      <div className="mb-2.5 flex items-center justify-between"><p className="text-xs font-semibold">{TITLES[panel]}</p><span className="h-1 w-10 rounded-full bg-border sm:hidden" aria-hidden="true" /></div>
 
       {panel === "upload" && <div className="space-y-2">
         <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileChange} className="sr-only" aria-label="Choose an image to upload" />

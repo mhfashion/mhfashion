@@ -73,6 +73,18 @@ The canvas must show three non-printing regions:
 
 The user can toggle these overlays. They are not exported into the clean SVG/PNG production output. Product-specific print-area dimensions come from the selected Product and attribute combination, not hardcoded editor defaults.
 
+### 3.4 Responsive UI/UX layout contract
+
+The existing global site header and the editor command bar remain unchanged. The responsive work applies to the editor workspace below them: tools, asset flyout, canvas, Layers/Properties, mockup controls, and product attributes.
+
+On **Web/Desktop**, the workspace uses a compact three-zone composition: a narrow left tool rail, an optional asset flyout, a flexible center canvas, and a right Layers/Properties dock. The right dock keeps the layer tree available without forcing a separate navigation page. Widths are constrained so the canvas remains the visual priority; long controls scroll inside their own panel instead of making the whole document scroll.
+
+On **Phone**, the workspace is a single-column canvas-first view. The left rail becomes an icon-only 44–48px rail. Asset panels open as a bottom sheet with a rounded top edge, a visible drag/close affordance, a maximum height, and internal scrolling. Layers/Properties open as a separate bottom sheet or side overlay from a compact mobile dock; they must not permanently consume canvas width. Product attributes stay in a horizontally scrollable compact strip. The canvas must remain reachable without nested page scrolling.
+
+All responsive panels use the same state and callbacks as desktop. Opening a sheet does not clear selection, alter document coordinates, or duplicate editor state. A sheet closes with its close button, backdrop tap where safe, or `Escape`; text inputs and file pickers keep focus until their action completes. Touch targets are at least 44px on phone, while the dense desktop panel may use smaller secondary controls. Selected, pressed, locked, hidden, loading, and disabled states must remain visible without hover.
+
+The mobile dock exposes only the high-frequency actions: Assets, Layers, Mockup, and the active tool. Advanced properties remain inside the Layers sheet below the layer tree. The desktop header/command bar is not redesigned as part of this milestone; future header work requires a separate plan decision.
+
 ## 4. Selection architecture
 
 Selection is the foundation for every tool. A selection is not only a Fabric active object; it is an application-level selection state that can refer to one object, many objects, anchors, path segments, a group, an artboard, or a mockup mapping.
