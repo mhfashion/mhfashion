@@ -9,6 +9,7 @@ type PanStart = { pointerId: number; startX: number; startY: number; panX: numbe
 export default function KittlCanvas() {
   const [selected, setSelected] = useState(false);
   const [mockupAttached, setMockupAttached] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -21,8 +22,11 @@ export default function KittlCanvas() {
     if (!viewport) return;
 
     const handleViewportWheel = (event: WheelEvent) => {
-      if (event.ctrlKey || event.metaKey) return;
       event.preventDefault();
+      if (event.ctrlKey || event.metaKey) {
+        setZoom((current) => Math.max(0.25, Math.min(3, current - event.deltaY * 0.002)));
+        return;
+      }
       setPan((current) => ({
         x: current.x - event.deltaX,
         y: current.y - event.deltaY,
@@ -55,7 +59,8 @@ export default function KittlCanvas() {
   }, []);
 
   function startPan(event: React.PointerEvent<HTMLDivElement>) {
-    if (!spaceHeld || event.button !== 0) return;
+    const middleButtonPan = event.button === 1;
+    if (!middleButtonPan && (!spaceHeld || event.button !== 0)) return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -97,9 +102,12 @@ export default function KittlCanvas() {
         onPointerMove={movePan}
         onPointerUp={endPan}
         onPointerCancel={endPan}
+        onAuxClick={(event) => {
+          if (event.button === 1) event.preventDefault();
+        }}
         className={`flex h-full w-full items-center justify-center overflow-hidden p-6 sm:p-12 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
       >
-        <div style={{ width: `${ARTBOARD_SIZE.width}px`, height: `${ARTBOARD_SIZE.height}px`, transform: `translate(${pan.x}px, ${pan.y}px)` }} className="relative shrink-0">
+        <div style={{ width: `${ARTBOARD_SIZE.width * zoom}px`, height: `${ARTBOARD_SIZE.height * zoom}px`, transform: `translate(${pan.x}px, ${pan.y}px)` }} className="relative shrink-0">
           <div
             role="application"
             aria-label="Design canvas"
@@ -111,6 +119,7 @@ export default function KittlCanvas() {
               setSelected(true);
             }}
             className={`relative h-full w-full shrink-0 bg-white shadow-[0_14px_45px_rgba(28,31,38,0.14)] ${selected ? "ring-1 ring-[#8f96a3]" : ""}`}
+            style={{ width: `${ARTBOARD_SIZE.width}px`, height: `${ARTBOARD_SIZE.height}px`, transform: `scale(${zoom})`, transformOrigin: "top left" }}
           >
           {mockupAttached && <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
             <div className="relative h-[82%] w-[48%] min-w-[190px] rounded-[46%_46%_10%_10%] border border-[#d8dbe1] bg-[#f7f8fa] shadow-inner">
