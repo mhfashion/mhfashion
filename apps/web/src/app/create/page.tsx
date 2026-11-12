@@ -9,6 +9,7 @@ import LayersPanel, { type EditorLayer, type LayerDropPosition } from "@/compone
 import AttributeBar, { PRODUCT_OPTIONS, type AttributeSelection } from "@/components/editor/AttributeBar";
 import InteractiveCanvas, { type CanvasMark, type ShapeType } from "@/components/editor/InteractiveCanvas";
 import MockupLibrary, { type MockupId } from "@/components/editor/MockupLibrary";
+import HistoryPanel from "@/components/editor/HistoryPanel";
 import type { TextCombination, TextFormatting } from "@/lib/editorTypography";
 import { useCurrency } from "@/lib/currency-context";
 import { findEditorElement } from "@/lib/editorElements";
@@ -115,6 +116,7 @@ export default function EditorPage() {
     past: [],
     future: [],
   });
+  const [historyLabels, setHistoryLabels] = useState({ past: [] as string[], future: [] as string[], current: "Initial document" });
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>([]);
   const [mockup, setMockup] = useState<MockupId | null>(null);
@@ -123,10 +125,11 @@ export default function EditorPage() {
   const [selection, setSelection] = useState<AttributeSelection>(DEFAULT_SELECTION);
   const [saveMessage, setSaveMessage] = useState("");
 
-  const commitDocument = useCallback((update: (current: DocumentState) => DocumentState) => {
+  const commitDocument = useCallback((update: (current: DocumentState) => DocumentState, label = "Edit") => {
     setHistory((current) => {
       const next = update(current.present);
       if (next === current.present) return current;
+      setHistoryLabels((labels) => ({ past: [...labels.past, labels.current].slice(-100), future: [], current: label }));
       return {
         present: next,
         past: [...current.past, current.present].slice(-100),
@@ -142,6 +145,7 @@ export default function EditorPage() {
       const saved = JSON.parse(raw) as Partial<SavedDraft>;
       if (saved.version !== 1 || !isDocumentState(saved.document)) return;
       setHistory({ present: saved.document, past: [], future: [] });
+      setHistoryLabels({ past: [], future: [], current: "Restored draft" });
       if (saved.mockup === null || ["studio", "flatlay", "hoodie", "oversized", "cap", "tote"].includes(saved.mockup ?? "")) {
         setMockup(saved.mockup ?? null);
       }
@@ -162,6 +166,7 @@ export default function EditorPage() {
     setHistory((current) => {
       if (!current.past.length) return current;
       const previous = current.past[current.past.length - 1];
+      setHistoryLabels((labels) => ({ past: labels.past.slice(0, -1), future: [labels.current, ...labels.future], current: labels.past[labels.past.length - 1] ?? "Initial document" }));
       return {
         present: previous,
         past: current.past.slice(0, -1),
@@ -174,6 +179,7 @@ export default function EditorPage() {
     setHistory((current) => {
       if (!current.future.length) return current;
       const next = current.future[0];
+      setHistoryLabels((labels) => ({ past: [...labels.past, labels.current], future: labels.future.slice(1), current: labels.future[0] ?? "Edit" }));
       return {
         present: next,
         past: [...current.past, current.present],
@@ -349,7 +355,7 @@ export default function EditorPage() {
         ...document.layers,
         [activeSide]: document.layers[activeSide].map((layer) => layer.id === id ? { ...layer, ...patch } : layer),
       },
-    }));
+    }), "Layer appearance");
 
   const updateLayers = (ids: string[], patch: Partial<EditorLayer>) => {
     if (!ids.length) return;
@@ -359,7 +365,7 @@ export default function EditorPage() {
         ...document.layers,
         [activeSide]: document.layers[activeSide].map((layer) => ids.includes(layer.id) ? { ...layer, ...patch } : layer),
       },
-    }));
+    }), "Bulk layer properties");
   };
 
   const dropLayer = (sourceId: string, targetId: string, position: LayerDropPosition) => commitDocument((document) => {
@@ -367,6 +373,17 @@ export default function EditorPage() {
     const source = layers.find((layer) => layer.id === sourceId);
     const target = layers.find((layer) => layer.id === targetId);
     if (!source || !target || sourceId === targetId || (position === "inside" && (!target.isGroup || source.isGroup))) return document;
+    const hasLockedAncestor = (layer: EditorLayer | undefined) => {
+      const visited = new Set<string>();
+      let current = layer;
+      while (current) {
+        if (current.locked || visited.has(current.id)) return Boolean(current.locked);
+        visited.add(current.id);
+        current = current.parentId ? layers.find((candidate) => candidate.id === current?.parentId) : undefined;
+      }
+      return false;
+    };
+    if (hasLockedAncestor(source) || hasLockedAncestor(target)) return document;
     const nextParentId = position === "inside" ? target.id : target.isGroup ? undefined : target.parentId;
     if (source.isGroup && nextParentId) return document;
     const moved: EditorLayer = { ...source, parentId: nextParentId };
@@ -389,7 +406,7 @@ export default function EditorPage() {
       return { ...layer, childIds };
     });
     return { ...document, layers: { ...document.layers, [activeSide]: normalized } };
-  });
+  }, "Reorder layer");
 
   const toggleSelectedEffect = (effect: string) => {
     const layer = history.present.layers[activeSide].find((item) => item.id === selectedLayerId);
@@ -600,6 +617,7 @@ export default function EditorPage() {
         </div>
         <aside className={`${mobileLayersOpen ? "fixed" : "hidden"} inset-x-2 bottom-[4.25rem] z-30 max-h-[70dvh] flex-col overflow-hidden rounded-t-xl border border-border bg-bg-surface shadow-2xl md:static md:inset-auto md:bottom-auto md:z-auto md:flex md:max-h-none md:w-64 md:shrink-0 md:rounded-none md:border-b-0 md:border-l md:border-t-0 md:shadow-none`}>
           <div className="min-h-0 flex-1 overflow-y-auto">
+            <HistoryPanel past={historyLabels.past} future={historyLabels.future} current={historyLabels.current} onUndo={undo} onRedo={redo} />
             <div className="border-b border-border p-3">
               <div className="mb-2 text-xs font-bold">Mockup</div>
               {mockup ? <div className="rounded-md border border-accent/40 bg-accent/5 p-2 text-[10px] text-accent"><div className="font-semibold">{mockupName}</div><button type="button" onClick={() => setMockupLibraryOpen(true)} className="mt-1 text-[9px] text-text-secondary underline">Change mockup</button></div> : <button type="button" onClick={() => setMockupLibraryOpen(true)} className="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-accent px-2 py-3 text-[10px] font-semibold text-accent hover:bg-accent/10"><span className="text-base leading-none">+</span> Select mockup</button>}

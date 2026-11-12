@@ -423,6 +423,14 @@ The canonical model remains `EditorLayer[]` plus `CanvasMark[]`, with Fabric obj
 
 The first implementation slice now includes Move Auto-select controls, selected-layer policy in Fabric hit testing, Layers-box search/type filtering, Shift multi-selection, bulk hide/lock actions, group-aware multi-delete, and history-backed state updates. The next slice will add contiguous range selection, group isolation, keyboard stack movement, independent lock modes, and mask companion nodes. Pixel brushes, pixel masks, and Photoshop-compatible PSD import are not implied by this plan.
 
+### 9.10 History and appearance implementation milestone
+
+The editor now exposes a compact History panel in the dock. Each document transaction records a user-facing label, the current state, undo count, and redo count. Undo moves the current label to the redo branch; a new edit clears the redo branch; restoring a draft starts a fresh history session. The existing top command-bar Undo/Redo buttons and the dock buttons call the same transaction functions, so they cannot diverge.
+
+Layer appearance controls are grouped in the Layers dock: Blend Mode uses the selected layer/group's allowed mode list, Opacity applies to the whole rendered layer, and Fill applies to base artwork while remaining disabled for groups. Numeric fields clamp to 0–100 and the expandable slider provides a touch-friendly adjustment path. Each appearance change is an undoable history transaction.
+
+Layer rows are draggable with before/inside/after insertion feedback. Locked sources, locked targets, and locked ancestors reject a reorder without mutating document state. The drop operation preserves `parentId`, updates group `childIds`, and records a `Reorder layer` history entry. Locked rows expose a not-allowed cursor and cannot be dragged.
+
 ## 10. Text and typography system
 
 Text must remain editable until the user explicitly converts it to outlines or rasterizes it.
