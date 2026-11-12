@@ -672,3 +672,352 @@ The editor is production-ready only when all of the following are true:
 [13]: https://helpx.adobe.com/photoshop/desktop/create-masks/layer-masks/add-layer-masks.html "Photoshop Add and edit layer masks"
 [14]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/apply-layer-effects/set-layer-opacity-and-blending-modes.html "Photoshop Set layer opacity and blending modes"
 [15]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/smart-objects/smart-objects-overview-and-benefits.html "Photoshop Smart Objects overview and benefits"
+
+
+## Appendix A — Fabric.js implementation logic
+
+This appendix converts the product behavior above into a concrete Fabric.js 7.4.0 implementation strategy. The examples are TypeScript-oriented pseudocode: names may be adapted to the existing `FabricDesignCanvas.tsx`, but the state boundaries and event ordering should remain stable.
+
+### A.1 Fabric object and application-state contract
+
+Fabric objects are the rendering and pointer-interaction layer; `CanvasMark[]` and `EditorLayer[]` remain the application source of truth. Do not use Fabric's internal object index or object identity as a persisted layer ID. Every editable Fabric object must carry a stable application record:
+
+```ts
+type FabricData = {
+  id: string;                 // same ID as CanvasMark and EditorLayer
+  side: "front" | "back";
+  kind: "Text" | "TextOnPath" | "Shape" | "Pen" | "Image" | "Element" | "Clone";
+  layerId: string;
+  sourcePathId?: string;      // TextOnPath -> linked guide path
+  transient?: boolean;        // overlays are never persisted
+};
+
+type TransformState = {
+  left: number;
+  top: number;
+  scaleX: number;
+  scaleY: number;
+  angle: number;
+  skewX: number;
+  skewY: number;
+  originX: "left" | "center" | "right";
+  originY: "top" | "center" | "bottom";
+};
+```
+
+`CanvasMark` stores normalized document values for persistence, while Fabric stores scene-space values for rendering. The conversion must be centralized:
+
+```ts
+function markToFabric(mark: CanvasMark, fabric: typeof import("fabric")) { /* ... */ }
+function fabricToMark(object: FabricObject, previous: CanvasMark): CanvasMark { /* ... */ }
+```
+
+The conversion must include `left`, `top`, `scaleX`, `scaleY`, `angle`, `skewX`, `skewY`, `originX`, and `originY`. Do not reconstruct a transform only from a bounding rectangle: doing so loses rotation, skew, and the difference between object dimensions and scaled dimensions.
+
+Every object inserted into a canvas receives `object.data = { id, side, kind, layerId }`. Every object rebuilt from state receives the same data before it is added to the canvas. `data` is used for lookup only; serialized state is still generated from the application model so transient Fabric controls, clip previews, and selection objects cannot leak into drafts.
+
+### A.2 Move tool state machine
+
+The Move tool should have an explicit gesture state instead of relying on scattered booleans:
+
+```ts
+type MoveGesture = {
+  phase: "idle" | "pressed" | "dragging" | "duplicating";
+  pointerId?: number;
+  startScene: Point;
+  lastScene: Point;
+  startTransforms: Map<string, TransformState>;
+  activeIds: string[];
+  duplicateIds?: string[];
+  startedAt: number;
+  historyCommitted: boolean;
+  snapDisabled: boolean;
+  axis?: "x" | "y";
+};
+```
+
+The state machine is important because `mouse:move` fires many times. The editor must not push one history entry or React state update for every pointer event. On pointer-down, capture the selected objects' starting transforms. During pointer-move, update Fabric objects for immediate feedback. On pointer-up, serialize the final transforms once and commit one command.
+
+Recommended event flow:
+
+1. `mouse:down` receives a `TPointerEventInfo<...>` and converts the browser pointer into scene coordinates with `canvas.getScenePoint(event.e)`. This is the correct coordinate source when viewport zoom/pan is active; do not use raw `offsetX`/`offsetY`.
+2. Resolve the target object using the active Auto-select policy. Ignore `transient`, hidden, locked, and locked-ancestor objects. If the target is different from the current selection, update the application selection before starting a drag.
+3. Create `MoveGesture` with the selected object IDs and exact starting transforms. Store a deep copy; a reference to mutable Fabric values is not sufficient for undo.
+4. If `Alt/Option` is pressed, clone the selected marks and layers once, assign new IDs, attach cloned Fabric objects, and switch the gesture to `duplicating`. The original selection must remain unchanged.
+5. Set `phase = "pressed"`. Do not yet write a history command. A click without meaningful movement should only select.
+6. On `mouse:move`, calculate `sceneDelta = currentScene - startScene`. Divide by viewport scale only if the chosen scene coordinate API returns viewport coordinates; never divide twice. Apply axis constraint, snapping, and group transform to the starting values.
+7. Write the preview transforms directly to the Fabric objects, call `setCoords()` on each, and call `canvas.requestRenderAll()`. React state may be throttled with `requestAnimationFrame`; the source model should not be rewritten on every raw event.
+8. Once movement exceeds a small scene-space threshold, for example 2 document units, change to `dragging` and show the contextual delta/guide overlay.
+9. On `mouse:up`, finalize the transforms from Fabric, convert them to `CanvasMark` values, update `EditorLayer.transform` if the layer model owns the transform, and push one `EditorCommand` containing all affected IDs. Clear the gesture and transient guides.
+10. If the pointer leaves the canvas, use pointer capture or a window-level pointer-up listener so a drag cannot remain stuck in `dragging` state. Cancel safely on `Escape` by restoring `startTransforms` and removing duplicate objects if a duplicate gesture was active.
+
+Use Fabric's selection events only to synchronize selection, not to implement the entire Move gesture:
+
+```ts
+canvas.on("selection:created", syncSelection);
+canvas.on("selection:updated", syncSelection);
+canvas.on("selection:cleared", clearSelection);
+canvas.on("object:moving", renderMovePreview);
+canvas.on("object:modified", commitFabricModification);
+```
+
+`object:modified` is useful for handle-based scale/rotate operations, but it must not create a second history entry after a custom Move gesture has already committed one. Keep a `suppressModifiedCommitRef` or a gesture transaction ID. The same transaction guard is required when application state re-renders Fabric objects after a drag.
+
+### A.3 Selection and locked-object guards
+
+Centralize all edit permission checks. Do not duplicate slightly different lock checks in Move, Text on Path, Layers, and the toolbar:
+
+```ts
+function canEditObject(
+  object: FabricObject,
+  layers: EditorLayer[],
+): { ok: true; layer: EditorLayer } | { ok: false; reason: string } {
+  const id = (object as DataObject).data?.id;
+  let layer = findLayer(layers, id);
+  if (!layer) return { ok: false, reason: "This artwork is not editable" };
+  while (layer) {
+    if (!layer.visible) return { ok: false, reason: "This layer is hidden" };
+    if (layer.locked) return { ok: false, reason: "This layer or its parent is locked" };
+    layer = layer.parentId ? findLayer(layers, layer.parentId) : undefined;
+  }
+  return { ok: true, layer: findLayer(layers, id)! };
+}
+```
+
+A locked object may still be visible and should be able to participate in a selection marquee as a non-editable candidate only if the user enabled “show locked in selection.” It must never receive Fabric transform controls. Set `object.selectable = false`, `object.evented = false`, and render a lock indicator in the layer row/overlay. When a locked target is clicked, do not silently select a different object underneath; show “Layer locked” and allow the user to choose the underlying object deliberately with the documented selection-through behavior.
+
+For multi-selection, filter out locked members before constructing `fabric.ActiveSelection`. If the user selects a mix of editable and locked objects from Layers, either keep the locked objects as non-transforming members with a clear warning or reject the group transform. The first production version should reject the transform rather than produce a partial, surprising move.
+
+### A.4 Move coordinate, snapping, and group math
+
+All Move calculations happen in document scene space. The algorithm is:
+
+```ts
+const rawDelta = subtract(currentScene, gesture.startScene);
+const constrained = constrainAxis(rawDelta, nativeEvent.shiftKey);
+const delta = nativeEvent.metaKey || nativeEvent.ctrlKey
+  ? constrained
+  : snapDelta(constrained, snapContext);
+```
+
+`snapDelta` must compare candidate positions derived from the starting geometry, not the already-snapped preview. Otherwise repeated pointer events can accumulate rounding error. Candidates include each selected object's left/center/right and top/center/bottom against artboard, safe-area, guide, and nearby object candidates. Use a tolerance in document units derived from a screen-pixel preference:
+
+```ts
+const toleranceScene = snapToleranceScreenPx / currentViewportZoom;
+```
+
+For a group or ActiveSelection, calculate the selection bounds once at gesture start. Apply one snapped delta to every member so relative distances remain exact. Do not snap each child independently. For nested groups, transform the group's parent coordinate and preserve each child's local transform.
+
+When a group has rotation, use the group's scene-space bounding box for guides but apply translation in scene space. Translation should not modify child angle, scale, skew, or local coordinates. When exact numeric X/Y is entered, bypass visual snapping and write the requested document coordinate directly.
+
+### A.5 Move preview versus committed state
+
+During drag, Fabric is the low-latency preview surface. The React model is committed at gesture boundaries. This avoids a feedback loop where `onMarksChange` causes the canvas effect to remove and recreate objects during a pointer drag. The existing `callbacksRef` pattern is appropriate: keep current callbacks and settings in a ref, while the Fabric event listeners are installed once.
+
+On commit:
+
+```ts
+const before = serializeTransforms(gesture.startTransforms, gesture.activeIds);
+const after = serializeFromFabric(gesture.activeIds);
+if (!sameTransform(before, after)) {
+  onMarksChange(applyTransforms(callbacksRef.current.marks, after));
+  pushHistory({ type: "move", targetIds: gesture.activeIds, before, after });
+}
+```
+
+Use a numeric epsilon when comparing floating-point values, but persist rounded values consistently, for example to 1/100 document unit. The displayed position may be rounded; the internal transform must not be repeatedly rounded during the drag.
+
+### A.6 Keyboard Move implementation
+
+Attach one document-level keydown handler while the editor is focused, but ignore it when an input, textarea, select, or active text-editing Fabric object owns the event. For a selected editable object:
+
+```ts
+const step = event.shiftKey ? 10 : 1;
+const delta = {
+  x: event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0,
+  y: event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0,
+};
+```
+
+Apply one nudge command per keydown. If key repeat is enabled, coalesce repeated nudges within a short interval into one history command while still rendering each step. `Alt/Option + Arrow` may use a configurable fine step later; do not overload it until the shortcut is documented.
+
+`V` changes the active tool only when the user is not typing. `Space` temporarily enables pan and must not be interpreted as a text-space insertion outside Fabric text-edit mode. `Escape` cancels active transformation first, then exits group/path/text editing, then clears selection.
+
+### A.7 Fabric Text on Path architecture
+
+Fabric.js provides `Text`, `IText`, and `Textbox`, but a production-grade editable text-on-path feature should not depend on a browser-only SVG `<textPath>` as the persisted source. SVG textPath support varies across export/render paths, and a collection of independent character objects creates too many layers and makes editing/selection awkward.
+
+Use three linked records:
+
+```ts
+type TextOnPathMark = CanvasMark & {
+  kind: "TextOnPath";
+  text: string;
+  pathId: string;
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: string;
+  fontStyle: "normal" | "italic";
+  fill: string;
+  charSpacing: number;       // Fabric-style 1/1000 em units
+  startOffset: number;       // document units along path
+  alignment: "left" | "center" | "right";
+  baselineOffset: number;    // perpendicular distance from path
+  side: "normal" | "reverse";
+  pathStart: number;
+  pathEnd?: number;
+  keepUpright: boolean;
+};
+
+type TextPathLink = {
+  textId: string;
+  pathId: string;
+  visibleInExport: boolean;
+  showGuideWhenSelected: boolean;
+};
+```
+
+The guide path is a normal editable `fabric.Path` with its own stable ID and layer. The text object is a custom `FabricTextOnPath` display object with the text mark in `object.data`. The guide path may be hidden in normal preview and shown when the text or path is selected. The guide path is not merged into the text layer and is excluded from clean export unless the user explicitly requests “include guides.”
+
+### A.8 Custom FabricTextOnPath rendering
+
+Implement `FabricTextOnPath` as a custom `FabricObject` or a carefully isolated subclass of `Fabric.Text`. It should own the source string and typography properties, but render glyphs along the flattened path in `_render(ctx)`.
+
+The render pipeline is:
+
+1. Resolve the linked guide path by ID from a path registry. If the path is missing, render the text in a visible error state and add an export warning; never silently place it at the origin.
+2. Convert the Fabric path commands into a flattened polyline/arc-length table. Each sample stores `{ distance, x, y, tangentAngle }`. Cache this table by `pathId + pathGeometryVersion`.
+3. Use the browser canvas context or Fabric's text measurement logic to measure each grapheme cluster, not each UTF-16 code unit. This avoids breaking emoji, combining marks, and some Myanmar text sequences.
+4. Add letter spacing after each measured glyph according to the documented unit conversion. For Fabric-style `charSpacing`, use the same conversion as the selected font renderer and keep it in the mark so re-rendering is deterministic.
+5. Compute total line width. For `left`, begin at `startOffset`; for `center`, begin at `startOffset - width / 2`; for `right`, begin at `startOffset - width`. Clamp or warn if the text exceeds `pathStart/pathEnd`.
+6. For each glyph, find the midpoint distance on the path, interpolate its point and tangent, and calculate the baseline position using `baselineOffset` along the path normal.
+7. Save the context, translate to the glyph point, rotate by tangent angle, flip by 180 degrees for reverse side, and draw the glyph at its local baseline. Restore the context for the next glyph.
+8. Apply Fabric fill, stroke, opacity, shadow, and blend properties consistently. Effects that depend on a single continuous text outline may require a raster/vector export fallback warning.
+9. Render a selection outline and path guide only when selected. These are transient overlays and must never become part of the exported artwork.
+
+A simplified renderer shape is:
+
+```ts
+_render(ctx: CanvasRenderingContext2D) {
+  const layout = this.getGlyphLayout();
+  ctx.save();
+  applyFabricPaint(ctx, this);
+  for (const glyph of layout) {
+    ctx.save();
+    ctx.translate(glyph.x, glyph.y + glyph.normalX * this.baselineOffset);
+    ctx.rotate(glyph.angle + (this.side === "reverse" ? Math.PI : 0));
+    drawGlyph(ctx, glyph.text, -glyph.width / 2, 0, this.keepUpright, this.side);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+```
+
+The real implementation must account for the font's ascent/descent, italic overhang, stroke width, shadow padding, retina scaling, and the text object's own transform. The guide path is evaluated in document space first; the Fabric object's transform is applied after the glyph positions are calculated. This makes moving, rotating, and scaling the whole text-on-path object predictable.
+
+### A.9 Text on Path editing behavior
+
+The user experience should have two modes:
+
+- **Text edit mode:** double-click the text; show an HTML/Fabric text editor or a hidden `IText` proxy for caret, selection, IME, and keyboard input. The proxy is not the visual export object. Changes update `TextOnPathMark.text` and invalidate glyph layout.
+- **Path edit mode:** select the guide path with Path Select/Direct Path Edit; the text follows the path in real time. Anchor edits are one history transaction on pointer-up, and the linked text remains selected as a dependent preview if the user enabled that option.
+
+The right panel must expose text, font, weight, size, fill, stroke, letter spacing, alignment, start offset, baseline offset, normal/reverse side, and keep-upright. Add handles on the guide path for:
+
+- start offset;
+- center/anchor position;
+- baseline offset;
+- path end clamp;
+- reverse direction.
+
+Dragging a start-offset handle changes only `startOffset`, not the path or text transform. Dragging the baseline handle changes only `baselineOffset`. Moving the whole selected text object changes its object transform and keeps the text-to-path relationship intact. Moving the guide path changes the path and therefore moves the text, but the text object's own transform remains unchanged.
+
+For circular or closed paths, normalize distances modulo total path length. For open paths, clamp to the available path range and show an overflow warning. A `keepUpright` option should flip glyphs when the tangent would make text upside down; the user can disable it for artistic reverse lettering.
+
+Do not silently support multiline Text on Path in the first version. Either convert line breaks into a new separate path-linked text object or reject them with a clear message. A later version can support multiple baselines using one path per line or an offset curve.
+
+### A.10 Text on Path persistence and serialization
+
+A Text on Path draft must serialize the text and guide path independently:
+
+```ts
+{
+  id: "text-path-123",
+  kind: "TextOnPath",
+  text: "MH FASHION",
+  pathId: "path-456",
+  fontFamily: "Arial",
+  fontSize: 32,
+  charSpacing: 0,
+  startOffset: 12,
+  baselineOffset: 0,
+  alignment: "center",
+  side: "normal",
+  pathStart: 0,
+  keepUpright: true,
+  x: 0,
+  y: 0,
+  scaleX: 1,
+  scaleY: 1,
+  angle: 0
+}
+```
+
+On restore, load all paths before dependent Text on Path objects, build the path registry, then create text objects. If a path is missing, retain the text mark and its `pathId`, render a non-printing missing-path badge, and block production export until the user repairs or removes the link. Draft migration must preserve ordinary `Text` marks as ordinary text; never reinterpret an old text mark as Text on Path because its name contains “path.”
+
+Fabric's own `toObject()` may be used for debugging or a temporary browser draft, but the canonical MH Fashion serializer must explicitly include `pathId`, typography, offsets, side, and link metadata. Transient guide overlays, HTML editing proxies, and cached glyph tables must be excluded.
+
+### A.11 Text on Path undo/redo transactions
+
+Use separate command types so history descriptions are meaningful:
+
+- `text-path-create`: text and guide path created together;
+- `text-path-edit-text`: source string changed;
+- `text-path-edit-style`: font, size, fill, stroke, spacing, or alignment changed;
+- `text-path-move-offset`: start/baseline offset changed;
+- `path-modified`: guide geometry changed and dependent text reflowed;
+- `text-path-unlink`: text converted to ordinary text at its current visual placement;
+- `text-path-delete`: linked text or guide deleted with a recoverable relationship record.
+
+Typing should coalesce into one command after a short idle period. Dragging a path or offset handle should commit once on pointer-up. Undoing a path edit restores the path geometry and automatically re-renders every dependent text mark. Deleting a guide path must not silently delete text; offer “unlink and keep text,” “delete linked text,” or “cancel.”
+
+### A.12 Text on Path export logic
+
+For SVG export, generate a standards-compliant `<path>` and `<textPath>` only when the export renderer can preserve the selected font, direction, baseline offset, and effects. Otherwise, convert the glyph layout to vector outlines or a high-resolution raster fallback according to the print method, and record the conversion in `warnings.json`.
+
+For PNG/mockup export, render the same glyph layout used by the Fabric preview onto an offscreen canvas at the requested export scale. Do not screenshot the browser canvas at its current zoom. The export renderer must use document dimensions and export scale, then apply the mockup mapping separately.
+
+A clean production export must never include the editing guide path, selection controls, start-offset handles, missing-path badge, or text editing proxy. If the guide is intentionally part of the artwork, the user must duplicate/convert it to an ordinary visible path layer first.
+
+### A.13 Fabric performance rules
+
+- Cache flattened path samples and invalidate them only when the guide path geometry, scale, or relevant transform changes.
+- Do not create a Fabric object per glyph for normal editing; use one custom Text on Path object.
+- Render guides and measurement labels as transient objects in a separate overlay collection.
+- Batch `requestRenderAll()` through `requestAnimationFrame` during pointer moves.
+- Avoid calling `canvas.loadFromJSON()` for every React state update; update existing objects in place when IDs and kinds match.
+- Use `object.setCoords()` after transform changes and before hit-testing or selection bounds are read.
+- Keep `callbacksRef.current` current, as in the current prototype, so Fabric listeners do not close over stale React state.
+- Mark linked dependents dirty when a path changes, but recalculate their layout lazily if they are outside the viewport.
+- Add a maximum text length/path sample budget and show a non-destructive warning for unusually large designs.
+
+### A.14 Implementation test matrix
+
+The Move tool tests must cover single object movement, multi-selection, group movement, locked object rejection, locked ancestor rejection, Auto-select Layer/Group, Alt duplication, Shift axis constraint, Ctrl/Cmd snap bypass, arrow nudges, undo/redo, pointer cancellation, zoom 25/100/400%, rotated viewport, hidden layers, and Front/Back isolation.
+
+Text on Path tests must cover creation from an open path, creation from a closed path, left/center/right alignment, start and baseline offsets, reverse side, keep-upright behavior, font/size/spacing changes, Unicode grapheme clusters, text editing through the IME proxy, path anchor movement, path deletion/unlink, missing path restore, undo/redo, SVG export, PNG export, mockup export, and exclusion of guide/selection overlays.
+
+A visual regression fixture should render the same document at 25%, 100%, 400%, 1x export, and 4x export. The glyph positions and object transforms should remain identical in document coordinates. A serialization round-trip test must compare the canonical `CanvasMark`/`EditorLayer` state before and after Fabric reconstruction, not merely compare screenshots.
+
+### A.15 Recommended implementation order
+
+1. Extract transform conversion and edit-permission helpers from `FabricDesignCanvas.tsx`.
+2. Add a `useFabricEditorController` or equivalent controller module for gesture transactions, selection synchronization, and history boundaries.
+3. Finish Move tool snapping, exact fields, duplicate-on-drag, keyboard nudging, and transaction guards.
+4. Add explicit `kind: "TextOnPath"` and `pathId` to the canonical mark schema and add migration tests.
+5. Implement path flattening, glyph layout, and a custom Text on Path renderer with a hidden `IText` editing proxy.
+6. Add offset/path handles, path dependency invalidation, serialization, and undo/redo commands.
+7. Add SVG/PNG export parity and missing-path/export warning behavior.
+8. Add performance and visual regression tests before enabling the feature for production users.
+
+Until steps 4–7 are complete, the editor should label Text on Path as experimental and should not promise editable text-on-path production export. Until steps 1–3 are complete, Move should remain the only default selection tool and numeric transform edits should continue to use the existing guarded application-state path.

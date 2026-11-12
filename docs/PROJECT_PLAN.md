@@ -646,6 +646,14 @@ the R2 phase and the remaining editor production work.
   and acceptance criteria. It uses official Kittl, Photoshop, and Illustrator
   documentation as behavioral references without copying proprietary assets or
   UI.
+- Fabric implementation appendix added (2026-11-12): `EDITOR_PLAN.md` now
+  specifies the Fabric.js 7.4.0 logic for Move gestures, scene/document
+  coordinates, selection and lock guards, snapping, group transforms, pointer
+  capture, keyboard nudges, transaction-safe Undo/Redo, and React/Fabric state
+  synchronization. It also defines Text on Path as a linked text mark plus
+  editable guide `fabric.Path`, with a custom glyph renderer, arc-length layout,
+  alignment/offset/reverse-side behavior, hidden `IText` editing proxy,
+  persistence/migration, export rules, performance guidance, and a test matrix.
 
 
 ## Production publishing status snapshot (2026-11-10; superseded by the current follow-up below)
