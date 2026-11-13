@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-13 — Minimal canvas options and mockup removal
+
+- Removed the always-visible mockup placeholder and the visible canvas size/DPI/format badges. The canvas remains blank and fixed; its technical metadata is retained in code, not shown as extra on-canvas copy.
+- Attached the existing circular control to the canvas edge at its vertical midpoint. Its responsive menu offers **Show Grid** and **Add Mockup**. Show Grid toggles a 10-by-10 layout grid overlay on the canvas. There is no mockup on initial load; Add Mockup is shown but disabled until the owner provides the mockup behavior/details, so no mockup design was invented. The same placement/menu behavior adapts to desktop and phone layouts.
+- Updated `Plan/PLAN.md`, added `tests/canvas-shell.test.cjs`, registered the test with npm and GitHub Actions. Validation: canvas specification **1/1**, canvas shell **2/2**, browser guards **1/1**, Guides **9/9**, TypeScript passed, production build and Cloudflare Worker build passed, and production `/create` HTTP smoke verified the 4500×5400 blank canvas without visible spec badges or a static mockup. `git diff --check` clean. ESLint reports **0 errors / 24 existing warnings**.
+- A grid layer for mockup surfaces remains unverified because no mockup is displayed or addable yet; implement that alongside the mockup flow after the owner supplies its details. Production deployment remains subject to the previously documented missing Cloudflare Actions secrets.
+
 ### 2026-11-13 — Owner-specified blank print canvas
 
 - Replaced the white placeholder with a native blank canvas bitmap fixed at **4500 × 5400 px**. The shared spec declares **300 DPI**, transparent PNG target, fixed size, and blank initial state. Removed the visible “T-Shirt” canvas label; the checkerboard is CSS-only and the spec badge sits outside the artwork.

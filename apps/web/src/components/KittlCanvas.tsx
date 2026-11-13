@@ -1,27 +1,20 @@
 "use client";
 
-import { ArrowDown, ArrowRight, Shirt } from "lucide-react";
+import { Grid2X2, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
 
-type MockupSide = "front" | "back";
-type KittlCanvasProps = {
-  availableMockupSides?: readonly MockupSide[];
-};
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 
-const DEFAULT_MOCKUP_SIDES: readonly MockupSide[] = ["front", "back"];
-const SIDE_LABELS: Record<MockupSide, string> = { front: "Front", back: "Back" };
-
-export default function KittlCanvas({
-  availableMockupSides = DEFAULT_MOCKUP_SIDES,
-}: KittlCanvasProps) {
-  const [mockupVisible, setMockupVisible] = useState(true);
+export default function KittlCanvas() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const panStartRef = useRef<PanStart | null>(null);
   const panGestureRef = useRef(false);
 
@@ -65,6 +58,22 @@ export default function KittlCanvas({
       window.removeEventListener("blur", handleWindowBlur);
     };
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) setMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
 
   function startPan(event: React.PointerEvent<HTMLDivElement>) {
     const middleButtonPan = event.button === 1;
@@ -116,17 +125,13 @@ export default function KittlCanvas({
         className={`flex h-full w-full items-center justify-center overflow-hidden p-5 sm:p-8 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
       >
         <div
-          className="flex max-w-full flex-col items-center md:flex-row"
+          className="max-w-full"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: "center center",
           }}
         >
-          <section className="w-[min(18.25rem,78vw)] shrink-0" aria-label="Print canvas">
-            <div className="mb-1 flex min-h-5 items-center justify-between gap-1 text-[9px] font-medium text-[#53606a]" aria-label="Canvas specification">
-              <span>{PRINT_CANVAS_SPEC.widthPx} × {PRINT_CANVAS_SPEC.heightPx} px · {PRINT_CANVAS_SPEC.resolutionDpi} DPI</span>
-              <span>Transparent PNG · Fixed</span>
-            </div>
+          <section className="relative w-[min(18.25rem,78vw)] shrink-0" aria-label="Print canvas">
             <canvas
               width={PRINT_CANVAS_SPEC.widthPx}
               height={PRINT_CANVAS_SPEC.heightPx}
@@ -136,7 +141,7 @@ export default function KittlCanvas({
               data-background={PRINT_CANVAS_SPEC.background}
               data-export-format={PRINT_CANVAS_SPEC.exportFormat}
               data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
-              aria-label="Blank fixed 4500 by 5400 pixel canvas, 300 DPI, transparent PNG"
+              aria-label="Blank print canvas"
               className="block w-full border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
               style={{
                 backgroundColor: "#ffffff",
@@ -145,55 +150,61 @@ export default function KittlCanvas({
                 backgroundPosition: "0 0, 0 16px, 16px -16px, -16px 0",
               }}
             />
-          </section>
-
-          <div className="relative flex h-12 w-14 shrink-0 items-center justify-center md:h-auto md:w-[8.75rem]">
-            <span className="absolute left-1/2 top-0 h-full border-l border-[#b9a7e8] md:left-0 md:top-1/2 md:h-0 md:w-full md:border-l-0 md:border-t" />
-            <button
-              type="button"
-              aria-label={mockupVisible ? "Hide mockup preview" : "Show mockup preview"}
-              aria-expanded={mockupVisible}
-              onClick={() => setMockupVisible((visible) => !visible)}
-              className="relative z-10 flex h-5 w-5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm outline-none ring-offset-2 hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-white" />
-            </button>
-            {mockupVisible && <ArrowRight size={13} className="absolute right-0 top-1/2 hidden -translate-y-1/2 text-[#a58be8] md:block" aria-hidden="true" />}
-            {mockupVisible && <ArrowDown size={13} className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[#a58be8] md:hidden" aria-hidden="true" />}
-          </div>
-
-          {mockupVisible && (
-            <section className="w-[min(20.75rem,84vw)] shrink-0">
-              <div className="mb-1 flex h-5 items-center gap-1.5 text-[12px] font-semibold text-[#967add]">
-                <Shirt size={12} aria-hidden="true" />
-                <span>Mockup</span>
-              </div>
-              <div className="relative aspect-square w-full border-2 border-[#a58be8] bg-[#e6e7e9] p-2.5 shadow-[0_5px_18px_rgba(50,35,90,0.08)]">
-                <span className="absolute -left-1 -top-1 h-2 w-2 border border-[#a58be8] bg-white" />
-                <span className="absolute -right-1 -top-1 h-2 w-2 border border-[#a58be8] bg-white" />
-                <span className="absolute -bottom-1 -left-1 h-2 w-2 border border-[#a58be8] bg-white" />
-                <span className="absolute -bottom-1 -right-1 h-2 w-2 border border-[#a58be8] bg-white" />
-                <div className={`grid h-full w-full gap-2 ${availableMockupSides.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-                  {availableMockupSides.map((side) => (
-                    <div key={side} className="relative min-h-0 overflow-hidden rounded-[2px] bg-[#e1e2e4]">
-                      <div className="absolute inset-x-1 top-1 bottom-6 flex items-center justify-center">
-                        <Shirt
-                          size={availableMockupSides.length > 1 ? 76 : 128}
-                          strokeWidth={0.8}
-                          className="h-auto max-h-full max-w-full text-[#fafafa] drop-shadow-[0_1px_1px_rgba(80,80,80,0.16)]"
-                          aria-hidden="true"
-                        />
-                        <span className="absolute left-1/2 top-[52%] h-[32%] w-[38%] -translate-x-1/2 -translate-y-1/2 border border-[#4aa4e8] bg-white/10" />
-                      </div>
-                      <div className="absolute inset-x-0 bottom-0 flex h-6 items-center justify-center border-t border-[#d3d4d7] bg-white/70 text-[10px] font-medium text-[#626a75]">
-                        {SIDE_LABELS[side]} · R2 image placeholder
-                      </div>
-                    </div>
-                  ))}
+            {showGrid && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-px z-10"
+                style={{
+                  backgroundImage: "linear-gradient(to right, rgba(61, 132, 184, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(61, 132, 184, 0.4) 1px, transparent 1px)",
+                  backgroundSize: "10% 10%",
+                }}
+              />
+            )}
+            <div ref={menuRef} className="absolute -right-2.5 top-1/2 z-20 -translate-y-1/2">
+              <button
+                type="button"
+                aria-label="Canvas options"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm outline-none ring-offset-2 hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+              </button>
+              {menuOpen && (
+                <div
+                  role="menu"
+                  aria-label="Canvas options"
+                  className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-[#d8dce2] bg-white p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2"
+                >
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={showGrid}
+                    onClick={() => {
+                      setShowGrid((visible) => !visible);
+                      setMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                  >
+                    <Grid2X2 size={15} aria-hidden="true" />
+                    <span>Show Grid</span>
+                    <span className={`ml-auto h-3.5 w-3.5 rounded-sm border ${showGrid ? "border-[#8f72d4] bg-[#8f72d4]" : "border-[#bfc5cd]"}`} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    aria-label="Add Mockup"
+                    disabled
+                    className="flex w-full cursor-not-allowed items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#a5aab2]"
+                  >
+                    <Plus size={15} aria-hidden="true" />
+                    <span>Add Mockup</span>
+                  </button>
                 </div>
-              </div>
-            </section>
-          )}
+              )}
+            </div>
+          </section>
         </div>
       </div>
     </main>

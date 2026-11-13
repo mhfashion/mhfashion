@@ -12,6 +12,7 @@
     "test:guide": "node --test tests/guides.test.cjs",
     "test:browser-guards": "node --test tests/browser-guards.test.cjs",
     "test:canvas-spec": "node --test tests/canvas-spec.test.cjs",
+    "test:canvas-shell": "node --test tests/canvas-shell.test.cjs",
     "test:guide:http": "node --test tests/guide-http.test.cjs"
   }
 }

@@ -982,7 +982,7 @@ The three primary experiences must share one document model, one selection syste
 
 ## 2. Current implementation baseline
 
-**Verified repository state (2026-11-13, commit `90dc398`):** `/create` mounts the `KittlCanvas` shell. The design area is an empty `div`; the rest of the page contains mockup placeholders and viewport controls. Although Fabric.js is a project dependency, this route does not instantiate it as an editable canvas. No document model, artwork operations, selection, layer/property panels, undo/redo, serializer, or browser/account draft persistence is implemented or connected to the route. The `user_designs.canvas_state` schema exists but is unused here.
+**Verified repository state (2026-11-13):** `/create` mounts the `KittlCanvas` shell with a blank fixed print canvas and a canvas-edge menu. No mockup is rendered by default; `Add Mockup` remains inactive pending the owner's mockup details. Although Fabric.js is a project dependency, this route does not instantiate it as an editable canvas. No document model, artwork operations, selection, layer/property panels, undo/redo, serializer, or browser/account draft persistence is implemented or connected to the route. The `user_designs.canvas_state` schema exists but is unused here.
 
 The implementation target described in this file is forward-looking. The current route must be described as a placeholder workspace, not as an object-level editor or a Photoshop-equivalent pixel editor. The previous notes about tools, Layers, text/Elements insertion, Smart Objects, masks, and local Save/restore are historical snapshots that do not match the audited source at this commit.
 
@@ -999,7 +999,7 @@ The desktop editor should have the following stable regions:
 1. **Top command bar:** document name, undo, redo, history/snapshot access, zoom readout, save status, price, Save, Add to Cart, and Buy Now.
 2. **Left rail:** Upload, Elements, Text, Effects, AI, and the tool palette. Tools are grouped into Select, Draw, Modify, Navigate, and Measure rather than presented as an unstructured icon list.
 3. **Flyout panel:** opens beside the left rail and never changes the artboard's coordinate system. Search, categories, presets, and settings live here.
-4. **Center workspace:** Front and Back artboards fixed at 4500×5400 px with a 300-DPI transparent PNG target, initially blank with no placeholder text; show a CSS-only transparency checkerboard, rulers, guides, safe/print areas, and mockup preview outside the artwork.
+4. **Center workspace:** Keep the current print canvas blank and fixed; do not add always-visible dimension, DPI, or format badges. Keep the canvas-options circle attached to the canvas edge at its vertical midpoint on both Web/Desktop and Phone/Mobile. Its menu contains **Show Grid** and **Add Mockup**. Show Grid toggles a layout grid over the canvas and any mockups that are later added. Do not display a mockup by default; leave Add Mockup inactive until its behavior and mockup details are specified.
 5. **Right dock:** Layers panel, contextual properties, color, typography, effects, masks, and mockup controls. The Layers box must remain mounted even when no layer is selected.
 6. **Bottom attribute bar:** Product, print method, fabric, structure, GSM, color, cutting, size, and mockup attachment state. Product selection remains separate from the editor's asset browser.
 
