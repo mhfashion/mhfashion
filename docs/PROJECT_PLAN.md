@@ -462,9 +462,10 @@ The Reviews title and rating stay visible while the review cards start collapsed
 hidden on `/create`; the `KittlCanvas` workspace remains. Ctrl/Command+wheel is
 prevented from zooming the browser while the web app is open. In the editor,
 Ctrl/Command+wheel zooms only the view. Middle-button drag or Space+left-drag
-pans the view, and unmodified wheel moves it vertically. Do not show or invent
-numeric canvas dimensions; actual print dimensions belong to product
-configuration. The supplied reference is implemented as a blue `T-Shirt` design
+pans the view, and unmodified wheel moves it vertically. Do not show pixel-size
+labels or invent physical print dimensions; actual print dimensions belong to
+product configuration. Preview box proportions follow the supplied reference.
+The supplied reference is implemented as a blue `T-Shirt` design
 box and purple `Mockup` box connected by a small dot/line; the dot toggles the
 mockup box. Until the user provides mockup images in R2, the box uses neutral
 placeholder image slots and print-area guides only; R2 is not connected. The
