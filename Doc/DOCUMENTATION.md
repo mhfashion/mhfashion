@@ -21,6 +21,7 @@ This log records completed website-related changes in the connected repository. 
 
 - Moved the circular Back Mockup control out of the title row and onto the left edge of Front Mockup, vertically centered in the gap between the canvas and box. It uses the same small filled-circle treatment as the canvas-edge control. On Phone/Mobile it stays at the side of the stacked Front Mockup box. The Front/Back close buttons remain in each box's title row.
 - Validation: canvas specification **1/1**, canvas shell **2/2**, browser guards **1/1**, Guides **9/9**, TypeScript and production/Cloudflare builds passed, ESLint **0 errors / 24 existing warnings**, `git diff --check` clean. Browser preview confirmed the plus is beside (not above) Front Mockup and still adds Back Mockup. Phone-sized browser viewport was unavailable.
+- Pushed commit `4638585`; [Actions run #43471566424](https://github.com/mhfashion/mhfashion/actions/runs/43471566424) failed because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are missing. The live page still has the fixed canvas but does not include the updated Front Mockup controls.
 
 ### 2026-11-13 — Correct mockup control placement and close actions
 
