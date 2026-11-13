@@ -64,6 +64,9 @@ jobs:
       - name: Run guide regression tests
         run: npm run test:guide
 
+      - name: Run browser interaction guard tests
+        run: npm run test:browser-guards
+
       - name: Build Next.js application
         run: npm run build --workspace=apps/web
 

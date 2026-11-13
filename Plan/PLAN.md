@@ -1595,7 +1595,7 @@ Rules:
 - Locked, hidden, clipped, masked, and unavailable objects must be distinguishable without relying on color alone.
 - Keyboard users can navigate rail, flyout, Layers, properties, and canvas selection.
 - Destructive actions—Rasterize, Apply Mask, Outline Text, Merge, Delete Layer—require an explicit confirmation or an immediately recoverable history command.
-- Right-click disabling remains part of the current product requirement, but all important actions must also be available through keyboard and visible menus.
+- Disable page zoom shortcuts and Ctrl/Cmd+wheel browser zoom on the website, and suppress page-level right-click/context menus. Keep unrelated shortcuts working, preserve mobile touch pinch zoom, and make site actions available through visible controls and keyboard paths. Browser chrome menus and toolbar zoom remain outside website control.
 - Terms acceptance, watermark, copyright responsibility, and user-content policy remain required before first use.
 
 ## 18. Implementation phases
@@ -2428,3 +2428,5 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 - 2026-11-13: Added the owner-requested first usable editor scope for shared Web/Desktop and Phone/Mobile behavior, correcting E0 to build the verified-missing canvas/document model and explicitly remove mobile navigation spacing from `/create`.
 - 2026-11-13: At the owner's request, reverted editor commits `4ccc60a` and `a571080` and restored `/create` to its pre-editor shell at `007f286`. The editor scope remains a forward plan only; implementation claims were rolled back and validation results were recorded in `Doc/DOCUMENTATION.md#work-log`.
 - 2026-11-13: Production still serves the prior `/create` build. The rollback's GitHub Actions run failed before deployment because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are unavailable; deploy only after authorized credentials are configured. See `Doc/DOCUMENTATION.md#work-log`.
+
+- 2026-11-13: Implemented the website-wide browser zoom shortcut/wheel guard and suppressed page context menus per owner request; preserved mobile pinch zoom and unrelated keyboard shortcuts. Added regression coverage and CI execution. See `Doc/DOCUMENTATION.md#work-log`.

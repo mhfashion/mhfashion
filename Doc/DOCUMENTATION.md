@@ -17,6 +17,12 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-13 — Disable browser zoom shortcuts and page context menus
+
+- Expanded `BrowserZoomGuard` across the website to block Ctrl/Cmd+wheel and Ctrl/Cmd `+`, `-`, and `0` browser-zoom shortcuts; page-level right-click/context menus are suppressed. Unrelated shortcuts such as Ctrl/Cmd+S and mobile touch pinch zoom remain available.
+- Added `tests/browser-guards.test.cjs`, the `test:browser-guards` npm script, and a GitHub Actions test step. Updated the Plan's accessibility/safety requirements.
+- Validation: browser-guard tests **1/1**, Guide tests **9/9**, TypeScript passed, production and Cloudflare Worker builds passed, ESLint **0 errors / 24 warnings**. Production deployment is tracked by the main-branch workflow after this code change is pushed.
+
 ### 2026-11-13 — Owner-requested editor rollback
 
 - Reverted the owner-identified editor commits `4ccc60a` and `a571080` to restore the `/create` application code to its pre-editor state at `007f286`. The responsive Fabric canvas/document/history implementation, phone editor dock/sheets, fixed-canvas settings, local editor draft migration, and editor-only tests were removed; the prior `/create` shell and app framing were restored.
