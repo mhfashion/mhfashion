@@ -986,7 +986,7 @@ The three primary experiences must share one document model, one selection syste
 
 The implementation target described in this file is forward-looking. The current route must be described as a placeholder workspace, not as an object-level editor or a Photoshop-equivalent pixel editor. The previous notes about tools, Layers, text/Elements insertion, Smart Objects, masks, and local Save/restore are historical snapshots that do not match the audited source at this commit.
 
-Current input limitations are also explicit: pan supports middle-button drag or Space+left drag but has no touch-pointer pan path; on short phone viewports, the stacked artboard/mockup content can be clipped by the hidden-overflow workspace. Both issues need Web/Desktop and Phone/Mobile acceptance tests when the editor shell is made operational.
+Current input limitations are also explicit: pan supports middle-button drag or Space+left drag but has no touch-pointer pan path; on short phone viewports, the canvas workspace can be clipped by the hidden-overflow container. Both issues need Web/Desktop and Phone/Mobile acceptance tests when the editor shell is made operational.
 
 Until implemented and tested, treat the following as future work: an editable typed document, artwork operations, selection and history, layer/property controls, validated serialization, browser/account persistence, production mockup rendering, AI tools, paintable masks, true pixel merge, and server-side production export.
 
