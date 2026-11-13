@@ -461,16 +461,17 @@ The Reviews title and rating stay visible while the review cards start collapsed
 **Current editor-shell change (2026-11-13):** The storefront `Header` is temporarily
 hidden on `/create`; the `KittlCanvas` workspace remains. Ctrl/Command+wheel is
 prevented from zooming the browser while the web app is open. In the editor,
-the artboard's document size remains fixed at 720×540, while Ctrl/Command+wheel
-zooms only its view. Middle-button drag or Space+left-drag pans the view, and
-unmodified wheel moves it vertically; none of these gestures changes artwork or
-artboard dimensions. The visible `720 × 540` label is removed from the mockup UI.
-A vertical-dots launcher at the side opens a separate mockup panel; available
-product sides determine its cards, so front/back products show both and
-one-sided products show only their supported side. Each side can be attached
-independently. The current blank `/create` route defaults to Front and Back;
-selected-product data wiring remains pending. This follows Kittl's pan behavior
-and leaves other editor controls intact.
+Ctrl/Command+wheel zooms only the view. Middle-button drag or Space+left-drag
+pans the view, and unmodified wheel moves it vertically. Do not show or invent
+numeric canvas dimensions; actual print dimensions belong to product
+configuration. The supplied reference is implemented as a blue `T-Shirt` design
+box and purple `Mockup` box connected by a small dot/line; the dot toggles the
+mockup box. Until the user provides mockup images in R2, the box uses neutral
+placeholder image slots and print-area guides only; R2 is not connected. The
+mockup box renders one slot per available product side (Front and Back for a
+two-sided shirt, or only its supported side for a one-sided product). The blank
+`/create` route currently defaults to Front and Back; selected-product data
+wiring remains pending.
 
 **Editor prototype (`/create`):** Fabric.js 7.4.0 canvas with selectable, movable,
 scalable and rotatable objects; in-place text editing and family/size/weight/
@@ -733,7 +734,7 @@ This section records the current repository state and overrides earlier draft bu
 ### 15.5 Editor current prototype state and boundaries
 
 - `/create` uses Fabric.js 7.4.0 in the browser with local draft persistence, Front/Back state, Undo/Redo, Save/restore, image import, text presets/font search, original local SVG Elements catalog, responsive rails/flyouts, contextual toolbar, layers management, and separate Product/Mockup selection. Canvas pointer reads use `getScenePoint`; object-level tools were browser-regression-tested after the v7 upgrade.
-- Mockup selection is intentionally deferred until the separate Mockup control is selected. Product selection remains a separate bottom attribute control. Attaching a mockup displays the selected mockup placement preview.
+- Current mockup workspace uses a linked T-Shirt design box and Mockup preview box. The connector dot shows/hides the Mockup box; the preview contains one R2-image placeholder per available side (Front and Back by default, or one supported side). R2 image loading and selected-product side wiring remain pending.
 - The Products sidebar/library was removed by request; storefront product catalog/detail routes remain unchanged.
 - Object-level editor tools are implemented, but this is not a Photoshop-equivalent pixel editor. Pixel-level raster masks/merge/eraser, node-level path editing, complete production mockup rendering, account-backed drafts and R2 asset uploads remain deferred.
 - Local Elements, fonts and text-style manifests are versioned under `public/`; R2 is explicitly not connected and no credentials/bindings/public bucket should be added until the R2 phase is requested.

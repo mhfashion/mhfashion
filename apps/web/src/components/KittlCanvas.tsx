@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVertical, Shirt, X } from "lucide-react";
+import { ArrowDown, ArrowRight, Shirt } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type MockupSide = "front" | "back";
@@ -9,15 +9,13 @@ type KittlCanvasProps = {
 };
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 
-const ARTBOARD_SIZE = { width: 720, height: 540 };
 const DEFAULT_MOCKUP_SIDES: readonly MockupSide[] = ["front", "back"];
 const SIDE_LABELS: Record<MockupSide, string> = { front: "Front", back: "Back" };
 
 export default function KittlCanvas({
   availableMockupSides = DEFAULT_MOCKUP_SIDES,
 }: KittlCanvasProps) {
-  const [mockupPanelOpen, setMockupPanelOpen] = useState(false);
-  const [attachedSides, setAttachedSides] = useState<MockupSide[]>([]);
+  const [mockupVisible, setMockupVisible] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [spaceHeld, setSpaceHeld] = useState(false);
@@ -103,14 +101,8 @@ export default function KittlCanvas({
     }, 0);
   }
 
-  function toggleAttachedSide(side: MockupSide) {
-    setAttachedSides((current) =>
-      current.includes(side) ? current.filter((item) => item !== side) : [...current, side],
-    );
-  }
-
   return (
-    <main className="relative h-full min-h-0 overflow-hidden bg-[#eef0f5]">
+    <main className="h-full min-h-0 overflow-hidden bg-[#f1f2f5]">
       <div
         ref={viewportRef}
         onPointerDown={startPan}
@@ -120,93 +112,79 @@ export default function KittlCanvas({
         onAuxClick={(event) => {
           if (event.button === 1) event.preventDefault();
         }}
-        className={`flex h-full w-full items-center justify-center overflow-hidden p-6 sm:p-12 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
+        className={`flex h-full w-full items-center justify-center overflow-hidden p-5 sm:p-8 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
       >
         <div
+          className="flex max-w-full flex-col items-center md:flex-row"
           style={{
-            width: `${ARTBOARD_SIZE.width * zoom}px`,
-            height: `${ARTBOARD_SIZE.height * zoom}px`,
-            transform: `translate(${pan.x}px, ${pan.y}px)`,
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: "center center",
           }}
-          className="relative shrink-0"
         >
-          <div
-            role="application"
-            aria-label="Design canvas"
-            className="h-full w-full bg-white shadow-[0_14px_45px_rgba(28,31,38,0.14)]"
-            style={{
-              width: `${ARTBOARD_SIZE.width}px`,
-              height: `${ARTBOARD_SIZE.height}px`,
-              transform: `scale(${zoom})`,
-              transformOrigin: "top left",
-            }}
-            onClick={(event) => {
-              if (spaceHeld || panGestureRef.current) event.preventDefault();
-            }}
-          />
-        </div>
-      </div>
-
-      <button
-        type="button"
-        aria-label={mockupPanelOpen ? "Close mockup panel" : "Open mockup panel"}
-        aria-expanded={mockupPanelOpen}
-        onClick={() => setMockupPanelOpen((open) => !open)}
-        className="absolute right-3 top-1/2 z-30 flex h-10 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#dfe2e8] bg-white text-[#59616d] shadow-md transition hover:bg-[#f7f8fa] focus:outline-none focus:ring-2 focus:ring-[#7790bf]"
-      >
-        <MoreVertical size={18} aria-hidden="true" />
-      </button>
-
-      {mockupPanelOpen && (
-        <aside
-          aria-label="Mockup views"
-          className="absolute right-14 top-1/2 z-30 max-h-[min(80vh,38rem)] w-[min(18rem,calc(100vw-5rem))] -translate-y-1/2 overflow-y-auto rounded-xl border border-[#e1e4e9] bg-white p-3 shadow-[0_16px_48px_rgba(25,31,42,0.18)]"
-        >
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-[#252a32]">Mockups</h2>
-              <p className="mt-0.5 text-[11px] text-[#7d8490]">Choose a product view</p>
+          <section className="w-[min(18.25rem,78vw)] shrink-0">
+            <div className="mb-1 flex h-5 items-center gap-1.5 text-[12px] font-medium text-[#53606a]">
+              <span className="inline-flex h-3 w-3 items-center justify-center rounded-[2px] border border-[#5b9dd1] text-[8px] text-[#5b9dd1]">T</span>
+              <span>T-Shirt</span>
             </div>
+            <div
+              role="application"
+              aria-label="T-Shirt design area"
+              className="aspect-[0.875] w-full border border-[#36a0e5] bg-white shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
+              onClick={(event) => {
+                if (spaceHeld || panGestureRef.current) event.preventDefault();
+              }}
+            />
+          </section>
+
+          <div className="relative flex h-12 w-14 shrink-0 items-center justify-center md:h-auto md:w-[8.75rem]">
+            <span className="absolute left-1/2 top-0 h-full border-l border-[#b9a7e8] md:left-0 md:top-1/2 md:h-0 md:w-full md:border-l-0 md:border-t" />
             <button
               type="button"
-              aria-label="Close mockup panel"
-              onClick={() => setMockupPanelOpen(false)}
-              className="rounded-md p-1 text-[#727985] hover:bg-[#f1f2f5]"
+              aria-label={mockupVisible ? "Hide mockup preview" : "Show mockup preview"}
+              aria-expanded={mockupVisible}
+              onClick={() => setMockupVisible((visible) => !visible)}
+              className="relative z-10 flex h-5 w-5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm outline-none ring-offset-2 hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
             >
-              <X size={16} />
+              <span className="h-1.5 w-1.5 rounded-full bg-white" />
             </button>
+            {mockupVisible && <ArrowRight size={13} className="absolute right-0 top-1/2 hidden -translate-y-1/2 text-[#a58be8] md:block" aria-hidden="true" />}
+            {mockupVisible && <ArrowDown size={13} className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[#a58be8] md:hidden" aria-hidden="true" />}
           </div>
 
-          <div className="space-y-2">
-            {availableMockupSides.map((side) => {
-              const attached = attachedSides.includes(side);
-              return (
-                <article key={side} className="rounded-lg border border-[#e7e9ed] p-2">
-                  <div className="flex h-24 items-center justify-center rounded-md bg-[#f5f6f8]">
-                    <div className="flex flex-col items-center gap-1 text-[#747c88]">
-                      <Shirt size={42} strokeWidth={1.2} aria-hidden="true" />
-                      <span className="text-[10px] font-medium uppercase tracking-[0.12em]">
-                        {SIDE_LABELS[side]}
-                      </span>
+          {mockupVisible && (
+            <section className="w-[min(20.75rem,84vw)] shrink-0">
+              <div className="mb-1 flex h-5 items-center gap-1.5 text-[12px] font-semibold text-[#967add]">
+                <Shirt size={12} aria-hidden="true" />
+                <span>Mockup</span>
+              </div>
+              <div className="relative aspect-square w-full border-2 border-[#a58be8] bg-[#e6e7e9] p-2.5 shadow-[0_5px_18px_rgba(50,35,90,0.08)]">
+                <span className="absolute -left-1 -top-1 h-2 w-2 border border-[#a58be8] bg-white" />
+                <span className="absolute -right-1 -top-1 h-2 w-2 border border-[#a58be8] bg-white" />
+                <span className="absolute -bottom-1 -left-1 h-2 w-2 border border-[#a58be8] bg-white" />
+                <span className="absolute -bottom-1 -right-1 h-2 w-2 border border-[#a58be8] bg-white" />
+                <div className={`grid h-full w-full gap-2 ${availableMockupSides.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                  {availableMockupSides.map((side) => (
+                    <div key={side} className="relative min-h-0 overflow-hidden rounded-[2px] bg-[#e1e2e4]">
+                      <div className="absolute inset-x-1 top-1 bottom-6 flex items-center justify-center">
+                        <Shirt
+                          size={availableMockupSides.length > 1 ? 76 : 128}
+                          strokeWidth={0.8}
+                          className="h-auto max-h-full max-w-full text-[#fafafa] drop-shadow-[0_1px_1px_rgba(80,80,80,0.16)]"
+                          aria-hidden="true"
+                        />
+                        <span className="absolute left-1/2 top-[52%] h-[32%] w-[38%] -translate-x-1/2 -translate-y-1/2 border border-[#4aa4e8] bg-white/10" />
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 flex h-6 items-center justify-center border-t border-[#d3d4d7] bg-white/70 text-[10px] font-medium text-[#626a75]">
+                        {SIDE_LABELS[side]} · R2 image placeholder
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-[#333943]">{SIDE_LABELS[side]}</span>
-                    <button
-                      type="button"
-                      aria-pressed={attached}
-                      onClick={() => toggleAttachedSide(side)}
-                      className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${attached ? "bg-[#eef2e9] text-[#4b6c2e]" : "bg-[#20242b] text-white hover:bg-[#353a43]"}`}
-                    >
-                      {attached ? "Attached" : "Attach"}
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </aside>
-      )}
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
     </main>
   );
 }
