@@ -17,9 +17,14 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-13 — Move Back Mockup circle beside the mockup box
+
+- Moved the circular Back Mockup control out of the title row and onto the left edge of Front Mockup, vertically centered in the gap between the canvas and box. It uses the same small filled-circle treatment as the canvas-edge control. On Phone/Mobile it stays at the side of the stacked Front Mockup box. The Front/Back close buttons remain in each box's title row.
+- Validation: canvas specification **1/1**, canvas shell **2/2**, browser guards **1/1**, Guides **9/9**, TypeScript and production/Cloudflare builds passed, ESLint **0 errors / 24 existing warnings**, `git diff --check` clean. Browser preview confirmed the plus is beside (not above) Front Mockup and still adds Back Mockup. Phone-sized browser viewport was unavailable.
+
 ### 2026-11-13 — Correct mockup control placement and close actions
 
-- Removed the `Front` and `Add Mockup` text row above the canvas. The canvas remains blank until **Add Mockup** is selected from the canvas-edge menu. The circular **Add Back Mockup** control now sits beside the **Front Mockup** title; clicking it adds **Back Mockup**. Each mockup box has its own `×` control and can be dismissed independently.
+- Removed the `Front` and `Add Mockup` text row above the canvas. The canvas remains blank until **Add Mockup** is selected from the canvas-edge menu. The circular **Add Back Mockup** control is positioned at the vertical midpoint of the Front Mockup box's left side, between it and the canvas—not above the title. Clicking it adds **Back Mockup**. Each mockup box has its own `×` control and can be dismissed independently.
 - Updated the responsive Plan and canvas-shell regression checks. Validation: canvas specification **1/1**, canvas shell **2/2**, browser guards **1/1**, Guides **9/9**, TypeScript and production/Cloudflare builds passed, ESLint **0 errors / 24 existing warnings**, `git diff --check` clean. Browser interaction confirmed: no initial top row, Front Mockup appears only after Add Mockup, the adjacent circle adds Back Mockup, and each close control removes only its own box.
 - Mockups remain neutral temporary boxes; Cloudflare R2 assets and phone-size browser verification are still future work.
 - Pushed commit `b9d997a`; [Actions run #43469933175](https://github.com/mhfashion/mhfashion/actions/runs/43469933175) failed its secret preflight because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are missing. Production still serves the previous version: the live response has the 4500×5400 canvas but lacks the Front Mockup title and close controls.

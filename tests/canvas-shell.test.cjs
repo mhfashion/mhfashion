@@ -4,6 +4,8 @@ const path = require("node:path");
 const test = require("node:test");
 
 const source = readFileSync(path.join(__dirname, "../apps/web/src/components/KittlCanvas.tsx"), "utf8");
+const mockupSection = source.split('{mockups.map((side) => (')[1] ?? "";
+const mockupHeader = mockupSection.split('<div className="relative aspect-square w-full')[0] ?? "";
 
 test("canvas options expose Show Grid and add the temporary Front Mockup box", () => {
   assert.match(source, /aria-label="Canvas options"/);
@@ -14,6 +16,8 @@ test("canvas options expose Show Grid and add the temporary Front Mockup box", (
   assert.match(source, /aria-label="Add Back Mockup"[\s\S]*?addMockup\("Back Mockup"\)/);
   assert.match(source, /type MockupSide = "Front Mockup" \| "Back Mockup"/);
   assert.match(source, /side === "Front Mockup" && \([\s\S]*?aria-label="Add Back Mockup"/);
+  assert.match(mockupSection, /aria-label="Add Back Mockup"[\s\S]*?absolute -left-5 top-1\/2[\s\S]*?h-3\.5 w-3\.5/);
+  assert.doesNotMatch(mockupHeader, /Add Back Mockup/);
   assert.match(source, /aria-label=\{`Close \$\{side\}`}[\s\S]*?removeMockup\(side\)/);
   assert.match(source, /function removeMockup\(side: MockupSide\)[\s\S]*?filter\(\(item\) => item !== side\)/);
 });

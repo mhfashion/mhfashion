@@ -227,16 +227,6 @@ export default function KittlCanvas() {
             <section key={side} aria-label={side} className="w-[min(18.25rem,78vw)] shrink-0">
               <div className="mb-2 flex h-7 items-center gap-2 text-xs font-medium text-[#53606a]">
                 <span>{side}</span>
-                {side === "Front Mockup" && (
-                  <button
-                    type="button"
-                    aria-label="Add Back Mockup"
-                    onClick={() => addMockup("Back Mockup")}
-                    className="flex h-5 w-5 items-center justify-center rounded-full border border-[#a58be8] bg-white text-[#8f72d4] shadow-sm outline-none hover:bg-[#f5f1ff] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
-                  >
-                    <Plus size={12} aria-hidden="true" />
-                  </button>
-                )}
                 <button
                   type="button"
                   aria-label={`Close ${side}`}
@@ -247,6 +237,17 @@ export default function KittlCanvas() {
                 </button>
               </div>
               <div className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]">
+                {side === "Front Mockup" && (
+                  <button
+                    type="button"
+                    aria-label="Add Back Mockup"
+                    title="Add Back Mockup"
+                    onClick={() => addMockup("Back Mockup")}
+                    className="absolute -left-5 top-1/2 z-20 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full bg-[#a58be8] text-white shadow-sm outline-none hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                  >
+                    <Plus size={8} aria-hidden="true" />
+                  </button>
+                )}
                 {showGrid && (
                   <div
                     aria-hidden="true"
