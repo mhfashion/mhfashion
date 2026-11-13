@@ -464,8 +464,13 @@ prevented from zooming the browser while the web app is open. In the editor,
 the artboard's document size remains fixed at 720×540, while Ctrl/Command+wheel
 zooms only its view. Middle-button drag or Space+left-drag pans the view, and
 unmodified wheel moves it vertically; none of these gestures changes artwork or
-artboard dimensions. This follows Kittl's pan behavior and leaves other editor
-controls intact.
+artboard dimensions. The visible `720 × 540` label is removed from the mockup UI.
+A vertical-dots launcher at the side opens a separate mockup panel; available
+product sides determine its cards, so front/back products show both and
+one-sided products show only their supported side. Each side can be attached
+independently. The current blank `/create` route defaults to Front and Back;
+selected-product data wiring remains pending. This follows Kittl's pan behavior
+and leaves other editor controls intact.
 
 **Editor prototype (`/create`):** Fabric.js 7.4.0 canvas with selectable, movable,
 scalable and rotatable objects; in-place text editing and family/size/weight/
