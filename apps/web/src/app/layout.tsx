@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { CurrencyProvider } from "@/lib/currency-context";
 import { CartProvider } from "@/lib/cart-context";
 import { LocaleProvider } from "@/lib/i18n";
-import AppFrame from "@/components/AppFrame";
+import CopyrightBar from "@/components/CopyrightBar";
 import BrowserZoomGuard from "@/components/BrowserZoomGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
@@ -30,7 +30,10 @@ export default function RootLayout({
             <CurrencyProvider>
               <CartProvider>
                 <BrowserZoomGuard />
-                <AppFrame>{children}</AppFrame>
+                <div className="flex min-h-screen flex-col pb-16 md:pb-0">
+                  <div className="flex-1">{children}</div>
+                  <CopyrightBar />
+                </div>
                 <MobileBottomNav />
               </CartProvider>
             </CurrencyProvider>

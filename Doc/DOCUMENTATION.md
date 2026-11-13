@@ -17,6 +17,12 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-13 — Owner-requested editor rollback
+
+- Reverted the owner-identified editor commits `4ccc60a` and `a571080` to restore the `/create` application code to its pre-editor state at `007f286`. The responsive Fabric canvas/document/history implementation, phone editor dock/sheets, fixed-canvas settings, local editor draft migration, and editor-only tests were removed; the prior `/create` shell and app framing were restored.
+- `Plan/PLAN.md` and this Doc are restored to the pre-editor planning/documentation content; the Plan continues to describe the editor as future work, not as an implemented feature.
+- Validation after rollback: `npm run test:guide` **9/9 passed**; TypeScript passed; ESLint **0 errors and 24 warnings**; `npm run build` and `npm run cf:build --workspace=apps/web` passed. No production deployment or database change was performed.
+
 ### 2026-11-13 — Plan consolidation and repository review
 
 - Created `Plan/PLAN.md` as the single planning source by consolidating the former project plan, editor plan, unified editor vision, deployment/publishing notes, legacy architecture reference, and TODO register.
@@ -40,9 +46,9 @@ This log records completed website-related changes in the connected repository. 
 
 ### Code audit completed — 2026-11-13
 
-The read-only review of the storefront, editor, admin/data, and deployment/test paths is complete. **13 actionable findings** are recorded with source locations and remediation suggestions in [Code Audit section](#code-audit): 1 high, 11 medium, and 1 low. At the reviewed `90dc398` baseline, the principal finding was that `/create` was a shell with an empty design area, not the interactive Fabric.js editor described in older plan snapshots. Other findings cover broken/no-op storefront navigation and search, ignored category filters, cart variant/pricing and account-demo behavior, phone canvas pan/clipping, Supabase RLS gaps, price-query failure handling, and CI not smoke-testing the built Worker runtime.
+The read-only review of the storefront, editor, admin/data, and deployment/test paths is complete. **13 actionable findings** are recorded with source locations and remediation suggestions in [Code Audit section](#code-audit): 1 high, 11 medium, and 1 low. The principal finding is that the current `/create` route is a shell with an empty design area, not the interactive Fabric.js editor described in older plan snapshots. Other findings cover broken/no-op storefront navigation and search, ignored category filters, cart variant/pricing and account-demo behavior, phone canvas pan/clipping, Supabase RLS gaps, price-query failure handling, and CI not smoke-testing the built Worker runtime.
 
-At that time, `Plan/PLAN.md` was updated to reflect the audited `/create` state in both the project overview and detailed editor baseline, mark older feature descriptions as historical, require Web/Desktop and Phone/Mobile coverage together, and list the audit remediation areas. No application code was changed in that audit task; no deployment or database mutation was performed.
+`Plan/PLAN.md` was updated to reflect the audited `/create` state in both the project overview and detailed editor baseline, mark older feature descriptions as historical, require Web/Desktop and Phone/Mobile coverage together, and list the audit remediation areas. No application code was changed; no deployment or database mutation was performed.
 
 
 ### GitHub publishing preference — 2026-11-13
@@ -56,22 +62,6 @@ The owner requested that requested repository changes be committed and pushed di
 - Removed the obsolete `docs/` files after confirming that no app, test, package, or workflow code imports or reads them. All unique runbook/reference content is preserved here; the full planning material remains in `Plan/PLAN.md`.
 - Kept `docs/guide-content.md` instructions intact as documentation; it is not a runtime input. No app source, database, or deployment configuration was changed.
 
-### 2026-11-13 — First usable shared Web/Phone editor slice
-
-- Replaced the empty `/create` workspace with a shared Fabric.js editor: per-side Front/Back documents; text, rectangle, circle, and local-image insertion; selection/direct manipulation; basic object properties; Layers; undo/redo; viewport pan/zoom; and browser-local save/restore.
-- Added a responsive phone dock and sheets using the same document, selection, and history state as the desktop tool rail and side panel. `/create` now fills the route viewport without the storefront mobile navigation or its reserved spacing. Existing saved artboards are normalized to the fixed top-left origin, and new text starts centered on the print area.
-- Production-build browser smoke tests passed at 390×844 and 1440×900: `/create` returned HTTP 200, the artboard was visible and centered, no horizontal overflow occurred, phone and desktop controls matched their viewport, Front/Back content stayed separate, and a device-local draft survived save/reload. Touch emulation verified Pan-mode movement and direct text-object dragging. This was headless emulation, not physical-device testing.
-- Validation: `npm run test:editor` **4/4 passed**; `npm run test:guide` **9/9 passed**; TypeScript passed; ESLint reported **0 errors and 24 existing warnings**, with no warnings in the changed editor files; `npm run build` passed; `npm run cf:build --workspace=apps/web` passed. OpenNext emitted two non-blocking duplicate-object-key warnings in the bundled Fabric dependency.
-- Remaining limits: drafts are stored only in the current browser/device; account/Supabase persistence, real product mockups and print dimensions, production export, and advanced editing are not included. Automated end-to-end CI coverage and physical iOS/Android validation remain follow-up work. Browser QA also observed a non-blocking `/favicon.ico` 404; the editor itself remained functional. No production deployment or database change was performed.
-
-### 2026-11-13 — Owner-directed fixed transparent print canvas
-
-- Set the T-shirt design document to a fixed **4500 × 5400 px at 300 DPI**, with a transparent background and PNG as the artwork target. No canvas-resize control is provided. The checkerboard is rendered as a DOM-only preview, separate from Fabric artwork; a blank-canvas PNG sample retained alpha 0 at the tested center pixel.
-- New canvases contain no T-Shirt label, “Your design” copy, other prefilled text, or instructional status overlay on the artwork. The Text tool creates an empty editable text object so only text deliberately entered by the user appears. The desktop UI shows the canvas specification separately from the artwork.
-- Added v1 local-draft migration from 500 × 600 to 4500 × 5400, making the old artboard transparent and removing only exact default placeholders (“T Shirt”/“T-Shirt” and “Your design”); other saved artwork and custom text are retained. New v2 local drafts store the canvas specification.
-- Production-preview QA at 390×844 and 1440×900 confirmed the visible 4500 × 5400 checkerboard bounds, no horizontal page overflow, a blank initial document, empty text insertion, and alpha 0 on the sampled blank-canvas pixel. The desktop specification badge was present outside the artwork. A legacy rectangle migrated from left 50/top 100/100×120 to left 450/top 900/900×1080; exact “T Shirt” placeholder text was removed and custom text was preserved. Physical-device testing remains outstanding.
-- Validation: editor tests **6/6 passed**; Guide tests **9/9 passed**; TypeScript passed; ESLint **0 errors, 24 existing warnings**; production and Cloudflare Worker builds passed. The downloadable PNG-export action and writing 300-DPI metadata into a PNG file are not implemented yet; the fixed spec is stored with local drafts for that follow-up. No production deployment or database operation was performed.
-
 <a id="code-audit"></a>
 ## Repository Code Audit
 
@@ -79,11 +69,9 @@ The owner requested that requested repository changes be committed and pushed di
 - **Reviewed baseline:** `main` at commit `90dc398` (2026-11-13)
 - **Review type:** Read-only source review plus local build/test/dependency checks. No application code, database, or production deployment was changed.
 
-**Status note:** All findings below describe the reviewed `90dc398` baseline. Check later entries in the [Website Work Log](#work-log) and the current [Plan](../Plan/PLAN.md) for subsequent fixes; findings should not be treated as a statement of the current source where the code has since changed.
-
 ### Executive summary
 
-The review covered five independent areas: storefront routes/shared UI, editor canvas/document model, editor panels and mobile interactions, admin/Supabase/data flows, and deployment configuration/tests. It confirmed **13 actionable issues: 1 high, 11 medium, and 1 low**. At the reviewed baseline, the highest-impact issue was that `/create` was a placeholder workspace, not an operational design editor. The detailed editor capabilities in older project notes describe historical/planned behavior and do not match the audited source at this commit.
+The review covered five independent areas: storefront routes/shared UI, editor canvas/document model, editor panels and mobile interactions, admin/Supabase/data flows, and deployment configuration/tests. It confirmed **13 actionable issues: 1 high, 11 medium, and 1 low**. The highest-impact issue is that `/create` is currently a placeholder workspace, not an operational design editor. The detailed editor capabilities in older project notes describe historical/planned behavior and do not match the audited source at this commit.
 
 The local unit tests, corrected production-server HTTP tests, Next.js build, and Cloudflare Worker build pass. Production dependencies have no reported advisories, but the full development/build dependency tree has 14 advisories. No production deployment, Supabase migration, or live account operation was performed.
 
