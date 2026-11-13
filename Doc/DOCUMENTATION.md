@@ -21,6 +21,7 @@ This log records completed website-related changes in the connected repository. 
 
 - Added a responsive SVG connector wire from the fixed print canvas to each added mockup. The wires attach to the nearest sides and update as the canvas or Front/Back Mockup moves, as zoom/pan changes, and when the workspace reflows. Canvas and each mockup can be dragged separately with pointer/touch input; menu and close buttons remain clickable. The existing Web/Desktop row and Phone/Mobile stack are preserved.
 - Validation: canvas specification **1/1**, canvas shell **3/3**, browser guards **1/1**, Guides **9/9**, TypeScript and production/Cloudflare builds passed, ESLint **0 errors / 24 existing warnings**, `git diff --check` clean. Browser testing added Front and Back and confirmed two connector paths; controlled pointer drags moved the canvas and Front independently and changed the wire coordinates for both. A physical Phone/Mobile viewport could not be simulated in the available browser.
+- Pushed commit `1823f35`; [Actions run #43473595690](https://github.com/mhfashion/mhfashion/actions/runs/43473595690) failed the Cloudflare secret check because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are missing. The live page retains the fixed canvas but does not yet include the connection layer.
 
 ### 2026-11-13 — Move Back Mockup circle beside the mockup box
 
