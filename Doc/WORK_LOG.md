@@ -32,4 +32,4 @@ The read-only review of the storefront, editor, admin/data, and deployment/test 
 
 ## GitHub publishing preference — 2026-11-13
 
-The owner requested that requested repository changes be committed and pushed to GitHub immediately after writing and basic validation, without another confirmation request. Use the active task branch unless the owner explicitly requests another target. A repository push does not authorize production deployment or production database changes.
+The owner requested that requested repository changes be committed and pushed directly to the repository default branch (`main`) immediately after writing and basic validation, without another confirmation request. Do not use a compare/pull-request workflow unless explicitly requested. A repository push does not authorize production deployment or production database changes.
