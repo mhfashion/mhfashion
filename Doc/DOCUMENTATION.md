@@ -22,6 +22,7 @@ This log records completed website-related changes in the connected repository. 
 - Added an interactive artwork overlay to each existing Front/Back Mockup. The full set of strokes is selected and moved as one group by dragging within its bounds; a visible lower-right handle resizes it from 0.25× to 3×. Arrow keys on the focused handle also adjust size. Front and Back transforms are independent; transforming a preview does not alter the source Canvas strokes or drag the outer Mockup box.
 - Updated the Editor Plan after implementation to record this owner-requested interaction.
 - Validation: canvas shell regression tests **5/5**, TypeScript, changed-file ESLint, `git diff --check`, Next.js production build, and OpenNext Cloudflare Worker build passed. A headless Chromium smoke test on the production build added Front/Back, drew on Canvas and confirmed strokes on both, then dragged and resized the Front overlay; both transforms changed as expected. OpenNext showed the existing compatibility-date advisory; no build errors.
+- Deployment: commit `0572ce2` was pushed to `main`, but [Actions run #43485330098](https://github.com/mhfashion/mhfashion/actions/runs/43485330098) stopped at required-secret preflight because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are unavailable; production deployment did not run.
 - Limitation: these transforms are session-only; removing and re-adding a Mockup resets its overlay position and scale.
 
 ### 2026-11-14 — Match Front and Back Mockup sizes per direct instruction
