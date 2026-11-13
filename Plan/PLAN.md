@@ -10,6 +10,7 @@
 2. After each website-related implementation task, record the completed work, evidence, and remaining limitations in `Doc/WORK_LOG.md`; use `Doc/CODE_AUDIT.md` for repository-wide or focused code-review findings.
 3. If implementation work reveals missing or changed scope, update this master plan and its Change Log before treating that scope as approved. Keep current requirements here; preserve dated history as history.
 4. This is the single source of truth for plans, product direction, detailed editor requirements, the legacy architecture snapshot, and the migrated task register. Do not recreate separate planning files.
+5. **Push repository work to GitHub promptly.** After writing and basic validation of requested repository changes, commit and push them to GitHub immediately without asking the owner again. Use the active task branch unless the owner explicitly requests another target. A GitHub push is not a production deployment; deployments and production data changes remain separate actions.
 
 ## Source-of-truth precedence
 
@@ -2419,3 +2420,4 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 
 - 2026-11-13: Consolidated all existing project/editor plans, editor vision, deployment notes, legacy architecture draft, and task register into this file. Added the owner directive requiring Web/Desktop and Phone/Mobile UI/UX planning and acceptance together.
 - 2026-11-13: Corrected the editor implementation status after the source audit and linked the verified remediation backlog to `Doc/CODE_AUDIT.md`.
+- 2026-11-13: Recorded the owner instruction to commit and push requested repository changes to GitHub immediately after basic validation, without reconfirmation; use the active task branch unless directed otherwise.
