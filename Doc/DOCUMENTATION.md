@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Match Front and Back Mockup sizes per direct instruction
+
+- Followed the owner's direct request rather than the previous Plan sizing language. Updated the existing mockup nodes in `KittlCanvas`: Front and Back now share the same responsive width (`min(18.25rem, 78vw)`, square box, and artwork scale (`0.82`). The older work-log entry below records the superseded larger-Front/smaller-Back behavior at that earlier commit.
+- Updated the Editor Plan after implementation to record the requested same-size behavior and the instruction that direct owner directions define Editor scope.
+- Validation: canvas shell **4/4**, canvas specification **1/1**, browser guards **1/1**, Guides **9/9**; TypeScript, changed-component ESLint, `git diff --check`, and the Next.js/OpenNext Cloudflare Worker production build passed. OpenNext emitted its existing compatibility-date advisory; no build failure occurred.
+- Limitation: the mockups remain temporary placeholders with transient page-memory artwork; no R2 garment assets are part of this sizing request.
+
 ### 2026-11-14 — Live artwork on large Front and small Back previews
 
 - Offset the Front Mockup's Back-add circle 1.25rem below the connector's centerline so it is visually discoverable. Added minimal black freehand drawing inside the fixed canvas; its shared in-memory strokes render live on the canvas and every added mockup. Front remains the larger placeholder (18.25rem, artwork scale 0.82); Back is smaller (14rem, artwork scale 0.48). The canvas can still be repositioned by dragging its border while the interior is used for drawing.

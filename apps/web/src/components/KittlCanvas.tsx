@@ -454,7 +454,7 @@ export default function KittlCanvas() {
               onPointerUp={endNodeDrag}
               onPointerCancel={endNodeDrag}
               onLostPointerCapture={endNodeDrag}
-              className={`relative z-10 ${side === "Back Mockup" ? "w-[min(14rem,68vw)]" : "w-[min(18.25rem,78vw)]"} shrink-0 touch-none select-none ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
+              className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
               style={{ transform: `translate(${nodePositions[side].x}px, ${nodePositions[side].y}px)` }}
             >
               <div className="mb-2 flex h-7 items-center gap-2 text-xs font-medium text-[#53606a]">
@@ -496,7 +496,7 @@ export default function KittlCanvas() {
                     }}
                   />
                 )}
-                <ArtworkOverlay strokes={artworkStrokes} scale={side === "Front Mockup" ? 0.82 : 0.48} />
+                <ArtworkOverlay strokes={artworkStrokes} scale={0.82} />
               </div>
             </section>
           ))}

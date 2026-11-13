@@ -53,14 +53,15 @@ test("canvas and each mockup are independently draggable with live connector wir
   assert.match(source, /\[mockups, nodePositions, pan, zoom\]/);
 });
 
-test("canvas freehand strokes appear live on a large Front and smaller Back preview", () => {
+test("canvas freehand strokes appear live at the same size on Front and Back previews", () => {
   assert.match(source, /type ArtworkStroke = \{ points: Point\[\] \}/);
   assert.match(source, /onPointerDown=\{startArtworkStroke\}/);
   assert.match(source, /function startArtworkStroke[\s\S]*?setArtworkStrokes\(/);
   assert.match(source, /function moveArtworkStroke[\s\S]*?setArtworkStrokes\(/);
   assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} \/>/);
-  assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} scale=\{side === "Front Mockup" \? 0\.82 : 0\.48\} \/>/);
-  assert.ok(source.includes('side === "Back Mockup" ? "w-[min(14rem,68vw)]" : "w-[min(18.25rem,78vw)]"'));
+  assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} scale=\{0\.82\} \/>/);
+  assert.match(source, /className=\{`relative z-10 w-\[min\(18\.25rem,78vw\)\] shrink-0/);
+  assert.doesNotMatch(source, /Back Mockup" \? "w-\[min\(14rem/);
   assert.match(source, /function isCanvasEdgeGesture\([\s\S]*?return clientX - rect\.left <= edge/);
   assert.match(source, /node === "Print canvas" && event\.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture/);
 });
