@@ -5,7 +5,7 @@ const test = require("node:test");
 
 const source = readFileSync(path.join(__dirname, "../apps/web/src/components/KittlCanvas.tsx"), "utf8");
 const mockupSection = source.split('{mockups.map((side) => (')[1] ?? "";
-const mockupHeader = mockupSection.split('<div className="relative aspect-square w-full')[0] ?? "";
+const mockupHeader = mockupSection.split('className="relative aspect-square w-full')[0] ?? "";
 
 test("canvas options expose Show Grid and add the temporary Front Mockup box", () => {
   assert.match(source, /aria-label="Canvas options"/);
@@ -36,4 +36,19 @@ test("grid is optional, and the initial canvas has no visible specification badg
   assert.match(source, /backgroundSize: "10% 10%"/g);
   assert.match(source, /flex-col items-center justify-start overflow-auto[\s\S]*md:overflow-hidden/);
   assert.match(source, /md:flex-row md:gap-12/);
+});
+
+test("canvas and each mockup are independently draggable with live connector wires", () => {
+  assert.match(source, /aria-label="Canvas and mockup connections"/);
+  assert.match(source, /connectors\.map\(\(connection\) => \(/);
+  assert.match(source, /<path d=\{connection\.path\}[^>]*stroke="#8f72d4"/);
+  assert.match(source, /for \(const side of mockups\)/);
+  assert.match(source, /mockupSurfaceRefs\.current\[side\]/);
+  assert.match(source, /onPointerDown=\{\(event\) => startNodeDrag\("Print canvas", event\)\}/);
+  assert.match(source, /onPointerDown=\{\(event\) => startNodeDrag\(side, event\)\}/);
+  assert.match(source, /function moveNodeDrag\([\s\S]*?setNodePositions\(/);
+  assert.match(source, /event\.currentTarget\.setPointerCapture\(event\.pointerId\)/);
+  assert.match(source, /touch-none select-none/);
+  assert.match(source, /ResizeObserver\(updateConnectors\)/);
+  assert.match(source, /\[mockups, nodePositions, pan, zoom\]/);
 });

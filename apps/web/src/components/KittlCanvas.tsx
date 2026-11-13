@@ -6,6 +6,10 @@ import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
 
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 type MockupSide = "Front Mockup" | "Back Mockup";
+type WorkspaceNode = "Print canvas" | MockupSide;
+type Point = { x: number; y: number };
+type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
+type Connector = { side: MockupSide; path: string; start: Point; end: Point };
 
 export default function KittlCanvas() {
   const [zoom, setZoom] = useState(1);
@@ -15,10 +19,21 @@ export default function KittlCanvas() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
+  const [nodePositions, setNodePositions] = useState<Record<WorkspaceNode, Point>>({
+    "Print canvas": { x: 0, y: 0 },
+    "Front Mockup": { x: 0, y: 0 },
+    "Back Mockup": { x: 0, y: 0 },
+  });
+  const [draggingNode, setDraggingNode] = useState<WorkspaceNode | null>(null);
+  const [connectors, setConnectors] = useState<Connector[]>([]);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const canvasNodeRef = useRef<HTMLCanvasElement>(null);
+  const mockupSurfaceRefs = useRef<Partial<Record<MockupSide, HTMLDivElement>>>({});
   const menuRef = useRef<HTMLDivElement>(null);
   const panStartRef = useRef<PanStart | null>(null);
   const panGestureRef = useRef(false);
+  const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -77,6 +92,87 @@ export default function KittlCanvas() {
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    const workspace = workspaceRef.current;
+    const canvas = canvasNodeRef.current;
+    if (!workspace || !canvas) return;
+
+    const updateConnectors = () => {
+      const workspaceRect = workspace.getBoundingClientRect();
+      const scale = Math.max(zoom, 0.01);
+      const toWorkspaceRect = (element: Element) => {
+        const rect = element.getBoundingClientRect();
+        const left = (rect.left - workspaceRect.left) / scale;
+        const top = (rect.top - workspaceRect.top) / scale;
+        const width = rect.width / scale;
+        const height = rect.height / scale;
+        return {
+          left,
+          right: left + width,
+          top,
+          bottom: top + height,
+          centerX: left + width / 2,
+          centerY: top + height / 2,
+        };
+      };
+      const canvasRect = toWorkspaceRect(canvas);
+      const next: Connector[] = [];
+
+      for (const side of mockups) {
+        const surface = mockupSurfaceRefs.current[side];
+        if (!surface) continue;
+        const mockupRect = toWorkspaceRect(surface);
+        const deltaX = mockupRect.centerX - canvasRect.centerX;
+        const deltaY = mockupRect.centerY - canvasRect.centerY;
+        let start: Point;
+        let end: Point;
+        let control1: Point;
+        let control2: Point;
+
+        if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+          const direction = deltaX >= 0 ? 1 : -1;
+          start = { x: direction > 0 ? canvasRect.right : canvasRect.left, y: canvasRect.centerY };
+          end = { x: direction > 0 ? mockupRect.left : mockupRect.right, y: mockupRect.centerY };
+          const curve = Math.max(24, Math.abs(end.x - start.x) * 0.45);
+          control1 = { x: start.x + direction * curve, y: start.y };
+          control2 = { x: end.x - direction * curve, y: end.y };
+        } else {
+          const direction = deltaY >= 0 ? 1 : -1;
+          start = { x: canvasRect.centerX, y: direction > 0 ? canvasRect.bottom : canvasRect.top };
+          end = { x: mockupRect.centerX, y: direction > 0 ? mockupRect.top : mockupRect.bottom };
+          const curve = Math.max(24, Math.abs(end.y - start.y) * 0.45);
+          control1 = { x: start.x, y: start.y + direction * curve };
+          control2 = { x: end.x, y: end.y - direction * curve };
+        }
+
+        next.push({
+          side,
+          start,
+          end,
+          path: `M ${start.x} ${start.y} C ${control1.x} ${control1.y}, ${control2.x} ${control2.y}, ${end.x} ${end.y}`,
+        });
+      }
+
+      setConnectors((current) =>
+        current.length === next.length && current.every((connector, index) => connector.path === next[index]?.path)
+          ? current
+          : next,
+      );
+    };
+
+    const initialFrame = window.requestAnimationFrame(updateConnectors);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateConnectors);
+    [workspace, canvas, ...mockups.map((side) => mockupSurfaceRefs.current[side]).filter(Boolean)].forEach((element) => {
+      if (element) observer?.observe(element);
+    });
+    window.addEventListener("resize", updateConnectors);
+    return () => {
+      window.cancelAnimationFrame(initialFrame);
+      observer?.disconnect();
+      window.removeEventListener("resize", updateConnectors);
+    };
+  }, [mockups, nodePositions, pan, zoom]);
+
   function startPan(event: React.PointerEvent<HTMLDivElement>) {
     const middleButtonPan = event.button === 1;
     if (!middleButtonPan && (!spaceHeld || event.button !== 0)) return;
@@ -113,6 +209,42 @@ export default function KittlCanvas() {
     }, 0);
   }
 
+  function startNodeDrag(node: WorkspaceNode, event: React.PointerEvent<HTMLElement>) {
+    if (event.button !== 0 || !event.isPrimary) return;
+    if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    activeNodeDragRef.current = {
+      node,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin: nodePositions[node],
+    };
+    setDraggingNode(node);
+  }
+
+  function moveNodeDrag(event: React.PointerEvent<HTMLElement>) {
+    const active = activeNodeDragRef.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const scale = Math.max(zoom, 0.01);
+    setNodePositions((current) => ({
+      ...current,
+      [active.node]: {
+        x: active.origin.x + (event.clientX - active.startX) / scale,
+        y: active.origin.y + (event.clientY - active.startY) / scale,
+      },
+    }));
+  }
+
+  function endNodeDrag(event: React.PointerEvent<HTMLElement>) {
+    if (activeNodeDragRef.current?.pointerId !== event.pointerId) return;
+    activeNodeDragRef.current = null;
+    setDraggingNode(null);
+  }
+
   function addMockup(side: MockupSide) {
     setMockups((current) => {
       const sides = new Set([...current, side]);
@@ -138,15 +270,35 @@ export default function KittlCanvas() {
         className={`flex h-full w-full flex-col items-center justify-start overflow-auto p-5 md:justify-center md:overflow-hidden sm:p-8 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
       >
         <div
-          className="my-auto flex max-w-full shrink-0 flex-col items-center gap-8 md:flex-row md:gap-12"
+          ref={workspaceRef}
+          className="relative my-auto flex max-w-full shrink-0 flex-col items-center gap-8 md:flex-row md:gap-12"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: "center center",
           }}
         >
-          <section className="w-[min(18.25rem,78vw)] shrink-0" aria-label="Print canvas">
+          <svg className="pointer-events-none absolute inset-0 z-0 overflow-visible" width="100%" height="100%" aria-label="Canvas and mockup connections">
+            {connectors.map((connection) => (
+              <g key={connection.side}>
+                <path d={connection.path} fill="none" stroke="#8f72d4" strokeWidth="2" strokeLinecap="round" />
+                <circle cx={connection.start.x} cy={connection.start.y} r="2.5" fill="#8f72d4" />
+                <circle cx={connection.end.x} cy={connection.end.y} r="2.5" fill="#8f72d4" />
+              </g>
+            ))}
+          </svg>
+          <section
+            aria-label="Print canvas"
+            onPointerDown={(event) => startNodeDrag("Print canvas", event)}
+            onPointerMove={moveNodeDrag}
+            onPointerUp={endNodeDrag}
+            onPointerCancel={endNodeDrag}
+            onLostPointerCapture={endNodeDrag}
+            className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : "cursor-grab"}`}
+            style={{ transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
+          >
             <div className="relative">
               <canvas
+                ref={canvasNodeRef}
                 width={PRINT_CANVAS_SPEC.widthPx}
                 height={PRINT_CANVAS_SPEC.heightPx}
                 data-canvas-width={PRINT_CANVAS_SPEC.widthPx}
@@ -224,7 +376,17 @@ export default function KittlCanvas() {
             </div>
           </section>
           {mockups.map((side) => (
-            <section key={side} aria-label={side} className="w-[min(18.25rem,78vw)] shrink-0">
+            <section
+              key={side}
+              aria-label={side}
+              onPointerDown={(event) => startNodeDrag(side, event)}
+              onPointerMove={moveNodeDrag}
+              onPointerUp={endNodeDrag}
+              onPointerCancel={endNodeDrag}
+              onLostPointerCapture={endNodeDrag}
+              className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
+              style={{ transform: `translate(${nodePositions[side].x}px, ${nodePositions[side].y}px)` }}
+            >
               <div className="mb-2 flex h-7 items-center gap-2 text-xs font-medium text-[#53606a]">
                 <span>{side}</span>
                 <button
@@ -236,7 +398,13 @@ export default function KittlCanvas() {
                   <X size={13} aria-hidden="true" />
                 </button>
               </div>
-              <div className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]">
+              <div
+                ref={(element) => {
+                  if (element) mockupSurfaceRefs.current[side] = element;
+                  else delete mockupSurfaceRefs.current[side];
+                }}
+                className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]"
+              >
                 {side === "Front Mockup" && (
                   <button
                     type="button"
