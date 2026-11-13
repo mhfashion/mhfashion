@@ -4,6 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const source = readFileSync(path.join(__dirname, "../apps/web/src/components/KittlCanvas.tsx"), "utf8");
+const mockupArtwork = readFileSync(path.join(__dirname, "../apps/web/src/components/MockupArtwork.tsx"), "utf8");
 const mockupSection = source.split('{mockups.map((side) => (')[1] ?? "";
 const mockupHeader = mockupSection.split('className="relative aspect-square w-full')[0] ?? "";
 
@@ -59,9 +60,19 @@ test("canvas freehand strokes appear live at the same size on Front and Back pre
   assert.match(source, /function startArtworkStroke[\s\S]*?setArtworkStrokes\(/);
   assert.match(source, /function moveArtworkStroke[\s\S]*?setArtworkStrokes\(/);
   assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} \/>/);
-  assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} scale=\{0\.82\} \/>/);
   assert.match(source, /className=\{`relative z-10 w-\[min\(18\.25rem,78vw\)\] shrink-0/);
   assert.doesNotMatch(source, /Back Mockup" \? "w-\[min\(14rem/);
+  assert.match(mockupArtwork, /scale\(\$\{0\.82 \* transform\.scale\}\)/);
   assert.match(source, /function isCanvasEdgeGesture\([\s\S]*?return clientX - rect\.left <= edge/);
   assert.match(source, /node === "Print canvas" && event\.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture/);
+});
+
+test("artwork on each Mockup can be moved and resized as one object", () => {
+  assert.match(source, /<MockupArtwork side=\{side\} strokes=\{artworkStrokes\} \/>/);
+  assert.match(mockupArtwork, /aria-label=\{`Move \$\{side\} artwork`\}/);
+  assert.match(mockupArtwork, /mode === "move"/);
+  assert.match(mockupArtwork, /startTransform\("resize", event\)/);
+  assert.match(mockupArtwork, /aria-label="Resize mockup artwork"/);
+  assert.match(mockupArtwork, /setPointerCapture\(event\.pointerId\)/);
+  assert.match(mockupArtwork, /Math\.max\(0\.25, Math\.min\(3,/);
 });

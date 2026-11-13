@@ -2,6 +2,7 @@
 
 import { Grid2X2, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import MockupArtwork from "@/components/MockupArtwork";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
 
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
@@ -496,7 +497,7 @@ export default function KittlCanvas() {
                     }}
                   />
                 )}
-                <ArtworkOverlay strokes={artworkStrokes} scale={0.82} />
+                <MockupArtwork side={side} strokes={artworkStrokes} />
               </div>
             </section>
           ))}

@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Move and resize the whole artwork on each Mockup
+
+- Added an interactive artwork overlay to each existing Front/Back Mockup. The full set of strokes is selected and moved as one group by dragging within its bounds; a visible lower-right handle resizes it from 0.25× to 3×. Arrow keys on the focused handle also adjust size. Front and Back transforms are independent; transforming a preview does not alter the source Canvas strokes or drag the outer Mockup box.
+- Updated the Editor Plan after implementation to record this owner-requested interaction.
+- Validation: canvas shell regression tests **5/5**, TypeScript, changed-file ESLint, `git diff --check`, Next.js production build, and OpenNext Cloudflare Worker build passed. A headless Chromium smoke test on the production build added Front/Back, drew on Canvas and confirmed strokes on both, then dragged and resized the Front overlay; both transforms changed as expected. OpenNext showed the existing compatibility-date advisory; no build errors.
+- Limitation: these transforms are session-only; removing and re-adding a Mockup resets its overlay position and scale.
+
 ### 2026-11-14 — Match Front and Back Mockup sizes per direct instruction
 
 - Followed the owner's direct request rather than the previous Plan sizing language. Updated the existing mockup nodes in `KittlCanvas`: Front and Back now share the same responsive width (`min(18.25rem, 78vw)`, square box, and artwork scale (`0.82`). The older work-log entry below records the superseded larger-Front/smaller-Back behavior at that earlier commit.
