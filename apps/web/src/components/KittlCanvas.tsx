@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
 
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
+type MockupSide = "Front Mockup" | "Back Mockup";
 
 export default function KittlCanvas() {
   const [zoom, setZoom] = useState(1);
@@ -13,6 +14,7 @@ export default function KittlCanvas() {
   const [isPanning, setIsPanning] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
+  const [mockups, setMockups] = useState<MockupSide[]>([]);
   const viewportRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const panStartRef = useRef<PanStart | null>(null);
@@ -111,6 +113,13 @@ export default function KittlCanvas() {
     }, 0);
   }
 
+  function addMockup(side: MockupSide) {
+    setMockups((current) => {
+      const sides = new Set([...current, side]);
+      return (["Front Mockup", "Back Mockup"] as const).filter((item) => sides.has(item));
+    });
+  }
+
   return (
     <main className="h-full min-h-0 overflow-hidden bg-[#f1f2f5]">
       <div
@@ -122,16 +131,30 @@ export default function KittlCanvas() {
         onAuxClick={(event) => {
           if (event.button === 1) event.preventDefault();
         }}
-        className={`flex h-full w-full items-center justify-center overflow-hidden p-5 sm:p-8 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
+        className={`flex h-full w-full flex-col items-center justify-start overflow-auto p-5 md:justify-center md:overflow-hidden sm:p-8 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
       >
         <div
-          className="max-w-full"
+          className="my-auto flex max-w-full shrink-0 flex-col items-center gap-8 md:flex-row md:gap-12"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: "center center",
           }}
         >
-          <section className="relative w-[min(18.25rem,78vw)] shrink-0" aria-label="Print canvas">
+          <section className="w-[min(18.25rem,78vw)] shrink-0" aria-label="Print canvas">
+            <div className="mb-2 flex h-7 items-center gap-2 text-xs font-medium text-[#53606a]">
+              <span>Front</span>
+              <button
+                type="button"
+                aria-label="Add Back Mockup"
+                title="Add Mockup"
+                onClick={() => addMockup("Back Mockup")}
+                className="flex h-5 w-5 items-center justify-center rounded-full border border-[#a58be8] bg-white text-[#8f72d4] shadow-sm outline-none hover:bg-[#f5f1ff] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+              >
+                <Plus size={12} aria-hidden="true" />
+              </button>
+              <span>Add Mockup</span>
+            </div>
+            <div className="relative">
             <canvas
               width={PRINT_CANVAS_SPEC.widthPx}
               height={PRINT_CANVAS_SPEC.heightPx}
@@ -160,16 +183,16 @@ export default function KittlCanvas() {
                 }}
               />
             )}
-            <div ref={menuRef} className="absolute -right-2.5 top-1/2 z-20 -translate-y-1/2">
+            <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
               <button
                 type="button"
                 aria-label="Canvas options"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen((open) => !open)}
-                className="flex h-5 w-5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm outline-none ring-offset-2 hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm outline-none ring-offset-2 hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                <span className="h-1 w-1 rounded-full bg-white" />
               </button>
               {menuOpen && (
                 <div
@@ -195,8 +218,11 @@ export default function KittlCanvas() {
                     type="button"
                     role="menuitem"
                     aria-label="Add Mockup"
-                    disabled
-                    className="flex w-full cursor-not-allowed items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#a5aab2]"
+                    onClick={() => {
+                      addMockup("Front Mockup");
+                      setMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
                   >
                     <Plus size={15} aria-hidden="true" />
                     <span>Add Mockup</span>
@@ -204,7 +230,27 @@ export default function KittlCanvas() {
                 </div>
               )}
             </div>
+            </div>
           </section>
+          {mockups.map((side) => (
+            <section key={side} aria-label={side} className="w-[min(18.25rem,78vw)] shrink-0">
+              <div className="mb-2 flex h-7 items-center text-xs font-medium text-[#53606a]">
+                <span>{side}</span>
+              </div>
+              <div className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]">
+                {showGrid && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      backgroundImage: "linear-gradient(to right, rgba(61, 132, 184, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(61, 132, 184, 0.4) 1px, transparent 1px)",
+                      backgroundSize: "10% 10%",
+                    }}
+                  />
+                )}
+              </div>
+            </section>
+          ))}
         </div>
       </div>
     </main>

@@ -17,6 +17,12 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-13 — Temporary Front/Back mockup boxes
+
+- Reduced the canvas-edge circle to 14 px and moved it about 6 px away from the canvas. Selecting its **Add Mockup** option now adds a temporary **Front Mockup** box. The top **Front** row has a small circular Add Mockup control; selecting it adds a **Back Mockup** box. This interprets the requested “Font” as “Front” to pair with Back Mockup.
+- Show Grid now overlays both the canvas and every added placeholder box. Placeholder boxes are side-by-side on Web/Desktop and stack in a vertically scrollable Phone/Mobile workspace. These are temporary neutral boxes only; Cloudflare R2 integration/assets are not connected yet.
+- Updated the Plan and expanded `tests/canvas-shell.test.cjs`. Validation: canvas specification **1/1**, canvas shell **2/2**, browser guards **1/1**, Guides **9/9**, TypeScript passed, production and Cloudflare Worker builds passed, `git diff --check` clean, ESLint **0 errors / 24 existing warnings**. In the browser, verified the grid stays within the canvas, Add Mockup creates Front Mockup, and the top control creates Back Mockup with grid lines also visible in both boxes. Responsive phone stacking/scroll behavior is implemented in the shared UI and covered by source regression checks; the browser session could not be resized to a phone viewport.
+
 ### 2026-11-13 — Minimal canvas options and mockup removal
 
 - Removed the always-visible mockup placeholder and the visible canvas size/DPI/format badges. The canvas remains blank and fixed; its technical metadata is retained in code, not shown as extra on-canvas copy.
