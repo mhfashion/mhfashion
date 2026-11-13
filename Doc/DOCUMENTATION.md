@@ -22,6 +22,7 @@ This log records completed website-related changes in the connected repository. 
 - Reverted the owner-identified editor commits `4ccc60a` and `a571080` to restore the `/create` application code to its pre-editor state at `007f286`. The responsive Fabric canvas/document/history implementation, phone editor dock/sheets, fixed-canvas settings, local editor draft migration, and editor-only tests were removed; the prior `/create` shell and app framing were restored.
 - `Plan/PLAN.md` and this Doc are restored to the pre-editor planning/documentation content; the Plan continues to describe the editor as future work, not as an implemented feature.
 - Validation after rollback: `npm run test:guide` **9/9 passed**; TypeScript passed; ESLint **0 errors and 24 warnings**; `npm run build` and `npm run cf:build --workspace=apps/web` passed. No production deployment or database change was performed.
+- Follow-up live check: production `/create` still serves the prior deployed editor (HTTP 200; HTML contains old editor labels and `T-Shirt`), so the rollback is not yet visible on the website. GitHub Actions run [#43455369535](https://github.com/mhfashion/mhfashion/actions/runs/43455369535) failed before build/deploy because repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are missing. This environment has no Wrangler login, and GitHub CLI secret access returns HTTP 403; production remains unchanged until authorized deployment credentials are configured.
 
 ### 2026-11-13 — Plan consolidation and repository review
 
