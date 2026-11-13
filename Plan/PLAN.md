@@ -180,7 +180,7 @@ Other product types get their own attribute sets and pricing formulas.
 
 **Detailed editor implementation plan:** [editor implementation plan](#editor-implementation-plan). This section is the canonical location for the editor specification, milestones, and acceptance criteria; this project section records only the verified current state and short roadmap.
 
-**Verified repository state (2026-11-14, local implementation validated; push pending):** `/create` now mounts a Fabric.js 7 editor with a fixed 4500 × 5400 transparent Front/Back artwork document, editable text/basic shapes/uploads, object selection and transforms, layer selection, fill recoloring for vector/text objects, Undo/Redo, browser-local Save/restore, reduced-size PNG preview download, zoom controls, explicit touch-capable Pan mode, and a responsive Layers/Assets dock. The global mobile navigation, footer, and reserved bottom padding are excluded on `/create`. R2 assets, production export/DPI metadata, account-backed persistence, advanced tools, and secure service integration remain deferred. `user_designs.canvas_state` is still unused.
+**Verified repository state (2026-11-13, commit `90dc398`):** `/create` mounts `KittlCanvas`, which currently provides an editor-style shell with an empty design area, mockup placeholders, mockup visibility toggle, and viewport zoom/pan state. It does not instantiate an editable design document or provide artwork operations, selection, Layers/Properties panels, history, serialization, or draft persistence. The `user_designs.canvas_state` database column exists but is not wired to this route. Do not describe the earlier Fabric.js tool/layer feature set in historical notes as implemented in the current code.
 
 **Owner-specified blank print canvas (2026-11-13):** keep the current shell and set the native blank canvas to a fixed **4500 × 5400 px** with a **300-DPI PNG target** and transparent pixel buffer. Do not preload or draw any copy, including “T-Shirt.” The checkerboard and size/spec label are presentation-only UI outside the artwork; no resize control is provided. This is a canvas-spec update only and does not restore the reverted editor tools, document/history model, or persistence. PNG download and embedding 300-DPI metadata remain unsupported by the shell.
 
@@ -327,7 +327,7 @@ catalog-facing items.
 
 ## 14. Build Status
 
-**Repository-source audit (2026-11-14, E0 implementation):** `/create` now has the first usable Fabric.js object editor described in §6 and the E0 milestone below. The 2026-11-13 placeholder-shell audit and historical feature-list notes are dated snapshots, not current implementation claims. This code change has not been deployed to production.
+**Repository-source audit (2026-11-13, commit `90dc398`; production was not re-probed in this audit):** `/create` is currently only the KittlCanvas shell described in §6. The older detailed editor feature descriptions in this section are historical and do not match the audited code.
 
 **Live in production** (status last externally probed on 2026-11-12; not re-probed during this code audit; mhfashion.mhfashionmm.workers.dev was then serving the pre-upgrade build described below): scaffold and Cloudflare deploy, the Supabase
 schema migrations `0001`–`0007` (Guide content and Super Admin roles included;
@@ -354,9 +354,23 @@ product type and customization status; the current schema has no free-form
 description field, so the page avoids unsupported material/specification claims.
 The Reviews title and rating stay visible while the review cards start collapsed.
 
-**Editor interaction decisions from 2026-11-13:** the storefront Header is hidden on `/create`; page-level browser zoom/context menus are guarded. The original mockup-shell design used temporary placeholder slots until R2 was provided. The blank canvas defaults to Front and Back because selected-product wiring is pending. These notes record the shell-stage history; the current route uses the Phase E0 Fabric editor below, including visible zoom controls and explicit Pan mode.
+**Current editor-shell change (2026-11-13):** The storefront `Header` is temporarily
+hidden on `/create`; the `KittlCanvas` workspace remains. Ctrl/Command+wheel is
+prevented from zooming the browser while the web app is open. In the editor,
+Ctrl/Command+wheel zooms only the view. Middle-button drag or Space+left-drag
+pans the view, and unmodified wheel moves it vertically. Do not show pixel-size
+labels or invent physical print dimensions; actual print dimensions belong to
+product configuration. Preview box proportions follow the supplied reference.
+The supplied reference is implemented as a blue `T-Shirt` design
+box and purple `Mockup` box connected by a small dot/line; the dot toggles the
+mockup box. Until the user provides mockup images in R2, the box uses neutral
+placeholder image slots and print-area guides only; R2 is not connected. The
+mockup box renders one slot per available product side (Front and Back for a
+two-sided shirt, or only its supported side for a one-sided product). The blank
+`/create` route currently defaults to Front and Back; selected-product data
+wiring remains pending. The source audit also found that touchscreen pointers cannot use the existing middle-button/Space+left pan handler, and short phone heights can clip the stacked workspace; track both as open responsive issues in `Doc/DOCUMENTATION.md#code-audit`.
 
-**Current `/create` implementation (verified 2026-11-14):** the route mounts a Fabric.js canvas at the fixed transparent 4500 × 5400 print coordinate size, shared per-side Front/Back document state, editable text/shapes/uploads, object transforms, selected vector/text fill color, layer selection/deletion, Undo/Redo, versioned browser-local Save/restore, reduced-size preview download, visible zoom/reset controls, explicit touch-capable Pan mode, and a responsive Assets/Layers/Mockup dock. `/create` excludes the storefront bottom navigation, CopyrightBar, and reserved mobile-navigation spacing. This is an initial usable editor slice, not a Photoshop-equivalent renderer or production export system. `user_designs.canvas_state` remains unwired; account-backed save, R2/mockup production, full-resolution output/DPI metadata, advanced layer operations, and actual-phone QA remain open.
+**Current `/create` implementation (verified 2026-11-13):** the route mounts a shell only. The design area is an empty `div`; the mockup is a static placeholder. No editable Fabric canvas, artwork tools, text/elements insertion, Layers/Properties panel, document state, undo/redo, serialization, browser draft, or account-backed save is wired to this route. The installed Fabric.js package alone does not mean these features are implemented. Historical editor notes below must be treated as dated snapshots, not current feature status.
 
 **Earlier editor feature list (historical, not present in the audited current route):** Fabric.js 7.4.0 canvas with selectable, movable,
 scalable and rotatable objects; in-place text editing and family/size/weight/
@@ -383,9 +397,9 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
 
 **Built, using placeholder data:** Account page (`/account`).
 
-**Editor implementation roadmap:** E0's editable document, core tools, Layers, history, and browser-local draft slice is implemented; continue with robust validated document schema, advanced layer features, print-ready export, account-backed saving, and production asset integrations. Do not present historical Photoshop-style features above as current implementation unless verified in source.
+**Editor implementation roadmap:** first implement the editable document model, canvas editing operations, selection/history, Layers/Properties UI, validated serialization, and draft persistence; then deliver the detailed capabilities and production integrations specified in the Editor Implementation Plan. Do not present the historical Fabric.js feature list above as the current implementation.
 
-**Code-audit follow-up (2026-11-14):** see [Code Audit section](../Doc/DOCUMENTATION.md#code-audit) for dated findings. The E0 placeholder finding is resolved at source level; physical-device/short-viewport Phone QA remains. Other active areas are: (1) repair storefront route targets, search/category behavior, selected variant/cart pricing, popularity labeling, and account demo-state labeling; (2) protect Supabase reward balances and platform settings with narrowly scoped policies; (3) fail safely when price-range lookup fails; and (4) smoke-test the built Cloudflare Worker runtime before deployment.
+**Code-audit follow-up (2026-11-13):** see [Code Audit section](../Doc/DOCUMENTATION.md#code-audit) for line-level evidence and recommended fixes. Active follow-up areas are: (1) implement `/create` beyond its shell and satisfy Phone pan/short-viewport behavior; (2) repair storefront route targets, search/category behavior, selected variant/cart pricing, popularity labeling, and account demo-state labeling; (3) protect Supabase reward balances and platform settings with narrowly scoped policies; (4) fail safely when price-range lookup fails; and (5) smoke-test the built Cloudflare Worker runtime before deployment.
 
 **Broader platform sequencing:** after the audit priorities are addressed, continue Supabase Auth and server-side Super Admin authorization, checkout/payment/order creation, R2, and the remaining editor production work.
 
@@ -970,11 +984,11 @@ The three primary experiences must share one document model, one selection syste
 
 **Verified repository state (2026-11-14):** `/create` mounts the `KittlCanvas` shell with a blank fixed print canvas and a smaller, slightly separated canvas-edge menu. No mockup is rendered by default; selecting Add Mockup creates a temporary Front Mockup box. A small circular Back Mockup control sits at the left edge of the Front box, offset below the connector wire. Each box can be closed independently. The canvas and mockups are individually draggable, with SVG connector wires following their positions. A minimal freehand pointer stroke is drawn on the canvas and mirrored live to both previews; Front is the larger preview, while Back's box and artwork are smaller. Strokes remain in page memory only. These are placeholders for future Cloudflare R2-backed mockup assets. Although Fabric.js is a project dependency, this route does not instantiate it as an object-level editor. No sticker library, selectable object/document model, layer/property panels, undo/redo, serializer, or browser/account draft persistence is implemented or connected to the route. The `user_designs.canvas_state` schema exists but is unused here.
 
-The route is now an initial usable object-level editor, not a Photoshop-equivalent pixel editor. Earlier notes about advanced tools, Smart Objects, masks, account storage, and print-ready export remain forward-looking or historical; verify every capability against the current source before claiming it is implemented.
+The implementation target described in this file is forward-looking. The current route must be described as a placeholder workspace, not as an object-level editor or a Photoshop-equivalent pixel editor. The previous notes about tools, Layers, text/Elements insertion, Smart Objects, masks, and local Save/restore are historical snapshots that do not match the audited source at this commit.
 
-The implemented Pan mode captures pointer/touch dragging over the artboard, and the same Fabric document and layer state is used across Web/Desktop and Phone/Mobile. The responsive Phone layout uses a bottom dock/sheet with 44px controls. Physical-device and short-viewport behavior still require browser/device QA; the editor's PNG action is only a reduced-size preview and does not embed 300-DPI metadata.
+Current input limitations are also explicit: pan supports middle-button drag or Space+left drag but has no touch-pointer pan path. Added mockup placeholders flow side-by-side on Web/Desktop and stack in a vertically scrollable Phone/Mobile workspace when the content is taller than the viewport. Pan behavior still needs Web/Desktop and Phone/Mobile acceptance tests when the editor shell is made operational.
 
-Still future work: server-validated production document schema, account-backed persistence, production mockup rendering/R2, AI tools, paintable masks, true pixel merge, and full-resolution production export with embedded DPI metadata. Browser-local drafts are versioned JSON and remain local to one browser.
+Until implemented and tested, treat the following as future work: an editable typed document, artwork operations, selection and history, layer/property controls, validated serialization, browser/account persistence, production mockup rendering, AI tools, paintable masks, true pixel merge, and server-side production export.
 
 ## 3. Editor workspace and coordinate model
 
@@ -1588,14 +1602,13 @@ Rules:
 
 ## 18. Implementation phases
 
-### Phase E0 — First usable shared editor (Web + Phone) — core delivered; help/device QA pending
+### Phase E0 — First usable shared editor (Web + Phone)
 
-- [x] Build the actual Fabric.js canvas, shared per-side Front/Back documents, text/shapes/uploads, object transforms, vector/text fill recoloring, Layers list, Undo/Redo and local Save/restore.
-- [x] Provide Web/Desktop tools and Phone touch-sized bottom dock/sheets using the same editor state, with visible zoom controls and explicit Pan mode.
-- [x] Hide global mobile navigation/footer and remove reserved bottom-page spacing on `/create`.
-- [x] Keep viewport zoom/pan separate from saved artwork coordinates; add regression tests for editor controls and document serialization.
-- [ ] Verify complete flows in interactive Web/Desktop and narrow/short Phone browser viewports; physical-device interaction remains unverified.
-- Larger selection, lock inheritance, layer reorder, print-ready export, and advanced tools remain in later phases.
+- The verified `/create` route is a shell, so build the actual Fabric.js canvas and shared per-side document state; do not assume an existing object model or local draft behavior.
+- Deliver the owner-requested initial artwork operations and responsive controls described in §6 on both Web/Desktop and Phone/Mobile, preserving one selection/document/history state across desktop panels and phone sheets.
+- Hide the global mobile navigation and remove its reserved bottom-page spacing on `/create`; keep the full-height editor canvas and phone dock inside the viewport.
+- Centralize document-to-viewport coordinate conversion and transform commands so pan/zoom never modify artwork coordinates.
+- Add editor-specific tests for insertion, selection/move, transform conversion, undo/redo, local save/restore, Front/Back, and responsive state parity. Keep broader selection, lock inheritance, layer reorder, export, and advanced tools in later phases.
 - Add the searchable shortcut/help panel after the core editor flow is usable.
 
 ### Phase E1 — Professional Move and selection
@@ -2420,4 +2433,3 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 
 - 2026-11-13: Implemented the website-wide browser zoom shortcut/wheel guard and suppressed page context menus per owner request; preserved mobile pinch zoom and unrelated keyboard shortcuts. Added regression coverage and CI execution. See `Doc/DOCUMENTATION.md#work-log`.
 - 2026-11-13: Updated only the `/create` canvas shell to a blank fixed 4500×5400 px transparent PNG-target preview, with 300-DPI target metadata, no T-Shirt placeholder, and a presentation-only transparency checkerboard. PNG export and embedded DPI metadata remain future work. See `Doc/DOCUMENTATION.md#work-log`.
-- 2026-11-14: Implemented Phase E0's first usable Fabric.js editor slice for shared Web/Phone use, including text/shapes/uploads, selection/transforms, Layers, fill color, Undo/Redo, local drafts, responsive dock/sheets, Pan and zoom; marked physical/narrow viewport QA pending. See `Doc/DOCUMENTATION.md#work-log`.

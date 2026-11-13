@@ -2,57 +2,65 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+
 const source = readFileSync(path.join(__dirname, "../apps/web/src/components/KittlCanvas.tsx"), "utf8");
+const mockupSection = source.split('{mockups.map((side) => (')[1] ?? "";
+const mockupHeader = mockupSection.split('className="relative aspect-square w-full')[0] ?? "";
 
-test("editor creates a fixed Fabric canvas and keeps independent Front/Back documents", () => {
-  assert.match(source, /import\("fabric"\)/);
-  assert.match(source, /new Canvas\(canvasElement\.current/);
-  assert.match(source, /width: PRINT_CANVAS_SPEC\.widthPx/);
-  assert.match(source, /height: PRINT_CANVAS_SPEC\.heightPx/);
-  assert.match(source, /type Side = "Front" \| "Back"/);
-  assert.match(source, /documentRef\.current\[docKey\(next\)\]/);
-  assert.match(source, /aria-pressed=\{side === "Front"\}/);
-  assert.match(source, /aria-pressed=\{side === "Back"\}/);
+test("canvas options expose Show Grid and add the temporary Front Mockup box", () => {
+  assert.match(source, /aria-label="Canvas options"/);
+  assert.match(source, /<span>Show Grid<\/span>/);
+  assert.match(source, /aria-checked=\{showGrid\}/);
+  assert.match(source, /setShowGrid\(\(visible\) => !visible\)/);
+  assert.match(source, /aria-label="Add Mockup"[\s\S]*?addMockup\("Front Mockup"\)/);
+  assert.match(source, /aria-label="Add Back Mockup"[\s\S]*?addMockup\("Back Mockup"\)/);
+  assert.match(source, /type MockupSide = "Front Mockup" \| "Back Mockup"/);
+  assert.match(source, /side === "Front Mockup" && \([\s\S]*?aria-label="Add Back Mockup"/);
+  assert.match(mockupSection, /aria-label="Add Back Mockup"[\s\S]*?absolute -left-5 top-\[calc\(50%\+1\.25rem\)\] z-30[\s\S]*?h-3\.5 w-3\.5/);
+  assert.doesNotMatch(mockupHeader, /Add Back Mockup/);
+  assert.match(source, /aria-label=\{`Close \$\{side\}`}[\s\S]*?removeMockup\(side\)/);
+  assert.match(source, /function removeMockup\(side: MockupSide\)[\s\S]*?filter\(\(item\) => item !== side\)/);
 });
 
-test("text, shapes and uploaded images are editable artwork objects", () => {
-  assert.match(source, /new IText\("Your text"/);
-  assert.match(source, /new fabric\.Rect/);
-  assert.match(source, /new fabric\.Circle/);
-  assert.match(source, /FabricImage\.fromURL\(url\)/);
-  assert.match(source, /readAsDataURL\(file\)/);
-  assert.match(source, /15 \* 1024 \* 1024/);
-  assert.match(source, /canvas\.setActiveObject\(/);
+test("grid is optional, and the initial canvas has no visible specification badges or mockup placeholder", () => {
+  assert.match(source, /\{showGrid && \(/);
+  assert.match(source, /backgroundSize: "10% 10%"/);
+  assert.doesNotMatch(source, /Transparent PNG · Fixed/);
+  assert.doesNotMatch(source, /px · \$\{PRINT_CANVAS_SPEC\.resolutionDpi\} DPI/);
+  assert.doesNotMatch(source, /<span>Front<\/span>[\s\S]{0,300}<span>Add Mockup<\/span>/);
+  assert.doesNotMatch(source, /R2 image placeholder/);
+  assert.doesNotMatch(source, /mockupVisible/);
+  assert.match(source, /aria-label=\{side\}/);
+  assert.match(source, /setShowGrid\(\(visible\) => !visible\)[\s\S]*?setMenuOpen\(false\)/);
+  assert.match(source, /absolute -right-5 top-1\/2[\s\S]*?h-3\.5 w-3\.5/);
+  assert.match(source, /backgroundSize: "10% 10%"/g);
+  assert.match(source, /flex-col items-center justify-start overflow-auto[\s\S]*md:overflow-hidden/);
+  assert.match(source, /md:flex-row md:gap-12/);
 });
 
-test("undo, redo, browser-local save/restore and deletion are available", () => {
-  assert.match(source, /const STORAGE_KEY = "mh-fashion-editor-v1"/);
-  assert.match(source, /localStorage\.getItem\(STORAGE_KEY\)/);
-  assert.match(source, /localStorage\.setItem\(STORAGE_KEY/);
-  assert.match(source, /historyRef\.current/);
-  assert.match(source, /aria-label="Undo"/);
-  assert.match(source, /aria-label="Redo"/);
-  assert.match(source, /event\.key === "Delete" \|\| event\.key === "Backspace"/);
-  assert.match(source, /getActiveObjects\(\)/);
+test("canvas and each mockup are independently draggable with live connector wires", () => {
+  assert.match(source, /aria-label="Canvas and mockup connections"/);
+  assert.match(source, /connectors\.map\(\(connection\) => \(/);
+  assert.match(source, /<path d=\{connection\.path\}[^>]*stroke="#8f72d4"/);
+  assert.match(source, /for \(const side of mockups\)/);
+  assert.match(source, /mockupSurfaceRefs\.current\[side\]/);
+  assert.match(source, /onPointerDown=\{\(event\) => startNodeDrag\("Print canvas", event\)\}/);
+  assert.match(source, /onPointerDown=\{\(event\) => startNodeDrag\(side, event\)\}/);
+  assert.match(source, /function moveNodeDrag\([\s\S]*?setNodePositions\(/);
+  assert.match(source, /event\.currentTarget\.setPointerCapture\(event\.pointerId\)/);
+  assert.match(source, /touch-none select-none/);
+  assert.match(source, /ResizeObserver\(updateConnectors\)/);
+  assert.match(source, /\[mockups, nodePositions, pan, zoom\]/);
 });
 
-test("layer selection and responsive touch-first asset/layer controls are present", () => {
-  assert.match(source, /aria-label="Layers and properties"/);
-  assert.match(source, /const selectLayer = \(object: FabricObject\) =>/);
-  assert.match(source, /aria-label="Editor tools"/);
-  assert.match(source, /role="dialog" aria-label="Add artwork"/);
-  assert.match(source, /editor-dock-button/);
-  assert.match(source, /md:hidden/);
-  assert.match(source, /max-h-\[55dvh\]/);
-  assert.match(source, /aria-label="Pan canvas"/);
-  assert.match(source, /aria-pressed=\{panMode\}/);
-  assert.match(source, /aria-label="Selected artwork color"/);
-});
-
-test("the editor route hides storefront footer, bottom navigation and reserved spacing", () => {
-  const frame = readFileSync(path.join(__dirname, "../apps/web/src/components/SiteFrame.tsx"), "utf8");
-  assert.match(frame, /const isEditor = pathname === "\/create"/);
-  assert.match(frame, /isEditor \? "min-h-0" : "pb-16 md:pb-0"/);
-  assert.match(frame, /!isEditor && <CopyrightBar \/>/);
-  assert.match(frame, /!isEditor && <MobileBottomNav \/>/);
+test("canvas freehand strokes appear live on a large Front and smaller Back preview", () => {
+  assert.match(source, /type ArtworkStroke = \{ points: Point\[\] \}/);
+  assert.match(source, /onPointerDown=\{startArtworkStroke\}/);
+  assert.match(source, /function startArtworkStroke[\s\S]*?setArtworkStrokes\(/);
+  assert.match(source, /function moveArtworkStroke[\s\S]*?setArtworkStrokes\(/);
+  assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} \/>/);
+  assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} scale=\{side === "Front Mockup" \? 0\.82 : 0\.48\} \/>/);
+  assert.ok(source.includes('side === "Back Mockup" ? "w-[min(14rem,68vw)]" : "w-[min(18.25rem,78vw)]"'));
+  assert.match(source, /function isCanvasEdgeGesture\([\s\S]*?return clientX - rect\.left <= edge/);
+  assert.match(source, /node === "Print canvas" && event\.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture/);
 });

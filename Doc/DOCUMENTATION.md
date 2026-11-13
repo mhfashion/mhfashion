@@ -17,13 +17,6 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
-### 2026-11-14 — First usable shared Fabric.js editor (Phase E0)
-
-- Replaced the `/create` placeholder shell with one Fabric.js 7 document surface and separate Front/Back JSON documents. Added inline text, rectangle/circle shapes, image upload (PNG/JPG/GIF/WebP, maximum 15 MB), object selection/move/resize/rotate, selected text/vector fill color, layer selection/deletion, Undo/Redo, keyboard shortcuts, browser-local versioned Save/restore, view zoom/pan controls, a reduced-resolution PNG preview download, and a live artwork thumbnail preview. The desktop tool rail and phone Assets/Layers/Mockup/Pan dock use the same editor state.
-- Added `SiteFrame` so `/create` uses the full viewport without storefront bottom navigation, copyright strip, or reserved mobile-navigation padding. Updated the Phase E0 Plan and its device-QA limitations.
-- Validation: editor shell **5/5**, canvas spec **1/1**, browser guards **1/1**, Guides **9/9**; Next.js production build and OpenNext Cloudflare Worker build passed, TypeScript passed as part of the build, changed-file ESLint clean, `git diff --check` clean. Full-workspace ESLint has **0 errors / 24 existing warnings**. OpenNext reported the existing old compatibility date and duplicate keys within the generated Fabric bundle.
-- Limitations: PNG download is a 20%-scale preview only, not print-ready and without embedded 300-DPI metadata. Browser-local image documents can exceed storage quotas; no account/cloud save, R2, advanced layer features, or production mockup/export pipeline is included. Physical-device and short-phone-viewport interaction still require QA. No deployment or production data change was run.
-
 ### 2026-11-14 — Live artwork on large Front and small Back previews
 
 - Offset the Front Mockup's Back-add circle 1.25rem below the connector's centerline so it is visually discoverable. Added minimal black freehand drawing inside the fixed canvas; its shared in-memory strokes render live on the canvas and every added mockup. Front remains the larger placeholder (18.25rem, artwork scale 0.82); Back is smaller (14rem, artwork scale 0.48). The canvas can still be repositioned by dragging its border while the interior is used for drawing.

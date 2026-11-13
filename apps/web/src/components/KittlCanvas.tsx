@@ -1,374 +1,507 @@
 "use client";
 
-import {
-  ArrowDownToLine, Circle, Hand, ImagePlus, Layers3, Minus, MousePointer2, Plus,
-  Redo2, RotateCcw, Save, Square, Type, Undo2, X,
-} from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Canvas as FabricCanvas, FabricObject } from "fabric";
-import Link from "next/link";
+import { Grid2X2, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
 
-type Side = "Front" | "Back";
-type SavedDocument = { version: 1; front: Record<string, unknown>; back: Record<string, unknown> };
-type ToolPanel = "assets" | "layers" | "mockup" | null;
-const STORAGE_KEY = "mh-fashion-editor-v1";
-const SNAPSHOT_LIMIT = 40;
-const docKey = (side: Side): "front" | "back" => side.toLowerCase() as "front" | "back";
+type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
+type MockupSide = "Front Mockup" | "Back Mockup";
+type WorkspaceNode = "Print canvas" | MockupSide;
+type Point = { x: number; y: number };
+type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
+type Connector = { side: MockupSide; path: string; start: Point; end: Point };
+type ArtworkStroke = { points: Point[] };
+type ActiveArtworkStroke = { pointerId: number; points: Point[] };
 
-function safeDocument(value: unknown): SavedDocument | null {
-  if (!value || typeof value !== "object") return null;
-  const item = value as Partial<SavedDocument>;
-  if (item.version !== 1 || !item.front || !item.back || typeof item.front !== "object" || typeof item.back !== "object") return null;
-  return item as SavedDocument;
+function ArtworkOverlay({ strokes, scale = 1 }: { strokes: ArtworkStroke[]; scale?: number }) {
+  return (
+    <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" className="pointer-events-none absolute inset-0 z-20 h-full w-full">
+      <g transform={`translate(500 600) scale(${scale}) translate(-500 -600)`}>
+        {strokes.map((stroke, index) => {
+          const points = stroke.points;
+          const path = points.map((point, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ");
+          return points.length === 1 ? (
+            <circle key={index} cx={points[0].x * 1000} cy={points[0].y * 1200} r="12" fill="#202124" />
+          ) : (
+            <path key={index} d={path} fill="none" stroke="#202124" strokeWidth="24" strokeLinecap="round" strokeLinejoin="round" />
+          );
+        })}
+      </g>
+    </svg>
+  );
 }
 
 export default function KittlCanvas() {
-  const canvasElement = useRef<HTMLCanvasElement>(null);
-  const fabricRef = useRef<FabricCanvas | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-  const documentRef = useRef<SavedDocument | null>(null);
-  const historyRef = useRef<string[]>([]);
-  const historyIndex = useRef(-1);
-  const applyingRef = useRef(false);
-  const activeSideRef = useRef<Side>("Front");
-  const panStart = useRef<{ id: number; x: number; y: number; originX: number; originY: number } | null>(null);
-  const [ready, setReady] = useState(false);
-  const [side, setSide] = useState<Side>("Front");
-  const [panel, setPanel] = useState<ToolPanel>("layers");
-  const [layers, setLayers] = useState<FabricObject[]>([]);
-  const [selected, setSelected] = useState<FabricObject | null>(null);
-  const [zoom, setZoom] = useState(0.22);
-  const [notice, setNotice] = useState("Ready");
-  const [preview, setPreview] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [historyState, setHistoryState] = useState({ undo: false, redo: false });
-  const [panMode, setPanMode] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-
-  const readCurrent = useCallback(() => {
-    const canvas = fabricRef.current;
-    if (!canvas || !documentRef.current) return;
-    documentRef.current[docKey(activeSideRef.current)] = canvas.toObject(["name", "editorId"]);
-  }, []);
-
-  const syncLayers = useCallback(() => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-    const objects = canvas.getObjects();
-    setLayers([...objects].reverse());
-    setSelected(canvas.getActiveObject() ?? null);
-    setPreviewUrl(canvas.toDataURL({ format: "png", multiplier: 0.08, enableRetinaScaling: false }));
-    if (documentRef.current) {
-      documentRef.current[docKey(activeSideRef.current)] = canvas.toObject(["name", "editorId"]);
-    }
-  }, []);
-
-  const checkpoint = useCallback(() => {
-    const canvas = fabricRef.current;
-    if (!canvas || applyingRef.current) return;
-    readCurrent();
-    const snapshot = JSON.stringify(documentRef.current);
-    const history = historyRef.current.slice(0, historyIndex.current + 1);
-    if (history.at(-1) === snapshot) return;
-    history.push(snapshot);
-    if (history.length > SNAPSHOT_LIMIT) history.shift();
-    historyRef.current = history;
-    historyIndex.current = history.length - 1;
-    setHistoryState({ undo: historyIndex.current > 0, redo: false });
-    syncLayers();
-  }, [readCurrent, syncLayers]);
-
-  const restoreSnapshot = useCallback(async (snapshot: string) => {
-    const canvas = fabricRef.current;
-    const parsed = safeDocument(JSON.parse(snapshot));
-    if (!canvas || !parsed) return;
-    applyingRef.current = true;
-    documentRef.current = parsed;
-    await canvas.loadFromJSON(parsed[docKey(activeSideRef.current)]);
-    canvas.requestRenderAll();
-    applyingRef.current = false;
-    setHistoryState({ undo: historyIndex.current > 0, redo: historyIndex.current < historyRef.current.length - 1 });
-    syncLayers();
-  }, [syncLayers]);
-
-  useEffect(() => {
-    let disposed = false;
-    let canvas: FabricCanvas | null = null;
-    void import("fabric").then(({ Canvas, FabricImage }) => {
-      if (!canvasElement.current || disposed) return;
-      const saved = (() => {
-        try { return safeDocument(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null")); }
-        catch { return null; }
-      })();
-      documentRef.current = saved ?? {
-        version: 1,
-        front: { version: "7.4.0", objects: [], background: "" },
-        back: { version: "7.4.0", objects: [], background: "" },
-      };
-      canvas = new Canvas(canvasElement.current, {
-        width: PRINT_CANVAS_SPEC.widthPx,
-        height: PRINT_CANVAS_SPEC.heightPx,
-        backgroundColor: "rgba(255,255,255,0)",
-        selection: true,
-        preserveObjectStacking: true,
-        enableRetinaScaling: false,
-      });
-      fabricRef.current = canvas;
-      const onChanged = () => { if (!applyingRef.current) checkpoint(); };
-      canvas.on("object:added", onChanged);
-      canvas.on("object:modified", onChanged);
-      canvas.on("object:removed", onChanged);
-      canvas.on("selection:created", syncLayers);
-      canvas.on("selection:updated", syncLayers);
-      canvas.on("selection:cleared", syncLayers);
-      void canvas.loadFromJSON(documentRef.current.front).then(() => {
-        if (disposed) return;
-        canvas?.requestRenderAll();
-        historyRef.current = [JSON.stringify(documentRef.current)];
-        historyIndex.current = 0;
-        setReady(true);
-        syncLayers();
-        if (saved) setNotice("Restored local design");
-      });
-      // Keep the imported image class reachable for Fabric's image revival registry.
-      void FabricImage;
-    }).catch(() => setNotice("Editor could not load. Refresh the page to try again."));
-    return () => {
-      disposed = true;
-      canvas?.dispose();
-      fabricRef.current = null;
-    };
-  }, [checkpoint, syncLayers]);
-
-  useEffect(() => { activeSideRef.current = side; }, [side]);
-
-  const changeSide = async (next: Side) => {
-    const canvas = fabricRef.current;
-    if (!canvas || next === side || !documentRef.current) return;
-    readCurrent();
-    applyingRef.current = true;
-    activeSideRef.current = next;
-    setSide(next);
-    await canvas.loadFromJSON(documentRef.current[docKey(next)]);
-    canvas.requestRenderAll();
-    applyingRef.current = false;
-    syncLayers();
-    setNotice(`${next} artwork`);
-  };
-
-  const addText = async () => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-    const { IText } = await import("fabric");
-    const text = new IText("Your text", { left: 500, top: 550, fontSize: 220, fill: "#191919", fontFamily: "Arial", name: "Text" });
-    canvas.add(text);
-    canvas.setActiveObject(text);
-    text.enterEditing();
-    text.selectAll();
-    canvas.requestRenderAll();
-    checkpoint();
-  };
-
-  const addShape = async (shape: "rect" | "circle") => {
-    const fabric = await import("fabric");
-    const object = shape === "rect"
-      ? new fabric.Rect({ left: 650, top: 800, width: 900, height: 650, fill: "#d4ff3f", stroke: "#202124", strokeWidth: 10, name: "Rectangle" })
-      : new fabric.Circle({ left: 750, top: 850, radius: 320, fill: "#d4ff3f", stroke: "#202124", strokeWidth: 10, name: "Circle" });
-    fabricRef.current?.add(object);
-    fabricRef.current?.setActiveObject(object);
-    fabricRef.current?.requestRenderAll();
-    checkpoint();
-  };
-
-  const addImage = async (file: File) => {
-    const canvas = fabricRef.current;
-    if (!canvas || !file.type.startsWith("image/")) { setNotice("Choose a PNG, JPG, GIF, or WebP image"); return; }
-    if (file.size > 15 * 1024 * 1024) { setNotice("Image must be smaller than 15 MB"); return; }
-    const { FabricImage } = await import("fabric");
-    const url = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Invalid image data"));
-      reader.onerror = () => reject(new Error("Could not read image"));
-      reader.readAsDataURL(file);
-    });
-    try {
-      const image = await FabricImage.fromURL(url);
-      const max = 2400;
-      const scale = Math.min(1, max / Math.max(image.width ?? 1, image.height ?? 1));
-      image.set({ left: 500, top: 500, scaleX: scale, scaleY: scale, name: file.name.slice(0, 80) });
-      canvas.add(image);
-      canvas.setActiveObject(image);
-      canvas.requestRenderAll();
-      checkpoint();
-      setNotice("Image added to artwork");
-    } catch { setNotice("Could not read that image"); }
-    finally { /* The data URL is embedded in the browser-local document for restore. */ }
-  };
-
-  const historyMove = async (direction: -1 | 1) => {
-    const next = historyIndex.current + direction;
-    if (next < 0 || next >= historyRef.current.length) return;
-    historyIndex.current = next;
-    setHistoryState({ undo: next > 0, redo: next < historyRef.current.length - 1 });
-    await restoreSnapshot(historyRef.current[next]);
-    setNotice(direction < 0 ? "Undid last change" : "Redid change");
-  };
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target && ["INPUT", "TEXTAREA"].includes(target.tagName)) return;
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
-        event.preventDefault(); void historyMove(event.shiftKey ? 1 : -1);
-      }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "y") {
-        event.preventDefault(); void historyMove(1);
-      }
-      if ((event.key === "Delete" || event.key === "Backspace") && fabricRef.current?.getActiveObject()) {
-        event.preventDefault();
-        const canvas = fabricRef.current;
-        const active = canvas.getActiveObjects();
-        canvas.discardActiveObject();
-        active.forEach((object) => canvas.remove(object));
-        checkpoint();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
+  const [mockups, setMockups] = useState<MockupSide[]>([]);
+  const [artworkStrokes, setArtworkStrokes] = useState<ArtworkStroke[]>([]);
+  const [nodePositions, setNodePositions] = useState<Record<WorkspaceNode, Point>>({
+    "Print canvas": { x: 0, y: 0 },
+    "Front Mockup": { x: 0, y: 0 },
+    "Back Mockup": { x: 0, y: 0 },
   });
+  const [draggingNode, setDraggingNode] = useState<WorkspaceNode | null>(null);
+  const [connectors, setConnectors] = useState<Connector[]>([]);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const canvasNodeRef = useRef<HTMLCanvasElement>(null);
+  const mockupSurfaceRefs = useRef<Partial<Record<MockupSide, HTMLDivElement>>>({});
+  const menuRef = useRef<HTMLDivElement>(null);
+  const panStartRef = useRef<PanStart | null>(null);
+  const panGestureRef = useRef(false);
+  const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
+  const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
 
-  const saveLocal = () => {
-    readCurrent();
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(documentRef.current));
-      setNotice("Saved in this browser");
-    } catch { setNotice("Browser storage is full; remove a large image and try again"); }
-  };
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
 
-  const downloadPng = () => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-    const url = canvas.toDataURL({ format: "png", multiplier: 0.2, enableRetinaScaling: false });
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `mh-fashion-${side.toLowerCase()}-preview.png`;
-    anchor.click();
-    setNotice("Downloaded preview PNG (reduced-size preview)");
-  };
+    const handleViewportWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      if (event.ctrlKey || event.metaKey) {
+        setZoom((current) => Math.max(0.25, Math.min(3, current - event.deltaY * 0.002)));
+        return;
+      }
+      setPan((current) => ({
+        x: current.x - event.deltaX,
+        y: current.y - event.deltaY,
+      }));
+    };
 
-  const selectLayer = (object: FabricObject) => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-    canvas.setActiveObject(object);
-    canvas.requestRenderAll();
-    syncLayers();
-  };
+    const isTypingTarget = (target: EventTarget | null) =>
+      target instanceof HTMLElement &&
+      (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName));
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || isTypingTarget(event.target)) return;
+      event.preventDefault();
+      setSpaceHeld(true);
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code === "Space") setSpaceHeld(false);
+    };
+    const handleWindowBlur = () => setSpaceHeld(false);
 
-  const deleteSelected = () => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-    canvas.getActiveObjects().forEach((object) => canvas.remove(object));
-    canvas.discardActiveObject();
-    canvas.requestRenderAll();
-    checkpoint();
-  };
+    viewport.addEventListener("wheel", handleViewportWheel, { passive: false });
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleWindowBlur);
+    return () => {
+      viewport.removeEventListener("wheel", handleViewportWheel);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, []);
 
-  const recolorSelected = (color: string) => {
-    if (!selected || selected.type === "image") return;
-    selected.set("fill", color);
-    fabricRef.current?.requestRenderAll();
-    checkpoint();
-  };
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) setMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
 
-  const beginPan = (event: { button: number; pointerId: number; clientX: number; clientY: number; currentTarget: HTMLElement; preventDefault(): void }) => {
-    if (!panMode || event.button !== 0) return;
+  useEffect(() => {
+    const workspace = workspaceRef.current;
+    const canvas = canvasNodeRef.current;
+    if (!workspace || !canvas) return;
+
+    const updateConnectors = () => {
+      const workspaceRect = workspace.getBoundingClientRect();
+      const scale = Math.max(zoom, 0.01);
+      const toWorkspaceRect = (element: Element) => {
+        const rect = element.getBoundingClientRect();
+        const left = (rect.left - workspaceRect.left) / scale;
+        const top = (rect.top - workspaceRect.top) / scale;
+        const width = rect.width / scale;
+        const height = rect.height / scale;
+        return {
+          left,
+          right: left + width,
+          top,
+          bottom: top + height,
+          centerX: left + width / 2,
+          centerY: top + height / 2,
+        };
+      };
+      const canvasRect = toWorkspaceRect(canvas);
+      const next: Connector[] = [];
+
+      for (const side of mockups) {
+        const surface = mockupSurfaceRefs.current[side];
+        if (!surface) continue;
+        const mockupRect = toWorkspaceRect(surface);
+        const deltaX = mockupRect.centerX - canvasRect.centerX;
+        const deltaY = mockupRect.centerY - canvasRect.centerY;
+        let start: Point;
+        let end: Point;
+        let control1: Point;
+        let control2: Point;
+
+        if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+          const direction = deltaX >= 0 ? 1 : -1;
+          start = { x: direction > 0 ? canvasRect.right : canvasRect.left, y: canvasRect.centerY };
+          end = { x: direction > 0 ? mockupRect.left : mockupRect.right, y: mockupRect.centerY };
+          const curve = Math.max(24, Math.abs(end.x - start.x) * 0.45);
+          control1 = { x: start.x + direction * curve, y: start.y };
+          control2 = { x: end.x - direction * curve, y: end.y };
+        } else {
+          const direction = deltaY >= 0 ? 1 : -1;
+          start = { x: canvasRect.centerX, y: direction > 0 ? canvasRect.bottom : canvasRect.top };
+          end = { x: mockupRect.centerX, y: direction > 0 ? mockupRect.top : mockupRect.bottom };
+          const curve = Math.max(24, Math.abs(end.y - start.y) * 0.45);
+          control1 = { x: start.x, y: start.y + direction * curve };
+          control2 = { x: end.x, y: end.y - direction * curve };
+        }
+
+        next.push({
+          side,
+          start,
+          end,
+          path: `M ${start.x} ${start.y} C ${control1.x} ${control1.y}, ${control2.x} ${control2.y}, ${end.x} ${end.y}`,
+        });
+      }
+
+      setConnectors((current) =>
+        current.length === next.length && current.every((connector, index) => connector.path === next[index]?.path)
+          ? current
+          : next,
+      );
+    };
+
+    const initialFrame = window.requestAnimationFrame(updateConnectors);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateConnectors);
+    [workspace, canvas, ...mockups.map((side) => mockupSurfaceRefs.current[side]).filter(Boolean)].forEach((element) => {
+      if (element) observer?.observe(element);
+    });
+    window.addEventListener("resize", updateConnectors);
+    return () => {
+      window.cancelAnimationFrame(initialFrame);
+      observer?.disconnect();
+      window.removeEventListener("resize", updateConnectors);
+    };
+  }, [mockups, nodePositions, pan, zoom]);
+
+  function startPan(event: React.PointerEvent<HTMLDivElement>) {
+    const middleButtonPan = event.button === 1;
+    if (!middleButtonPan && (!spaceHeld || event.button !== 0)) return;
+    if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    panStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY, originX: pan.x, originY: pan.y };
-  };
-  const movePan = (event: { pointerId: number; clientX: number; clientY: number; preventDefault(): void }) => {
-    const start = panStart.current;
-    if (!start || start.id !== event.pointerId) return;
-    event.preventDefault();
-    setPan({ x: start.originX + event.clientX - start.x, y: start.originY + event.clientY - start.y });
-  };
-  const endPan = (event: { pointerId: number }) => { if (panStart.current?.id === event.pointerId) panStart.current = null; };
+    panStartRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      panX: pan.x,
+      panY: pan.y,
+    };
+    panGestureRef.current = true;
+    setIsPanning(true);
+  }
 
-  const zoomBy = (amount: number) => {
-    const next = Math.max(0.08, Math.min(0.7, zoom + amount));
-    setZoom(next);
-  };
+  function movePan(event: React.PointerEvent<HTMLDivElement>) {
+    const start = panStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    setPan({
+      x: start.panX + event.clientX - start.startX,
+      y: start.panY + event.clientY - start.startY,
+    });
+  }
+
+  function endPan(event: React.PointerEvent<HTMLDivElement>) {
+    if (panStartRef.current?.pointerId !== event.pointerId) return;
+    panStartRef.current = null;
+    setIsPanning(false);
+    window.setTimeout(() => {
+      panGestureRef.current = false;
+    }, 0);
+  }
+
+  function isCanvasEdgeGesture(clientX: number, clientY: number) {
+    const canvas = canvasNodeRef.current;
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    const edge = 14 * zoom;
+    return clientX - rect.left <= edge || rect.right - clientX <= edge || clientY - rect.top <= edge || rect.bottom - clientY <= edge;
+  }
+
+  function toCanvasPoint(clientX: number, clientY: number): Point {
+    const rect = canvasNodeRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return {
+      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+    };
+  }
+
+  function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    activeArtworkStrokeRef.current = { pointerId: event.pointerId, points: [point] };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setArtworkStrokes((current) => [...current, { points: [point] }]);
+  }
+
+  function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    const active = activeArtworkStrokeRef.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    active.points.push(toCanvasPoint(event.clientX, event.clientY));
+    const updatedStroke = { points: [...active.points] };
+    setArtworkStrokes((current) => [...current.slice(0, -1), updatedStroke]);
+  }
+
+  function endArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (activeArtworkStrokeRef.current?.pointerId !== event.pointerId) return;
+    activeArtworkStrokeRef.current = null;
+  }
+
+  function startNodeDrag(node: WorkspaceNode, event: React.PointerEvent<HTMLElement>) {
+    if (event.button !== 0 || !event.isPrimary) return;
+    if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
+    if (node === "Print canvas" && event.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    activeNodeDragRef.current = {
+      node,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin: nodePositions[node],
+    };
+    setDraggingNode(node);
+  }
+
+  function moveNodeDrag(event: React.PointerEvent<HTMLElement>) {
+    const active = activeNodeDragRef.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const scale = Math.max(zoom, 0.01);
+    setNodePositions((current) => ({
+      ...current,
+      [active.node]: {
+        x: active.origin.x + (event.clientX - active.startX) / scale,
+        y: active.origin.y + (event.clientY - active.startY) / scale,
+      },
+    }));
+  }
+
+  function endNodeDrag(event: React.PointerEvent<HTMLElement>) {
+    if (activeNodeDragRef.current?.pointerId !== event.pointerId) return;
+    activeNodeDragRef.current = null;
+    setDraggingNode(null);
+  }
+
+  function addMockup(side: MockupSide) {
+    setMockups((current) => {
+      const sides = new Set([...current, side]);
+      return (["Front Mockup", "Back Mockup"] as const).filter((item) => sides.has(item));
+    });
+  }
+
+  function removeMockup(side: MockupSide) {
+    setMockups((current) => current.filter((item) => item !== side));
+  }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[#f3f4f6] text-[#222831]">
-      <header className="z-20 flex min-h-12 items-center gap-2 border-b border-[#dfe2e7] bg-white px-2 sm:px-4">
-        <Link href="/" className="hidden font-bold tracking-tight sm:block">MH <span className="text-[#78920e]">DESIGN STUDIO</span></Link>
-        <div className="ml-auto flex items-center gap-1">
-          <button aria-label="Undo" title="Undo (Ctrl/⌘ Z)" disabled={!ready || !historyState.undo} onClick={() => void historyMove(-1)} className="editor-icon"><Undo2 size={17}/></button>
-          <button aria-label="Redo" title="Redo (Ctrl/⌘ Shift Z)" disabled={!ready || !historyState.redo} onClick={() => void historyMove(1)} className="editor-icon"><Redo2 size={17}/></button>
-          <span className="mx-1 hidden text-xs text-gray-500 sm:inline" role="status">{notice}</span>
-          <button onClick={saveLocal} disabled={!ready} className="editor-action"><Save size={15}/> <span className="hidden sm:inline">Save</span></button>
-          <button onClick={downloadPng} disabled={!ready} className="editor-action"><ArrowDownToLine size={15}/> <span className="hidden sm:inline">PNG</span></button>
+    <main className="h-full min-h-0 overflow-hidden bg-[#f1f2f5]">
+      <div
+        ref={viewportRef}
+        onPointerDown={startPan}
+        onPointerMove={movePan}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
+        onAuxClick={(event) => {
+          if (event.button === 1) event.preventDefault();
+        }}
+        className={`flex h-full w-full flex-col items-center justify-start overflow-auto p-5 md:justify-center md:overflow-hidden sm:p-8 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
+      >
+        <div
+          ref={workspaceRef}
+          className="relative my-auto flex max-w-full shrink-0 flex-col items-center gap-8 md:flex-row md:gap-12"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: "center center",
+          }}
+        >
+          <svg className="pointer-events-none absolute inset-0 z-0 overflow-visible" width="100%" height="100%" aria-label="Canvas and mockup connections">
+            {connectors.map((connection) => (
+              <g key={connection.side}>
+                <path d={connection.path} fill="none" stroke="#8f72d4" strokeWidth="2" strokeLinecap="round" />
+                <circle cx={connection.start.x} cy={connection.start.y} r="2.5" fill="#8f72d4" />
+                <circle cx={connection.end.x} cy={connection.end.y} r="2.5" fill="#8f72d4" />
+              </g>
+            ))}
+          </svg>
+          <section
+            aria-label="Print canvas"
+            onPointerDown={(event) => startNodeDrag("Print canvas", event)}
+            onPointerMove={moveNodeDrag}
+            onPointerUp={endNodeDrag}
+            onPointerCancel={endNodeDrag}
+            onLostPointerCapture={endNodeDrag}
+            className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : "cursor-grab"}`}
+            style={{ transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
+          >
+            <div className="relative">
+              <canvas
+                ref={canvasNodeRef}
+                width={PRINT_CANVAS_SPEC.widthPx}
+                height={PRINT_CANVAS_SPEC.heightPx}
+                data-canvas-width={PRINT_CANVAS_SPEC.widthPx}
+                data-canvas-height={PRINT_CANVAS_SPEC.heightPx}
+                data-resolution-dpi={PRINT_CANVAS_SPEC.resolutionDpi}
+                data-background={PRINT_CANVAS_SPEC.background}
+                data-export-format={PRINT_CANVAS_SPEC.exportFormat}
+                data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
+                aria-label="Blank print canvas"
+                onPointerDown={startArtworkStroke}
+                onPointerMove={moveArtworkStroke}
+                onPointerUp={endArtworkStroke}
+                onPointerCancel={endArtworkStroke}
+                onLostPointerCapture={endArtworkStroke}
+                className="block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
+                style={{
+                  backgroundColor: "#ffffff",
+                  backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
+                  backgroundSize: "32px 32px",
+                  backgroundPosition: "0 0, 0 16px, 16px -16px, -16px 0",
+                }}
+              />
+              {showGrid && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-px z-10"
+                  style={{
+                    backgroundImage: "linear-gradient(to right, rgba(61, 132, 184, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(61, 132, 184, 0.4) 1px, transparent 1px)",
+                    backgroundSize: "10% 10%",
+                  }}
+                />
+              )}
+              <ArtworkOverlay strokes={artworkStrokes} />
+              <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
+                <button
+                  type="button"
+                  aria-label="Canvas options"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((open) => !open)}
+                  className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm outline-none ring-offset-2 hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                >
+                  <span className="h-1 w-1 rounded-full bg-white" />
+                </button>
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Canvas options"
+                    className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-[#d8dce2] bg-white p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2"
+                  >
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={showGrid}
+                      onClick={() => {
+                        setShowGrid((visible) => !visible);
+                        setMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                    >
+                      <Grid2X2 size={15} aria-hidden="true" />
+                      <span>Show Grid</span>
+                      <span className={`ml-auto h-3.5 w-3.5 rounded-sm border ${showGrid ? "border-[#8f72d4] bg-[#8f72d4]" : "border-[#bfc5cd]"}`} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      aria-label="Add Mockup"
+                      onClick={() => {
+                        addMockup("Front Mockup");
+                        setMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                    >
+                      <Plus size={15} aria-hidden="true" />
+                      <span>Add Mockup</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+          {mockups.map((side) => (
+            <section
+              key={side}
+              aria-label={side}
+              onPointerDown={(event) => startNodeDrag(side, event)}
+              onPointerMove={moveNodeDrag}
+              onPointerUp={endNodeDrag}
+              onPointerCancel={endNodeDrag}
+              onLostPointerCapture={endNodeDrag}
+              className={`relative z-10 ${side === "Back Mockup" ? "w-[min(14rem,68vw)]" : "w-[min(18.25rem,78vw)]"} shrink-0 touch-none select-none ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
+              style={{ transform: `translate(${nodePositions[side].x}px, ${nodePositions[side].y}px)` }}
+            >
+              <div className="mb-2 flex h-7 items-center gap-2 text-xs font-medium text-[#53606a]">
+                <span>{side}</span>
+                <button
+                  type="button"
+                  aria-label={`Close ${side}`}
+                  onClick={() => removeMockup(side)}
+                  className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-[#7c838d] outline-none hover:bg-[#e7e9ed] hover:text-[#343b45] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                >
+                  <X size={13} aria-hidden="true" />
+                </button>
+              </div>
+              <div
+                ref={(element) => {
+                  if (element) mockupSurfaceRefs.current[side] = element;
+                  else delete mockupSurfaceRefs.current[side];
+                }}
+                className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]"
+              >
+                {side === "Front Mockup" && (
+                  <button
+                    type="button"
+                    aria-label="Add Back Mockup"
+                    title="Add Back Mockup"
+                    onClick={() => addMockup("Back Mockup")}
+                    className="absolute -left-5 top-[calc(50%+1.25rem)] z-30 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full bg-[#a58be8] text-white shadow-sm outline-none hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                  >
+                    <Plus size={8} aria-hidden="true" />
+                  </button>
+                )}
+                {showGrid && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      backgroundImage: "linear-gradient(to right, rgba(61, 132, 184, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(61, 132, 184, 0.4) 1px, transparent 1px)",
+                      backgroundSize: "10% 10%",
+                    }}
+                  />
+                )}
+                <ArtworkOverlay strokes={artworkStrokes} scale={side === "Front Mockup" ? 0.82 : 0.48} />
+              </div>
+            </section>
+          ))}
         </div>
-      </header>
-      <div className="flex min-h-0 flex-1">
-        <nav aria-label="Editor tools" className="hidden w-14 shrink-0 flex-col items-center gap-2 border-r border-[#dfe2e7] bg-white py-3 md:flex">
-          <button aria-label="Select and move" title="Select and move" className="editor-tool editor-tool-active"><MousePointer2 size={19}/></button>
-          <button aria-label="Text" title="Add text" onClick={() => void addText()} className="editor-tool"><Type size={19}/></button>
-          <button aria-label="Rectangle" title="Add rectangle" onClick={() => void addShape("rect")} className="editor-tool"><Square size={18}/></button>
-          <button aria-label="Circle" title="Add circle" onClick={() => void addShape("circle")} className="editor-tool"><Circle size={18}/></button>
-          <button aria-label="Upload image" title="Upload image" onClick={() => fileInput.current?.click()} className="editor-tool"><ImagePlus size={19}/></button>
-        </nav>
-        <input ref={fileInput} className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => { const file = event.target.files?.[0]; if (file) void addImage(file); event.currentTarget.value = ""; }}/>
-        <section aria-label="Design workspace" className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex min-h-10 items-center gap-2 border-b border-[#e2e4e8] bg-[#f9fafb] px-3">
-            <button onClick={() => void changeSide("Front")} aria-pressed={side === "Front"} className={`editor-tab ${side === "Front" ? "editor-tab-active" : ""}`}>Front</button>
-            <button onClick={() => void changeSide("Back")} aria-pressed={side === "Back"} className={`editor-tab ${side === "Back" ? "editor-tab-active" : ""}`}>Back</button>
-            <span className="ml-auto text-xs text-gray-500">{side} · 4500 × 5400</span>
-          </div>
-          <div className={`relative flex min-h-0 flex-1 items-center justify-center overflow-auto bg-[#eceef1] p-4 pb-20 md:pb-4 ${panMode ? "cursor-grab" : ""}`} onPointerDown={beginPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onWheel={(event) => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); zoomBy(event.deltaY > 0 ? -0.02 : 0.02); } }}>
-            <div className="editor-artboard" style={{ width: `${Math.round(4500 * zoom)}px`, maxWidth: zoom <= 0.22 ? "100%" : undefined, transform: `translate(${pan.x}px, ${pan.y}px)` }}>
-              <canvas ref={canvasElement} aria-label={`${side} editable print canvas`} />
-              {panMode && <div aria-label="Pan canvas" className="absolute inset-0 z-10 touch-none cursor-grab" />}
-            </div>
-            {!ready && <span className="absolute text-sm text-gray-500">Loading editor…</span>}
-            {preview && <div aria-label={`${side} artwork preview`} className="absolute bottom-16 right-4 h-40 w-32 border border-violet-400 bg-white bg-contain bg-center bg-no-repeat shadow" style={{ backgroundImage: previewUrl ? `url(${previewUrl})` : undefined }}><span className="absolute left-1 top-1 rounded bg-white/90 px-1 text-xs">{side} preview</span></div>}
-            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-gray-200 bg-white p-1.5 shadow md:bottom-4">
-              <button className="editor-dock-button" onClick={() => setPanel(panel === "assets" ? null : "assets")}><ImagePlus size={16}/>Assets</button>
-              <button className="editor-dock-button" onClick={() => setPanel(panel === "layers" ? null : "layers")}><Layers3 size={16}/>Layers</button>
-              <button className="editor-dock-button" onClick={() => { setPreview(!preview); setPanel("mockup"); }}><RotateCcw size={16}/>Mockup</button>
-              <button aria-pressed={panMode} className={`editor-dock-button ${panMode ? "editor-tool-active" : ""}`} onClick={() => setPanMode(!panMode)}><Hand size={16}/>Pan</button>
-              <button aria-label="Zoom out" className="editor-tool !h-9 !w-9" onClick={() => zoomBy(-0.03)}><Minus size={15}/></button>
-              <span className="w-10 text-center text-xs">{Math.round(zoom * 100)}%</span>
-              <button aria-label="Zoom in" className="editor-tool !h-9 !w-9" onClick={() => zoomBy(0.03)}><Plus size={15}/></button>
-              <button aria-label="Reset canvas view" title="Reset view" className="editor-tool !h-9 !w-9" onClick={() => { setZoom(0.22); setPan({ x: 0, y: 0 }); }}><RotateCcw size={15}/></button>
-            </div>
-          </div>
-        </section>
-        {panel === "assets" && <div role="dialog" aria-label="Add artwork" className="fixed inset-x-2 bottom-20 z-40 mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl md:inset-auto md:bottom-4 md:left-16 md:top-16 md:mx-0 md:w-64 md:rounded-xl">
-          <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">Add artwork</h2><button aria-label="Close assets" onClick={() => setPanel(null)} className="editor-tool"><X size={17}/></button></div>
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => void addText()} className="editor-action"><Type size={16}/>Text</button>
-            <button onClick={() => void addShape("rect")} className="editor-action"><Square size={16}/>Rectangle</button>
-            <button onClick={() => void addShape("circle")} className="editor-action"><Circle size={16}/>Circle</button>
-            <button onClick={() => fileInput.current?.click()} className="editor-action"><ImagePlus size={16}/>Upload image</button>
-          </div>
-          <p className="mt-3 text-xs text-gray-500">Images up to 15 MB are embedded in this browser-local design.</p>
-        </div>}
-        <aside aria-label="Layers and properties" className={`${panel === "layers" ? "flex" : "hidden"} fixed inset-x-0 bottom-0 z-30 max-h-[55dvh] flex-col rounded-t-2xl border border-gray-200 bg-white shadow-2xl md:static md:z-auto md:flex md:max-h-none md:w-64 md:shrink-0 md:rounded-none md:border-y-0 md:border-r-0 md:border-l md:shadow-none`}>
-          <div className="flex h-12 shrink-0 items-center justify-between border-b px-4 font-semibold"><span>Layers · {side}</span><button aria-label="Close layers" onClick={() => setPanel(null)} className="editor-tool md:hidden"><X size={17}/></button></div>
-          <div className="min-h-0 flex-1 overflow-auto p-2">
-            {layers.length === 0 && <p className="p-3 text-sm text-gray-500">No artwork yet. Add text, a shape, or an image.</p>}
-            {layers.map((object, index) => <button key={(object as FabricObject & { editorId?: string }).editorId ?? `${index}-${String(object.type)}`} onClick={() => selectLayer(object)} aria-pressed={selected === object} className={`mb-1 flex min-h-11 w-full items-center gap-2 rounded border px-3 text-left text-sm ${selected === object ? "border-[#9ab32a] bg-[#f5f9e9]" : "border-gray-100 hover:bg-gray-50"}`}><span className="h-2 w-2 rounded-full bg-[#a5b84e]"/><span className="truncate">{String((object as FabricObject & { name?: string }).name ?? object.type ?? `Layer ${index + 1}`)}</span></button>)}
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2 border-t p-3">
-            {selected && selected.type !== "image" && <label className="flex min-h-11 items-center gap-2 rounded border px-2 text-xs">Fill <input aria-label="Selected artwork color" type="color" value={typeof selected.fill === "string" && /^#[0-9a-f]{6}$/i.test(selected.fill) ? selected.fill : "#d4ff3f"} onChange={(event) => recolorSelected(event.target.value)} className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0"/></label>}
-            <button disabled={!selected} onClick={deleteSelected} className="editor-action">Delete selected</button>
-          </div>
-        </aside>
       </div>
-      <div className="sr-only" role="status" aria-live="polite">{notice}</div>
     </main>
   );
 }
