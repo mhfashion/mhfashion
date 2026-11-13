@@ -13,6 +13,9 @@ test("canvas options expose Show Grid and add the temporary Front Mockup box", (
   assert.match(source, /aria-label="Add Mockup"[\s\S]*?addMockup\("Front Mockup"\)/);
   assert.match(source, /aria-label="Add Back Mockup"[\s\S]*?addMockup\("Back Mockup"\)/);
   assert.match(source, /type MockupSide = "Front Mockup" \| "Back Mockup"/);
+  assert.match(source, /side === "Front Mockup" && \([\s\S]*?aria-label="Add Back Mockup"/);
+  assert.match(source, /aria-label=\{`Close \$\{side\}`}[\s\S]*?removeMockup\(side\)/);
+  assert.match(source, /function removeMockup\(side: MockupSide\)[\s\S]*?filter\(\(item\) => item !== side\)/);
 });
 
 test("grid is optional, and the initial canvas has no visible specification badges or mockup placeholder", () => {
@@ -20,6 +23,7 @@ test("grid is optional, and the initial canvas has no visible specification badg
   assert.match(source, /backgroundSize: "10% 10%"/);
   assert.doesNotMatch(source, /Transparent PNG · Fixed/);
   assert.doesNotMatch(source, /px · \$\{PRINT_CANVAS_SPEC\.resolutionDpi\} DPI/);
+  assert.doesNotMatch(source, /<span>Front<\/span>[\s\S]{0,300}<span>Add Mockup<\/span>/);
   assert.doesNotMatch(source, /R2 image placeholder/);
   assert.doesNotMatch(source, /mockupVisible/);
   assert.match(source, /aria-label=\{side\}/);

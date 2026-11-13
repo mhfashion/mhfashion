@@ -1,6 +1,6 @@
 "use client";
 
-import { Grid2X2, Plus } from "lucide-react";
+import { Grid2X2, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
 
@@ -120,6 +120,10 @@ export default function KittlCanvas() {
     });
   }
 
+  function removeMockup(side: MockupSide) {
+    setMockups((current) => current.filter((item) => item !== side));
+  }
+
   return (
     <main className="h-full min-h-0 overflow-hidden bg-[#f1f2f5]">
       <div
@@ -141,101 +145,106 @@ export default function KittlCanvas() {
           }}
         >
           <section className="w-[min(18.25rem,78vw)] shrink-0" aria-label="Print canvas">
-            <div className="mb-2 flex h-7 items-center gap-2 text-xs font-medium text-[#53606a]">
-              <span>Front</span>
-              <button
-                type="button"
-                aria-label="Add Back Mockup"
-                title="Add Mockup"
-                onClick={() => addMockup("Back Mockup")}
-                className="flex h-5 w-5 items-center justify-center rounded-full border border-[#a58be8] bg-white text-[#8f72d4] shadow-sm outline-none hover:bg-[#f5f1ff] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
-              >
-                <Plus size={12} aria-hidden="true" />
-              </button>
-              <span>Add Mockup</span>
-            </div>
             <div className="relative">
-            <canvas
-              width={PRINT_CANVAS_SPEC.widthPx}
-              height={PRINT_CANVAS_SPEC.heightPx}
-              data-canvas-width={PRINT_CANVAS_SPEC.widthPx}
-              data-canvas-height={PRINT_CANVAS_SPEC.heightPx}
-              data-resolution-dpi={PRINT_CANVAS_SPEC.resolutionDpi}
-              data-background={PRINT_CANVAS_SPEC.background}
-              data-export-format={PRINT_CANVAS_SPEC.exportFormat}
-              data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
-              aria-label="Blank print canvas"
-              className="block w-full border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
-              style={{
-                backgroundColor: "#ffffff",
-                backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
-                backgroundSize: "32px 32px",
-                backgroundPosition: "0 0, 0 16px, 16px -16px, -16px 0",
-              }}
-            />
-            {showGrid && (
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-px z-10"
+              <canvas
+                width={PRINT_CANVAS_SPEC.widthPx}
+                height={PRINT_CANVAS_SPEC.heightPx}
+                data-canvas-width={PRINT_CANVAS_SPEC.widthPx}
+                data-canvas-height={PRINT_CANVAS_SPEC.heightPx}
+                data-resolution-dpi={PRINT_CANVAS_SPEC.resolutionDpi}
+                data-background={PRINT_CANVAS_SPEC.background}
+                data-export-format={PRINT_CANVAS_SPEC.exportFormat}
+                data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
+                aria-label="Blank print canvas"
+                className="block w-full border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
                 style={{
-                  backgroundImage: "linear-gradient(to right, rgba(61, 132, 184, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(61, 132, 184, 0.4) 1px, transparent 1px)",
-                  backgroundSize: "10% 10%",
+                  backgroundColor: "#ffffff",
+                  backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
+                  backgroundSize: "32px 32px",
+                  backgroundPosition: "0 0, 0 16px, 16px -16px, -16px 0",
                 }}
               />
-            )}
-            <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
-              <button
-                type="button"
-                aria-label="Canvas options"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((open) => !open)}
-                className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm outline-none ring-offset-2 hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
-              >
-                <span className="h-1 w-1 rounded-full bg-white" />
-              </button>
-              {menuOpen && (
+              {showGrid && (
                 <div
-                  role="menu"
-                  aria-label="Canvas options"
-                  className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-[#d8dce2] bg-white p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2"
-                >
-                  <button
-                    type="button"
-                    role="menuitemcheckbox"
-                    aria-checked={showGrid}
-                    onClick={() => {
-                      setShowGrid((visible) => !visible);
-                      setMenuOpen(false);
-                    }}
-                    className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
-                  >
-                    <Grid2X2 size={15} aria-hidden="true" />
-                    <span>Show Grid</span>
-                    <span className={`ml-auto h-3.5 w-3.5 rounded-sm border ${showGrid ? "border-[#8f72d4] bg-[#8f72d4]" : "border-[#bfc5cd]"}`} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    aria-label="Add Mockup"
-                    onClick={() => {
-                      addMockup("Front Mockup");
-                      setMenuOpen(false);
-                    }}
-                    className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
-                  >
-                    <Plus size={15} aria-hidden="true" />
-                    <span>Add Mockup</span>
-                  </button>
-                </div>
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-px z-10"
+                  style={{
+                    backgroundImage: "linear-gradient(to right, rgba(61, 132, 184, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(61, 132, 184, 0.4) 1px, transparent 1px)",
+                    backgroundSize: "10% 10%",
+                  }}
+                />
               )}
-            </div>
+              <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
+                <button
+                  type="button"
+                  aria-label="Canvas options"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((open) => !open)}
+                  className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm outline-none ring-offset-2 hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                >
+                  <span className="h-1 w-1 rounded-full bg-white" />
+                </button>
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Canvas options"
+                    className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-[#d8dce2] bg-white p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2"
+                  >
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={showGrid}
+                      onClick={() => {
+                        setShowGrid((visible) => !visible);
+                        setMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                    >
+                      <Grid2X2 size={15} aria-hidden="true" />
+                      <span>Show Grid</span>
+                      <span className={`ml-auto h-3.5 w-3.5 rounded-sm border ${showGrid ? "border-[#8f72d4] bg-[#8f72d4]" : "border-[#bfc5cd]"}`} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      aria-label="Add Mockup"
+                      onClick={() => {
+                        addMockup("Front Mockup");
+                        setMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                    >
+                      <Plus size={15} aria-hidden="true" />
+                      <span>Add Mockup</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
           {mockups.map((side) => (
             <section key={side} aria-label={side} className="w-[min(18.25rem,78vw)] shrink-0">
-              <div className="mb-2 flex h-7 items-center text-xs font-medium text-[#53606a]">
+              <div className="mb-2 flex h-7 items-center gap-2 text-xs font-medium text-[#53606a]">
                 <span>{side}</span>
+                {side === "Front Mockup" && (
+                  <button
+                    type="button"
+                    aria-label="Add Back Mockup"
+                    onClick={() => addMockup("Back Mockup")}
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-[#a58be8] bg-white text-[#8f72d4] shadow-sm outline-none hover:bg-[#f5f1ff] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                  >
+                    <Plus size={12} aria-hidden="true" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-label={`Close ${side}`}
+                  onClick={() => removeMockup(side)}
+                  className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-[#7c838d] outline-none hover:bg-[#e7e9ed] hover:text-[#343b45] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                >
+                  <X size={13} aria-hidden="true" />
+                </button>
               </div>
               <div className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]">
                 {showGrid && (
