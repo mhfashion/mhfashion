@@ -67,6 +67,9 @@ jobs:
       - name: Run browser interaction guard tests
         run: npm run test:browser-guards
 
+      - name: Run print canvas specification tests
+        run: npm run test:canvas-spec
+
       - name: Build Next.js application
         run: npm run build --workspace=apps/web
 

@@ -182,6 +182,8 @@ Other product types get their own attribute sets and pricing formulas.
 
 **Verified repository state (2026-11-13, commit `90dc398`):** `/create` mounts `KittlCanvas`, which currently provides an editor-style shell with an empty design area, mockup placeholders, mockup visibility toggle, and viewport zoom/pan state. It does not instantiate an editable design document or provide artwork operations, selection, Layers/Properties panels, history, serialization, or draft persistence. The `user_designs.canvas_state` database column exists but is not wired to this route. Do not describe the earlier Fabric.js tool/layer feature set in historical notes as implemented in the current code.
 
+**Owner-specified blank print canvas (2026-11-13):** keep the current shell and set the native blank canvas to a fixed **4500 × 5400 px** with a **300-DPI PNG target** and transparent pixel buffer. Do not preload or draw any copy, including “T-Shirt.” The checkerboard and size/spec label are presentation-only UI outside the artwork; no resize control is provided. This is a canvas-spec update only and does not restore the reverted editor tools, document/history model, or persistence. PNG download and embedding 300-DPI metadata remain unsupported by the shell.
+
 **Phone/Web limitations:** the canvas has mouse/keyboard pan gestures but no touch pan path, and the stacked phone layout can clip on short viewports because the workspace is hidden-overflow. All future editor UI/UX work must specify and validate Web/Desktop and Phone/Mobile together, including touch/keyboard operation and short viewport behavior.
 
 The detailed editor feature list below is a **forward plan**, not a claim that those capabilities exist. Use the Editor Implementation Plan section later in this file for the full target design and acceptance contract.
@@ -997,7 +999,7 @@ The desktop editor should have the following stable regions:
 1. **Top command bar:** document name, undo, redo, history/snapshot access, zoom readout, save status, price, Save, Add to Cart, and Buy Now.
 2. **Left rail:** Upload, Elements, Text, Effects, AI, and the tool palette. Tools are grouped into Select, Draw, Modify, Navigate, and Measure rather than presented as an unstructured icon list.
 3. **Flyout panel:** opens beside the left rail and never changes the artboard's coordinate system. Search, categories, presets, and settings live here.
-4. **Center workspace:** Front and Back artboards, white artboard surface, optional transparency grid, rulers, guides, safe/print areas, and mockup preview.
+4. **Center workspace:** Front and Back artboards fixed at 4500×5400 px with a 300-DPI transparent PNG target, initially blank with no placeholder text; show a CSS-only transparency checkerboard, rulers, guides, safe/print areas, and mockup preview outside the artwork.
 5. **Right dock:** Layers panel, contextual properties, color, typography, effects, masks, and mockup controls. The Layers box must remain mounted even when no layer is selected.
 6. **Bottom attribute bar:** Product, print method, fabric, structure, GSM, color, cutting, size, and mockup attachment state. Product selection remains separate from the editor's asset browser.
 
@@ -2314,7 +2316,7 @@ Source of scope: Cloudflare's Workers Build check rejected the previous Next.js 
 
 Source of scope: owner request to remove the dark Photoshop-like backing from the drawing area and make the red-circled bar work like Canva.
 
-- [x] Use a light neutral workspace and white artboard regardless of site dark mode; keep the transparency grid optional and off by default.
+- [historical; superseded by §6 owner-specified fixed print canvas] The prior editor iteration used a white artboard and an optional transparency grid. The current blank preview uses a transparent canvas buffer with a presentation-only checkerboard.
 - [x] Make the selection bar contextual: text exposes font, size, color, emphasis, and alignment; shapes expose type and fill; selected artwork exposes duplicate/delete actions.
 - [x] Remove developer-facing canvas-engine labeling from the drawing workspace footer.
 - Evidence: production build and TypeScript checks pass; selected artwork edits route through the existing history-backed update callback.
@@ -2430,3 +2432,4 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 - 2026-11-13: Production still serves the prior `/create` build. The rollback's GitHub Actions run failed before deployment because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are unavailable; deploy only after authorized credentials are configured. See `Doc/DOCUMENTATION.md#work-log`.
 
 - 2026-11-13: Implemented the website-wide browser zoom shortcut/wheel guard and suppressed page context menus per owner request; preserved mobile pinch zoom and unrelated keyboard shortcuts. Added regression coverage and CI execution. See `Doc/DOCUMENTATION.md#work-log`.
+- 2026-11-13: Updated only the `/create` canvas shell to a blank fixed 4500×5400 px transparent PNG-target preview, with 300-DPI target metadata, no T-Shirt placeholder, and a presentation-only transparency checkerboard. PNG export and embedded DPI metadata remain future work. See `Doc/DOCUMENTATION.md#work-log`.

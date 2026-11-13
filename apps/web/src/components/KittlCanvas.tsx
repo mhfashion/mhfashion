@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowRight, Shirt } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
 
 type MockupSide = "front" | "back";
 type KittlCanvasProps = {
@@ -121,17 +122,27 @@ export default function KittlCanvas({
             transformOrigin: "center center",
           }}
         >
-          <section className="w-[min(18.25rem,78vw)] shrink-0">
-            <div className="mb-1 flex h-5 items-center gap-1.5 text-[12px] font-medium text-[#53606a]">
-              <span className="inline-flex h-3 w-3 items-center justify-center rounded-[2px] border border-[#5b9dd1] text-[8px] text-[#5b9dd1]">T</span>
-              <span>T-Shirt</span>
+          <section className="w-[min(18.25rem,78vw)] shrink-0" aria-label="Print canvas">
+            <div className="mb-1 flex min-h-5 items-center justify-between gap-1 text-[9px] font-medium text-[#53606a]" aria-label="Canvas specification">
+              <span>{PRINT_CANVAS_SPEC.widthPx} × {PRINT_CANVAS_SPEC.heightPx} px · {PRINT_CANVAS_SPEC.resolutionDpi} DPI</span>
+              <span>Transparent PNG · Fixed</span>
             </div>
-            <div
-              role="application"
-              aria-label="T-Shirt design area"
-              className="aspect-[0.875] w-full border border-[#36a0e5] bg-white shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
-              onClick={(event) => {
-                if (spaceHeld || panGestureRef.current) event.preventDefault();
+            <canvas
+              width={PRINT_CANVAS_SPEC.widthPx}
+              height={PRINT_CANVAS_SPEC.heightPx}
+              data-canvas-width={PRINT_CANVAS_SPEC.widthPx}
+              data-canvas-height={PRINT_CANVAS_SPEC.heightPx}
+              data-resolution-dpi={PRINT_CANVAS_SPEC.resolutionDpi}
+              data-background={PRINT_CANVAS_SPEC.background}
+              data-export-format={PRINT_CANVAS_SPEC.exportFormat}
+              data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
+              aria-label="Blank fixed 4500 by 5400 pixel canvas, 300 DPI, transparent PNG"
+              className="block w-full border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
+              style={{
+                backgroundColor: "#ffffff",
+                backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
+                backgroundSize: "32px 32px",
+                backgroundPosition: "0 0, 0 16px, 16px -16px, -16px 0",
               }}
             />
           </section>

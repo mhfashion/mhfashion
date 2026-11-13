@@ -17,6 +17,12 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-13 — Owner-specified blank print canvas
+
+- Replaced the white placeholder with a native blank canvas bitmap fixed at **4500 × 5400 px**. The shared spec declares **300 DPI**, transparent PNG target, fixed size, and blank initial state. Removed the visible “T-Shirt” canvas label; the checkerboard is CSS-only and the spec badge sits outside the artwork.
+- Kept the change limited to the existing shell; no editor tools, Fabric document/history model, or persistence were restored. This shell still has no PNG download/export, and 300-DPI metadata is a target declaration rather than embedded metadata in an exported file.
+- Validation: `test:canvas-spec` **1/1**, browser guard **1/1**, Guide **9/9**, TypeScript passed, production and Cloudflare Worker builds passed, ESLint **0 errors / 24 warnings**. A local production `/create` render confirmed the 4500×5400/300-DPI/transparent/PNG/fixed attributes and absence of the T-Shirt design label.
+
 ### 2026-11-13 — Disable browser zoom shortcuts and page context menus
 
 - Expanded `BrowserZoomGuard` across the website to block Ctrl/Cmd+wheel and Ctrl/Cmd `+`, `-`, and `0` browser-zoom shortcuts; page-level right-click/context menus are suppressed. Unrelated shortcuts such as Ctrl/Cmd+S and mobile touch pinch zoom remain available.
