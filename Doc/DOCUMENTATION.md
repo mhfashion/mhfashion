@@ -21,7 +21,7 @@ This log records completed website-related changes in the connected repository. 
 
 - Expanded `BrowserZoomGuard` across the website to block Ctrl/Cmd+wheel and Ctrl/Cmd `+`, `-`, and `0` browser-zoom shortcuts; page-level right-click/context menus are suppressed. Unrelated shortcuts such as Ctrl/Cmd+S and mobile touch pinch zoom remain available.
 - Added `tests/browser-guards.test.cjs`, the `test:browser-guards` npm script, and a GitHub Actions test step. Updated the Plan's accessibility/safety requirements.
-- Validation: browser-guard tests **1/1**, Guide tests **9/9**, TypeScript passed, production and Cloudflare Worker builds passed, ESLint **0 errors / 24 warnings**. Production deployment is tracked by the main-branch workflow after this code change is pushed.
+- Validation: browser-guard tests **1/1**, Guide tests **9/9**, TypeScript passed, production and Cloudflare Worker builds passed, ESLint **0 errors / 24 warnings**. Code is on `main` as `cdfda7d`. GitHub Actions runs [#43461041904](https://github.com/mhfashion/mhfashion/actions/runs/43461041904) and [#43461174394](https://github.com/mhfashion/mhfashion/actions/runs/43461174394) both stopped at the required-secret check: Actions still reports `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as missing, so this change has **not** deployed to production.
 
 ### 2026-11-13 — Owner-requested editor rollback
 
