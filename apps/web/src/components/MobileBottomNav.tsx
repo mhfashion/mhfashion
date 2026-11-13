@@ -17,7 +17,7 @@ export default function MobileBottomNav() {
   const { locale } = useI18n();
   const labels = locale === "my" ? ["ပင်မ", "Popular", "ဖန်တီးရန်", "Cart", "အကောင့်"] : ITEMS.map((item) => item.label);
 
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin") || pathname === "/create" || pathname.startsWith("/create/")) return null;
 
   return (
     <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-bg/95 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.65)] backdrop-blur md:hidden">

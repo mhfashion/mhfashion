@@ -64,6 +64,9 @@ jobs:
       - name: Run guide regression tests
         run: npm run test:guide
 
+      - name: Run editor state tests
+        run: npm run test:editor
+
       - name: Build Next.js application
         run: npm run build --workspace=apps/web
 
