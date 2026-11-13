@@ -16,7 +16,7 @@ test("canvas options expose Show Grid and add the temporary Front Mockup box", (
   assert.match(source, /aria-label="Add Back Mockup"[\s\S]*?addMockup\("Back Mockup"\)/);
   assert.match(source, /type MockupSide = "Front Mockup" \| "Back Mockup"/);
   assert.match(source, /side === "Front Mockup" && \([\s\S]*?aria-label="Add Back Mockup"/);
-  assert.match(mockupSection, /aria-label="Add Back Mockup"[\s\S]*?absolute -left-5 top-1\/2[\s\S]*?h-3\.5 w-3\.5/);
+  assert.match(mockupSection, /aria-label="Add Back Mockup"[\s\S]*?absolute -left-5 top-\[calc\(50%\+1\.25rem\)\] z-30[\s\S]*?h-3\.5 w-3\.5/);
   assert.doesNotMatch(mockupHeader, /Add Back Mockup/);
   assert.match(source, /aria-label=\{`Close \$\{side\}`}[\s\S]*?removeMockup\(side\)/);
   assert.match(source, /function removeMockup\(side: MockupSide\)[\s\S]*?filter\(\(item\) => item !== side\)/);
@@ -51,4 +51,16 @@ test("canvas and each mockup are independently draggable with live connector wir
   assert.match(source, /touch-none select-none/);
   assert.match(source, /ResizeObserver\(updateConnectors\)/);
   assert.match(source, /\[mockups, nodePositions, pan, zoom\]/);
+});
+
+test("canvas freehand strokes appear live on a large Front and smaller Back preview", () => {
+  assert.match(source, /type ArtworkStroke = \{ points: Point\[\] \}/);
+  assert.match(source, /onPointerDown=\{startArtworkStroke\}/);
+  assert.match(source, /function startArtworkStroke[\s\S]*?setArtworkStrokes\(/);
+  assert.match(source, /function moveArtworkStroke[\s\S]*?setArtworkStrokes\(/);
+  assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} \/>/);
+  assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} scale=\{side === "Front Mockup" \? 0\.82 : 0\.48\} \/>/);
+  assert.ok(source.includes('side === "Back Mockup" ? "w-[min(14rem,68vw)]" : "w-[min(18.25rem,78vw)]"'));
+  assert.match(source, /function isCanvasEdgeGesture\([\s\S]*?return clientX - rect\.left <= edge/);
+  assert.match(source, /node === "Print canvas" && event\.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture/);
 });

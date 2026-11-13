@@ -17,6 +17,12 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Live artwork on large Front and small Back previews
+
+- Offset the Front Mockup's Back-add circle 1.25rem below the connector's centerline so it is visually discoverable. Added minimal black freehand drawing inside the fixed canvas; its shared in-memory strokes render live on the canvas and every added mockup. Front remains the larger placeholder (18.25rem, artwork scale 0.82); Back is smaller (14rem, artwork scale 0.48). The canvas can still be repositioned by dragging its border while the interior is used for drawing.
+- Validation: canvas specification **1/1**, canvas shell **4/4**, browser guards **1/1**, Guides **9/9**, TypeScript and production/Cloudflare builds passed, workspace ESLint **0 errors / 24 pre-existing warnings**, changed component ESLint clean, `git diff --check` clean. Browser pointer simulation drew a stroke and confirmed it immediately appeared on Canvas, Front, and Back at the different scales; both Back addition and its offset from the wire were visually checked.
+- The stroke preview is transient for the current page only; there is no sticker library, object selection/editing, export integration, or persistence yet. A physical Phone/Mobile viewport was not available for browser verification.
+
 ### 2026-11-14 — Connect and move the canvas/mockup nodes
 
 - Added a responsive SVG connector wire from the fixed print canvas to each added mockup. The wires attach to the nearest sides and update as the canvas or Front/Back Mockup moves, as zoom/pan changes, and when the workspace reflows. Canvas and each mockup can be dragged separately with pointer/touch input; menu and close buttons remain clickable. The existing Web/Desktop row and Phone/Mobile stack are preserved.

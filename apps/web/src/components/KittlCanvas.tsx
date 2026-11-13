@@ -10,6 +10,26 @@ type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
 type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
 type Connector = { side: MockupSide; path: string; start: Point; end: Point };
+type ArtworkStroke = { points: Point[] };
+type ActiveArtworkStroke = { pointerId: number; points: Point[] };
+
+function ArtworkOverlay({ strokes, scale = 1 }: { strokes: ArtworkStroke[]; scale?: number }) {
+  return (
+    <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" className="pointer-events-none absolute inset-0 z-20 h-full w-full">
+      <g transform={`translate(500 600) scale(${scale}) translate(-500 -600)`}>
+        {strokes.map((stroke, index) => {
+          const points = stroke.points;
+          const path = points.map((point, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ");
+          return points.length === 1 ? (
+            <circle key={index} cx={points[0].x * 1000} cy={points[0].y * 1200} r="12" fill="#202124" />
+          ) : (
+            <path key={index} d={path} fill="none" stroke="#202124" strokeWidth="24" strokeLinecap="round" strokeLinejoin="round" />
+          );
+        })}
+      </g>
+    </svg>
+  );
+}
 
 export default function KittlCanvas() {
   const [zoom, setZoom] = useState(1);
@@ -19,6 +39,7 @@ export default function KittlCanvas() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
+  const [artworkStrokes, setArtworkStrokes] = useState<ArtworkStroke[]>([]);
   const [nodePositions, setNodePositions] = useState<Record<WorkspaceNode, Point>>({
     "Print canvas": { x: 0, y: 0 },
     "Front Mockup": { x: 0, y: 0 },
@@ -34,6 +55,7 @@ export default function KittlCanvas() {
   const panStartRef = useRef<PanStart | null>(null);
   const panGestureRef = useRef(false);
   const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
+  const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -209,9 +231,51 @@ export default function KittlCanvas() {
     }, 0);
   }
 
+  function isCanvasEdgeGesture(clientX: number, clientY: number) {
+    const canvas = canvasNodeRef.current;
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    const edge = 14 * zoom;
+    return clientX - rect.left <= edge || rect.right - clientX <= edge || clientY - rect.top <= edge || rect.bottom - clientY <= edge;
+  }
+
+  function toCanvasPoint(clientX: number, clientY: number): Point {
+    const rect = canvasNodeRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return {
+      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+    };
+  }
+
+  function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    activeArtworkStrokeRef.current = { pointerId: event.pointerId, points: [point] };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setArtworkStrokes((current) => [...current, { points: [point] }]);
+  }
+
+  function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    const active = activeArtworkStrokeRef.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    active.points.push(toCanvasPoint(event.clientX, event.clientY));
+    const updatedStroke = { points: [...active.points] };
+    setArtworkStrokes((current) => [...current.slice(0, -1), updatedStroke]);
+  }
+
+  function endArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (activeArtworkStrokeRef.current?.pointerId !== event.pointerId) return;
+    activeArtworkStrokeRef.current = null;
+  }
+
   function startNodeDrag(node: WorkspaceNode, event: React.PointerEvent<HTMLElement>) {
     if (event.button !== 0 || !event.isPrimary) return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
+    if (node === "Print canvas" && event.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -308,7 +372,12 @@ export default function KittlCanvas() {
                 data-export-format={PRINT_CANVAS_SPEC.exportFormat}
                 data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
                 aria-label="Blank print canvas"
-                className="block w-full border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
+                onPointerDown={startArtworkStroke}
+                onPointerMove={moveArtworkStroke}
+                onPointerUp={endArtworkStroke}
+                onPointerCancel={endArtworkStroke}
+                onLostPointerCapture={endArtworkStroke}
+                className="block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
                 style={{
                   backgroundColor: "#ffffff",
                   backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
@@ -326,6 +395,7 @@ export default function KittlCanvas() {
                   }}
                 />
               )}
+              <ArtworkOverlay strokes={artworkStrokes} />
               <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
                 <button
                   type="button"
@@ -384,7 +454,7 @@ export default function KittlCanvas() {
               onPointerUp={endNodeDrag}
               onPointerCancel={endNodeDrag}
               onLostPointerCapture={endNodeDrag}
-              className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
+              className={`relative z-10 ${side === "Back Mockup" ? "w-[min(14rem,68vw)]" : "w-[min(18.25rem,78vw)]"} shrink-0 touch-none select-none ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
               style={{ transform: `translate(${nodePositions[side].x}px, ${nodePositions[side].y}px)` }}
             >
               <div className="mb-2 flex h-7 items-center gap-2 text-xs font-medium text-[#53606a]">
@@ -411,7 +481,7 @@ export default function KittlCanvas() {
                     aria-label="Add Back Mockup"
                     title="Add Back Mockup"
                     onClick={() => addMockup("Back Mockup")}
-                    className="absolute -left-5 top-1/2 z-20 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full bg-[#a58be8] text-white shadow-sm outline-none hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                    className="absolute -left-5 top-[calc(50%+1.25rem)] z-30 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full bg-[#a58be8] text-white shadow-sm outline-none hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
                   >
                     <Plus size={8} aria-hidden="true" />
                   </button>
@@ -426,6 +496,7 @@ export default function KittlCanvas() {
                     }}
                   />
                 )}
+                <ArtworkOverlay strokes={artworkStrokes} scale={side === "Front Mockup" ? 0.82 : 0.48} />
               </div>
             </section>
           ))}
