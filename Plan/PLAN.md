@@ -186,6 +186,8 @@ Other product types get their own attribute sets and pricing formulas.
 
 The detailed editor feature list below is a **forward plan**, not a claim that those capabilities exist. Use the Editor Implementation Plan section later in this file for the full target design and acceptance contract.
 
+**Owner request — make the editor usable on Phone like Web (2026-11-13):** the current Web route is also only a shell, so the first delivery must make the same core editor work on Web/Desktop and Phone/Mobile, rather than creating a phone-only mockup. Use one shared Fabric document state per garment side. The first usable slice includes adding and editing text, basic shapes, and uploaded images; selecting, moving, resizing, rotating, recoloring, and deleting objects; front/back documents; a layer list; undo/redo; and browser-local save/restore. On Phone, keep the canvas reachable in a single-column layout, hide the global mobile navigation and its reserved page padding on `/create`, provide 44px-or-larger controls and a compact bottom dock/sheet, support object editing by touch, provide an explicit Pan mode and visible zoom controls, and keep the same document, selection, and history state as Web/Desktop. Advanced Photoshop-style tools, production export, R2, and account-backed storage remain outside this first slice.
+
 ## 7. Storefront Pages
 
 - **Header:** sticky floating pill. Logo, New, Popular, Collections dropdown,
@@ -1598,13 +1600,14 @@ Rules:
 
 ## 18. Implementation phases
 
-### Phase E0 — Baseline hardening
+### Phase E0 — First usable shared editor (Web + Phone)
 
-- Keep the current Fabric.js object model and local draft behavior stable.
-- Replace inferred layer type with explicit serialized `kind`.
-- Centralize pointer coordinate conversion and transform commands.
-- Add editor-specific automated tests for Move, selection, lock inheritance, layer reorder, undo/redo, Save/restore, Front/Back, and mockup attachment.
-- Add the searchable shortcut/help panel.
+- The verified `/create` route is a shell, so build the actual Fabric.js canvas and shared per-side document state; do not assume an existing object model or local draft behavior.
+- Deliver the owner-requested initial artwork operations and responsive controls described in §6 on both Web/Desktop and Phone/Mobile, preserving one selection/document/history state across desktop panels and phone sheets.
+- Hide the global mobile navigation and remove its reserved bottom-page spacing on `/create`; keep the full-height editor canvas and phone dock inside the viewport.
+- Centralize document-to-viewport coordinate conversion and transform commands so pan/zoom never modify artwork coordinates.
+- Add editor-specific tests for insertion, selection/move, transform conversion, undo/redo, local save/restore, Front/Back, and responsive state parity. Keep broader selection, lock inheritance, layer reorder, export, and advanced tools in later phases.
+- Add the searchable shortcut/help panel after the core editor flow is usable.
 
 ### Phase E1 — Professional Move and selection
 
@@ -2422,3 +2425,4 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 - 2026-11-13: Corrected the editor implementation status after the source audit and linked the verified remediation backlog to `Doc/DOCUMENTATION.md#code-audit`.
 - 2026-11-13: Recorded the owner instruction to commit and push requested repository changes directly to `main` after validation, without reconfirmation or a compare/pull-request workflow unless explicitly requested.
 - 2026-11-13: Consolidated the work log, code audit, Guide content runbook, and Admin Dashboard reference notes into `Doc/DOCUMENTATION.md`; obsolete docs-directory copies were retired after confirming no code references.
+- 2026-11-13: Added the owner-requested first usable editor scope for shared Web/Desktop and Phone/Mobile behavior, correcting E0 to build the verified-missing canvas/document model and explicitly remove mobile navigation spacing from `/create`.
