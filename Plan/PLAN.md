@@ -184,9 +184,13 @@ Other product types get their own attribute sets and pricing formulas.
 
 **First usable shared editor slice (implemented 2026-11-13):** `/create` now mounts an editable Fabric.js canvas with per-side Front/Back documents; text, rectangle, circle, and local image insertion; selection and direct manipulation; basic object properties; Layers; undo/redo; zoom and pan; and browser-local save/restore. Web/Desktop uses a tool rail and side panel. Phone/Mobile uses the same canvas and document/history state with a touch-friendly bottom dock, sheets, explicit Pan mode, and visible zoom controls; the storefront mobile navigation and its reserved spacing are removed from this full-height route.
 
-**Responsive verification:** a production-build browser smoke test passed at 390×844 and 1440×900. It covered canvas readiness and centering, text insertion, Front/Back isolation, device-local save/reload, no horizontal overflow, and the correct phone-dock versus desktop-panel visibility. Touch emulation also verified canvas panning and dragging a text object. This is headless viewport/touch emulation, not a physical-device certification; automated end-to-end CI coverage remains follow-up work.
+**Owner-specified fixed canvas (2026-11-13):** the design document is exactly **4500 × 5400 px at 300 DPI**, with a **transparent background for PNG artwork**. This size is fixed and has no resize control. A checkerboard indicates transparency in the editor only; it is a DOM overlay, not artwork. New canvases start blank with no T-shirt label, placeholder copy, or prefilled text. The Text tool opens an empty editable text object so the user must enter their own copy.
 
-**Remaining limits:** drafts are local to the current browser/device, not account- or Supabase-backed. Product mockups are placeholders; product configuration, print dimensions, production export, R2 uploads, and advanced Photoshop/Illustrator-style tools remain future work. Continue to plan and accept every UI/UX change for Web/Desktop and Phone/Mobile together.
+**Legacy draft behavior:** v1 local drafts that used a 500 × 600 canvas are scaled by 9× into the fixed canvas. The old artboard fill is removed, and exact default placeholders (“T Shirt”/“T-Shirt” or “Your design”) are removed while other saved user text and artwork are preserved. v2 drafts record the fixed size, 300 DPI, transparent background, and PNG target.
+
+**Responsive verification:** production-build browser QA at 390×844 and 1440×900 confirmed the fixed 4500 × 5400 checkerboard bounds, alpha 0 at the sampled blank-canvas pixel, no prefilled text, blank text insertion, and no horizontal page overflow. The desktop specification badge is visible outside the artboard. A v1 draft was scaled correctly, its exact T-shirt placeholder was removed, and custom text was preserved. Earlier touch emulation verified Pan-mode movement and direct text dragging; physical-device testing remains follow-up work.
+
+**Remaining limits:** drafts are local to the current browser/device, not account- or Supabase-backed. Product mockups are placeholders; product configuration, downloadable PNG export with embedded 300-DPI metadata, R2 uploads, and advanced Photoshop/Illustrator-style tools remain future work. Continue to plan and accept every UI/UX change for Web/Desktop and Phone/Mobile together.
 
 ## 7. Storefront Pages
 
@@ -970,9 +974,9 @@ The three primary experiences must share one document model, one selection syste
 
 **Historical audited baseline (2026-11-13, commit `90dc398`):** `/create` was a shell with no editable canvas or persistence; the detailed source findings remain in `Doc/DOCUMENTATION.md#code-audit` and refer to that commit.
 
-**Current implementation (first usable shared slice, 2026-11-13):** one Fabric.js canvas and per-side Front/Back documents now power Web/Desktop and Phone/Mobile. The route supports basic text, rectangle, circle, and local-image insertion; object selection/direct manipulation and basic properties; Layers; undo/redo; pan/zoom; and browser-local save/restore. The phone dock and sheets operate on the same document, selection, and history state as the desktop rail and panel. The editor removes storefront navigation spacing and fits/centers the print area responsively.
+**Current implementation (first usable shared slice plus owner-directed canvas update, 2026-11-13):** one Fabric.js canvas and per-side Front/Back documents now power Web/Desktop and Phone/Mobile. The route supports a fixed 4500 × 5400 px, 300-DPI transparent PNG-target canvas; new designs have no prefilled text, and the Text tool starts empty. A DOM-only checkerboard shows transparency without entering the artwork. Basic text, rectangle, circle, and local-image insertion; object selection/direct manipulation and basic properties; Layers; undo/redo; pan/zoom; and browser-local save/restore remain available. The phone dock and sheets operate on the same document, selection, and history state as the desktop rail and panel. The editor removes storefront navigation spacing and fits/centers the print area responsively.
 
-**Verification and boundary:** production-build browser QA at 390×844 and 1440×900 covered the centered artboard, text insertion, Front/Back isolation, local save/reload, responsive controls, and no horizontal overflow. Touch emulation verified Pan-mode movement and direct text dragging. Existing local drafts are normalized to the fixed artboard origin. Physical-device and committed end-to-end browser tests remain. Drafts are device-local only; account/Supabase save, product-backed mockups and dimensions, production export, R2, and advanced masks/merge/AI tools remain future work.
+**Verification and boundary:** production-build browser QA at 390×844 and 1440×900 covered the fixed transparent artboard, blank new document and text tool, Front/Back isolation, local save/reload, responsive controls, and no horizontal overflow. The blank canvas rendered alpha 0 at the sampled center pixel. Touch emulation verified Pan-mode movement and direct text dragging; physical-device and committed end-to-end browser tests remain. Drafts are device-local only; account/Supabase save, product-backed mockups and dimensions, downloadable PNG export with embedded DPI metadata, R2, and advanced masks/merge/AI tools remain future work.
 
 ## 3. Editor workspace and coordinate model
 
@@ -983,7 +987,7 @@ The desktop editor should have the following stable regions:
 1. **Top command bar:** document name, undo, redo, history/snapshot access, zoom readout, save status, price, Save, Add to Cart, and Buy Now.
 2. **Left rail:** Upload, Elements, Text, Effects, AI, and the tool palette. Tools are grouped into Select, Draw, Modify, Navigate, and Measure rather than presented as an unstructured icon list.
 3. **Flyout panel:** opens beside the left rail and never changes the artboard's coordinate system. Search, categories, presets, and settings live here.
-4. **Center workspace:** Front and Back artboards, white artboard surface, optional transparency grid, rulers, guides, safe/print areas, and mockup preview.
+4. **Center workspace:** Front and Back documents use the fixed 4500 × 5400 px, 300-DPI transparent PNG canvas specified by the owner. The checkerboard is a non-artwork preview; rulers, guides, safe/print areas, and mockup preview remain separate overlays.
 5. **Right dock:** Layers panel, contextual properties, color, typography, effects, masks, and mockup controls. The Layers box must remain mounted even when no layer is selected.
 6. **Bottom attribute bar:** Product, print method, fabric, structure, GSM, color, cutting, size, and mockup attachment state. Product selection remains separate from the editor's asset browser.
 
@@ -992,6 +996,7 @@ The desktop editor should have the following stable regions:
 Every design document has a document coordinate space independent of browser zoom and viewport pan:
 
 - `documentWidth` and `documentHeight` describe the print area in design units.
+- For the current T-shirt canvas, those fixed document dimensions are 4500 × 5400 px at 300 DPI; do not expose a resize control. The background is transparent, and the checkerboard preview is not serialized as artwork.
 - `viewportZoom`, `viewportPanX`, `viewportPanY`, and `viewportRotation` describe only how the user views the document.
 - Each object stores local transform data: `x`, `y`, `width`, `height`, `scaleX`, `scaleY`, `rotation`, `skewX`, `skewY`, and `origin`.
 - Front and Back are separate artboards/documents sharing the selected product attributes.
@@ -1592,7 +1597,9 @@ Rules:
 
 - Implemented the shared Fabric canvas, per-side Front/Back state, text/basic-shape/local-image insertion, selection/direct manipulation, basic properties, Layers, undo/redo, zoom/pan, and device-local save/restore.
 - Delivered responsive Web/Desktop rail and side panel plus a Phone/Mobile dock and sheets using the same document, selection, and history state; removed mobile navigation spacing from `/create` and fit/centered the artboard.
-- Validation passed for unit/build/Worker checks and a production-build browser smoke test at 390×844 and 1440×900. Touch emulation verified Pan-mode panning and text dragging.
+- Per the owner's latest direction, fixed the T-shirt canvas at 4500 × 5400 px, 300 DPI, with transparent PNG artwork; no resize control or prefilled text. The transparency checkerboard is outside the Fabric artwork, the Text tool opens blank, and legacy T-shirt placeholder copy is stripped during v1 draft migration.
+- Added v1 500 × 600 draft scaling, transparent v2 canvas metadata, and regression tests. Production-preview QA at 390×844 and 1440×900 confirmed a blank document, alpha 0 at the sampled canvas center, 4500 × 5400 checkerboard bounds, empty text insertion, no horizontal overflow, the desktop spec badge, and migrated legacy geometry.
+- Validation passed: `npm run test:editor` **6/6**, Guide tests **9/9**, TypeScript, lint (**0 errors, 24 existing warnings**), production build, Cloudflare Worker build, and fixed-canvas browser QA at 390×844 and 1440×900. Physical-device tests remain.
 - Follow-up: add committed end-to-end browser coverage for insertion, move/resize/rotate, undo/redo, save/restore, Front/Back, and responsive parity; test on physical phones. Keep cloud/account persistence, real mockups, export, lock inheritance, layer reorder, masks, merge, and advanced tools in later phases.
 - Add the searchable shortcut/help panel after the core editor flow is usable.
 
@@ -2165,9 +2172,7 @@ Claude; the user deploys/applies them manually with Claude's guidance.
 
 ## Deferred / Provisional (revisit during development)
 - MH Sport template organization — provisionally "Template Category" tags.
-- Exact print-area canvas sizes for Cup/Bag/Pillow/Phone Cover (rough
-  placeholders in place; T-shirt canvas size also still a rough placeholder,
-  exact values to come from the user).
+- Exact print-area canvas sizes for Cup/Bag/Pillow/Phone Cover remain provisional. **The T-shirt canvas is no longer provisional:** use the owner-specified fixed 4500 × 5400 px at 300 DPI with transparent PNG artwork; do not add preset text or resize controls.
 - Payment Gateway and DHL API-level integration detail.
 - Legal page content (Myanmar-specific clauses).
 - Detailed DB schema (to be defined as tables are actually built).
@@ -2301,7 +2306,7 @@ Source of scope: Cloudflare's Workers Build check rejected the previous Next.js 
 
 Source of scope: owner request to remove the dark Photoshop-like backing from the drawing area and make the red-circled bar work like Canva.
 
-- [x] Use a light neutral workspace and white artboard regardless of site dark mode; keep the transparency grid optional and off by default.
+- [x] [Superseded 2026-11-13 by owner direction] This earlier workspace note specified a white artboard and optional grid. The current T-shirt canvas is transparent; show transparency with a DOM-only checkerboard that is not included in artwork or PNG output.
 - [x] Make the selection bar contextual: text exposes font, size, color, emphasis, and alignment; shapes expose type and fill; selected artwork exposes duplicate/delete actions.
 - [x] Remove developer-facing canvas-engine labeling from the drawing workspace footer.
 - Evidence: production build and TypeScript checks pass; selected artwork edits route through the existing history-backed update callback.
@@ -2414,3 +2419,4 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 - 2026-11-13: Consolidated the work log, code audit, Guide content runbook, and Admin Dashboard reference notes into `Doc/DOCUMENTATION.md`; obsolete docs-directory copies were retired after confirming no code references.
 - 2026-11-13: Added the owner-requested first usable editor scope for shared Web/Desktop and Phone/Mobile behavior, correcting E0 to build the verified-missing canvas/document model and explicitly remove mobile navigation spacing from `/create`.
 - 2026-11-13: Delivered the first usable shared Web/Phone editor slice; updated the current implementation baseline and marked the prior `/create` shell audit as historical. Recorded headless phone/desktop and touch-emulation evidence plus remaining automated, physical-device, and production-integration work.
+- 2026-11-13: Following the owner's explicit canvas direction (overriding inherited provisional/white-artboard notes), fixed the T-shirt canvas at 4500 × 5400 px, 300 DPI, transparent PNG; removed prefilled text, made Text insertion blank, and documented legacy-draft scaling. A downloadable PNG export with embedded 300-DPI metadata remains future work.

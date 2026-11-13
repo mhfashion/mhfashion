@@ -64,6 +64,14 @@ The owner requested that requested repository changes be committed and pushed di
 - Validation: `npm run test:editor` **4/4 passed**; `npm run test:guide` **9/9 passed**; TypeScript passed; ESLint reported **0 errors and 24 existing warnings**, with no warnings in the changed editor files; `npm run build` passed; `npm run cf:build --workspace=apps/web` passed. OpenNext emitted two non-blocking duplicate-object-key warnings in the bundled Fabric dependency.
 - Remaining limits: drafts are stored only in the current browser/device; account/Supabase persistence, real product mockups and print dimensions, production export, and advanced editing are not included. Automated end-to-end CI coverage and physical iOS/Android validation remain follow-up work. Browser QA also observed a non-blocking `/favicon.ico` 404; the editor itself remained functional. No production deployment or database change was performed.
 
+### 2026-11-13 — Owner-directed fixed transparent print canvas
+
+- Set the T-shirt design document to a fixed **4500 × 5400 px at 300 DPI**, with a transparent background and PNG as the artwork target. No canvas-resize control is provided. The checkerboard is rendered as a DOM-only preview, separate from Fabric artwork; a blank-canvas PNG sample retained alpha 0 at the tested center pixel.
+- New canvases contain no T-Shirt label, “Your design” copy, other prefilled text, or instructional status overlay on the artwork. The Text tool creates an empty editable text object so only text deliberately entered by the user appears. The desktop UI shows the canvas specification separately from the artwork.
+- Added v1 local-draft migration from 500 × 600 to 4500 × 5400, making the old artboard transparent and removing only exact default placeholders (“T Shirt”/“T-Shirt” and “Your design”); other saved artwork and custom text are retained. New v2 local drafts store the canvas specification.
+- Production-preview QA at 390×844 and 1440×900 confirmed the visible 4500 × 5400 checkerboard bounds, no horizontal page overflow, a blank initial document, empty text insertion, and alpha 0 on the sampled blank-canvas pixel. The desktop specification badge was present outside the artwork. A legacy rectangle migrated from left 50/top 100/100×120 to left 450/top 900/900×1080; exact “T Shirt” placeholder text was removed and custom text was preserved. Physical-device testing remains outstanding.
+- Validation: editor tests **6/6 passed**; Guide tests **9/9 passed**; TypeScript passed; ESLint **0 errors, 24 existing warnings**; production and Cloudflare Worker builds passed. The downloadable PNG-export action and writing 300-DPI metadata into a PNG file are not implemented yet; the fixed spec is stored with local drafts for that follow-up. No production deployment or database operation was performed.
+
 <a id="code-audit"></a>
 ## Repository Code Audit
 

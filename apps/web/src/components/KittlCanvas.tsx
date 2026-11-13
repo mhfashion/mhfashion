@@ -22,9 +22,12 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Canvas as FabricCanvas, FabricObject, Textbox as FabricTextbox } from "fabric";
 import {
+  EDITOR_ARTBOARD_ID,
+  EDITOR_CANVAS_SPEC,
   calculateEditorViewport,
   clampEditorZoom,
   createEditorHistory,
+  migrateLegacyEditorDocument,
   pushEditorSnapshot,
   stepEditorHistory,
   type EditorHistory,
@@ -35,7 +38,8 @@ type Tool = "select" | "pan";
 type Panel = "layers" | "mockup" | "shapes" | null;
 type SideDocuments = Record<MockupSide, Record<string, unknown>>;
 type EditorDraft = {
-  version: 1;
+  version: 1 | 2;
+  canvasSpec?: typeof EDITOR_CANVAS_SPEC;
   activeSide: MockupSide;
   documents: SideDocuments;
   savedAt: string;
@@ -47,10 +51,12 @@ type KittlCanvasProps = {
   availableMockupSides?: readonly MockupSide[];
 };
 
-const DRAFT_KEY = "mh-fashion-editor-draft-v1";
-const ARTBOARD_WIDTH = 500;
-const ARTBOARD_HEIGHT = 600;
-const ARTBOARD_ID = "mh-editor-artboard";
+const DRAFT_KEY = "mh-fashion-editor-draft-v2";
+const LEGACY_DRAFT_KEY = "mh-fashion-editor-draft-v1";
+const LEGACY_SCALE = EDITOR_CANVAS_SPEC.width / 500;
+const ARTBOARD_WIDTH = EDITOR_CANVAS_SPEC.width;
+const ARTBOARD_HEIGHT = EDITOR_CANVAS_SPEC.height;
+const ARTBOARD_ID = EDITOR_ARTBOARD_ID;
 const SIDE_LABELS: Record<MockupSide, string> = { front: "Front", back: "Back" };
 
 function objectId(object: FabricObject): string | undefined {
@@ -85,7 +91,7 @@ function isDraft(value: unknown): value is EditorDraft {
   if (!value || typeof value !== "object") return false;
   const draft = value as Partial<EditorDraft>;
   const docs = draft.documents as Partial<SideDocuments> | undefined;
-  return draft.version === 1 &&
+  return (draft.version === 1 || draft.version === 2) &&
     (draft.activeSide === "front" || draft.activeSide === "back") &&
     !!docs && typeof docs.front === "object" && typeof docs.back === "object" &&
     Array.isArray((docs.front as { objects?: unknown }).objects) &&
@@ -107,6 +113,7 @@ export default function KittlCanvas({
 }: KittlCanvasProps) {
   const canvasElementRef = useRef<HTMLCanvasElement>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
+  const transparencyGridRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<FabricCanvas | null>(null);
   const fabricApiRef = useRef<typeof import("fabric") | null>(null);
   const documentsRef = useRef<SideDocuments>({ front: { objects: [] }, back: { objects: [] } });
@@ -136,7 +143,7 @@ export default function KittlCanvas({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedText, setSelectedText] = useState("");
   const [selectedColor, setSelectedColor] = useState("#252525");
-  const [selectedFontSize, setSelectedFontSize] = useState(40);
+  const [selectedFontSize, setSelectedFontSize] = useState(360);
   const [selectedAngle, setSelectedAngle] = useState(0);
   const [isTextSelected, setIsTextSelected] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
@@ -160,6 +167,9 @@ export default function KittlCanvas({
       ARTBOARD_HEIGHT,
     );
     canvas.setViewportTransform(transform);
+    if (transparencyGridRef.current) {
+      transparencyGridRef.current.style.transform = `matrix(${transform.join(",")})`;
+    }
     canvas.requestRenderAll();
   }, []);
 
@@ -226,7 +236,6 @@ export default function KittlCanvas({
         canvas = new fabric.Canvas(canvasElementRef.current, {
           width: ARTBOARD_WIDTH,
           height: ARTBOARD_HEIGHT,
-          backgroundColor: "#e9ecef",
           preserveObjectStacking: true,
           selection: true,
           stopContextMenu: true,
@@ -266,13 +275,20 @@ export default function KittlCanvas({
         let documents: SideDocuments = { front: empty, back: empty };
         let restoredSide: MockupSide = "front";
         try {
-          const raw = window.localStorage.getItem(DRAFT_KEY);
+          const raw = window.localStorage.getItem(DRAFT_KEY) ?? window.localStorage.getItem(LEGACY_DRAFT_KEY);
           if (raw) {
             const parsed: unknown = JSON.parse(raw);
             if (isDraft(parsed)) {
-              documents = parsed.documents;
+              documents = parsed.version === 1
+                ? {
+                    front: migrateLegacyEditorDocument(parsed.documents.front),
+                    back: migrateLegacyEditorDocument(parsed.documents.back),
+                  }
+                : parsed.documents;
               restoredSide = parsed.activeSide;
-              setStatusMessage("Restored your saved design from this device.");
+              setStatusMessage(parsed.version === 1
+                ? "Migrated your saved design to the fixed 4500 × 5400 px, 300-DPI canvas."
+                : "Restored your saved design from this device.");
             }
           }
         } catch {
@@ -285,7 +301,7 @@ export default function KittlCanvas({
         await canvas.loadFromJSON(documents[restoredSide]);
         if (disposed) return;
         ensureArtboard(canvas, fabric.Rect);
-        canvas.backgroundColor = "#e9ecef";
+        canvas.backgroundColor = "";
         canvas.requestRenderAll();
         const frontSnapshot = JSON.stringify(documents.front);
         const backSnapshot = JSON.stringify(documents.back);
@@ -450,17 +466,21 @@ export default function KittlCanvas({
   function addText() {
     const Textbox = fabricApiRef.current?.Textbox;
     if (!Textbox) return;
-    addObject(new Textbox("Your design", {
+    const textObject = new Textbox("", {
       left: ARTBOARD_WIDTH / 2,
       top: ARTBOARD_HEIGHT / 2,
-      width: 260,
-      fontSize: 44,
+      width: ARTBOARD_WIDTH * 0.52,
+      fontSize: 44 * LEGACY_SCALE,
       fontFamily: "Arial",
       fontWeight: "bold",
       fill: "#252525",
       textAlign: "center",
       editable: true,
-    }), "Text");
+    });
+    addObject(textObject, "Text");
+    textObject.enterEditing();
+    canvasRef.current?.requestRenderAll();
+    setStatusMessage("Type your own text. New canvases start with no text.");
     setDesktopPanel("properties");
     setPanel("layers");
   }
@@ -469,15 +489,15 @@ export default function KittlCanvas({
     const Rect = fabricApiRef.current?.Rect;
     if (!Rect) return;
     addObject(new Rect({
-      left: 150,
-      top: 220,
-      width: 200,
-      height: 130,
-      rx: 8,
-      ry: 8,
+      left: 150 * LEGACY_SCALE,
+      top: 220 * LEGACY_SCALE,
+      width: 200 * LEGACY_SCALE,
+      height: 130 * LEGACY_SCALE,
+      rx: 8 * LEGACY_SCALE,
+      ry: 8 * LEGACY_SCALE,
       fill: "#d9f2b2",
       stroke: "#6d9e2a",
-      strokeWidth: 2,
+      strokeWidth: 2 * LEGACY_SCALE,
     }), "Rectangle");
   }
 
@@ -485,12 +505,12 @@ export default function KittlCanvas({
     const Circle = fabricApiRef.current?.Circle;
     if (!Circle) return;
     addObject(new Circle({
-      left: 190,
-      top: 230,
-      radius: 70,
+      left: 190 * LEGACY_SCALE,
+      top: 230 * LEGACY_SCALE,
+      radius: 70 * LEGACY_SCALE,
       fill: "#d8ecff",
       stroke: "#4b92c7",
-      strokeWidth: 2,
+      strokeWidth: 2 * LEGACY_SCALE,
     }), "Circle");
   }
 
@@ -513,8 +533,8 @@ export default function KittlCanvas({
         reader.readAsDataURL(file);
       });
       const image = await FabricImage.fromURL(dataUrl);
-      image.scaleToWidth(Math.min(220, image.width || 220));
-      image.set({ left: 140, top: 180 });
+      image.scaleToWidth(Math.min(220 * LEGACY_SCALE, image.width || 220 * LEGACY_SCALE));
+      image.set({ left: 140 * LEGACY_SCALE, top: 180 * LEGACY_SCALE });
       addObject(image, "Image");
     } catch {
       setStatusMessage("That image could not be opened. Try a JPG, PNG, or WebP image.");
@@ -551,7 +571,7 @@ export default function KittlCanvas({
       suppressHistoryRef.current = true;
       await canvas.loadFromJSON(JSON.parse(snapshot));
       ensureArtboard(canvas, fabricApiRef.current?.Rect);
-      canvas.backgroundColor = "#e9ecef";
+      canvas.backgroundColor = "";
       canvas.discardActiveObject();
       canvas.requestRenderAll();
       documentsRef.current[side] = canvas.toObject(["editorId"]);
@@ -594,7 +614,7 @@ export default function KittlCanvas({
     suppressHistoryRef.current = true;
     await canvas.loadFromJSON(documentsRef.current[side]);
     ensureArtboard(canvas, fabricApiRef.current?.Rect);
-    canvas.backgroundColor = "#e9ecef";
+    canvas.backgroundColor = "";
     canvas.discardActiveObject();
     canvas.requestRenderAll();
     if (historyRef.current[side].snapshots[0] === "{}") {
@@ -610,7 +630,8 @@ export default function KittlCanvas({
     if (!canvas) return;
     documentsRef.current[activeSideRef.current] = canvas.toObject(["editorId"]);
     const draft: EditorDraft = {
-      version: 1,
+      version: 2,
+      canvasSpec: EDITOR_CANVAS_SPEC,
       activeSide: activeSideRef.current,
       documents: documentsRef.current,
       savedAt: new Date().toISOString(),
@@ -677,7 +698,7 @@ export default function KittlCanvas({
                 aria-label="Selected text font size"
                 type="number"
                 min={12}
-                max={120}
+                max={1080}
                 value={selectedFontSize}
                 onChange={(event) => {
                   const value = Math.max(12, Math.min(120, Number(event.target.value) || 12));
@@ -794,6 +815,7 @@ export default function KittlCanvas({
               </button>
             ))}
           </div>
+          <span className="hidden whitespace-nowrap rounded-md bg-[#f4f5f2] px-2 py-1 text-[10px] font-semibold text-[#596251] xl:inline-flex" title="Fixed print canvas; no text is prefilled">4500 × 5400 px · 300 DPI · Transparent PNG</span>
           <span className="hidden max-w-40 truncate text-[10px] text-[#7b8378] lg:inline" aria-live="polite">{statusMessage}</span>
         </div>
 
@@ -837,14 +859,29 @@ export default function KittlCanvas({
             className={`relative min-h-0 min-w-0 flex-1 touch-none overflow-hidden bg-[#eef0ed] ${isPanning ? "cursor-grabbing" : activeTool === "pan" || spaceHeld ? "cursor-grab" : "cursor-default"}`}
             aria-label="Design workspace"
           >
-            <canvas ref={canvasElementRef} aria-label={`${SIDE_LABELS[activeSide]} design artboard`} />
+            <div
+              ref={transparencyGridRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 top-0 z-0 box-border"
+              style={{
+                width: ARTBOARD_WIDTH,
+                height: ARTBOARD_HEIGHT,
+                transform: "matrix(1,0,0,1,0,0)",
+                transformOrigin: "0 0",
+                border: "1px solid #c7cec3",
+                backgroundColor: "#ffffff",
+                backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
+                backgroundSize: "180px 180px",
+                backgroundPosition: "0 0, 0 90px, 90px -90px, -90px 0",
+              }}
+            />
+            <canvas ref={canvasElementRef} aria-label={`${SIDE_LABELS[activeSide]} transparent 4500 by 5400 pixel canvas, 300 DPI`} />
             {!ready && <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#eef0ed]/90 text-sm font-medium text-[#66705e]">Loading editor…</div>}
             <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1 rounded-xl border border-[#d9ded5] bg-white/95 p-1 shadow-sm sm:hidden">
               <button type="button" onClick={() => updateZoom(zoom - 0.1)} aria-label="Zoom out" className="flex h-11 w-11 items-center justify-center rounded-lg text-[#43513a] hover:bg-[#f2f5ee]"><ZoomOut size={18} /></button>
               <span className="w-9 text-center text-[10px] font-semibold text-[#596251]">{Math.round(zoom * 100)}%</span>
               <button type="button" onClick={() => updateZoom(zoom + 0.1)} aria-label="Zoom in" className="flex h-11 w-11 items-center justify-center rounded-lg text-[#43513a] hover:bg-[#f2f5ee]"><ZoomIn size={18} /></button>
             </div>
-            <div className="absolute right-3 top-3 z-10 hidden max-w-[45%] rounded-lg bg-white/90 px-2 py-1 text-[10px] text-[#687064] shadow-sm sm:block" aria-live="polite">{statusMessage}</div>
           </div>
 
           <aside aria-label="Layers and properties" className="hidden w-[19rem] shrink-0 flex-col border-l border-[#dfe3dc] bg-white xl:flex">
@@ -904,6 +941,12 @@ function ensureArtboard(canvas: FabricCanvas, Rect?: typeof import("fabric").Rec
       originY: "top",
       width: ARTBOARD_WIDTH,
       height: ARTBOARD_HEIGHT,
+      scaleX: 1,
+      scaleY: 1,
+      fill: "rgba(0,0,0,0)",
+      stroke: "rgba(0,0,0,0)",
+      strokeWidth: 0,
+      opacity: 0,
     });
     existing.setCoords();
     canvas.sendObjectToBack(existing);
@@ -916,9 +959,10 @@ function ensureArtboard(canvas: FabricCanvas, Rect?: typeof import("fabric").Rec
     originY: "top",
     width: ARTBOARD_WIDTH,
     height: ARTBOARD_HEIGHT,
-    fill: "#ffffff",
-    stroke: "#d7ddd3",
-    strokeWidth: 1,
+    fill: "rgba(0,0,0,0)",
+    stroke: "rgba(0,0,0,0)",
+    strokeWidth: 0,
+    opacity: 0,
     selectable: false,
     evented: false,
     hasControls: false,
