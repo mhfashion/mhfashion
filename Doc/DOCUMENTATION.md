@@ -22,6 +22,7 @@ This log records completed website-related changes in the connected repository. 
 - Removed the `Front` and `Add Mockup` text row above the canvas. The canvas remains blank until **Add Mockup** is selected from the canvas-edge menu. The circular **Add Back Mockup** control now sits beside the **Front Mockup** title; clicking it adds **Back Mockup**. Each mockup box has its own `×` control and can be dismissed independently.
 - Updated the responsive Plan and canvas-shell regression checks. Validation: canvas specification **1/1**, canvas shell **2/2**, browser guards **1/1**, Guides **9/9**, TypeScript and production/Cloudflare builds passed, ESLint **0 errors / 24 existing warnings**, `git diff --check` clean. Browser interaction confirmed: no initial top row, Front Mockup appears only after Add Mockup, the adjacent circle adds Back Mockup, and each close control removes only its own box.
 - Mockups remain neutral temporary boxes; Cloudflare R2 assets and phone-size browser verification are still future work.
+- Pushed commit `b9d997a`; [Actions run #43469933175](https://github.com/mhfashion/mhfashion/actions/runs/43469933175) failed its secret preflight because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are missing. Production still serves the previous version: the live response has the 4500×5400 canvas but lacks the Front Mockup title and close controls.
 
 ### 2026-11-13 — Temporary Front/Back mockup boxes
 
