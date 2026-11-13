@@ -1,13 +1,13 @@
 # MH Fashion — Master Plan
 
 **Canonical planning file:** `Plan/PLAN.md`
-**Consolidated from:** `docs/PROJECT_PLAN.md`, `docs/UNIFIED_EDITOR_VISION.md`, `docs/EDITOR_PLAN.md`, `docs/architecture.md`, `docs/PRODUCTION_DEPLOYMENT_NOTES.md`, and `TODO.md`. Their full planning/specification/history content is preserved below; the former files are now short pointers to this master file.
+**Consolidated from:** the former project, editor vision, editor implementation, legacy architecture, deployment notes, and TODO sources. Their full planning/specification/history content is preserved below. Operational guidance and audit records are consolidated in [`Doc/DOCUMENTATION.md`](../Doc/DOCUMENTATION.md).
 **Repository baseline at consolidation:** `mhfashion/mhfashion`, branch `main`, commit `90dc398` (2026-11-13). Re-check code and deployment before treating dated status statements as current.
 
 ## Owner directives and maintenance rules
 
 1. **UI/UX must cover Web and Phone together.** Whenever a UI/UX feature is planned or changed, specify, design, implement, and verify both Web/Desktop and Phone/Mobile in the same plan and work item. Include responsive layout, interaction differences, accessibility/touch behavior, important states, and acceptance checks for both form factors. Do not plan Web alone and leave Phone behavior undefined.
-2. After each website-related implementation task, record the completed work, evidence, and remaining limitations in `Doc/WORK_LOG.md`; use `Doc/CODE_AUDIT.md` for repository-wide or focused code-review findings.
+2. After each website-related implementation task, record completed work, evidence, and remaining limitations in the [Work Log](../Doc/DOCUMENTATION.md#work-log); use the [Code Audit](../Doc/DOCUMENTATION.md#code-audit) section for repository-wide or focused code-review findings.
 3. If implementation work reveals missing or changed scope, update this master plan and its Change Log before treating that scope as approved. Keep current requirements here; preserve dated history as history.
 4. This is the single source of truth for plans, product direction, detailed editor requirements, the legacy architecture snapshot, and the migrated task register. Do not recreate separate planning files.
 5. **Push repository work directly to GitHub.** After writing and basic validation of requested repository changes, commit and push them directly to the repository default branch (`main`) immediately, without asking the owner again. Do not create a compare/pull-request workflow unless the owner explicitly requests one. A GitHub push is not a production deployment; deployments and production data changes remain separate actions.
@@ -364,7 +364,7 @@ placeholder image slots and print-area guides only; R2 is not connected. The
 mockup box renders one slot per available product side (Front and Back for a
 two-sided shirt, or only its supported side for a one-sided product). The blank
 `/create` route currently defaults to Front and Back; selected-product data
-wiring remains pending. The source audit also found that touchscreen pointers cannot use the existing middle-button/Space+left pan handler, and short phone heights can clip the stacked workspace; track both as open responsive issues in `Doc/CODE_AUDIT.md`.
+wiring remains pending. The source audit also found that touchscreen pointers cannot use the existing middle-button/Space+left pan handler, and short phone heights can clip the stacked workspace; track both as open responsive issues in `Doc/DOCUMENTATION.md#code-audit`.
 
 **Current `/create` implementation (verified 2026-11-13):** the route mounts a shell only. The design area is an empty `div`; the mockup is a static placeholder. No editable Fabric canvas, artwork tools, text/elements insertion, Layers/Properties panel, document state, undo/redo, serialization, browser draft, or account-backed save is wired to this route. The installed Fabric.js package alone does not mean these features are implemented. Historical editor notes below must be treated as dated snapshots, not current feature status.
 
@@ -395,7 +395,7 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
 
 **Editor implementation roadmap:** first implement the editable document model, canvas editing operations, selection/history, Layers/Properties UI, validated serialization, and draft persistence; then deliver the detailed capabilities and production integrations specified in the Editor Implementation Plan. Do not present the historical Fabric.js feature list above as the current implementation.
 
-**Code-audit follow-up (2026-11-13):** see [`Doc/CODE_AUDIT.md`](../Doc/CODE_AUDIT.md) for line-level evidence and recommended fixes. Active follow-up areas are: (1) implement `/create` beyond its shell and satisfy Phone pan/short-viewport behavior; (2) repair storefront route targets, search/category behavior, selected variant/cart pricing, popularity labeling, and account demo-state labeling; (3) protect Supabase reward balances and platform settings with narrowly scoped policies; (4) fail safely when price-range lookup fails; and (5) smoke-test the built Cloudflare Worker runtime before deployment.
+**Code-audit follow-up (2026-11-13):** see [Code Audit section](../Doc/DOCUMENTATION.md#code-audit) for line-level evidence and recommended fixes. Active follow-up areas are: (1) implement `/create` beyond its shell and satisfy Phone pan/short-viewport behavior; (2) repair storefront route targets, search/category behavior, selected variant/cart pricing, popularity labeling, and account demo-state labeling; (3) protect Supabase reward balances and platform settings with narrowly scoped policies; (4) fail safely when price-range lookup fails; and (5) smoke-test the built Cloudflare Worker runtime before deployment.
 
 **Broader platform sequencing:** after the audit priorities are addressed, continue Supabase Auth and server-side Super Admin authorization, checkout/payment/order creation, R2, and the remaining editor production work.
 
@@ -744,7 +744,7 @@ pre-build architecture; and section 15.8 keeps the test counts from its own run
 date rather than tracking the latest build.
 
 
-- 2026-11-13: Repository audit found that `/create` is a placeholder shell rather than the previously described Fabric.js editor. Updated §6 and §14, corrected the editor implementation baseline below, and added the code-audit remediation list; see `Doc/CODE_AUDIT.md`.
+- 2026-11-13: Repository audit found that `/create` is a placeholder shell rather than the previously described Fabric.js editor. Updated §6 and §14, corrected the editor implementation baseline below, and added the code-audit remediation list; see `Doc/DOCUMENTATION.md#code-audit`.
 
 
 ---
@@ -2419,5 +2419,6 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 ## Master Plan Update Log
 
 - 2026-11-13: Consolidated all existing project/editor plans, editor vision, deployment notes, legacy architecture draft, and task register into this file. Added the owner directive requiring Web/Desktop and Phone/Mobile UI/UX planning and acceptance together.
-- 2026-11-13: Corrected the editor implementation status after the source audit and linked the verified remediation backlog to `Doc/CODE_AUDIT.md`.
+- 2026-11-13: Corrected the editor implementation status after the source audit and linked the verified remediation backlog to `Doc/DOCUMENTATION.md#code-audit`.
 - 2026-11-13: Recorded the owner instruction to commit and push requested repository changes directly to `main` after validation, without reconfirmation or a compare/pull-request workflow unless explicitly requested.
+- 2026-11-13: Consolidated the work log, code audit, Guide content runbook, and Admin Dashboard reference notes into `Doc/DOCUMENTATION.md`; obsolete docs-directory copies were retired after confirming no code references.
