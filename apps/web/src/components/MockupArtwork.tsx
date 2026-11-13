@@ -16,6 +16,12 @@ type Drag = {
   startRadius: number;
 };
 
+const BASE_ARTWORK_SCALE = 0.82;
+const PIXELS_PER_VIEWBOX_UNIT = 4.5;
+// Provisional caps use the upper ends of the owner's ranges; replace when exact values are confirmed.
+const PROVISIONAL_FRONT_MAX_EDGE_PX = 3500;
+const PROVISIONAL_BACK_MAX_EDGE_PX = 1500;
+
 function getArtworkBounds(strokes: Stroke[]): Bounds {
   let minX = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
@@ -39,12 +45,30 @@ function getArtworkBounds(strokes: Stroke[]): Bounds {
 }
 
 function getDisplayedBounds(bounds: Bounds, transform: Transform): Bounds {
-  const scale = 0.82 * transform.scale;
+  const scale = BASE_ARTWORK_SCALE * transform.scale;
   return {
     x: 500 + transform.x + (bounds.x - 500) * scale,
     y: 600 + transform.y + (bounds.y - 600) * scale,
     width: bounds.width * scale,
     height: bounds.height * scale,
+  };
+}
+
+function getMaxArtworkScale(bounds: Bounds, side: MockupSide): number {
+  const maxEdgePx = side === "Front Mockup" ? PROVISIONAL_FRONT_MAX_EDGE_PX : PROVISIONAL_BACK_MAX_EDGE_PX;
+  const originalEdgePx = Math.max(bounds.width, bounds.height) * PIXELS_PER_VIEWBOX_UNIT * BASE_ARTWORK_SCALE;
+  return Math.max(0.25, Math.min(3, maxEdgePx / originalEdgePx));
+}
+
+function scaleAroundCenter(bounds: Bounds, transform: Transform, scale: number): Transform {
+  const currentFrame = getDisplayedBounds(bounds, transform);
+  const center = { x: currentFrame.x + currentFrame.width / 2, y: currentFrame.y + currentFrame.height / 2 };
+  const artworkCenter = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+  const artworkScale = BASE_ARTWORK_SCALE * scale;
+  return {
+    scale,
+    x: center.x - 500 - (artworkCenter.x - 500) * artworkScale,
+    y: center.y - 600 - (artworkCenter.y - 600) * artworkScale,
   };
 }
 
@@ -64,10 +88,15 @@ function toViewBoxPoint(svg: SVGSVGElement, clientX: number, clientY: number): P
 export default function MockupArtwork({ side, strokes }: { side: MockupSide; strokes: Stroke[] }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
-  const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
-  const [selected, setSelected] = useState(false);
   const bounds = useMemo(() => getArtworkBounds(strokes), [strokes]);
-  const frame = getDisplayedBounds(bounds, transform);
+  const maxArtworkScale = getMaxArtworkScale(bounds, side);
+  const maxArtworkEdgePx = side === "Front Mockup" ? PROVISIONAL_FRONT_MAX_EDGE_PX : PROVISIONAL_BACK_MAX_EDGE_PX;
+  const [transform, setTransform] = useState<Transform>(() => ({ x: 0, y: 0, scale: Math.min(1, maxArtworkScale) }));
+  const [selected, setSelected] = useState(false);
+  const safeTransform = transform.scale > maxArtworkScale ? scaleAroundCenter(bounds, transform, maxArtworkScale) : transform;
+  const frame = getDisplayedBounds(bounds, safeTransform);
+  const displayedWidthPx = Math.round(frame.width * PIXELS_PER_VIEWBOX_UNIT);
+  const displayedHeightPx = Math.round(frame.height * PIXELS_PER_VIEWBOX_UNIT);
   const artwork = useMemo(() => strokes.map((stroke, index) => {
     const path = stroke.points.map((point, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ");
     return stroke.points.length === 1 ? (
@@ -89,7 +118,7 @@ export default function MockupArtwork({ side, strokes }: { side: MockupSide; str
       mode,
       pointerId: event.pointerId,
       start,
-      origin: transform,
+      origin: safeTransform,
       center,
       startRadius: Math.max(1, Math.hypot(start.x - center.x, start.y - center.y)),
     };
@@ -112,14 +141,8 @@ export default function MockupArtwork({ side, strokes }: { side: MockupSide; str
       return;
     }
     const radius = Math.hypot(point.x - drag.center.x, point.y - drag.center.y);
-    const scale = Math.max(0.25, Math.min(3, drag.origin.scale * radius / drag.startRadius));
-    const artworkScale = 0.82 * scale;
-    const artworkCenter = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
-    setTransform({
-      scale,
-      x: drag.center.x - 500 - (artworkCenter.x - 500) * artworkScale,
-      y: drag.center.y - 600 - (artworkCenter.y - 600) * artworkScale,
-    });
+    const scale = Math.max(0.25, Math.min(maxArtworkScale, drag.origin.scale * radius / drag.startRadius));
+    setTransform(scaleAroundCenter(bounds, drag.origin, scale));
   };
 
   const endTransform = (event: React.PointerEvent<SVGSVGElement>) => {
@@ -127,15 +150,8 @@ export default function MockupArtwork({ side, strokes }: { side: MockupSide; str
   };
 
   const resizeByKeyboard = (amount: number) => {
-    const scale = Math.max(0.25, Math.min(3, transform.scale + amount));
-    const artworkScale = 0.82 * scale;
-    const artworkCenter = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
-    const center = { x: frame.x + frame.width / 2, y: frame.y + frame.height / 2 };
-    setTransform({
-      scale,
-      x: center.x - 500 - (artworkCenter.x - 500) * artworkScale,
-      y: center.y - 600 - (artworkCenter.y - 600) * artworkScale,
-    });
+    const scale = Math.max(0.25, Math.min(maxArtworkScale, safeTransform.scale + amount));
+    setTransform(scaleAroundCenter(bounds, safeTransform, scale));
   };
 
   if (strokes.length === 0) return null;
@@ -144,7 +160,8 @@ export default function MockupArtwork({ side, strokes }: { side: MockupSide; str
     <svg
       ref={svgRef}
       role="group"
-      aria-label={`${side} artwork overlay`}
+      aria-label={`${side} artwork overlay, ${displayedWidthPx} × ${displayedHeightPx} px`}
+      data-artwork-max-edge-px={maxArtworkEdgePx}
       viewBox="0 0 1000 1200"
       preserveAspectRatio="xMidYMid meet"
       onPointerMove={moveTransform}
@@ -153,7 +170,7 @@ export default function MockupArtwork({ side, strokes }: { side: MockupSide; str
       onLostPointerCapture={endTransform}
       className="absolute inset-0 z-20 h-full w-full overflow-visible touch-none"
     >
-      <g transform={`translate(${500 + transform.x} ${600 + transform.y}) scale(${0.82 * transform.scale}) translate(-500 -600)`}>
+      <g transform={`translate(${500 + safeTransform.x} ${600 + safeTransform.y}) scale(${BASE_ARTWORK_SCALE * safeTransform.scale}) translate(-500 -600)`}>
         {artwork}
       </g>
       <rect
@@ -168,6 +185,7 @@ export default function MockupArtwork({ side, strokes }: { side: MockupSide; str
         className="cursor-move"
       />
       {selected && <g>
+        <text x={frame.x - 16} y={frame.y - 28} fill="#60429d" fontSize="28" fontWeight="600" pointerEvents="none">{`${displayedWidthPx} × ${displayedHeightPx} px`}</text>
         <rect x={frame.x - 16} y={frame.y - 16} width={frame.width + 32} height={frame.height + 32} fill="none" stroke="#8f72d4" strokeWidth="5" strokeDasharray="12 8" pointerEvents="none" />
         <circle
           cx={frame.x + frame.width}
@@ -178,7 +196,7 @@ export default function MockupArtwork({ side, strokes }: { side: MockupSide; str
           strokeWidth="6"
           role="button"
           tabIndex={0}
-          aria-label="Resize mockup artwork"
+          aria-label={`Resize mockup artwork; maximum edge ${maxArtworkEdgePx} px`}
           onPointerDown={(event) => startTransform("resize", event)}
           onKeyDown={(event) => {
             if (["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"].includes(event.key)) event.preventDefault();

@@ -54,7 +54,7 @@ test("canvas and each mockup are independently draggable with live connector wir
   assert.match(source, /\[mockups, nodePositions, pan, zoom\]/);
 });
 
-test("canvas freehand strokes appear live at the same size on Front and Back previews", () => {
+test("canvas freehand strokes appear live on equal-size mockup boxes with side-specific artwork caps", () => {
   assert.match(source, /type ArtworkStroke = \{ points: Point\[\] \}/);
   assert.match(source, /onPointerDown=\{startArtworkStroke\}/);
   assert.match(source, /function startArtworkStroke[\s\S]*?setArtworkStrokes\(/);
@@ -62,7 +62,7 @@ test("canvas freehand strokes appear live at the same size on Front and Back pre
   assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} \/>/);
   assert.match(source, /className=\{`relative z-10 w-\[min\(18\.25rem,78vw\)\] shrink-0/);
   assert.doesNotMatch(source, /Back Mockup" \? "w-\[min\(14rem/);
-  assert.match(mockupArtwork, /scale\(\$\{0\.82 \* transform\.scale\}\)/);
+  assert.match(mockupArtwork, /scale\(\$\{BASE_ARTWORK_SCALE \* safeTransform\.scale\}\)/);
   assert.match(source, /function isCanvasEdgeGesture\([\s\S]*?return clientX - rect\.left <= edge/);
   assert.match(source, /node === "Print canvas" && event\.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture/);
 });
@@ -72,7 +72,13 @@ test("artwork on each Mockup can be moved and resized as one object", () => {
   assert.match(mockupArtwork, /aria-label=\{`Move \$\{side\} artwork`\}/);
   assert.match(mockupArtwork, /mode === "move"/);
   assert.match(mockupArtwork, /startTransform\("resize", event\)/);
-  assert.match(mockupArtwork, /aria-label="Resize mockup artwork"/);
+  assert.match(mockupArtwork, /aria-label=\{`Resize mockup artwork; maximum edge \$\{maxArtworkEdgePx\} px`\}/);
   assert.match(mockupArtwork, /setPointerCapture\(event\.pointerId\)/);
-  assert.match(mockupArtwork, /Math\.max\(0\.25, Math\.min\(3,/);
+  assert.match(mockupArtwork, /PROVISIONAL_FRONT_MAX_EDGE_PX = 3500/);
+  assert.match(mockupArtwork, /PROVISIONAL_BACK_MAX_EDGE_PX = 1500/);
+  assert.match(mockupArtwork, /side === "Front Mockup" \? PROVISIONAL_FRONT_MAX_EDGE_PX : PROVISIONAL_BACK_MAX_EDGE_PX/);
+  assert.match(mockupArtwork, /Math\.max\(0\.25, Math\.min\(maxArtworkScale,/);
+  assert.match(mockupArtwork, /maxEdgePx \/ originalEdgePx/);
+  assert.match(mockupArtwork, /displayedWidthPx = Math\.round\(frame\.width \* PIXELS_PER_VIEWBOX_UNIT\)/);
+  assert.match(mockupArtwork, /data-artwork-max-edge-px=\{maxArtworkEdgePx\}/);
 });

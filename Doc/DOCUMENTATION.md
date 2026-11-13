@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Enforce provisional Front/Back artwork pixel caps
+
+- Per the owner's latest rule, Front is the larger artwork tier and Back is the smaller tier. Enforce provisional maximum longest-edge sizes of **3500 px** for Front and **1500 px** for Back on initialization, pointer resizing, and keyboard resizing; show the live width × height in pixels when the artwork is selected. These output-pixel caps are derived from the fixed 4500 × 5400 PNG canvas coordinate mapping.
+- The owner explicitly said the example values are not final and will provide exact numbers later. Keep them in clearly named provisional constants for a direct update when confirmed; these caps are active interim limits, not final print specifications.
+- Updated the Plan after implementation to state both the one-large/one-small rule and that the numeric caps are provisional.
+- Validation: canvas shell tests **5/5**, TypeScript, changed-file ESLint, `git diff --check`, and OpenNext Cloudflare Worker production build passed. Headless Chromium on the local production build drew a near-full-canvas stroke, confirmed live dimensions of **2935 × 3500 px** (Front) and **1258 × 1500 px** (Back), then dragged each resize handle well past its limit; both stayed at or under their respective caps.
+
 ### 2026-11-14 — Move and resize the whole artwork on each Mockup
 
 - Added an interactive artwork overlay to each existing Front/Back Mockup. The full set of strokes is selected and moved as one group by dragging within its bounds; a visible lower-right handle resizes it from 0.25× to 3×. Arrow keys on the focused handle also adjust size. Front and Back transforms are independent; transforming a preview does not alter the source Canvas strokes or drag the outer Mockup box.
