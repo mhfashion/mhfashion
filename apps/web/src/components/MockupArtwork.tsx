@@ -270,7 +270,7 @@ export default function MockupArtwork({
         className="pointer-events-auto cursor-move touch-none"
       />
       {selected && <g>
-        <text x={frame.x - 16} y={frame.y - 28} fill="#60429d" fontSize="28" fontWeight="600" pointerEvents="none" className="[@media(pointer:coarse)]:hidden">{`${displayedWidthPx} × ${displayedHeightPx} px`}</text>
+        <text x={frame.x - 16} y={frame.y - 28} fill="currentColor" fontSize="28" fontWeight="600" pointerEvents="none" className="text-accent [@media(pointer:coarse)]:hidden">{`${displayedWidthPx} × ${displayedHeightPx} px`}</text>
         <rect x={frame.x - 16} y={frame.y - 16} width={frame.width + 32} height={frame.height + 32} fill="none" stroke="#8f72d4" strokeWidth="5" strokeDasharray="12 8" pointerEvents="none" />
         <circle
           data-artwork-resize-touch-target
@@ -316,7 +316,7 @@ export default function MockupArtwork({
         </g>}
       </g>}
     </svg>
-    {selected && <div data-artwork-touch-dimensions style={{ transform: `scale(${1 / viewZoom})`, transformOrigin: "top left" }} className="pointer-events-none absolute left-2 top-2 z-30 hidden rounded bg-white/90 px-2 py-1 text-xs font-medium text-[#60429d] [@media(pointer:coarse)]:block">{`${displayedWidthPx} × ${displayedHeightPx} px`}</div>}
+    {selected && <div data-artwork-touch-dimensions style={{ transform: `scale(${1 / viewZoom})`, transformOrigin: "top left" }} className="pointer-events-none absolute left-2 top-2 z-30 hidden rounded bg-bg-surface/90 px-2 py-1 text-xs font-medium text-accent [@media(pointer:coarse)]:block">{`${displayedWidthPx} × ${displayedHeightPx} px`}</div>}
     </>
   );
 }

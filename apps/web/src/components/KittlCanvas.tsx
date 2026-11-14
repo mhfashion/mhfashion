@@ -359,16 +359,16 @@ export default function KittlCanvas() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[#f1f2f5]">
-      <div role="toolbar" aria-label="Touch view controls" className="z-40 hidden shrink-0 items-center justify-center gap-1 border-b border-[#d8dce2] bg-[#f1f2f5] px-2 py-1 [@media(pointer:coarse)]:flex">
-        <button type="button" aria-label="Pan view" aria-pressed={touchPanEnabled} onClick={() => setTouchPanEnabled((enabled) => !enabled)} className={`flex h-11 items-center gap-1.5 rounded px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-[#8f72d4] ${touchPanEnabled ? "bg-[#e4dbf7] text-[#60429d]" : "text-[#53606a]"}`}>
+    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-bg text-text-primary">
+      <div role="toolbar" aria-label="Touch view controls" className="z-40 hidden shrink-0 items-center justify-center gap-1 border-b border-border bg-bg px-2 py-1 [@media(pointer:coarse)]:flex">
+        <button type="button" aria-label="Pan view" aria-pressed={touchPanEnabled} onClick={() => setTouchPanEnabled((enabled) => !enabled)} className={`flex h-11 items-center gap-1.5 rounded px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-accent ${touchPanEnabled ? "bg-accent/10 text-accent" : "text-text-secondary"}`}>
           <Hand size={16} aria-hidden="true" />
           <span>Pan view</span>
         </button>
-        <button type="button" aria-label="Zoom out" disabled={zoom <= 0.25} onClick={() => setZoom((current) => Math.max(0.25, current - 0.25))} className="flex h-11 w-11 items-center justify-center rounded text-[#53606a] outline-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[#8f72d4]"><Minus size={17} aria-hidden="true" /></button>
-        <output aria-label="View zoom" className="min-w-10 text-center text-xs text-[#53606a]">{Math.round(zoom * 100)}%</output>
-        <button type="button" aria-label="Zoom in" disabled={zoom >= 3} onClick={() => setZoom((current) => Math.min(3, current + 0.25))} className="flex h-11 w-11 items-center justify-center rounded text-[#53606a] outline-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[#8f72d4]"><Plus size={17} aria-hidden="true" /></button>
-        <button type="button" aria-label="Reset view" onClick={resetView} className="flex h-11 w-11 items-center justify-center rounded text-[#53606a] outline-none focus-visible:ring-2 focus-visible:ring-[#8f72d4]"><RotateCcw size={16} aria-hidden="true" /></button>
+        <button type="button" aria-label="Zoom out" disabled={zoom <= 0.25} onClick={() => setZoom((current) => Math.max(0.25, current - 0.25))} className="flex h-11 w-11 items-center justify-center rounded text-text-secondary outline-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-accent"><Minus size={17} aria-hidden="true" /></button>
+        <output aria-label="View zoom" className="min-w-10 text-center text-xs text-text-secondary">{Math.round(zoom * 100)}%</output>
+        <button type="button" aria-label="Zoom in" disabled={zoom >= 3} onClick={() => setZoom((current) => Math.min(3, current + 0.25))} className="flex h-11 w-11 items-center justify-center rounded text-text-secondary outline-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-accent"><Plus size={17} aria-hidden="true" /></button>
+        <button type="button" aria-label="Reset view" onClick={resetView} className="flex h-11 w-11 items-center justify-center rounded text-text-secondary outline-none focus-visible:ring-2 focus-visible:ring-accent"><RotateCcw size={16} aria-hidden="true" /></button>
       </div>
       <div
         ref={viewportRef}
@@ -461,7 +461,7 @@ export default function KittlCanvas() {
                   <div
                     role="menu"
                     aria-label="Canvas options"
-                    className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-[#d8dce2] bg-white p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2 [@media(pointer:coarse)]:origin-top-right [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
+                  className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-border bg-bg-surface p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2 [@media(pointer:coarse)]:origin-top-right [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
                   >
                     <button
                       type="button"
@@ -471,11 +471,11 @@ export default function KittlCanvas() {
                         setShowGrid((visible) => !visible);
                         setMenuOpen(false);
                       }}
-                      className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                      className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent md:min-h-0 [@media(pointer:coarse)]:min-h-11"
                     >
                       <Grid2X2 size={15} aria-hidden="true" />
                       <span>Show Grid</span>
-                      <span className={`ml-auto h-3.5 w-3.5 rounded-sm border ${showGrid ? "border-[#8f72d4] bg-[#8f72d4]" : "border-[#bfc5cd]"}`} aria-hidden="true" />
+                      <span className={`ml-auto h-3.5 w-3.5 rounded-sm border ${showGrid ? "border-accent bg-accent" : "border-border-light"}`} aria-hidden="true" />
                     </button>
                     <button
                       type="button"
@@ -485,7 +485,7 @@ export default function KittlCanvas() {
                         addMockup("Front Mockup");
                         setMenuOpen(false);
                       }}
-                      className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                      className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent md:min-h-0 [@media(pointer:coarse)]:min-h-11"
                     >
                       <Plus size={15} aria-hidden="true" />
                       <span>Add Mockup</span>
@@ -507,13 +507,13 @@ export default function KittlCanvas() {
               className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-pan-y select-none md:touch-none [@media(pointer:coarse)]:touch-pan-y ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
               style={{ transform: `translate(${nodePositions[side].x}px, ${nodePositions[side].y}px)` }}
             >
-              <div data-node-drag-handle className="mb-2 flex h-11 touch-none items-center gap-2 text-xs font-medium text-[#53606a] md:h-7 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))]">
+              <div data-node-drag-handle className="mb-2 flex h-11 touch-none items-center gap-2 text-xs font-medium text-text-secondary md:h-7 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))]">
                 <span className="min-w-0 flex-1 truncate [@media(pointer:coarse)]:[font-size:calc(0.75rem*var(--editor-inverse-zoom))]">{side}</span>
                 <button
                   type="button"
                   aria-label={`Close ${side}`}
                   onClick={() => removeMockup(side)}
-                  className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#7c838d] outline-none hover:bg-[#e7e9ed] hover:text-[#343b45] focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:h-5 md:w-5 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))] [@media(pointer:coarse)]:w-[calc(2.75rem*var(--editor-inverse-zoom))]"
+                  className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-muted outline-none hover:bg-bg-surface hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent md:h-5 md:w-5 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))] [@media(pointer:coarse)]:w-[calc(2.75rem*var(--editor-inverse-zoom))]"
                 >
                   <X size={13} aria-hidden="true" className="[@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]" />
                 </button>

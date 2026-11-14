@@ -182,13 +182,24 @@ test("editor reuses the existing web-app Header Bar above its full-height worksp
   assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
 });
 
-test("Editor Header Bar 2 shows only the six requested inert placeholders", () => {
+test("Editor Header Bar 2 is compact, theme-aware, and exposes Product/GSM choices", () => {
   assert.match(createRoute, /import EditorHeaderBar2 from "@\/components\/EditorHeaderBar2"/);
   assert.match(createRoute, /<Header \/>[\s\S]*?<EditorHeaderBar2 \/>[\s\S]*?<KittlCanvas \/>/);
   assert.match(headerBar2, /aria-label="Header Bar 2"/);
-  assert.match(headerBar2, /\["Product", "GSM", "Color", "Size"\]/);
+  assert.match(headerBar2, /h-11 w-full/);
+  assert.match(headerBar2, /const PRODUCTS = \["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"\]/);
+  assert.match(headerBar2, /const GSM_OPTIONS = \["160 GSM", "180 GSM", "200 GSM", "240 GSM"\]/);
+  assert.match(headerBar2, /CompactSelect label="Product"/);
+  assert.match(headerBar2, /CompactSelect label="GSM"/);
+  assert.match(headerBar2, /aria-label=\{label\}/);
+  assert.match(headerBar2, />\s*Color\s*</);
+  assert.match(headerBar2, />\s*Size\s*</);
   assert.match(headerBar2, />\s*Save\s*</);
   assert.match(headerBar2, />\s*Buy\s*</);
-  assert.equal((headerBar2.match(/^\s+disabled$/gm) || []).length, 3, "Four mapped selectors and both action buttons are inert placeholders");
+  assert.equal((headerBar2.match(/^\s+disabled$/gm) || []).length, 4, "Color, Size, Save and Buy remain placeholders");
+  assert.match(headerBar2, /bg-bg-surface/);
+  assert.match(headerBar2, /text-text-secondary/);
   assert.match(headerBar2, /overflow-x-auto/);
+  assert.match(source, /bg-bg text-text-primary/);
+  assert.match(source, /border-border bg-bg px-2/);
 });

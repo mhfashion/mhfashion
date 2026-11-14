@@ -114,6 +114,28 @@ async function main() {
     await touch("touchEnd", []);
     await pause(120);
   }
+  const mouse = (type, p, buttons = 0) => send("Input.dispatchMouseEvent", { type, ...p, button: "left", buttons, clickCount: 1 });
+  async function clickPoint(point) {
+    await mouse("mouseMoved", point);
+    await mouse("mousePressed", point, 1);
+    await mouse("mouseReleased", point);
+    await pause(100);
+  }
+  async function clickMouse(selector) {
+    const r = await rect(selector, false);
+    await clickPoint({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
+  }
+  async function chooseSelect(selector, value) {
+    await evaluate((sel, nextValue) => {
+      const element = document.querySelector(sel);
+      if (!(element instanceof HTMLSelectElement)) throw new Error(`Missing select ${sel}`);
+      const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+      setValue.call(element, nextValue);
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    }, selector, value);
+    await pause(120);
+    return evaluate((sel) => document.querySelector(sel).value, selector);
+  }
   async function selectArtwork(side) {
     await rect(overlay(side));
     const r = await rect(`${overlay(side)} rect[aria-label^="Move"]`, false);
@@ -158,13 +180,16 @@ async function main() {
       const toolbar = document.querySelector('[aria-label="Header Bar 2"]');
       const bar2 = toolbar.getBoundingClientRect();
       const editor = document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect();
+      const controls = [...toolbar.querySelectorAll("select, button")];
       return {
         mainBottom: main.bottom, navTop: nav.top,
         bodyHeight: document.documentElement.scrollHeight, viewportHeight: innerHeight,
         headerHeight: header.height, headerBottom: header.bottom,
         bar2Top: bar2.top, bar2Bottom: bar2.bottom, editorTop: editor.top,
-        bar2Labels: [...toolbar.querySelectorAll("button")].map((button) => button.textContent.trim()),
+        bar2Height: bar2.height,
+        bar2Labels: controls.map((control) => control.getAttribute("aria-label") || control.textContent.trim()),
         bar2Disabled: [...toolbar.querySelectorAll("button")].every((button) => button.disabled),
+        selectOptions: [...toolbar.querySelectorAll("select")].map((select) => [...select.options].map((option) => option.textContent)),
         mobileHeader: getComputedStyle(slot.firstElementChild).display,
         desktopHeader: getComputedStyle(slot.lastElementChild).display,
       };
@@ -172,7 +197,16 @@ async function main() {
     assert.ok(initial.headerHeight > 0 && initial.mobileHeader !== "none" && initial.desktopHeader === "none", "Reuse the existing mobile Header Bar");
     assert.ok(initial.bar2Top >= initial.headerBottom - 1 && initial.editorTop >= initial.bar2Bottom - 1, "Bar 2 sits between Header Bar and Editor");
     assert.deepEqual(initial.bar2Labels, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
-    assert.ok(initial.bar2Disabled, "Bar 2 controls are placeholders only");
+    assert.ok(initial.bar2Height <= 44, "Header Bar 2 is compact");
+    assert.deepEqual(initial.selectOptions, [
+      ["Choose", "T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"],
+      ["Choose", "160 GSM", "180 GSM", "200 GSM", "240 GSM"],
+    ]);
+    assert.ok(initial.bar2Disabled, "Color, Size, Save and Buy remain placeholders");
+    if (width === 390) {
+      assert.equal(await chooseSelect('select[aria-label="Product"]', "Phone"), "Phone");
+      assert.equal(await chooseSelect('select[aria-label="GSM"]', "200 GSM"), "200 GSM");
+    }
     assert.ok(initial.mainBottom <= initial.navTop + 1, "Editor stays above mobile navigation");
     assert.ok(initial.bodyHeight <= initial.viewportHeight + 1, "Editor and nav do not create document overflow");
     const options = await rect('button[aria-label="Canvas options"]');
@@ -325,17 +359,40 @@ async function main() {
     });
     assert.ok(desktopHeader.height > 0 && desktopHeader.mobile === "none" && desktopHeader.desktop !== "none", "Reuse the existing desktop Header Bar");
     assert.ok(desktopHeader.bar2Top >= desktopHeader.headerBottom - 1 && desktopHeader.editorTop >= desktopHeader.bar2Bottom - 1, "Desktop Bar 2 stays below Header and above editor");
+    const themeBefore = await evaluate(() => {
+      const slot = document.querySelector("[data-editor-shared-header]");
+      const themeButton = [...slot.querySelectorAll("button")].find((button) => {
+        const rect = button.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && button.querySelector("svg.lucide-moon, svg.lucide-sun");
+      });
+      const rect = themeButton.getBoundingClientRect();
+      return {
+        dark: document.documentElement.classList.contains("dark"),
+        shell: getComputedStyle(document.querySelector("main")).backgroundColor,
+        bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
+        select: getComputedStyle(document.querySelector('select[aria-label="Product"]')).backgroundColor,
+        button: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
+      };
+    });
+    await clickPoint(themeBefore.button);
+    await pause(180);
+    const themeAfter = await evaluate(() => ({
+      dark: document.documentElement.classList.contains("dark"),
+      shell: getComputedStyle(document.querySelector("main")).backgroundColor,
+      bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
+      select: getComputedStyle(document.querySelector('select[aria-label="Product"]')).backgroundColor,
+    }));
+    assert.notEqual(themeAfter.dark, themeBefore.dark, "Header Dark/Light toggles the root theme");
+    assert.notEqual(themeAfter.shell, themeBefore.shell, "Editor workspace responds to Header theme toggle");
+    assert.notEqual(themeAfter.bar, themeBefore.bar, "Header Bar 2 responds to Header theme toggle");
+    assert.notEqual(themeAfter.select, themeBefore.select, "Product dropdown responds to Header theme toggle");
+    await clickPoint(themeBefore.button);
+    await pause(180);
+    assert.equal(await evaluate(() => document.documentElement.classList.contains("dark")), themeBefore.dark, "Header theme toggle restores the original mode");
+    console.log("PASS Header Dark/Light toggle: editor shell, compact bar, and dropdown respond in both modes");
     const desktopButton = await rect('button[aria-label="Canvas options"]');
     assert.equal(desktopButton.w, 14); assert.equal(desktopButton.h, 14);
     console.log("PASS desktop 1280×900: original control size and no mobile toolbar");
-    const mouse = (type, p, buttons = 0) => send("Input.dispatchMouseEvent", { type, ...p, button: "left", buttons, clickCount: 1 });
-    const clickMouse = async (selector) => {
-      const r = await rect(selector);
-      const p = { x: r.x + r.w / 2, y: r.y + r.h / 2 };
-      await mouse("mouseMoved", p);
-      await mouse("mousePressed", p, 1); await mouse("mouseReleased", p);
-      await pause(100);
-    };
     await clickMouse('button[aria-label="Canvas options"]');
     await clickMouse('button[aria-label="Add Mockup"]');
     await clickMouse('button[aria-label="Add Back Mockup"]');

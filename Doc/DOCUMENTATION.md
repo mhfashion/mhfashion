@@ -19,9 +19,10 @@ This log records completed website-related changes in the connected repository. 
 
 ### 2026-11-14 — Add Editor Header Bar 2 placeholders
 
-- Added a separate `EditorHeaderBar2` below the reused site Header and above the Editor workspace. The initial row contains exactly the requested `Product`, `GSM`, `Color`, `Size`, `Save`, and `Buy` items.
-- These six controls are disabled placeholders only; no product selection, variant handling, saving, or buying behavior was assumed. The bar scrolls horizontally on narrow screens and is separated into its own component for the additional items the owner plans to specify later.
-- Validation: all repository Node tests **26/26**, canvas-shell tests **10/10**, TypeScript, changed-file ESLint, Next.js production build, Chromium mobile/desktop interaction tests, and `git diff --check` passed. The browser check confirms all six disabled labels appear in order between the existing Header and the editor.
+- Reduced Bar 2 from 56px to a compact 44px row. `Product` now offers `T-Shirt`, `Phone`, `Hoodie`, `Cup`, `Kids`, and `Bag`; `GSM` offers `160`, `180`, `200`, and `240 GSM`. Their selected values are local to the editor toolbar and do not yet change the mockup or pricing.
+- Kept `Color` in place as requested. `Size`, `Save`, and `Buy` remain disabled placeholders pending later specifications. The row horizontally scrolls on narrow screens.
+- Connected Bar 2, the Editor workspace chrome, touch controls, and canvas-options menu to the existing theme tokens. Toggling Dark/Light in the site Header changes the Editor and dropdown appearance; the white print canvas and neutral mockup preview remain stable.
+- Validation: all repository Node tests **26/26**, canvas-shell tests **10/10**, TypeScript, changed-file ESLint, Next.js production build, Chromium Product/GSM selections, portrait/landscape interactions, desktop Header theme toggle and color changes, and `git diff --check` passed.
 
 ### 2026-11-14 — Reuse the existing web Header Bar in Editor
 
