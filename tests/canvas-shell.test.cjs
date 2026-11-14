@@ -8,6 +8,8 @@ const mockupArtwork = readFileSync(path.join(__dirname, "../apps/web/src/compone
 const tierSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts"), "utf8");
 const mockupSection = source.split('{mockups.map((side) => (')[1] ?? "";
 const mockupHeader = mockupSection.split('className="relative aspect-square w-full')[0] ?? "";
+const createRoute = readFileSync(path.join(__dirname, "../apps/web/src/app/create/page.tsx"), "utf8");
+const mobileNav = readFileSync(path.join(__dirname, "../apps/web/src/components/MobileBottomNav.tsx"), "utf8");
 function loadArtworkTiers() {
   const fileName = path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts");
   const compiled = ts.transpileModule(tierSource, {
@@ -28,9 +30,9 @@ test("canvas options expose Show Grid and add the temporary Front Mockup box", (
   assert.match(source, /aria-label="Add Back Mockup"[\s\S]*?addMockup\("Back Mockup"\)/);
   assert.match(source, /type MockupSide = "Front Mockup" \| "Back Mockup"/);
   assert.match(source, /side === "Front Mockup" && \([\s\S]*?aria-label="Add Back Mockup"/);
-  assert.match(mockupSection, /aria-label="Add Back Mockup"[\s\S]*?absolute -left-5 top-\[calc\(50%\+1\.25rem\)\] z-30[\s\S]*?h-3\.5 w-3\.5/);
+  assert.match(mockupSection, /aria-label="Add Back Mockup"[\s\S]*?absolute -left-\[35px\] top-\[calc\(50%\+1\.25rem\)\] z-30[\s\S]*?h-11 w-11[\s\S]*?md:-left-5 md:h-3\.5 md:w-3\.5/);
   assert.doesNotMatch(mockupHeader, /Add Back Mockup/);
-  assert.match(source, /aria-label=\{`Close \$\{side\}`}[\s\S]*?removeMockup\(side\)/);
+  assert.match(source, /aria-label=\{`Close \$\{side\}`}[^]*?removeMockup\(side\)/);
   assert.match(source, /function removeMockup\(side: MockupSide\)[\s\S]*?filter\(\(item\) => item !== side\)/);
 });
 
@@ -139,4 +141,32 @@ test("the large artwork tier transfers between Front and Back and is released at
   owner = claimLargeArtworkTier(owner, "Front Mockup");
   owner = releaseLargeArtworkTier(owner, "Front Mockup");
   assert.equal(owner, null);
+});
+
+test("phone editing uses finger-sized targets while blank mockup swipes can scroll", () => {
+  assert.match(source, /shrink-0 touch-pan-y select-none md:touch-none/);
+  assert.match(source, /event\.pointerType === "touch" && node !== "Print canvas"/);
+  assert.match(source, /data-node-drag-handle/);
+  assert.match(mockupArtwork, /data-artwork-resize-touch-target/);
+  assert.match(mockupArtwork, /setTouchHitRadius\(22 \* Math\.max\(1000 \/ rect\.width, 1200 \/ rect\.height\)\)/);
+  assert.match(mockupArtwork, /data-artwork-move-touch-target/);
+  assert.match(mockupArtwork, /data-artwork-touch-dimensions/);
+  assert.match(mockupArtwork, /!event\.isPrimary \|\| dragRef\.current/);
+  assert.match(mockupArtwork, /window\.addEventListener\("blur", cancelDrag\)/);
+});
+
+test("phone view pan is captured before editing and navigation reserves its measured height", () => {
+  assert.match(source, /aria-label="Touch view controls"[\s\S]*?\[@media\(pointer:coarse\)\]:flex/);
+  assert.match(source, /aria-label="Pan view" aria-pressed=\{touchPanEnabled\}/);
+  assert.match(source, /aria-label="Zoom out"/);
+  assert.match(source, /aria-label="Zoom in"/);
+  assert.match(source, /aria-label="Reset view"/);
+  assert.match(source, /onPointerDownCapture=\{startPan\}/);
+  assert.match(source, /onPointerMoveCapture=\{movePan\}/);
+  assert.match(source, /onLostPointerCapture=\{endPan\}/);
+  assert.match(source, /touchPanEnabled \? "touch-none" : "touch-pan-y"/);
+  assert.match(createRoute, /100dvh-var\(--mobile-navigation-height,4rem\)/);
+  assert.match(createRoute, /md:h-dvh/);
+  assert.match(mobileNav, /setProperty\("--mobile-navigation-height"/);
+  assert.match(mobileNav, /new ResizeObserver\(updateHeight\)/);
 });

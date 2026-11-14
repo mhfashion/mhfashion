@@ -30,7 +30,7 @@ export default function RootLayout({
             <CurrencyProvider>
               <CartProvider>
                 <BrowserZoomGuard />
-                <div className="flex min-h-screen flex-col pb-16 md:pb-0">
+                <div className="flex min-h-screen flex-col pb-[var(--mobile-navigation-height,4rem)] md:pb-0">
                   <div className="flex-1">{children}</div>
                   <CopyrightBar />
                 </div>

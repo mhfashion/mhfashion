@@ -1,6 +1,6 @@
 "use client";
 
-import { Grid2X2, Plus, X } from "lucide-react";
+import { Grid2X2, Hand, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
 import {
@@ -44,6 +44,7 @@ export default function KittlCanvas() {
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [touchPanEnabled, setTouchPanEnabled] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [artworkStrokes, setArtworkStrokes] = useState<ArtworkStroke[]>([]);
@@ -98,7 +99,15 @@ export default function KittlCanvas() {
     const handleKeyUp = (event: KeyboardEvent) => {
       if (event.code === "Space") setSpaceHeld(false);
     };
-    const handleWindowBlur = () => setSpaceHeld(false);
+    const handleWindowBlur = () => {
+      setSpaceHeld(false);
+      setIsPanning(false);
+      setDraggingNode(null);
+      panStartRef.current = null;
+      panGestureRef.current = false;
+      activeNodeDragRef.current = null;
+      activeArtworkStrokeRef.current = null;
+    };
 
     viewport.addEventListener("wheel", handleViewportWheel, { passive: false });
     window.addEventListener("keydown", handleKeyDown);
@@ -210,10 +219,13 @@ export default function KittlCanvas() {
   }, [mockups, nodePositions, pan, zoom]);
 
   function startPan(event: React.PointerEvent<HTMLDivElement>) {
+    if (panStartRef.current || (event.pointerType === "touch" && !event.isPrimary)) return;
     const middleButtonPan = event.button === 1;
-    if (!middleButtonPan && (!spaceHeld || event.button !== 0)) return;
+    const touchPan = touchPanEnabled && event.pointerType === "touch" && event.isPrimary;
+    if (!middleButtonPan && !touchPan && (!spaceHeld || event.button !== 0)) return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
     event.preventDefault();
+    event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     panStartRef.current = {
       pointerId: event.pointerId,
@@ -230,6 +242,7 @@ export default function KittlCanvas() {
     const start = panStartRef.current;
     if (!start || start.pointerId !== event.pointerId) return;
     event.preventDefault();
+    event.stopPropagation();
     setPan({
       x: start.panX + event.clientX - start.startX,
       y: start.panY + event.clientY - start.startY,
@@ -239,6 +252,7 @@ export default function KittlCanvas() {
   function endPan(event: React.PointerEvent<HTMLDivElement>) {
     if (panStartRef.current?.pointerId !== event.pointerId) return;
     panStartRef.current = null;
+    event.stopPropagation();
     setIsPanning(false);
     window.setTimeout(() => {
       panGestureRef.current = false;
@@ -263,7 +277,7 @@ export default function KittlCanvas() {
   }
 
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
-    if (event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     event.preventDefault();
     event.stopPropagation();
     const point = toCanvasPoint(event.clientX, event.clientY);
@@ -287,9 +301,12 @@ export default function KittlCanvas() {
   }
 
   function startNodeDrag(node: WorkspaceNode, event: React.PointerEvent<HTMLElement>) {
-    if (event.button !== 0 || !event.isPrimary) return;
+    if (activeNodeDragRef.current || event.button !== 0 || !event.isPrimary) return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
     if (node === "Print canvas" && event.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    // A blank mockup swipe scrolls on phones; its header remains the explicit drag surface.
+    if (event.pointerType === "touch" && node !== "Print canvas" &&
+      !(event.target instanceof Element && event.target.closest("[data-node-drag-handle]"))) return;
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -335,26 +352,44 @@ export default function KittlCanvas() {
     setLargeArtworkTierOwner((current) => releaseLargeArtworkTier(current, side));
   }
 
+  function resetView() {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    viewportRef.current?.scrollTo({ top: 0, left: 0 });
+  }
+
   return (
-    <main className="h-full min-h-0 overflow-hidden bg-[#f1f2f5]">
+    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[#f1f2f5]">
+      <div role="toolbar" aria-label="Touch view controls" className="z-40 hidden shrink-0 items-center justify-center gap-1 border-b border-[#d8dce2] bg-[#f1f2f5] px-2 py-1 [@media(pointer:coarse)]:flex">
+        <button type="button" aria-label="Pan view" aria-pressed={touchPanEnabled} onClick={() => setTouchPanEnabled((enabled) => !enabled)} className={`flex h-11 items-center gap-1.5 rounded px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-[#8f72d4] ${touchPanEnabled ? "bg-[#e4dbf7] text-[#60429d]" : "text-[#53606a]"}`}>
+          <Hand size={16} aria-hidden="true" />
+          <span>Pan view</span>
+        </button>
+        <button type="button" aria-label="Zoom out" disabled={zoom <= 0.25} onClick={() => setZoom((current) => Math.max(0.25, current - 0.25))} className="flex h-11 w-11 items-center justify-center rounded text-[#53606a] outline-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[#8f72d4]"><Minus size={17} aria-hidden="true" /></button>
+        <output aria-label="View zoom" className="min-w-10 text-center text-xs text-[#53606a]">{Math.round(zoom * 100)}%</output>
+        <button type="button" aria-label="Zoom in" disabled={zoom >= 3} onClick={() => setZoom((current) => Math.min(3, current + 0.25))} className="flex h-11 w-11 items-center justify-center rounded text-[#53606a] outline-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[#8f72d4]"><Plus size={17} aria-hidden="true" /></button>
+        <button type="button" aria-label="Reset view" onClick={resetView} className="flex h-11 w-11 items-center justify-center rounded text-[#53606a] outline-none focus-visible:ring-2 focus-visible:ring-[#8f72d4]"><RotateCcw size={16} aria-hidden="true" /></button>
+      </div>
       <div
         ref={viewportRef}
-        onPointerDown={startPan}
-        onPointerMove={movePan}
-        onPointerUp={endPan}
-        onPointerCancel={endPan}
+        aria-label="Editor viewport"
+        onPointerDownCapture={startPan}
+        onPointerMoveCapture={movePan}
+        onPointerUpCapture={endPan}
+        onPointerCancelCapture={endPan}
+        onLostPointerCapture={endPan}
         onAuxClick={(event) => {
           if (event.button === 1) event.preventDefault();
         }}
-        className={`flex h-full w-full flex-col items-center justify-start overflow-auto p-5 md:justify-center md:overflow-hidden sm:p-8 ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
+        className={`flex min-h-0 w-full flex-1 flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${touchPanEnabled ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
       >
         <div
           ref={workspaceRef}
-          className="relative my-auto flex max-w-full shrink-0 flex-col items-center gap-8 md:flex-row md:gap-12"
+          className="relative my-auto flex max-w-full shrink-0 origin-top flex-col items-center gap-8 md:origin-center md:flex-row md:gap-12 [@media(pointer:coarse)]:origin-top [@media(pointer:coarse)]:flex-col [@media(pointer:coarse)]:gap-8"
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: "center center",
-          }}
+            "--editor-inverse-zoom": 1 / zoom,
+          } as React.CSSProperties}
         >
           <svg className="pointer-events-none absolute inset-0 z-0 overflow-visible" width="100%" height="100%" aria-label="Canvas and mockup connections">
             {connectors.map((connection) => (
@@ -418,15 +453,15 @@ export default function KittlCanvas() {
                   aria-haspopup="menu"
                   aria-expanded={menuOpen}
                   onClick={() => setMenuOpen((open) => !open)}
-                  className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm outline-none ring-offset-2 hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                  className="-m-[15px] flex h-11 w-11 items-center justify-center rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:m-0 md:h-3.5 md:w-3.5 [@media(pointer:coarse)]:-m-[15px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
                 >
-                  <span className="h-1 w-1 rounded-full bg-white" />
+                  <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm hover:bg-[#8f72d4]"><span className="h-1 w-1 rounded-full bg-white" /></span>
                 </button>
                 {menuOpen && (
                   <div
                     role="menu"
                     aria-label="Canvas options"
-                    className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-[#d8dce2] bg-white p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2"
+                    className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-[#d8dce2] bg-white p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2 [@media(pointer:coarse)]:origin-top-right [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
                   >
                     <button
                       type="button"
@@ -436,7 +471,7 @@ export default function KittlCanvas() {
                         setShowGrid((visible) => !visible);
                         setMenuOpen(false);
                       }}
-                      className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                      className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:min-h-0 [@media(pointer:coarse)]:min-h-11"
                     >
                       <Grid2X2 size={15} aria-hidden="true" />
                       <span>Show Grid</span>
@@ -450,7 +485,7 @@ export default function KittlCanvas() {
                         addMockup("Front Mockup");
                         setMenuOpen(false);
                       }}
-                      className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                      className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-[#3e4650] outline-none hover:bg-[#f2f3f6] focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:min-h-0 [@media(pointer:coarse)]:min-h-11"
                     >
                       <Plus size={15} aria-hidden="true" />
                       <span>Add Mockup</span>
@@ -469,18 +504,18 @@ export default function KittlCanvas() {
               onPointerUp={endNodeDrag}
               onPointerCancel={endNodeDrag}
               onLostPointerCapture={endNodeDrag}
-              className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
+              className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-pan-y select-none md:touch-none [@media(pointer:coarse)]:touch-pan-y ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
               style={{ transform: `translate(${nodePositions[side].x}px, ${nodePositions[side].y}px)` }}
             >
-              <div className="mb-2 flex h-7 items-center gap-2 text-xs font-medium text-[#53606a]">
-                <span>{side}</span>
+              <div data-node-drag-handle className="mb-2 flex h-11 touch-none items-center gap-2 text-xs font-medium text-[#53606a] md:h-7 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))]">
+                <span className="min-w-0 flex-1 truncate [@media(pointer:coarse)]:[font-size:calc(0.75rem*var(--editor-inverse-zoom))]">{side}</span>
                 <button
                   type="button"
                   aria-label={`Close ${side}`}
                   onClick={() => removeMockup(side)}
-                  className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-[#7c838d] outline-none hover:bg-[#e7e9ed] hover:text-[#343b45] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                  className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#7c838d] outline-none hover:bg-[#e7e9ed] hover:text-[#343b45] focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:h-5 md:w-5 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))] [@media(pointer:coarse)]:w-[calc(2.75rem*var(--editor-inverse-zoom))]"
                 >
-                  <X size={13} aria-hidden="true" />
+                  <X size={13} aria-hidden="true" className="[@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]" />
                 </button>
               </div>
               <div
@@ -496,9 +531,9 @@ export default function KittlCanvas() {
                     aria-label="Add Back Mockup"
                     title="Add Back Mockup"
                     onClick={() => addMockup("Back Mockup")}
-                    className="absolute -left-5 top-[calc(50%+1.25rem)] z-30 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full bg-[#a58be8] text-white shadow-sm outline-none hover:bg-[#8f72d4] focus-visible:ring-2 focus-visible:ring-[#8f72d4]"
+                    className="absolute -left-[35px] top-[calc(50%+1.25rem)] z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white outline-none focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:-left-5 md:h-3.5 md:w-3.5 [@media(pointer:coarse)]:-left-[35px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
                   >
-                    <Plus size={8} aria-hidden="true" />
+                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm hover:bg-[#8f72d4]"><Plus size={8} aria-hidden="true" /></span>
                   </button>
                 )}
                 {showGrid && (
@@ -517,6 +552,7 @@ export default function KittlCanvas() {
                   maxArtworkEdgePx={getArtworkMaxEdgePx(side, largeArtworkTierOwner)}
                   onLargeTierRequested={handleLargeTierRequested}
                   onArtworkDisplayedEdgeChange={handleArtworkDisplayedEdgeChange}
+                  viewZoom={zoom}
                 />
               </div>
             </section>

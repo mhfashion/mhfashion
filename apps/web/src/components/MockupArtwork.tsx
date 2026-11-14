@@ -92,12 +92,14 @@ export default function MockupArtwork({
   maxArtworkEdgePx,
   onLargeTierRequested,
   onArtworkDisplayedEdgeChange,
+  viewZoom,
 }: {
   side: MockupSide;
   strokes: Stroke[];
   maxArtworkEdgePx: number;
   onLargeTierRequested: (side: MockupSide) => void;
   onArtworkDisplayedEdgeChange: (side: MockupSide, longestEdgePx: number) => void;
+  viewZoom: number;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
@@ -105,11 +107,41 @@ export default function MockupArtwork({
   const maxArtworkScale = getMaxArtworkScale(bounds, maxArtworkEdgePx);
   const [transform, setTransform] = useState<Transform>(() => ({ x: 0, y: 0, scale: Math.min(1, maxArtworkScale) }));
   const [selected, setSelected] = useState(false);
+  const [touchHitRadius, setTouchHitRadius] = useState(92);
   const safeTransform = transform.scale > maxArtworkScale ? scaleAroundCenter(bounds, transform, maxArtworkScale) : transform;
   const frame = getDisplayedBounds(bounds, safeTransform);
   const displayedWidthPx = Math.round(frame.width * PIXELS_PER_VIEWBOX_UNIT);
   const displayedHeightPx = Math.round(frame.height * PIXELS_PER_VIEWBOX_UNIT);
   const displayedLongestEdgePx = strokes.length === 0 ? 0 : Math.max(displayedWidthPx, displayedHeightPx);
+  const separateTouchHandle = Math.max(frame.width, frame.height) < touchHitRadius * 2;
+  const touchResizePoint = separateTouchHandle
+    ? { x: frame.x + frame.width / 2 + touchHitRadius * 2.4, y: frame.y + frame.height / 2 }
+    : { x: frame.x + frame.width, y: frame.y + frame.height };
+  const hasArtwork = strokes.length > 0;
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const updateTouchTarget = () => {
+      const rect = svg.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      // Screen-sized touch targets remain usable after viewport zoom and phone rotation.
+      setTouchHitRadius(22 * Math.max(1000 / rect.width, 1200 / rect.height));
+    };
+    const frameId = window.requestAnimationFrame(updateTouchTarget);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateTouchTarget);
+    observer?.observe(svg);
+    window.addEventListener("resize", updateTouchTarget);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      observer?.disconnect();
+      window.removeEventListener("resize", updateTouchTarget);
+    };
+  }, [hasArtwork, viewZoom]);
+  useEffect(() => {
+    const cancelDrag = () => { dragRef.current = null; };
+    window.addEventListener("blur", cancelDrag);
+    return () => window.removeEventListener("blur", cancelDrag);
+  }, []);
   useEffect(() => {
     if (transform.scale <= maxArtworkScale) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Persist the clamp so a later tier transfer cannot restore the old oversized scale.
@@ -131,7 +163,7 @@ export default function MockupArtwork({
 
   const startTransform = (mode: Drag["mode"], event: React.PointerEvent<SVGElement>) => {
     const svg = svgRef.current;
-    if (!svg || event.button !== 0) return;
+    if (!svg || event.button !== 0 || !event.isPrimary || dragRef.current) return;
     event.preventDefault();
     event.stopPropagation();
     const start = toViewBoxPoint(svg, event.clientX, event.clientY);
@@ -189,9 +221,16 @@ export default function MockupArtwork({
     setTransform(scaleAroundCenter(bounds, safeTransform, scale));
   };
 
+  const resizeKeyDown = (event: React.KeyboardEvent<SVGCircleElement>) => {
+    if (["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"].includes(event.key)) event.preventDefault();
+    if (event.key === "ArrowUp" || event.key === "ArrowRight") resizeByKeyboard(0.1);
+    if (event.key === "ArrowDown" || event.key === "ArrowLeft") resizeByKeyboard(-0.1);
+  };
+
   if (strokes.length === 0) return null;
 
   return (
+    <>
     <svg
       ref={svgRef}
       role="group"
@@ -203,11 +242,22 @@ export default function MockupArtwork({
       onPointerUp={endTransform}
       onPointerCancel={endTransform}
       onLostPointerCapture={endTransform}
-      className="absolute inset-0 z-20 h-full w-full overflow-visible touch-none"
+      className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible touch-none"
     >
       <g transform={`translate(${500 + safeTransform.x} ${600 + safeTransform.y}) scale(${BASE_ARTWORK_SCALE * safeTransform.scale}) translate(-500 -600)`}>
         {artwork}
       </g>
+      <rect
+        data-artwork-move-touch-target
+        x={frame.x + frame.width / 2 - Math.max(frame.width + 32, touchHitRadius * 2) / 2}
+        y={frame.y + frame.height / 2 - Math.max(frame.height + 32, touchHitRadius * 2) / 2}
+        width={Math.max(frame.width + 32, touchHitRadius * 2)}
+        height={Math.max(frame.height + 32, touchHitRadius * 2)}
+        fill="transparent"
+        aria-hidden="true"
+        onPointerDown={(event) => startTransform("move", event)}
+        className="pointer-events-none touch-none [@media(pointer:coarse)]:pointer-events-auto"
+      />
       <rect
         x={frame.x - 16}
         y={frame.y - 16}
@@ -217,11 +267,21 @@ export default function MockupArtwork({
         stroke="transparent"
         aria-label={`Move ${side} artwork`}
         onPointerDown={(event) => startTransform("move", event)}
-        className="cursor-move"
+        className="pointer-events-auto cursor-move touch-none"
       />
       {selected && <g>
-        <text x={frame.x - 16} y={frame.y - 28} fill="#60429d" fontSize="28" fontWeight="600" pointerEvents="none">{`${displayedWidthPx} × ${displayedHeightPx} px`}</text>
+        <text x={frame.x - 16} y={frame.y - 28} fill="#60429d" fontSize="28" fontWeight="600" pointerEvents="none" className="[@media(pointer:coarse)]:hidden">{`${displayedWidthPx} × ${displayedHeightPx} px`}</text>
         <rect x={frame.x - 16} y={frame.y - 16} width={frame.width + 32} height={frame.height + 32} fill="none" stroke="#8f72d4" strokeWidth="5" strokeDasharray="12 8" pointerEvents="none" />
+        <circle
+          data-artwork-resize-touch-target
+          cx={touchResizePoint.x}
+          cy={touchResizePoint.y}
+          r={touchHitRadius}
+          fill="transparent"
+          aria-hidden="true"
+          onPointerDown={(event) => startTransform("resize", event)}
+          className="pointer-events-none touch-none [@media(pointer:coarse)]:pointer-events-auto"
+        />
         <circle
           cx={frame.x + frame.width}
           cy={frame.y + frame.height}
@@ -233,14 +293,30 @@ export default function MockupArtwork({
           tabIndex={0}
           aria-label={`Resize mockup artwork; maximum edge ${maxArtworkEdgePx} px`}
           onPointerDown={(event) => startTransform("resize", event)}
-          onKeyDown={(event) => {
-            if (["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"].includes(event.key)) event.preventDefault();
-            if (event.key === "ArrowUp" || event.key === "ArrowRight") resizeByKeyboard(0.1);
-            if (event.key === "ArrowDown" || event.key === "ArrowLeft") resizeByKeyboard(-0.1);
-          }}
-          className="cursor-nwse-resize"
+          onKeyDown={resizeKeyDown}
+          className={`pointer-events-auto cursor-nwse-resize touch-none ${separateTouchHandle ? "[@media(pointer:coarse)]:hidden" : ""}`}
         />
+        {separateTouchHandle && <g className="hidden [@media(pointer:coarse)]:block">
+          <line x1={frame.x + frame.width} y1={frame.y + frame.height / 2} x2={touchResizePoint.x} y2={touchResizePoint.y} stroke="#8f72d4" strokeWidth="4" pointerEvents="none" />
+          <circle
+            data-artwork-separated-resize-handle
+            cx={touchResizePoint.x}
+            cy={touchResizePoint.y}
+            r="20"
+            fill="white"
+            stroke="#8f72d4"
+            strokeWidth="6"
+            role="button"
+            tabIndex={0}
+            aria-label={`Resize mockup artwork; maximum edge ${maxArtworkEdgePx} px`}
+            onPointerDown={(event) => startTransform("resize", event)}
+            onKeyDown={resizeKeyDown}
+            className="pointer-events-auto cursor-nwse-resize touch-none"
+          />
+        </g>}
       </g>}
     </svg>
+    {selected && <div data-artwork-touch-dimensions style={{ transform: `scale(${1 / viewZoom})`, transformOrigin: "top left" }} className="pointer-events-none absolute left-2 top-2 z-30 hidden rounded bg-white/90 px-2 py-1 text-xs font-medium text-[#60429d] [@media(pointer:coarse)]:block">{`${displayedWidthPx} × ${displayedHeightPx} px`}</div>}
+    </>
   );
 }

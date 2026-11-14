@@ -1,6 +1,7 @@
 "use client";
 
 import { Flame, Home, Pencil, ShoppingCart, User } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 
@@ -16,11 +17,27 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const { locale } = useI18n();
   const labels = locale === "my" ? ["ပင်မ", "Popular", "ဖန်တီးရန်", "Cart", "အကောင့်"] : ITEMS.map((item) => item.label);
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateHeight = () => {
+      root.style.setProperty("--mobile-navigation-height", `${navRef.current?.getBoundingClientRect().height ?? 0}px`);
+    };
+    updateHeight();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateHeight);
+    if (navRef.current) observer?.observe(navRef.current);
+    window.addEventListener("resize", updateHeight);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateHeight);
+      root.style.removeProperty("--mobile-navigation-height");
+    };
+  }, [pathname]);
 
   if (pathname.startsWith("/admin")) return null;
 
   return (
-    <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-bg/95 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.65)] backdrop-blur md:hidden">
+    <nav ref={navRef} aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-bg/95 px-2 pb-[max(0.45rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.65)] backdrop-blur md:hidden">
       <div className="mx-auto grid max-w-md grid-cols-5">
         {ITEMS.map(({ href, Icon }, index) => {
           const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);

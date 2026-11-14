@@ -17,6 +17,17 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Phone/Mobile Editor ကို အတည်ပြုထားသော Desktop system နှင့်တူအောင် ပြင်ဆင်ခြင်း
+
+- လက်ရှိ Desktop ဒီဇိုင်းနှင့် shared 3500/1500 px tier ကို မပြောင်းပါ။ Front/Back Artwork group တစ်ခုချင်းစီကို လက်ဖြင့် သီးခြားရွှေ့/resize ပြုလုပ်နိုင်ပြီး အကြီး tier ကို နှစ်ဖက်လုံး ပြောင်းသုံးနိုင်သည်။ Overlay ပြင်ဆင်မှုကြောင့် source strokes သို့မဟုတ် outer Mockup box မပြောင်းပါ။
+- ဖုန်းတွင် blank Mockup swipe သည် workspace scroll ဖြစ်ပြီး၊ Mockup header သည် box drag surface ဖြစ်သည်။ Artwork bounds/handle နှင့် Canvas drawing surface တွင် touch gesture ကို browser scroll က ကြားဖြတ်မရအောင် သီးခြားထိန်းထားသည်။ Primary touch က gesture ကို ပိုင်ဆိုင်ပြီး secondary touch၊ cancel၊ lost capture နှင့် window blur တို့ကို ခွဲခြားပိတ်သိမ်းသည်။
+- Finger-sized 44 CSS px controls နှင့် invisible move/resize hit targets ထည့်ထားသည်။ မူလ purple dots/resize circle ကို ထိန်းထားပြီး desktop ခလုတ်အရွယ် မပြောင်းပါ။ ဖုန်းအတွက် readable pixel-dimension badge နှင့် `Pan view`, Zoom `+`/`−`, `Reset view` controls ထည့်ထားသည်။ View controls သည် artwork transform မဟုတ်ဘဲ viewport state ကိုသာ ပြောင်းသည်။ Landscape တွင် desktop breakpoint ကျော်သော်လည်း touch controls/stacking ဆက်ရှိသည်။
+- Zoom 25% တွင်လည်း controls နှင့် dimension badge မသေးသွားအောင် inverse-scale ဖြင့် screen size ကို ထိန်းထားသည်။ သေးငယ်သော Artwork ကို select လုပ်ပြီးနောက် move/resize hit areas မထပ်စေရန် ဖုန်း resize handle ကို သီးခြားနေရာတွင် connector ဖြင့်ပြသည်။
+- Mobile bottom navigation ၏ တကယ့်အမြင့်နှင့် safe-area ကိုတိုင်းပြီး `/create` အမြင့်နှင့် root padding တွင် တစ်ကြိမ်တည်း ချန်ထားသည်။ Editor အောက်ပိုင်းကို navigation မဖုံးတော့ပါ။
+- ပြောင်းလဲသည့် source: `KittlCanvas.tsx`, `MockupArtwork.tsx`, `MobileBottomNav.tsx`, `/create/page.tsx`, root layout။ `tests/canvas-shell.test.cjs` တွင် mobile regression assertions ထည့်ထားပြီး `tests/editor-touch.cjs` သည် Node 22 နှင့် local Chromium CDP endpoint ကိုသာ သုံးသည့် reusable touch integration check ဖြစ်သည်။ Dependency အသစ် မထည့်ပါ။
+- Validation: Node tests **24/24**၊ TypeScript၊ changed-file ESLint၊ Next.js/OpenNext Cloudflare build နှင့် `git diff --check` အောင်မြင်သည်။ Chromium တွင် 390×844၊ 320×740 portrait touch၊ 740×390 နှင့် 844×390 landscape၊ tiny selected Artwork ကို ထပ်မံရွှေ့ခြင်း/resize၊ tier နှစ်ဖက်လုံး လွှဲပြောင်းခြင်း/release၊ pan/zoom၊ Zoom 25% screen-sized controls/readable badge၊ second-touch/cancel နှင့် desktop control-size/mouse drawing/Back resize regression တို့ကို စမ်းသပ်အောင်မြင်သည်။
+- Limitation: physical Android/iPhone နှင့် iOS Safari ပေါ်တွင် မစမ်းရသေးပါ။ Artwork/state များသည် အရင်အတိုင်း page memory တွင်သာ ရှိသည်။ Native app၊ multi-touch pinch editor သို့မဟုတ် roadmap feature အသစ်များ မထည့်ပါ။
+
 ### 2026-11-14 — Make the 3500 px artwork tier transferable
 
 - Owner clarification: the 3500 px large tier is not permanently assigned to Front. Either Front or Back may claim it; while one side's longest artwork edge exceeds 1500 px, that side may use up to 3500 px and the other side is capped at 1500 px. If both sides remain at or below 1500 px, either may claim the large tier by resizing above 1500 px. The numeric values remain provisional, not final print specifications.
