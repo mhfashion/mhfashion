@@ -17,6 +17,12 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-15 — Remove unused Layers rows and accent the circular toggle
+
+- Kept the existing compact right-side panel, but removed the unused `Channels`, `Paths`, top `Menu`, and `Kind` rows. The functional Layers title, blend/opacity, Lock/Fill, layer/mask rows, and bottom action strip remain.
+- Replaced the rectangular edge trigger with a circular button using the app's `bg-accent` / `text-accent-foreground` tokens, so it changes with Header Light/Dark. It is 28px on desktop and expands to a 44px coarse-pointer touch target.
+- Validation: all Node suites **32/32**, TypeScript, changed-file ESLint with no warnings, Cloudflare/OpenNext production build, and responsive Chromium tests passed. Browser checks cover the removed rows, active theme accent on the toggle, desktop/phone sizing, layer/mask operations, and existing mobile/editor regressions.
+
 ### 2026-11-14 — Compact Layers panel to match supplied Photoshop layout
 
 - Reworked the right-side dock to follow the owner's supplied 398×770 Photoshop reference: compact `Layers / Channels / Paths` tabs; a `Kind` filter row; `Normal` blend and numeric opacity; `Lock / Fill` controls; short visibility/thumbnail/name/mask rows; and a compact bottom action strip. Reduced the panel to a 16rem maximum and labels to 11px; the row overflow menu holds rename/reorder/duplicate/delete and mask operations.

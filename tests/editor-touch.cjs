@@ -246,13 +246,17 @@ async function main() {
         arrowRight: buttonBox.right,
         panelLeft: panelBox.left,
         dockSide: panel.dataset.dockSide,
-        tabHeight: panel.querySelector('[role="tablist"]').getBoundingClientRect().height,
+        titleHeight: panel.querySelector('[aria-label="Layers panel title"]').getBoundingClientRect().height,
         actionBarHeight: panel.querySelector('[aria-label="Layer actions"]').getBoundingClientRect().height,
         layerRowHeight: panel.querySelector('[aria-label="Layer list"] [role="listitem"]').getBoundingClientRect().height,
-        kindDisabled: panel.querySelector('button[aria-label="Layer kind filter"]').disabled,
-        kindOpacity: getComputedStyle(panel.querySelector('button[aria-label="Layer kind filter"]')).opacity,
+        noUnusedRows: !panel.querySelector('[aria-label="Layers panel menu"], [aria-label="Layer kind filters"]') && !/\b(?:Channels|Paths|Kind)\b/.test(panel.textContent),
         fillDisabled: panel.querySelector('button[aria-label="Fill 100 percent"]').disabled,
         fillOpacity: getComputedStyle(panel.querySelector('button[aria-label="Fill 100 percent"]')).opacity,
+        toggleWidth: buttonBox.width,
+        toggleHeight: buttonBox.height,
+        toggleRadius: getComputedStyle(button).borderRadius,
+        toggleBackground: getComputedStyle(button).backgroundColor,
+        accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
         expanded: button.getAttribute("aria-expanded"),
       };
     });
@@ -265,13 +269,16 @@ async function main() {
     assert.ok(openLayers.width <= openLayers.viewportWidth * 0.86 + 1, "Layers panel fits narrow phone screens");
     assert.ok(openLayers.width <= 257, "Compact Photoshop panel stays within its 16rem maximum width");
     assert.ok(Math.abs(openLayers.arrowRight - openLayers.panelLeft) < 1, "The collapse arrow remains reachable at the open panel edge");
-    assert.equal(openLayers.tabHeight, 44, "Portrait touch tab row stays 44px tall");
+    assert.equal(openLayers.titleHeight, 44, "Portrait Layers title row stays 44px tall");
     assert.equal(openLayers.actionBarHeight, 44, "Portrait touch action bar stays 44px tall");
     assert.ok(openLayers.layerRowHeight >= 44, "Portrait touch layer rows preserve at least a 44px target");
-    assert.equal(openLayers.kindDisabled, true, "Kind filtering remains a nonfunctional disabled placeholder");
-    assert.ok(Number(openLayers.kindOpacity) < 1, "Kind filtering is visibly dimmed");
+    assert.equal(openLayers.noUnusedRows, true, "Unused Channels, Paths, Menu, and Kind rows are removed");
     assert.equal(openLayers.fillDisabled, true, "Fill remains a nonfunctional disabled placeholder");
     assert.ok(Number(openLayers.fillOpacity) < 1, "Fill is visibly dimmed");
+    assert.equal(openLayers.toggleWidth, 44, "Mobile Layers toggle retains a 44px circular touch target");
+    assert.equal(openLayers.toggleHeight, 44);
+    assert.ok(Number.parseFloat(openLayers.toggleRadius) >= 20, "Layers toggle is circular");
+    assert.equal(openLayers.toggleBackground, `rgb(${openLayers.accent})`, "Layers toggle uses the app accent token");
     assert.equal(openLayers.expanded, "true");
     if (width === 390) {
       await tap('button[aria-label="Add layer"]');
@@ -486,17 +493,15 @@ async function main() {
       const panel = document.querySelector('[aria-label="Layers panel"]');
       const list = panel.querySelector('[aria-label="Layer list"]');
       return {
-        tabs: panel.querySelector('[role="tablist"]').getBoundingClientRect().height,
+        title: panel.querySelector('[aria-label="Layers panel title"]').getBoundingClientRect().height,
         actions: panel.querySelector('[aria-label="Layer actions"]').getBoundingClientRect().height,
-        kindDisplay: getComputedStyle(panel.querySelector('[aria-label="Layer kind filters"]')).display,
         layerRow: list.querySelector('[role="listitem"]').getBoundingClientRect().height,
         maskButton: panel.querySelector('[aria-label="Hide artwork with mask"]').getBoundingClientRect().height,
         listHeight: list.getBoundingClientRect().height,
       };
     });
-    assert.equal(shortLandscapeLayout.tabs, 32, "Short-landscape tab chrome is compact");
+    assert.equal(shortLandscapeLayout.title, 32, "Short-landscape title chrome is compact");
     assert.equal(shortLandscapeLayout.actions, 32, "Short-landscape bottom actions are compact");
-    assert.equal(shortLandscapeLayout.kindDisplay, "none", "Decorative Kind filter strip collapses on short landscape");
     assert.ok(shortLandscapeLayout.layerRow >= 44, "Layer rows keep usable touch height in short landscape");
     assert.ok(shortLandscapeLayout.maskButton <= 32 && shortLandscapeLayout.maskButton >= 27, "Short-landscape mask button stays compact but tappable");
     assert.ok(shortLandscapeLayout.listHeight >= 60, "Short-landscape layer list leaves scrollable mask space");
@@ -542,13 +547,20 @@ async function main() {
         bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
         productBox: getComputedStyle(document.querySelector('select[aria-label="Product"]')).backgroundColor,
         layersPanel: getComputedStyle(document.querySelector('aside[aria-label="Layers panel"]')).backgroundColor,
+        layersToggle: getComputedStyle(document.querySelector('button[aria-label="Collapse Layers panel"]')).backgroundColor,
+        accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
         layersWidth: document.querySelector('aside[aria-label="Layers panel"]').getBoundingClientRect().width,
         layerNameSize: getComputedStyle(document.querySelector('button[aria-label="Select Layer 1 artwork"]')).fontSize,
+        toggleWidth: document.querySelector('button[aria-label="Collapse Layers panel"]').getBoundingClientRect().width,
+        toggleRadius: getComputedStyle(document.querySelector('button[aria-label="Collapse Layers panel"]')).borderRadius,
         button: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
       };
     });
     assert.ok(themeBefore.layersWidth <= 257, "Desktop panel is visibly narrower than its previous oversized 17rem width");
     assert.equal(themeBefore.layerNameSize, "11px", "Photoshop-style layer rows use compact type");
+    assert.equal(themeBefore.toggleWidth, 28, "Desktop Layers toggle stays small");
+    assert.ok(Number.parseFloat(themeBefore.toggleRadius) >= 14, "Desktop Layers toggle remains circular");
+    assert.equal(themeBefore.layersToggle, `rgb(${themeBefore.accent})`, "Desktop toggle uses the app accent color");
     await clickPoint(themeBefore.button);
     await pause(180);
     const themeAfter = await evaluate(() => ({
@@ -557,12 +569,16 @@ async function main() {
       bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
       productBox: getComputedStyle(document.querySelector('select[aria-label="Product"]')).backgroundColor,
       layersPanel: getComputedStyle(document.querySelector('aside[aria-label="Layers panel"]')).backgroundColor,
+      layersToggle: getComputedStyle(document.querySelector('button[aria-label="Collapse Layers panel"]')).backgroundColor,
+      accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
     }));
     assert.notEqual(themeAfter.dark, themeBefore.dark, "Header Dark/Light toggles the root theme");
     assert.notEqual(themeAfter.shell, themeBefore.shell, "Editor workspace responds to Header theme toggle");
     assert.notEqual(themeAfter.bar, themeBefore.bar, "Header Bar 2 responds to Header theme toggle");
     assert.notEqual(themeAfter.productBox, themeBefore.productBox, "Product box responds to Header theme toggle");
     assert.notEqual(themeAfter.layersPanel, themeBefore.layersPanel, "Photoshop-style Layers dock responds to Header theme toggle");
+    assert.notEqual(themeAfter.layersToggle, themeBefore.layersToggle, "Round Layers toggle follows the app accent theme color");
+    assert.equal(themeAfter.layersToggle, `rgb(${themeAfter.accent})`, "Toggled button color matches the active theme accent token");
     await clickPoint(themeBefore.button);
     await pause(180);
     assert.equal(await evaluate(() => document.documentElement.classList.contains("dark")), themeBefore.dark, "Header theme toggle restores the original mode");

@@ -192,11 +192,10 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(source, /function deleteLayer\(id: string\)[\s\S]*?deleteEditorLayer\(layers, id\)/);
   assert.match(layersPanel, /aria-label="Layers panel"/);
   assert.match(layersPanel, /data-dock-side="right"/);
-  assert.match(layersPanel, /role="tablist" aria-label="Panel tabs"/);
-  assert.match(layersPanel, /role="tab" aria-selected="true"/);
-  assert.match(layersPanel, /Channels[\s\S]*?Paths/);
-  assert.match(layersPanel, />Kind</);
-  assert.match(layersPanel, /disabled[^>]*aria-label="Layer kind filter"/);
+  assert.match(layersPanel, /aria-label="Layers panel title"/);
+  assert.match(layersPanel, /role="heading" aria-level=\{2\}/);
+  assert.doesNotMatch(layersPanel, /Channels|Paths|Kind|Layers panel menu/);
+  assert.match(layersPanel, /h-7 w-7[^\"]*rounded-full[^\"]*bg-accent[^\"]*text-accent-foreground/);
   assert.match(layersPanel, /Opacity:/);
   assert.match(layersPanel, /Lock:/);
   assert.match(layersPanel, /Fill:/);

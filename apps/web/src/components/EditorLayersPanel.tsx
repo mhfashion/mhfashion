@@ -4,17 +4,14 @@ import {
   ArrowDown,
   ArrowUp,
   Blend,
-  Circle,
   ChevronLeft,
   ChevronRight,
   Copy,
   Eye,
   EyeOff,
   FolderPlus,
-  Image as ImageIcon,
   Link2,
   LockKeyhole,
-  Menu,
   MoreHorizontal,
   Move,
   Plus,
@@ -23,7 +20,6 @@ import {
   Square,
   SquareDashed,
   Trash2,
-  Type,
   UnlockKeyhole,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -120,7 +116,6 @@ export default function EditorLayersPanel({
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [menuLayerId, setMenuLayerId] = useState<string | null>(null);
-  const [panelMenuOpen, setPanelMenuOpen] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const selectedLayer = layers.find((layer) => layer.id === selectedLayerId) ?? null;
 
@@ -154,37 +149,12 @@ export default function EditorLayersPanel({
           className="absolute inset-y-0 right-0 z-30 flex min-h-0 flex-col overflow-hidden border-l border-[#b7b7b7] bg-[#e8e8e8] text-[#202020] shadow-xl dark:border-[#1b1b1b] dark:bg-[#303030] dark:text-[#dedede] dark:shadow-black/60"
           style={{ width: PANEL_WIDTH }}
         >
-          <div role="tablist" aria-label="Panel tabs" className="flex h-8 shrink-0 items-stretch border-b border-[#b7b7b7] bg-[#d3d3d3] px-1 dark:border-[#202020] dark:bg-[#242424] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8">
-            <button role="tab" aria-selected="true" className="relative min-w-0 border-r border-[#b7b7b7] bg-[#e8e8e8] px-2.5 text-[11px] font-semibold text-[#202020] dark:border-[#202020] dark:bg-[#303030] dark:text-white [@media(pointer:coarse)]:px-3">
-              <span role="heading" aria-level={2} className="text-[11px] font-semibold">Layers</span>
-              <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[#78b7e8]" />
-            </button>
-            <button role="tab" aria-selected="false" aria-disabled="true" disabled className="border-r border-[#b7b7b7] px-2 text-[11px] text-[#505050] disabled:opacity-70 dark:border-[#202020] dark:text-[#b5b5b5] [@media(pointer:coarse)]:px-3">Channels</button>
-            <button role="tab" aria-selected="false" aria-disabled="true" disabled className="px-2 text-[11px] text-[#505050] disabled:opacity-70 dark:text-[#b5b5b5] [@media(pointer:coarse)]:px-3">Paths</button>
+          <div aria-label="Layers panel title" className="relative flex h-8 shrink-0 items-center border-b border-[#b7b7b7] bg-[#d3d3d3] px-1 dark:border-[#202020] dark:bg-[#242424] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8">
+            <span role="heading" aria-level={2} className="relative flex h-full items-center border-r border-[#b7b7b7] px-2.5 text-[11px] font-semibold text-[#202020] dark:border-[#202020] dark:text-white [@media(pointer:coarse)]:px-3">
+              Layers
+              <span className="absolute inset-x-0 bottom-0 h-[2px] bg-accent" />
+            </span>
             <span aria-label="Layer count" className="sr-only">{layers.length}</span>
-            <button type="button" aria-label="Layers panel menu" aria-expanded={panelMenuOpen} onClick={() => setPanelMenuOpen((value) => !value)} className={`${TINY_ICON} ml-auto`}>
-              <Menu size={15} aria-hidden="true" />
-            </button>
-            {panelMenuOpen && (
-              <div role="menu" aria-label="Layers panel menu" className="absolute right-1 top-8 z-50 min-w-36 border border-[#999] bg-[#e8e8e8] py-1 text-[11px] text-[#202020] shadow-xl dark:border-[#1f1f1f] dark:bg-[#242424] dark:text-white">
-                <button type="button" role="menuitem" aria-label="Add layer" onClick={() => { onAddLayer(); setPanelMenuOpen(false); }} className="flex min-h-7 w-full items-center gap-2 px-2 text-left hover:bg-[#d4d4d4] dark:hover:bg-[#464646] [@media(pointer:coarse)]:min-h-11">
-                  <Plus size={13} aria-hidden="true" /> New Layer
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div aria-label="Layer kind filters" className="flex h-8 shrink-0 items-center gap-1 border-b border-[#b7b7b7] bg-[#dedede] px-1.5 dark:border-[#242424] dark:bg-[#2c2c2c] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)_and_(max-height:500px)]:hidden">
-            <button type="button" disabled aria-label="Layer kind filter" title="Layer-kind filtering is not available yet" className="flex h-6 min-w-0 flex-1 cursor-not-allowed items-center gap-1 border border-[#a0a0a0] bg-[#f3f3f3] px-1.5 text-[11px] text-[#666] opacity-60 dark:border-[#1d1d1d] dark:bg-[#202020] dark:text-[#b0b0b0] [@media(pointer:coarse)]:h-9 [@media(pointer:coarse)_and_(max-height:500px)]:h-6">
-              <ImageIcon size={12} aria-hidden="true" />
-              <span className="flex-1">Kind</span>
-              <ChevronRight size={12} aria-hidden="true" className="rotate-90" />
-            </button>
-            {[ImageIcon, Circle, Type, Square, Move].map((Icon, index) => (
-              <button key={index} type="button" disabled aria-label={`Layer kind filter ${index + 1}`} title="Layer-kind filtering is not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}>
-                <Icon size={13} aria-hidden="true" />
-              </button>
-            ))}
           </div>
 
           <div className="flex h-8 shrink-0 items-center gap-1 border-b border-[#b7b7b7] px-1.5 dark:border-[#242424] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8">
@@ -308,7 +278,7 @@ export default function EditorLayersPanel({
         aria-label={open ? "Collapse Layers panel" : "Expand Layers panel"}
         aria-expanded={open}
         onClick={onToggle}
-        className="absolute top-2 z-40 flex h-11 w-10 items-center justify-center rounded-l-md border border-border border-r-0 bg-bg-surface text-text-secondary shadow-md outline-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent"
+        className="absolute top-2 z-40 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
         style={{ right: open ? PANEL_WIDTH : 0 }}
       >
         {open ? <ChevronRight size={17} aria-hidden="true" /> : <ChevronLeft size={17} aria-hidden="true" />}
