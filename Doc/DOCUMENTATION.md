@@ -40,6 +40,29 @@ This log records completed website-related changes in the connected repository. 
 - ပြောင်းလဲသည့် source: `KittlCanvas.tsx`, `MockupArtwork.tsx`, `MobileBottomNav.tsx`, `/create/page.tsx`, root layout။ `tests/canvas-shell.test.cjs` တွင် mobile regression assertions ထည့်ထားပြီး `tests/editor-touch.cjs` သည် Node 22 နှင့် local Chromium CDP endpoint ကိုသာ သုံးသည့် reusable touch integration check ဖြစ်သည်။ Dependency အသစ် မထည့်ပါ။
 - Validation: Node tests **24/24**၊ TypeScript၊ changed-file ESLint၊ Next.js/OpenNext Cloudflare build နှင့် `git diff --check` အောင်မြင်သည်။ Chromium တွင် 390×844၊ 320×740 portrait touch၊ 740×390 နှင့် 844×390 landscape၊ tiny selected Artwork ကို ထပ်မံရွှေ့ခြင်း/resize၊ tier နှစ်ဖက်လုံး လွှဲပြောင်းခြင်း/release၊ pan/zoom၊ Zoom 25% screen-sized controls/readable badge၊ second-touch/cancel နှင့် desktop control-size/mouse drawing/Back resize regression တို့ကို စမ်းသပ်အောင်မြင်သည်။
 - Limitation: physical Android/iPhone နှင့် iOS Safari ပေါ်တွင် မစမ်းရသေးပါ။ Artwork/state များသည် အရင်အတိုင်း page memory တွင်သာ ရှိသည်။ Native app၊ multi-touch pinch editor သို့မဟုတ် roadmap feature အသစ်များ မထည့်ပါ။
+### 2026-11-14 — Phone interaction audit and copyright placement correction
+
+- Audited the phone-visible navigation and Product Detail controls. The mobile
+  header search icon now opens a real search form that submits to
+  `/mh-fashion?q=...`; Product Detail Share now uses the Web Share API with a
+  clipboard fallback; Size Guide and Review actions switch to their tabs; and
+  Fit Type/Sleeve controls now keep their selected state.
+- Replaced the no-op phone Sort button on `/mh-fashion` with the existing sort
+  query link and changed the phone Filter button to a working category jump.
+- Changed `CopyrightBar` to `hidden md:block`. On Phone, copyright is now shown
+  only at the bottom of the mobile side drawer (`MobileNav`); the desktop
+  copyright strip remains unchanged. The fixed bottom navigation still keeps
+  its own safe-area/page clearance.
+- Files changed: `apps/web/src/components/MobileNav.tsx`,
+  `apps/web/src/components/CopyrightBar.tsx`,
+  `apps/web/src/components/ProductDetailClient.tsx`, and
+  `apps/web/src/app/mh-fashion/page.tsx`.
+- Validation: `npm run lint --workspace=apps/web` completed with **0 errors / 25
+  warnings** (the warnings are existing React effect and image warnings), the
+  Next.js production build passed, and `git diff --check` passed.
+- Remaining limitation: the mobile drawer still contains several future-help
+  and app-download placeholder destinations; this audit did not invent those
+  missing product/service pages.
 
 ### 2026-11-14 — GSM selector and quantity-aware price on product detail
 
