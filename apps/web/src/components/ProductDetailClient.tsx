@@ -54,7 +54,7 @@ function OptionButton({ selected, children, onClick }: { selected: boolean; chil
 
 function OptionGroup({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border/70 bg-bg/70 p-1.5 shadow-[0_4px_18px_rgba(30,40,20,0.04)]">
+    <div className="p-0">
       <div className="mb-1 flex items-center justify-between gap-1">
         <h3 className="text-[9px] font-black leading-none tracking-tight">{title}</h3>
         {action}
@@ -90,8 +90,8 @@ export default function ProductDetailClient({ product, related }: Props) {
 
   return (
     <>
-      <section className="grid gap-3 rounded-2xl border border-border/70 bg-bg-surface p-2.5 shadow-[0_8px_30px_rgba(30,40,20,0.06)] sm:p-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)] lg:gap-4 lg:p-4">
-        <div className="min-w-0">
+      <section className="grid gap-2 rounded-xl border border-border/70 bg-bg-surface p-2 shadow-[0_8px_30px_rgba(30,40,20,0.06)] sm:p-2.5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:gap-3 lg:p-3">
+        <div className="mx-auto min-w-0 w-full max-w-[300px] lg:max-w-[360px]">
           <div className="relative aspect-square overflow-hidden rounded-2xl border border-border/70 bg-bg">
             {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-text-muted">Product preview</div>}
             {product.isNew && <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-[10px] font-black text-accent-foreground">NEW</span>}
