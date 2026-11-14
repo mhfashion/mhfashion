@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Fix Product to T-Shirt and add the Layers panel shell
+
+- Reduced the `Product` value box to 92px and made it a fixed, read-only `T-Shirt` value for this step. Product switching is intentionally not exposed; the prior Phone-specific rules remain in the code but are not reachable in the current UI. The `GSM`, `Color`, and `Size` fields remain in place.
+- Added a closed-by-default Layers panel shell on the left edge of the Editor viewport. Its arrow opens the panel, moves to the panel edge, and closes it again. The panel currently contains only the `Layers` heading and a note that controls will be added step by step.
+- No Photoshop layer list, create/delete/reorder/visibility/lock controls, blending, opacity, or artwork-to-layer behavior was added; those details are deferred to the owner's later instructions. The overlay stays within the Editor viewport, below the phone view toolbar, and uses the app's theme colors.
+- Validation: canvas-shell **11/11**, all repository Node tests **27/27**, TypeScript, changed-file ESLint, Cloudflare/OpenNext build, Chromium checks at 390×844 and 320×740 (open/close and drawer width), landscape phone and 1280×900 desktop open/close, existing touch/mouse editor regressions, and `git diff --check` passed. Physical Android/iPhone testing remains unavailable.
+
 ### 2026-11-14 — Make the first Product choices control Bar 2 and Mockups
 
 - `T-Shirt` is the default supported product. Its Bar 2 shows `GSM` and the existing `Size` placeholder; `Color`, `Save`, and `Buy` remain in the row. Selecting `Phone` hides `GSM`/`Size` and shows disabled `Brand`/`Model` placeholders because no brand/model options have been specified; `Color` remains visible.

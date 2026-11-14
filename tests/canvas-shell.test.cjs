@@ -12,6 +12,7 @@ const createRoute = readFileSync(path.join(__dirname, "../apps/web/src/app/creat
 const mobileNav = readFileSync(path.join(__dirname, "../apps/web/src/components/MobileBottomNav.tsx"), "utf8");
 const header = readFileSync(path.join(__dirname, "../apps/web/src/components/Header.tsx"), "utf8");
 const headerBar2 = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorHeaderBar2.tsx"), "utf8");
+const layersPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayersPanel.tsx"), "utf8");
 function loadArtworkTiers() {
   const fileName = path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts");
   const compiled = ts.transpileModule(tierSource, {
@@ -177,6 +178,18 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(mobileNav, /new ResizeObserver\(updateHeight\)/);
 });
 
+test("Layers panel starts closed and toggles a left-side scaffold without layer operations", () => {
+  assert.match(source, /const \[layersOpen, setLayersOpen\] = useState\(false\)/);
+  assert.match(source, /<EditorLayersPanel open=\{layersOpen\} onToggle=\{\(\) => setLayersOpen\(\(open\) => !open\)\} \/>/);
+  assert.match(source, /<div className="relative min-h-0 flex-1">[\s\S]*?ref=\{viewportRef\}/);
+  assert.match(layersPanel, /aria-label="Layers panel"/);
+  assert.match(layersPanel, /aria-label=\{open \? "Collapse Layers panel" : "Expand Layers panel"\}/);
+  assert.match(layersPanel, /aria-expanded=\{open\}/);
+  assert.match(layersPanel, /style=\{\{ left: open \? PANEL_WIDTH : 0 \}\}/);
+  assert.match(layersPanel, /Layer controls will be added step by step\./);
+  assert.doesNotMatch(layersPanel, /aria-label="(?:Add|Delete|Duplicate|Lock) layer/i);
+});
+
 test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {
   assert.match(createRoute, /import Header from "@\/components\/Header"/);
   assert.match(createRoute, /data-editor-shared-header[^]*?<Header \/>/);
@@ -186,18 +199,20 @@ test("editor reuses the existing web-app Header Bar above its full-height worksp
   assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
 });
 
-test("Editor Header Bar 2 switches attributes by Product and keeps unspecified product choices inactive", () => {
+test("Editor Header Bar 2 keeps a compact fixed T-Shirt Product box and existing placeholders", () => {
   assert.match(createRoute, /import EditorHeaderBar2 from "@\/components\/EditorHeaderBar2"/);
-  assert.match(createRoute, /useState<EditorProduct>\(DEFAULT_EDITOR_PRODUCT\)/);
-  assert.match(createRoute, /onProductChange=\{changeProduct\}/);
+  assert.match(createRoute, /const product = DEFAULT_EDITOR_PRODUCT/);
+  assert.doesNotMatch(createRoute, /onProductChange|setProduct/);
   assert.match(createRoute, /<KittlCanvas product=\{product\} \/>/);
   assert.match(createRoute, /<Header \/>[\s\S]*?<EditorHeaderBar2[\s\S]*?\/>[\s\S]*?<KittlCanvas product=\{product\} \/>/);
   assert.match(headerBar2, /aria-label="Header Bar 2"/);
   assert.match(headerBar2, /h-11 w-full/);
-  assert.match(headerBar2, /const PRODUCT_OPTIONS = \["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"\]/);
-  assert.match(headerBar2, /const FUTURE_PRODUCTS = \["Hoodie", "Cup", "Kids", "Bag"\]/);
+  assert.match(headerBar2, /function FixedProduct\(\{ value \}: \{ value: EditorProduct \}\)/);
+  assert.match(headerBar2, /<FixedProduct value=\{product\} \/>/);
+  assert.match(headerBar2, /w-\[5\.75rem\]/);
+  assert.doesNotMatch(headerBar2, /const PRODUCT_OPTIONS|onProductChange/);
   assert.match(headerBar2, /const GSM_OPTIONS = \["160 GSM", "180 GSM", "200 GSM", "240 GSM"\]/);
-  assert.match(headerBar2, /label="Product"[\s\S]*?disabledOptions=\{FUTURE_PRODUCTS\}/);
+  assert.match(headerBar2, /role="group" aria-label="Product"/);
   assert.match(headerBar2, /product === "T-Shirt" \? \([\s\S]*?label="GSM"/);
   assert.match(headerBar2, /<PendingSelect label="Brand" \/>/);
   assert.match(headerBar2, /<PendingSelect label="Model" \/>/);
@@ -207,12 +222,11 @@ test("Editor Header Bar 2 switches attributes by Product and keeps unspecified p
   assert.match(headerBar2, />\s*Size\s*</);
   assert.match(headerBar2, />\s*Save\s*</);
   assert.match(headerBar2, />\s*Buy\s*</);
-  assert.equal((headerBar2.match(/^\s+disabled$/gm) || []).length, 4, "Color, Size, Save and Buy remain placeholders");
+  assert.equal((headerBar2.match(/^\s+disabled$/gm) || []).length, 5, "Brand/Model, Color, Size, Save and Buy remain placeholders");
   assert.match(headerBar2, /bg-bg-surface/);
   assert.match(headerBar2, /text-text-secondary/);
   assert.match(headerBar2, /overflow-x-auto/);
   assert.match(source, /bg-bg text-text-primary/);
   assert.match(source, /border-border bg-bg px-2/);
-  assert.match(headerBar2, /value === "Phone"/);
   assert.match(headerBar2, /import type \{ EditorProduct \} from "@\/lib\/editor-product"/);
 });

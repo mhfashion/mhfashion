@@ -3,6 +3,7 @@
 import { Grid2X2, Hand, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
+import EditorLayersPanel from "@/components/EditorLayersPanel";
 import {
   claimLargeArtworkTier,
   getArtworkMaxEdgePx,
@@ -47,6 +48,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [touchPanEnabled, setTouchPanEnabled] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const visibleMockups = useMemo(
     () => product === "Phone" ? mockups.filter((side) => side === "Front Mockup") : mockups,
@@ -367,7 +369,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-bg text-text-primary">
+    <main className="relative flex h-full min-h-0 flex-col overflow-hidden bg-bg text-text-primary">
       <div role="toolbar" aria-label="Touch view controls" className="z-40 hidden shrink-0 items-center justify-center gap-1 border-b border-border bg-bg px-2 py-1 [@media(pointer:coarse)]:flex">
         <button type="button" aria-label="Pan view" aria-pressed={touchPanEnabled} onClick={() => setTouchPanEnabled((enabled) => !enabled)} className={`flex h-11 items-center gap-1.5 rounded px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-accent ${touchPanEnabled ? "bg-accent/10 text-accent" : "text-text-secondary"}`}>
           <Hand size={16} aria-hidden="true" />
@@ -378,195 +380,198 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         <button type="button" aria-label="Zoom in" disabled={zoom >= 3} onClick={() => setZoom((current) => Math.min(3, current + 0.25))} className="flex h-11 w-11 items-center justify-center rounded text-text-secondary outline-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-accent"><Plus size={17} aria-hidden="true" /></button>
         <button type="button" aria-label="Reset view" onClick={resetView} className="flex h-11 w-11 items-center justify-center rounded text-text-secondary outline-none focus-visible:ring-2 focus-visible:ring-accent"><RotateCcw size={16} aria-hidden="true" /></button>
       </div>
-      <div
-        ref={viewportRef}
-        aria-label="Editor viewport"
-        onPointerDownCapture={startPan}
-        onPointerMoveCapture={movePan}
-        onPointerUpCapture={endPan}
-        onPointerCancelCapture={endPan}
-        onLostPointerCapture={endPan}
-        onAuxClick={(event) => {
-          if (event.button === 1) event.preventDefault();
-        }}
-        className={`flex min-h-0 w-full flex-1 flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${touchPanEnabled ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
-      >
+      <div className="relative min-h-0 flex-1">
         <div
-          ref={workspaceRef}
-          className="relative my-auto flex max-w-full shrink-0 origin-top flex-col items-center gap-8 md:origin-center md:flex-row md:gap-12 [@media(pointer:coarse)]:origin-top [@media(pointer:coarse)]:flex-col [@media(pointer:coarse)]:gap-8"
-          style={{
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            "--editor-inverse-zoom": 1 / zoom,
-          } as React.CSSProperties}
+          ref={viewportRef}
+          aria-label="Editor viewport"
+          onPointerDownCapture={startPan}
+          onPointerMoveCapture={movePan}
+          onPointerUpCapture={endPan}
+          onPointerCancelCapture={endPan}
+          onLostPointerCapture={endPan}
+          onAuxClick={(event) => {
+            if (event.button === 1) event.preventDefault();
+          }}
+          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${touchPanEnabled ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
         >
-          <svg className="pointer-events-none absolute inset-0 z-0 overflow-visible" width="100%" height="100%" aria-label="Canvas and mockup connections">
-            {connectors.map((connection) => (
-              <g key={connection.side}>
-                <path d={connection.path} fill="none" stroke="#8f72d4" strokeWidth="2" strokeLinecap="round" />
-                <circle cx={connection.start.x} cy={connection.start.y} r="2.5" fill="#8f72d4" />
-                <circle cx={connection.end.x} cy={connection.end.y} r="2.5" fill="#8f72d4" />
-              </g>
-            ))}
-          </svg>
-          <section
-            aria-label="Print canvas"
-            onPointerDown={(event) => startNodeDrag("Print canvas", event)}
-            onPointerMove={moveNodeDrag}
-            onPointerUp={endNodeDrag}
-            onPointerCancel={endNodeDrag}
-            onLostPointerCapture={endNodeDrag}
-            className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : "cursor-grab"}`}
-            style={{ transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
+          <div
+            ref={workspaceRef}
+            className="relative my-auto flex max-w-full shrink-0 origin-top flex-col items-center gap-8 md:origin-center md:flex-row md:gap-12 [@media(pointer:coarse)]:origin-top [@media(pointer:coarse)]:flex-col [@media(pointer:coarse)]:gap-8"
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              "--editor-inverse-zoom": 1 / zoom,
+            } as React.CSSProperties}
           >
-            <div className="relative">
-              <canvas
-                ref={canvasNodeRef}
-                width={PRINT_CANVAS_SPEC.widthPx}
-                height={PRINT_CANVAS_SPEC.heightPx}
-                data-canvas-width={PRINT_CANVAS_SPEC.widthPx}
-                data-canvas-height={PRINT_CANVAS_SPEC.heightPx}
-                data-resolution-dpi={PRINT_CANVAS_SPEC.resolutionDpi}
-                data-background={PRINT_CANVAS_SPEC.background}
-                data-export-format={PRINT_CANVAS_SPEC.exportFormat}
-                data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
-                aria-label="Blank print canvas"
-                onPointerDown={startArtworkStroke}
-                onPointerMove={moveArtworkStroke}
-                onPointerUp={endArtworkStroke}
-                onPointerCancel={endArtworkStroke}
-                onLostPointerCapture={endArtworkStroke}
-                className="block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
-                style={{
-                  backgroundColor: "#ffffff",
-                  backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
-                  backgroundSize: "32px 32px",
-                  backgroundPosition: "0 0, 0 16px, 16px -16px, -16px 0",
-                }}
-              />
-              {showGrid && (
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-px z-10"
-                  style={{
-                    backgroundImage: "linear-gradient(to right, rgba(61, 132, 184, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(61, 132, 184, 0.4) 1px, transparent 1px)",
-                    backgroundSize: "10% 10%",
-                  }}
-                />
-              )}
-              <ArtworkOverlay strokes={artworkStrokes} />
-              <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
-                <button
-                  type="button"
-                  aria-label="Canvas options"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  onClick={() => setMenuOpen((open) => !open)}
-                  className="-m-[15px] flex h-11 w-11 items-center justify-center rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:m-0 md:h-3.5 md:w-3.5 [@media(pointer:coarse)]:-m-[15px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
-                >
-                  <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm hover:bg-[#8f72d4]"><span className="h-1 w-1 rounded-full bg-white" /></span>
-                </button>
-                {menuOpen && (
-                  <div
-                    role="menu"
-                    aria-label="Canvas options"
-                  className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-border bg-bg-surface p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2 [@media(pointer:coarse)]:origin-top-right [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
-                  >
-                    <button
-                      type="button"
-                      role="menuitemcheckbox"
-                      aria-checked={showGrid}
-                      onClick={() => {
-                        setShowGrid((visible) => !visible);
-                        setMenuOpen(false);
-                      }}
-                      className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent md:min-h-0 [@media(pointer:coarse)]:min-h-11"
-                    >
-                      <Grid2X2 size={15} aria-hidden="true" />
-                      <span>Show Grid</span>
-                      <span className={`ml-auto h-3.5 w-3.5 rounded-sm border ${showGrid ? "border-accent bg-accent" : "border-border-light"}`} aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      aria-label="Add Mockup"
-                      onClick={() => {
-                        addMockup("Front Mockup");
-                        setMenuOpen(false);
-                      }}
-                      className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent md:min-h-0 [@media(pointer:coarse)]:min-h-11"
-                    >
-                      <Plus size={15} aria-hidden="true" />
-                      <span>Add Mockup</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-          {mockups.map((side) => (
+            <svg className="pointer-events-none absolute inset-0 z-0 overflow-visible" width="100%" height="100%" aria-label="Canvas and mockup connections">
+              {connectors.map((connection) => (
+                <g key={connection.side}>
+                  <path d={connection.path} fill="none" stroke="#8f72d4" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx={connection.start.x} cy={connection.start.y} r="2.5" fill="#8f72d4" />
+                  <circle cx={connection.end.x} cy={connection.end.y} r="2.5" fill="#8f72d4" />
+                </g>
+              ))}
+            </svg>
             <section
-              key={side}
-              aria-label={side}
-              hidden={product === "Phone" && side === "Back Mockup"}
-              onPointerDown={(event) => startNodeDrag(side, event)}
+              aria-label="Print canvas"
+              onPointerDown={(event) => startNodeDrag("Print canvas", event)}
               onPointerMove={moveNodeDrag}
               onPointerUp={endNodeDrag}
               onPointerCancel={endNodeDrag}
               onLostPointerCapture={endNodeDrag}
-              className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-pan-y select-none md:touch-none [@media(pointer:coarse)]:touch-pan-y ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
-              style={{ transform: `translate(${nodePositions[side].x}px, ${nodePositions[side].y}px)` }}
+              className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : "cursor-grab"}`}
+              style={{ transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
             >
-              <div data-node-drag-handle className="mb-2 flex h-11 touch-none items-center gap-2 text-xs font-medium text-text-secondary md:h-7 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))]">
-                <span className="min-w-0 flex-1 truncate [@media(pointer:coarse)]:[font-size:calc(0.75rem*var(--editor-inverse-zoom))]">{side}</span>
-                <button
-                  type="button"
-                  aria-label={`Close ${side}`}
-                  onClick={() => removeMockup(side)}
-                  className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-muted outline-none hover:bg-bg-surface hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent md:h-5 md:w-5 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))] [@media(pointer:coarse)]:w-[calc(2.75rem*var(--editor-inverse-zoom))]"
-                >
-                  <X size={13} aria-hidden="true" className="[@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]" />
-                </button>
-              </div>
-              <div
-                ref={(element) => {
-                  if (element) mockupSurfaceRefs.current[side] = element;
-                  else delete mockupSurfaceRefs.current[side];
-                }}
-                className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]"
-              >
-                {product === "T-Shirt" && side === "Front Mockup" && (
-                  <button
-                    type="button"
-                    aria-label="Add Back Mockup"
-                    title="Add Back Mockup"
-                    onClick={() => addMockup("Back Mockup")}
-                    className="absolute -left-[35px] top-[calc(50%+1.25rem)] z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white outline-none focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:-left-5 md:h-3.5 md:w-3.5 [@media(pointer:coarse)]:-left-[35px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
-                  >
-                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm hover:bg-[#8f72d4]"><Plus size={8} aria-hidden="true" /></span>
-                  </button>
-                )}
+              <div className="relative">
+                <canvas
+                  ref={canvasNodeRef}
+                  width={PRINT_CANVAS_SPEC.widthPx}
+                  height={PRINT_CANVAS_SPEC.heightPx}
+                  data-canvas-width={PRINT_CANVAS_SPEC.widthPx}
+                  data-canvas-height={PRINT_CANVAS_SPEC.heightPx}
+                  data-resolution-dpi={PRINT_CANVAS_SPEC.resolutionDpi}
+                  data-background={PRINT_CANVAS_SPEC.background}
+                  data-export-format={PRINT_CANVAS_SPEC.exportFormat}
+                  data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
+                  aria-label="Blank print canvas"
+                  onPointerDown={startArtworkStroke}
+                  onPointerMove={moveArtworkStroke}
+                  onPointerUp={endArtworkStroke}
+                  onPointerCancel={endArtworkStroke}
+                  onLostPointerCapture={endArtworkStroke}
+                  className="block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
+                  style={{
+                    backgroundColor: "#ffffff",
+                    backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
+                    backgroundSize: "32px 32px",
+                    backgroundPosition: "0 0, 0 16px, 16px -16px, -16px 0",
+                  }}
+                />
                 {showGrid && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-0"
+                    className="pointer-events-none absolute inset-px z-10"
                     style={{
                       backgroundImage: "linear-gradient(to right, rgba(61, 132, 184, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(61, 132, 184, 0.4) 1px, transparent 1px)",
                       backgroundSize: "10% 10%",
                     }}
                   />
                 )}
-                <MockupArtwork
-                  side={side}
-                  strokes={artworkStrokes}
-                  maxArtworkEdgePx={getArtworkMaxEdgePx(side, activeLargeArtworkTierOwner)}
-                  onLargeTierRequested={handleLargeTierRequested}
-                  onArtworkDisplayedEdgeChange={handleArtworkDisplayedEdgeChange}
-                  viewZoom={zoom}
-                />
+                <ArtworkOverlay strokes={artworkStrokes} />
+                <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
+                  <button
+                    type="button"
+                    aria-label="Canvas options"
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    onClick={() => setMenuOpen((open) => !open)}
+                    className="-m-[15px] flex h-11 w-11 items-center justify-center rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:m-0 md:h-3.5 md:w-3.5 [@media(pointer:coarse)]:-m-[15px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
+                  >
+                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm hover:bg-[#8f72d4]"><span className="h-1 w-1 rounded-full bg-white" /></span>
+                  </button>
+                  {menuOpen && (
+                    <div
+                      role="menu"
+                      aria-label="Canvas options"
+                    className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-border bg-bg-surface p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2 [@media(pointer:coarse)]:origin-top-right [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
+                    >
+                      <button
+                        type="button"
+                        role="menuitemcheckbox"
+                        aria-checked={showGrid}
+                        onClick={() => {
+                          setShowGrid((visible) => !visible);
+                          setMenuOpen(false);
+                        }}
+                        className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                      >
+                        <Grid2X2 size={15} aria-hidden="true" />
+                        <span>Show Grid</span>
+                        <span className={`ml-auto h-3.5 w-3.5 rounded-sm border ${showGrid ? "border-accent bg-accent" : "border-border-light"}`} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        aria-label="Add Mockup"
+                        onClick={() => {
+                          addMockup("Front Mockup");
+                          setMenuOpen(false);
+                        }}
+                        className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                      >
+                        <Plus size={15} aria-hidden="true" />
+                        <span>Add Mockup</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
-          ))}
+            {mockups.map((side) => (
+              <section
+                key={side}
+                aria-label={side}
+                hidden={product === "Phone" && side === "Back Mockup"}
+                onPointerDown={(event) => startNodeDrag(side, event)}
+                onPointerMove={moveNodeDrag}
+                onPointerUp={endNodeDrag}
+                onPointerCancel={endNodeDrag}
+                onLostPointerCapture={endNodeDrag}
+                className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-pan-y select-none md:touch-none [@media(pointer:coarse)]:touch-pan-y ${draggingNode === side ? "cursor-grabbing" : "cursor-grab"}`}
+                style={{ transform: `translate(${nodePositions[side].x}px, ${nodePositions[side].y}px)` }}
+              >
+                <div data-node-drag-handle className="mb-2 flex h-11 touch-none items-center gap-2 text-xs font-medium text-text-secondary md:h-7 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))]">
+                  <span className="min-w-0 flex-1 truncate [@media(pointer:coarse)]:[font-size:calc(0.75rem*var(--editor-inverse-zoom))]">{side}</span>
+                  <button
+                    type="button"
+                    aria-label={`Close ${side}`}
+                    onClick={() => removeMockup(side)}
+                    className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-muted outline-none hover:bg-bg-surface hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent md:h-5 md:w-5 [@media(pointer:coarse)]:h-[calc(2.75rem*var(--editor-inverse-zoom))] [@media(pointer:coarse)]:w-[calc(2.75rem*var(--editor-inverse-zoom))]"
+                  >
+                    <X size={13} aria-hidden="true" className="[@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]" />
+                  </button>
+                </div>
+                <div
+                  ref={(element) => {
+                    if (element) mockupSurfaceRefs.current[side] = element;
+                    else delete mockupSurfaceRefs.current[side];
+                  }}
+                  className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]"
+                >
+                  {product === "T-Shirt" && side === "Front Mockup" && (
+                    <button
+                      type="button"
+                      aria-label="Add Back Mockup"
+                      title="Add Back Mockup"
+                      onClick={() => addMockup("Back Mockup")}
+                      className="absolute -left-[35px] top-[calc(50%+1.25rem)] z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white outline-none focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:-left-5 md:h-3.5 md:w-3.5 [@media(pointer:coarse)]:-left-[35px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
+                    >
+                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm hover:bg-[#8f72d4]"><Plus size={8} aria-hidden="true" /></span>
+                    </button>
+                  )}
+                  {showGrid && (
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        backgroundImage: "linear-gradient(to right, rgba(61, 132, 184, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(61, 132, 184, 0.4) 1px, transparent 1px)",
+                        backgroundSize: "10% 10%",
+                      }}
+                    />
+                  )}
+                  <MockupArtwork
+                    side={side}
+                    strokes={artworkStrokes}
+                    maxArtworkEdgePx={getArtworkMaxEdgePx(side, activeLargeArtworkTierOwner)}
+                    onLargeTierRequested={handleLargeTierRequested}
+                    onArtworkDisplayedEdgeChange={handleArtworkDisplayedEdgeChange}
+                    viewZoom={zoom}
+                  />
+                </div>
+              </section>
+            ))}
+          </div>
         </div>
+        <EditorLayersPanel open={layersOpen} onToggle={() => setLayersOpen((open) => !open)} />
       </div>
     </main>
   );

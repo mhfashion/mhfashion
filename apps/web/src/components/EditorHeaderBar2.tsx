@@ -3,27 +3,19 @@
 import { ChevronDown } from "lucide-react";
 import type { EditorProduct } from "@/lib/editor-product";
 
-const PRODUCT_OPTIONS = ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"] as const;
-const FUTURE_PRODUCTS = ["Hoodie", "Cup", "Kids", "Bag"] as const;
 const GSM_OPTIONS = ["160 GSM", "180 GSM", "200 GSM", "240 GSM"] as const;
-
-type CompactSelectProps = {
-  label: string;
-  value: string;
-  options: readonly string[];
-  onChange?: (value: string) => void;
-  disabled?: boolean;
-  disabledOptions?: readonly string[];
-};
 
 function CompactSelect({
   label,
   value,
   options,
   onChange,
-  disabled = false,
-  disabledOptions = [],
-}: CompactSelectProps) {
+}: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+}) {
   return (
     <label className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-text-secondary">
       <span>{label}</span>
@@ -31,13 +23,12 @@ function CompactSelect({
         <select
           aria-label={label}
           value={value}
-          disabled={disabled}
-          onChange={(event) => onChange?.(event.target.value)}
-          className="h-9 appearance-none rounded-md border border-border bg-bg-surface py-1 pl-2.5 pr-7 text-xs font-medium text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-60"
+          onChange={(event) => onChange(event.target.value)}
+          className="h-9 appearance-none rounded-md border border-border bg-bg-surface py-1 pl-2.5 pr-7 text-xs font-medium text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          {!value && <option value="">Choose</option>}
+          <option value="">Choose</option>
           {options.map((option) => (
-            <option key={option} value={option} disabled={disabledOptions.includes(option)}>
+            <option key={option} value={option}>
               {option}
             </option>
           ))}
@@ -52,27 +43,45 @@ function CompactSelect({
   );
 }
 
+function FixedProduct({ value }: { value: EditorProduct }) {
+  return (
+    <div role="group" aria-label="Product" className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-text-secondary">
+      <span>Product</span>
+      <span className="inline-flex h-8 w-[5.75rem] items-center rounded-md border border-border bg-bg-surface px-2.5 text-xs font-medium text-text-primary">
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function PendingSelect({ label }: { label: string }) {
   return (
-    <CompactSelect label={label} value="" options={[]} disabled />
+    <label className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-text-secondary">
+      <span>{label}</span>
+      <span className="relative flex items-center">
+        <select
+          aria-label={label}
+          value=""
+          disabled
+          className="h-9 appearance-none rounded-md border border-border bg-bg-surface py-1 pl-2.5 pr-7 text-xs font-medium text-text-primary opacity-60 outline-none"
+        >
+          <option value="">Choose</option>
+        </select>
+        <ChevronDown size={13} aria-hidden="true" className="pointer-events-none absolute right-2 text-text-muted" />
+      </span>
+    </label>
   );
 }
 
 export default function EditorHeaderBar2({
   product,
-  onProductChange,
   gsm,
   onGsmChange,
 }: {
   product: EditorProduct;
-  onProductChange: (product: EditorProduct) => void;
   gsm: string;
   onGsmChange: (gsm: string) => void;
 }) {
-  function changeProduct(value: string) {
-    if (value === "T-Shirt" || value === "Phone") onProductChange(value);
-  }
-
   return (
     <div
       role="region"
@@ -81,13 +90,7 @@ export default function EditorHeaderBar2({
     >
       <div className="flex h-full w-max min-w-full items-center justify-between gap-2">
         <div className="flex shrink-0 items-center gap-2.5">
-          <CompactSelect
-            label="Product"
-            value={product}
-            options={PRODUCT_OPTIONS}
-            disabledOptions={FUTURE_PRODUCTS}
-            onChange={changeProduct}
-          />
+          <FixedProduct value={product} />
           {product === "T-Shirt" ? (
             <CompactSelect label="GSM" value={gsm} options={GSM_OPTIONS} onChange={onGsmChange} />
           ) : (
