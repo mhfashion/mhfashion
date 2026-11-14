@@ -17,6 +17,27 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — GSM selector and quantity-aware price on product detail
+
+- Replaced the Product Detail `Print Style` control with a compact `GSM`
+  selector containing `160 GSM`, `180 GSM`, `200 GSM`, and `240 GSM` options.
+- Added GSM to the current client-side variant price calculation. The displayed
+  amount now multiplies by the selected quantity, whether the page is showing
+  the initial catalog range or the single selected-variant amount.
+- Buy Now and Add to Cart now add the selected quantity instead of always adding
+  one item. The same controls work on narrow phone layouts, with the compact
+  selector rows, price line, quantity control, and three action buttons kept
+  within the available width.
+- Updated the Specifications tab to show the selected GSM and removed the old
+  Print field from that summary.
+- Validation: Next.js production build, TypeScript, and `git diff --check`
+  passed. This implementation is ready to be committed and pushed with the
+  existing direct-to-`main` workflow.
+- Limitation: variant amounts remain client-side prototype calculations because
+  the catalog schema does not yet provide admin-managed per-GSM/per-attribute
+  price records, and cart items still store the base product shape rather than
+  a serialized variant selection.
+
 ### 2026-11-14 — Make the 3500 px artwork tier transferable
 
 - Owner clarification: the 3500 px large tier is not permanently assigned to Front. Either Front or Back may claim it; while one side's longest artwork edge exceeds 1500 px, that side may use up to 3500 px and the other side is capped at 1500 px. If both sides remain at or below 1500 px, either may claim the large tier by resizing above 1500 px. The numeric values remain provisional, not final print specifications.
