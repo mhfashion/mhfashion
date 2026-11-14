@@ -45,7 +45,7 @@ const tabs: { id: Tab; label: string }[] = [
 
 function OptionButton({ selected, children, onClick }: { selected: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`rounded-xl border px-3 py-2 text-[11px] font-semibold transition ${selected ? "border-accent bg-accent/10 text-accent shadow-sm" : "border-border bg-bg hover:border-accent/60"}`}>
+    <button type="button" onClick={onClick} className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${selected ? "border-accent bg-accent/10 text-accent shadow-sm" : "border-border bg-bg hover:border-accent/60"}`}>
       {selected && <Check size={12} className="mr-1 inline-block" aria-hidden="true" />}
       {children}
     </button>
@@ -54,9 +54,9 @@ function OptionButton({ selected, children, onClick }: { selected: boolean; chil
 
 function OptionGroup({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-bg/70 p-3.5 shadow-[0_4px_18px_rgba(30,40,20,0.04)]">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <h3 className="text-xs font-black tracking-tight">{title}</h3>
+    <div className="rounded-xl border border-border/70 bg-bg/70 p-2.5 shadow-[0_4px_18px_rgba(30,40,20,0.04)]">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-[11px] font-black tracking-tight">{title}</h3>
         {action}
       </div>
       <div className="flex flex-wrap gap-2">{children}</div>
@@ -123,7 +123,7 @@ export default function ProductDetailClient({ product, related }: Props) {
 
           <div className="mt-4 flex flex-wrap items-center gap-2 border-b border-border/70 pb-3"><span className="text-2xl font-black text-accent">{price}</span><span className="rounded-full bg-accent/10 px-2 py-1 text-[10px] font-black text-accent">↓ 15%</span><span className="text-xs text-text-faint line-through">28,000 Ks</span></div>
 
-          <div className="mt-3 grid gap-2.5 xl:grid-cols-2">
+          <div className="mt-3 grid gap-2 xl:grid-cols-2">
             <OptionGroup title="Size" action={<button type="button" className="text-[10px] font-bold text-accent"><Ruler size={12} className="mr-1 inline" />Size Guide</button>}>
               {sizes.map((size) => <OptionButton key={size} selected={selectedSize === size} onClick={() => setSelectedSize(size)}>{size}</OptionButton>)}
             </OptionGroup>
@@ -139,7 +139,7 @@ export default function ProductDetailClient({ product, related }: Props) {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xs font-black">Quantity</span><div className="flex items-center rounded-full border border-border bg-bg"><button type="button" aria-label="Decrease quantity" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-2.5"><Minus size={14} /></button><span className="min-w-8 text-center text-sm font-bold">{quantity}</span><button type="button" aria-label="Increase quantity" onClick={() => setQuantity((value) => value + 1)} className="p-2.5"><Plus size={14} /></button></div><span className="flex items-center gap-1 text-[11px] font-bold text-accent"><Check size={14} /> In Stock · Ready to ship</span></div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2"><button type="button" onClick={buyNow} className="rounded-xl bg-accent px-4 py-3 text-sm font-black text-accent-foreground shadow-sm transition hover:opacity-85"><ShoppingCart size={17} className="mr-2 inline" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} className="rounded-xl border-2 border-accent px-4 py-3 text-sm font-black text-accent transition hover:bg-accent hover:text-accent-foreground">{added ? t("product.addedToCart") : t("product.addToCart")}</button></div>
+          <div className="mt-3 grid grid-cols-3 gap-1.5"><button type="button" onClick={buyNow} className="rounded-lg bg-accent px-2 py-2.5 text-[11px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:text-xs"><ShoppingCart size={14} className="mr-1 inline" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} className="rounded-lg border-2 border-accent px-2 py-2.5 text-[11px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button><a href={`/create?product=${encodeURIComponent(product.slug)}`} className="rounded-lg border border-border px-2 py-2.5 text-center text-[11px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:text-xs">Edit Design</a></div>
         </div>
       </section>
 
