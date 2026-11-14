@@ -17,6 +17,12 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Add Editor Header Bar 2 placeholders
+
+- Added a separate `EditorHeaderBar2` below the reused site Header and above the Editor workspace. The initial row contains exactly the requested `Product`, `GSM`, `Color`, `Size`, `Save`, and `Buy` items.
+- These six controls are disabled placeholders only; no product selection, variant handling, saving, or buying behavior was assumed. The bar scrolls horizontally on narrow screens and is separated into its own component for the additional items the owner plans to specify later.
+- Validation: all repository Node tests **26/26**, canvas-shell tests **10/10**, TypeScript, changed-file ESLint, Next.js production build, Chromium mobile/desktop interaction tests, and `git diff --check` passed. The browser check confirms all six disabled labels appear in order between the existing Header and the editor.
+
 ### 2026-11-14 — Reuse the existing web Header Bar in Editor
 
 - Mounted the existing `Header` component above the `/create` editor workspace. Its current responsive behavior is reused as-is: mobile hamburger/logo bar on phones and the floating navigation/actions bar on desktop; no second editor-specific Header or redesign was added.

@@ -11,6 +11,7 @@ const mockupHeader = mockupSection.split('className="relative aspect-square w-fu
 const createRoute = readFileSync(path.join(__dirname, "../apps/web/src/app/create/page.tsx"), "utf8");
 const mobileNav = readFileSync(path.join(__dirname, "../apps/web/src/components/MobileBottomNav.tsx"), "utf8");
 const header = readFileSync(path.join(__dirname, "../apps/web/src/components/Header.tsx"), "utf8");
+const headerBar2 = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorHeaderBar2.tsx"), "utf8");
 function loadArtworkTiers() {
   const fileName = path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts");
   const compiled = ts.transpileModule(tierSource, {
@@ -179,4 +180,15 @@ test("editor reuses the existing web-app Header Bar above its full-height worksp
   assert.match(createRoute, /h-\[calc\(100dvh-var\(--mobile-navigation-height,4rem\)\)\][\s\S]*md:h-dvh/);
   assert.match(header, /import MobileNav from "\.\/MobileNav"/);
   assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
+});
+
+test("Editor Header Bar 2 shows only the six requested inert placeholders", () => {
+  assert.match(createRoute, /import EditorHeaderBar2 from "@\/components\/EditorHeaderBar2"/);
+  assert.match(createRoute, /<Header \/>[\s\S]*?<EditorHeaderBar2 \/>[\s\S]*?<KittlCanvas \/>/);
+  assert.match(headerBar2, /aria-label="Header Bar 2"/);
+  assert.match(headerBar2, /\["Product", "GSM", "Color", "Size"\]/);
+  assert.match(headerBar2, />\s*Save\s*</);
+  assert.match(headerBar2, />\s*Buy\s*</);
+  assert.equal((headerBar2.match(/^\s+disabled$/gm) || []).length, 3, "Four mapped selectors and both action buttons are inert placeholders");
+  assert.match(headerBar2, /overflow-x-auto/);
 });

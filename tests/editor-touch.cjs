@@ -155,17 +155,24 @@ async function main() {
       const nav = document.querySelector('[aria-label="Mobile navigation"]').getBoundingClientRect();
       const slot = document.querySelector("[data-editor-shared-header]");
       const header = slot.getBoundingClientRect();
+      const toolbar = document.querySelector('[aria-label="Header Bar 2"]');
+      const bar2 = toolbar.getBoundingClientRect();
       const editor = document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect();
       return {
         mainBottom: main.bottom, navTop: nav.top,
         bodyHeight: document.documentElement.scrollHeight, viewportHeight: innerHeight,
-        headerHeight: header.height, headerBottom: header.bottom, editorTop: editor.top,
+        headerHeight: header.height, headerBottom: header.bottom,
+        bar2Top: bar2.top, bar2Bottom: bar2.bottom, editorTop: editor.top,
+        bar2Labels: [...toolbar.querySelectorAll("button")].map((button) => button.textContent.trim()),
+        bar2Disabled: [...toolbar.querySelectorAll("button")].every((button) => button.disabled),
         mobileHeader: getComputedStyle(slot.firstElementChild).display,
         desktopHeader: getComputedStyle(slot.lastElementChild).display,
       };
     });
     assert.ok(initial.headerHeight > 0 && initial.mobileHeader !== "none" && initial.desktopHeader === "none", "Reuse the existing mobile Header Bar");
-    assert.ok(initial.editorTop >= initial.headerBottom - 1, "Editor workspace begins below the Header Bar");
+    assert.ok(initial.bar2Top >= initial.headerBottom - 1 && initial.editorTop >= initial.bar2Bottom - 1, "Bar 2 sits between Header Bar and Editor");
+    assert.deepEqual(initial.bar2Labels, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
+    assert.ok(initial.bar2Disabled, "Bar 2 controls are placeholders only");
     assert.ok(initial.mainBottom <= initial.navTop + 1, "Editor stays above mobile navigation");
     assert.ok(initial.bodyHeight <= initial.viewportHeight + 1, "Editor and nav do not create document overflow");
     const options = await rect('button[aria-label="Canvas options"]');
@@ -309,13 +316,15 @@ async function main() {
       return {
         height: slot.getBoundingClientRect().height,
         headerBottom: slot.getBoundingClientRect().bottom,
+        bar2Top: document.querySelector('[aria-label="Header Bar 2"]').getBoundingClientRect().top,
+        bar2Bottom: document.querySelector('[aria-label="Header Bar 2"]').getBoundingClientRect().bottom,
         editorTop: document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect().top,
         mobile: getComputedStyle(slot.firstElementChild).display,
         desktop: getComputedStyle(slot.lastElementChild).display,
       };
     });
     assert.ok(desktopHeader.height > 0 && desktopHeader.mobile === "none" && desktopHeader.desktop !== "none", "Reuse the existing desktop Header Bar");
-    assert.ok(desktopHeader.editorTop >= desktopHeader.headerBottom - 1, "Desktop editor workspace begins below the Header Bar");
+    assert.ok(desktopHeader.bar2Top >= desktopHeader.headerBottom - 1 && desktopHeader.editorTop >= desktopHeader.bar2Bottom - 1, "Desktop Bar 2 stays below Header and above editor");
     const desktopButton = await rect('button[aria-label="Canvas options"]');
     assert.equal(desktopButton.w, 14); assert.equal(desktopButton.h, 14);
     console.log("PASS desktop 1280×900: original control size and no mobile toolbar");
