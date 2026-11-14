@@ -28,6 +28,27 @@ This log records completed website-related changes in the connected repository. 
 - Validation: Node tests **24/24**၊ TypeScript၊ changed-file ESLint၊ Next.js/OpenNext Cloudflare build နှင့် `git diff --check` အောင်မြင်သည်။ Chromium တွင် 390×844၊ 320×740 portrait touch၊ 740×390 နှင့် 844×390 landscape၊ tiny selected Artwork ကို ထပ်မံရွှေ့ခြင်း/resize၊ tier နှစ်ဖက်လုံး လွှဲပြောင်းခြင်း/release၊ pan/zoom၊ Zoom 25% screen-sized controls/readable badge၊ second-touch/cancel နှင့် desktop control-size/mouse drawing/Back resize regression တို့ကို စမ်းသပ်အောင်မြင်သည်။
 - Limitation: physical Android/iPhone နှင့် iOS Safari ပေါ်တွင် မစမ်းရသေးပါ။ Artwork/state များသည် အရင်အတိုင်း page memory တွင်သာ ရှိသည်။ Native app၊ multi-touch pinch editor သို့မဟုတ် roadmap feature အသစ်များ မထည့်ပါ။
 
+### 2026-11-14 — GSM selector and quantity-aware price on product detail
+
+- Replaced the Product Detail `Print Style` control with a compact `GSM`
+  selector containing `160 GSM`, `180 GSM`, `200 GSM`, and `240 GSM` options.
+- Added GSM to the current client-side variant price calculation. The displayed
+  amount now multiplies by the selected quantity, whether the page is showing
+  the initial catalog range or the single selected-variant amount.
+- Buy Now and Add to Cart now add the selected quantity instead of always adding
+  one item. The same controls work on narrow phone layouts, with the compact
+  selector rows, price line, quantity control, and three action buttons kept
+  within the available width.
+- Updated the Specifications tab to show the selected GSM and removed the old
+  Print field from that summary.
+- Validation: Next.js production build, TypeScript, and `git diff --check`
+  passed. This implementation is ready to be committed and pushed with the
+  existing direct-to-`main` workflow.
+- Limitation: variant amounts remain client-side prototype calculations because
+  the catalog schema does not yet provide admin-managed per-GSM/per-attribute
+  price records, and cart items still store the base product shape rather than
+  a serialized variant selection.
+
 ### 2026-11-14 — Make the 3500 px artwork tier transferable
 
 - Owner clarification: the 3500 px large tier is not permanently assigned to Front. Either Front or Back may claim it; while one side's longest artwork edge exceeds 1500 px, that side may use up to 3500 px and the other side is capped at 1500 px. If both sides remain at or below 1500 px, either may claim the large tier by resizing above 1500 px. The numeric values remain provisional, not final print specifications.
@@ -50,11 +71,11 @@ This log records completed website-related changes in the connected repository. 
   Size, Color, Material, Fit Type, Sleeve, and Print Style controls, and tuned
   mobile title, price, spacing, tabs, and three-button action layout to avoid
   clipping or horizontal overflow.
-- Product cards still show the catalog range before a choice. The detail page
-  starts with the range when no Size, Color, or Material is selected; after any
-  of those choices, it displays one exact-looking client-calculated price.
-  The selected options are reflected in the active states and Specifications
-  tab.
+- Product cards still show the catalog range. The detail page keeps showing a
+  quantity-adjusted range until all four required choices—Size, Color, Material,
+  and GSM—are selected; only then does it display one exact-looking
+  client-calculated price. The selected options are reflected in the active
+  states and Specifications tab.
 - Files changed: `apps/web/src/app/products/[slug]/page.tsx`,
   `apps/web/src/components/ProductDetailClient.tsx`, `Plan/PLAN.md`, and this
   documentation file.

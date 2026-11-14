@@ -28,6 +28,7 @@ type Tab = "details" | "specifications" | "size" | "reviews" | "shipping";
 
 const sizes = ["S", "M", "L", "XL", "XXL"];
 const materials = ["Cotton", "Premium Cotton", "Polyester", "Blend"];
+const gsmOptions = ["160 GSM", "180 GSM", "200 GSM", "240 GSM"];
 const colors = [
   { name: "Black", className: "bg-black" },
   { name: "White", className: "bg-white" },
@@ -73,6 +74,7 @@ export default function ProductDetailClient({ product, related }: Props) {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
+  const [selectedGsm, setSelectedGsm] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<Tab>("details");
   const [activeImage, setActiveImage] = useState(0);
@@ -82,17 +84,23 @@ export default function ProductDetailClient({ product, related }: Props) {
   const sizePrice = ({ S: 0, M: 1000, L: 2000, XL: 3000, XXL: 4000 } as Record<string, number>)[selectedSize ?? ""] ?? 0;
   const colorPrice = { Black: 0, White: 500, Green: 1000, Sand: 500, Red: 1000, Navy: 500 }[selectedColor ?? ""] ?? 0;
   const materialPrice = { Cotton: 0, "Premium Cotton": 3000, Polyester: 1000, Blend: 1500 }[selectedMaterial ?? ""] ?? 0;
-  const variantPriceMin = product.priceMinKs + sizePrice + colorPrice + materialPrice;
-  const variantPriceMax = product.priceMaxKs + sizePrice + colorPrice + materialPrice;
-  const hasVariantSelection = selectedSize !== null || selectedColor !== null || selectedMaterial !== null;
-  const price = hasVariantSelection ? `${variantPriceMax.toLocaleString("en-US")} Ks` : formatRangeKs(variantPriceMin, variantPriceMax);
+  const gsmPrice = { "160 GSM": 0, "180 GSM": 1000, "200 GSM": 2000, "240 GSM": 3500 }[selectedGsm ?? ""] ?? 0;
+  const variantPriceMin = product.priceMinKs + sizePrice + colorPrice + materialPrice + gsmPrice;
+  const variantPriceMax = product.priceMaxKs + sizePrice + colorPrice + materialPrice + gsmPrice;
+  const hasCompleteVariantSelection = selectedSize !== null && selectedColor !== null && selectedMaterial !== null && selectedGsm !== null;
+  const price = hasCompleteVariantSelection
+    ? `${(variantPriceMax * quantity).toLocaleString("en-US")} Ks`
+    : formatRangeKs(variantPriceMin * quantity, variantPriceMax * quantity);
+  const addQuantityToCart = () => {
+    for (let index = 0; index < quantity; index += 1) addItem(product);
+  };
   const addToCart = () => {
-    addItem(product);
+    addQuantityToCart();
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1800);
   };
   const buyNow = () => {
-    addItem(product);
+    addQuantityToCart();
     router.push("/cart");
   };
 
@@ -143,7 +151,7 @@ export default function ProductDetailClient({ product, related }: Props) {
             </OptionGroup>
             <OptionGroup title="Fit Type"><OptionButton selected onClick={() => undefined}>Oversized</OptionButton><OptionButton selected={false} onClick={() => undefined}>Regular</OptionButton><OptionButton selected={false} onClick={() => undefined}>Slim Fit</OptionButton><OptionButton selected={false} onClick={() => undefined}>Loose Fit</OptionButton></OptionGroup>
             <OptionGroup title="Sleeve"><OptionButton selected onClick={() => undefined}>Short Sleeve</OptionButton><OptionButton selected={false} onClick={() => undefined}>Long Sleeve</OptionButton></OptionGroup>
-            <OptionGroup title="Print Style"><OptionButton selected onClick={() => undefined}>Front Print</OptionButton><OptionButton selected={false} onClick={() => undefined}>Back Print</OptionButton><OptionButton selected={false} onClick={() => undefined}>Both Side</OptionButton></OptionGroup>
+            <OptionGroup title="GSM">{gsmOptions.map((gsm) => <OptionButton key={gsm} selected={selectedGsm === gsm} onClick={() => setSelectedGsm(gsm)}>{gsm}</OptionButton>)}</OptionGroup>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xs font-black">Quantity</span><div className="flex items-center rounded-full border border-border bg-bg"><button type="button" aria-label="Decrease quantity" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-2.5"><Minus size={14} /></button><span className="min-w-8 text-center text-sm font-bold">{quantity}</span><button type="button" aria-label="Increase quantity" onClick={() => setQuantity((value) => value + 1)} className="p-2.5"><Plus size={14} /></button></div><span className="flex items-center gap-1 text-[11px] font-bold text-accent"><Check size={14} /> In Stock · Ready to ship</span></div>
@@ -158,7 +166,7 @@ export default function ProductDetailClient({ product, related }: Props) {
       <section className="mt-4 overflow-hidden rounded-2xl border border-border/70 bg-bg-surface">
         <div className="flex gap-1 overflow-x-auto border-b border-border/70 p-1.5">{tabs.map((tab) => <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`shrink-0 rounded-xl px-3 py-2.5 text-[11px] font-bold ${activeTab === tab.id ? "bg-accent text-accent-foreground" : "text-text-secondary hover:bg-bg"}`}>{tab.label}</button>)}</div>
         <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.55fr)]">
-          <div><h2 className="text-base font-black">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>{activeTab === "details" && <div className="mt-3 space-y-2 text-xs leading-5 text-text-secondary"><p>{product.name} combines a clean everyday silhouette with a comfortable finish made for daily wear.</p><p className="flex items-center gap-2"><Check size={14} className="text-accent" /> Premium fabric and comfortable construction</p><p className="flex items-center gap-2"><Check size={14} className="text-accent" /> Modern minimal design</p></div>}{activeTab === "specifications" && <div className="mt-3 grid gap-2 text-xs text-text-secondary sm:grid-cols-2"><p><b className="text-text-primary">Product type:</b> {product.productType || "T-Shirt"}</p><p><b className="text-text-primary">Color:</b> {selectedColor || "Not selected"}</p><p><b className="text-text-primary">Material:</b> {selectedMaterial || "Not selected"}</p><p><b className="text-text-primary">Size:</b> {selectedSize || "Not selected"}</p><p><b className="text-text-primary">Fit:</b> Oversized</p><p><b className="text-text-primary">Print:</b> Front Print</p></div>}{activeTab === "size" && <p className="mt-3 text-xs leading-5 text-text-secondary">Choose your usual size for a relaxed fit. If you prefer an oversized look, choose one size up.</p>}{activeTab === "reviews" && <p className="mt-3 text-xs leading-5 text-text-secondary">Reviews and verified buyer feedback will appear here as they are connected to the catalog.</p>}{activeTab === "shipping" && <p className="mt-3 text-xs leading-5 text-text-secondary">Orders are prepared for dispatch within 1–2 business days. Returns are accepted within 7 days for eligible items.</p>}</div>
+          <div><h2 className="text-base font-black">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>{activeTab === "details" && <div className="mt-3 space-y-2 text-xs leading-5 text-text-secondary"><p>{product.name} combines a clean everyday silhouette with a comfortable finish made for daily wear.</p><p className="flex items-center gap-2"><Check size={14} className="text-accent" /> Premium fabric and comfortable construction</p><p className="flex items-center gap-2"><Check size={14} className="text-accent" /> Modern minimal design</p></div>}{activeTab === "specifications" && <div className="mt-3 grid gap-2 text-xs text-text-secondary sm:grid-cols-2"><p><b className="text-text-primary">Product type:</b> {product.productType || "T-Shirt"}</p><p><b className="text-text-primary">Color:</b> {selectedColor || "Not selected"}</p><p><b className="text-text-primary">Material:</b> {selectedMaterial || "Not selected"}</p><p><b className="text-text-primary">Size:</b> {selectedSize || "Not selected"}</p><p><b className="text-text-primary">GSM:</b> {selectedGsm || "Not selected"}</p><p><b className="text-text-primary">Fit:</b> Oversized</p></div>}{activeTab === "size" && <p className="mt-3 text-xs leading-5 text-text-secondary">Choose your usual size for a relaxed fit. If you prefer an oversized look, choose one size up.</p>}{activeTab === "reviews" && <p className="mt-3 text-xs leading-5 text-text-secondary">Reviews and verified buyer feedback will appear here as they are connected to the catalog.</p>}{activeTab === "shipping" && <p className="mt-3 text-xs leading-5 text-text-secondary">Orders are prepared for dispatch within 1–2 business days. Returns are accepted within 7 days for eligible items.</p>}</div>
           <div className="rounded-2xl border border-border/60 bg-bg p-3"><div className="flex items-center justify-between"><div><p className="text-3xl font-black">4.9</p><p className="text-[10px] text-text-muted">Based on 126 reviews</p></div><div className="text-right"><p className="text-sm tracking-wide text-[#f2b511]">★★★★★</p><button type="button" className="mt-2 text-[10px] font-bold text-accent">View all reviews →</button></div></div><div className="mt-3 space-y-1.5 text-[10px] text-text-muted">{[[5, "92%"], [4, "6%"], [3, "1%"], [2, "1%"], [1, "0%"]].map(([stars, percentage]) => <div key={stars} className="flex items-center gap-2"><span>{stars} ★</span><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border"><span className="block h-full rounded-full bg-accent" style={{ width: percentage }} /></span><span>{percentage}</span></div>)}</div></div>
         </div>
       </section>

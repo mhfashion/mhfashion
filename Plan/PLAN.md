@@ -145,12 +145,16 @@ in a Pricing Management module. Product cards show a range (lowest–highest);
 once a full combination is chosen on the detail page, show the exact price.
 Other product types get their own attribute sets and pricing formulas.
 
-Current product-detail prototype behavior: before any Size, Color, or Material
-selection, the page shows the catalog price range. After the visitor selects
-any of those options, the displayed value switches to one exact-looking price
-using the current client-side variant calculation. The selected variant and
+Current product-detail prototype behavior: the page shows the catalog price
+range until all required variant choices—Size, Color, Material, and GSM—are
+selected. Only after the complete set is selected does the displayed value
+switch to one exact-looking price using the current client-side variant
+calculation. The selected variant and
 its calculated price are not yet persisted into the cart item; real
-admin-configured combination pricing remains a follow-up data task.
+admin-configured combination pricing remains a follow-up data task. The detail
+selector uses **GSM** rather than Print Style; quantity multiplies the displayed
+unit/variant amount and the same selected quantity is added to the cart by the
+Buy Now/Add to Cart actions.
 
 ### 4.6 Product detail presentation
 
@@ -591,6 +595,15 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   TypeScript, and `git diff --check` passed. The application changes were pushed
   directly to `main` in commits `4d93a86`, `3620fe4`, `45b9935`, `caf13dd`,
   `6adf382`, `e6ab9ba`, `76323f3`, and `fc42b82`.
+- Product-detail selector follow-up (2026-11-14): replaced the prototype Print
+  Style group with GSM options (`160`, `180`, `200`, and `240 GSM`). GSM now
+  participates in the displayed client-side variant amount. Quantity changes
+  multiply the displayed range/single price, and Buy Now/Add to Cart add the
+  selected quantity rather than one item. The compact control layout remains
+  responsive on phone widths; production build and TypeScript passed.
+- Price-display correction (2026-11-14): a single price is now shown only when
+  Size, Color, Material, and GSM are all selected. If any required choice is
+  still missing, the page continues to show the quantity-adjusted price range.
 
 
 ## Production publishing status snapshot (2026-11-10; superseded by the current follow-up below)
