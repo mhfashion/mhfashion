@@ -130,7 +130,6 @@ export default function EditorToolsBar({
         <button
           type="button"
           aria-label={collapsed ? "Expand editor tools" : "Collapse editor tools"}
-          title={collapsed ? "Expand tools" : "Collapse tools"}
           aria-expanded={!collapsed}
           onClick={onToggleCollapsed}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent outline-none hover:bg-accent/20 focus-visible:ring-2 focus-visible:ring-accent"

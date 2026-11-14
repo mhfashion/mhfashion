@@ -35,6 +35,13 @@ This log records completed website-related changes in the connected repository. 
 - Integration note: this work was rebased onto the color-swatch commits `392b4fa` / `5c5c3d3` and re-verified there — all repository Node suites **35/35**, TypeScript, ESLint (0 errors / 25 pre-existing warnings), Next.js build, Cloudflare/OpenNext build, `git diff --check`, and the full Chromium editor-touch suite passed. Both theme modes were re-measured after the merge: circle and wires `rgb(212, 255, 63)` with a `rgb(13, 13, 13)` centre in Dark, `rgb(101, 156, 20)` with a white centre in Light.
 - Deployment status: the push is commit `fa1aff8` on `main`. GitHub Actions run **43655653005** failed at the same secret preflight (`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are still absent), so production continues to serve the previous build.
 
+### 2026-11-15 — Remove visible text from Tools bar toggle
+
+- Removed the `title` tooltip from the circular Tools bar expand/collapse arrow. Pointer hover no longer shows “Expand tools”/“Collapse tools”; the control remains icon-only. Its dynamic `aria-label` and `aria-expanded` remain for accessibility.
+- The shared toggle and expand/collapse behavior are unchanged across Web/Desktop and Phone/Mobile.
+- Validation: all Node suites **35/35**, TypeScript, Next.js production build, Cloudflare/OpenNext build, and `git diff --check` passed. Workspace lint completed with **0 errors / 25 warnings**, with no diagnostic for the changed component. Production Chromium checks passed at 390×844, 320×740, 740×390, 844×390, and 1280×900; each viewport verified no title or visible text on the arrow in both collapsed and expanded states.
+- Deployment status: awaiting the GitHub Actions run for this commit; the repository currently lacks the two Cloudflare Actions secrets recorded above.
+
 ### 2026-11-15 — Add a compact bottom-center Editor Tools bar
 
 - Added a small, rounded, theme-aware dock at the bottom center of `/create`, with a circular expand/collapse control and 28 px icon buttons for Move, Pen, Hand, Brush, Eraser, Text, Undo, and Remove BG. At 390 × 844 the dock measured 291 × 42 px and cleared the measured mobile navigation. It hides on narrow screens while either side panel is open so it does not cover panel controls.

@@ -55,16 +55,32 @@ async function main() {
       if (await evaluate(() => !!document.querySelector('button[aria-label="Canvas options"]'))) break;
     }
     await pause(500);
-    const toolbar = await evaluate(() => {
+    const toolbar = await evaluate(async () => {
       const bar = document.querySelector('[data-testid="editor-tools-bar"]');
       if (!bar) throw new Error("Missing responsive Editor Tools bar");
       const foreground = bar.querySelector('button[aria-label="Foreground Color"]');
       const background = bar.querySelector('button[aria-label="Background Color"]');
       const bounds = bar.getBoundingClientRect();
+      const expandedButton = bar.querySelector('button[aria-label="Collapse editor tools"]');
+      if (!expandedButton) throw new Error("Missing expanded Tools bar toggle");
+      const expandedHasTitle = expandedButton.hasAttribute("title");
+      const expandedHasVisibleText = !!expandedButton.textContent?.trim();
+      expandedButton.click();
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      const collapsedButton = bar.querySelector('button[aria-label="Expand editor tools"]');
+      if (!collapsedButton) throw new Error("Tools bar failed to collapse");
+      const collapsedHasTitle = collapsedButton.hasAttribute("title");
+      const collapsedHasVisibleText = !!collapsedButton.textContent?.trim();
+      collapsedButton.click();
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      if (!bar.querySelector('button[aria-label="Collapse editor tools"]')) throw new Error("Tools bar failed to expand");
       return {
         foregroundVisible: !!foreground && bounds.width > 0 && bounds.height > 0,
         backgroundVisible: !!background && bounds.width > 0 && bounds.height > 0,
         textToolPresent: !!bar.querySelector('button[aria-label="Text"]'),
+        expandedToggleHasTitle: expandedHasTitle,
+        collapsedToggleHasTitle: collapsedHasTitle,
+        toggleHasVisibleText: expandedHasVisibleText || collapsedHasVisibleText,
         top: bounds.top,
         bottom: bounds.bottom,
         viewportHeight: window.innerHeight,
@@ -73,6 +89,9 @@ async function main() {
     assert.ok(toolbar.foregroundVisible, `Foreground swatch missing at ${width}×${height}`);
     assert.ok(toolbar.backgroundVisible, `Background swatch missing at ${width}×${height}`);
     assert.equal(toolbar.textToolPresent, false, `Text Tool should be absent at ${width}×${height}`);
+    assert.equal(toolbar.expandedToggleHasTitle, false, `Expanded toggle tooltip should be absent at ${width}×${height}`);
+    assert.equal(toolbar.collapsedToggleHasTitle, false, `Collapsed toggle tooltip should be absent at ${width}×${height}`);
+    assert.equal(toolbar.toggleHasVisibleText, false, `Toggle should display no text at ${width}×${height}`);
     assert.ok(toolbar.top >= 0 && toolbar.bottom <= toolbar.viewportHeight, `Tools bar must remain in view at ${width}×${height}`);
   }
   async function rect(selector, scroll = true) {

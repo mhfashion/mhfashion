@@ -138,8 +138,8 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /backgroundColor=\{backgroundColor\}/);
   assert.match(layerModelSource, /color\?: string/);
   assert.match(artworkLayers, /color=\{stroke\.color \?\? "#202124"\}/);
-  assert.match(toolsBar, /Expand editor tools/);
-  assert.match(toolsBar, /Collapse editor tools/);
+  assert.match(toolsBar, /aria-label=\{collapsed \? "Expand editor tools" : "Collapse editor tools"\}/);
+  assert.doesNotMatch(toolsBar, /title=\{collapsed \? "Expand tools" : "Collapse tools"\}/);
   assert.match(source, /activeTool === "hand" && event\.button === 0/);
   assert.match(source, /activeTool !== "move"/);
   assert.match(source, /function eraseArtworkAt\(/);
