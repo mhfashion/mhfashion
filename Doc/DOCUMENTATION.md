@@ -24,6 +24,17 @@ This log records completed website-related changes in the connected repository. 
 - Updated `/create`, the shared Product type, `EditorHeaderBar2`, `KittlCanvas`, tests, and current-state documentation. This supersedes the placeholder-only Product/GSM behavior in the following earlier log entry.
 - Validation: canvas-shell **10/10**, all repository Node tests **26/26**, TypeScript, changed-file ESLint, Next.js production build, Chromium Product switching on phone viewports (conditional fields, Phone's single visible mockup/no Back-add control, preserved T-Shirt Back state), desktop mouse/touch regressions, and `git diff --check` passed. Physical Android/iPhone verification remains unavailable.
 
+### 2026-11-14 — Phone Product Detail gallery frame alignment
+
+- Removed the extra outer Product Detail card border, background, padding, and
+  shadow below the phone breakpoint. The main product photo and the thumbnail
+  row now sit on the same aligned gallery edge without a second side frame
+  protruding beside them.
+- Kept the framed card treatment for tablet and desktop through the responsive
+  `sm` breakpoint and above.
+- Validation: production build and `git diff --check` are required before the
+  direct-to-`main` push for this change.
+
 ### 2026-11-14 — Add Editor Header Bar 2 placeholders
 
 - Reduced Bar 2 from 56px to a compact 44px row. At that stage, `Product` offered `T-Shirt`, `Phone`, `Hoodie`, `Cup`, `Kids`, and `Bag`; `GSM` offered `160`, `180`, `200`, and `240 GSM`. Product/GSM selections were local to the toolbar before the product-dependent rules were implemented above.
@@ -48,6 +59,21 @@ This log records completed website-related changes in the connected repository. 
 - ပြောင်းလဲသည့် source: `KittlCanvas.tsx`, `MockupArtwork.tsx`, `MobileBottomNav.tsx`, `/create/page.tsx`, root layout။ `tests/canvas-shell.test.cjs` တွင် mobile regression assertions ထည့်ထားပြီး `tests/editor-touch.cjs` သည် Node 22 နှင့် local Chromium CDP endpoint ကိုသာ သုံးသည့် reusable touch integration check ဖြစ်သည်။ Dependency အသစ် မထည့်ပါ။
 - Validation: Node tests **24/24**၊ TypeScript၊ changed-file ESLint၊ Next.js/OpenNext Cloudflare build နှင့် `git diff --check` အောင်မြင်သည်။ Chromium တွင် 390×844၊ 320×740 portrait touch၊ 740×390 နှင့် 844×390 landscape၊ tiny selected Artwork ကို ထပ်မံရွှေ့ခြင်း/resize၊ tier နှစ်ဖက်လုံး လွှဲပြောင်းခြင်း/release၊ pan/zoom၊ Zoom 25% screen-sized controls/readable badge၊ second-touch/cancel နှင့် desktop control-size/mouse drawing/Back resize regression တို့ကို စမ်းသပ်အောင်မြင်သည်။
 - Limitation: physical Android/iPhone နှင့် iOS Safari ပေါ်တွင် မစမ်းရသေးပါ။ Artwork/state များသည် အရင်အတိုင်း page memory တွင်သာ ရှိသည်။ Native app၊ multi-touch pinch editor သို့မဟုတ် roadmap feature အသစ်များ မထည့်ပါ။
+### 2026-11-14 — Phone Product Detail option and price verification
+
+- Exercised the X Marks Product Detail flow at a 390×844 phone viewport. The
+  gallery, option rows, price area, and fixed phone navigation rendered without
+  horizontal overflow in the captured phone screenshot.
+- Verified the price sequence: initial `20,000 – 24,000 Ks`; Size alone keeps
+  the range; Size + Color + Material + GSM changes it to `24,000 Ks`; Quantity
+  2 while the required set is incomplete shows `40,000 – 48,000 Ks`; Quantity
+  2 after all four required choices shows `48,000 Ks`.
+- This was an interaction/verification pass only; no application source change
+  was required. The local server could not render a product route because this
+  sandbox has no Supabase catalog environment variables, so the live catalog
+  page was used for the click-through check while the 390×844 screenshot was
+  also inspected locally.
+
 ### 2026-11-14 — Phone interaction audit and copyright placement correction
 
 - Audited the phone-visible navigation and Product Detail controls. The mobile

@@ -113,7 +113,7 @@ export default function ProductDetailClient({ product, related }: Props) {
 
   return (
     <>
-      <section className="grid gap-2 rounded-xl border border-border/70 bg-bg-surface p-1.5 shadow-[0_8px_30px_rgba(30,40,20,0.06)] sm:p-2 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:gap-2.5 lg:p-2.5">
+      <section className="grid gap-2 rounded-xl border-0 bg-transparent p-0 shadow-none sm:border sm:border-border/70 sm:bg-bg-surface sm:p-2 sm:shadow-[0_8px_30px_rgba(30,40,20,0.06)] lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:gap-2.5 lg:p-2.5">
         <div className="mx-auto min-w-0 w-full max-w-[min(100%,280px)] lg:max-w-[280px]">
           <div className="relative aspect-square overflow-hidden rounded-2xl border border-border/70 bg-bg">
             {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-text-muted">Product preview</div>}

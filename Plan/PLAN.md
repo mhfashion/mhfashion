@@ -613,6 +613,18 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   The global CopyrightBar is hidden below the desktop breakpoint so phone shows
   copyright only inside the mobile side drawer; desktop copyright behavior is
   unchanged. Build passed; lint reported no errors and only existing warnings.
+- Phone Product Detail option/price verification (2026-11-14): exercised the
+  X Marks flow at a 390×844 viewport. The initial value was `20,000 – 24,000 Ks`;
+  selecting only Size kept the range; selecting Size, Color, Material, and GSM
+  produced `24,000 Ks`; quantity 2 produced `40,000 – 48,000 Ks` while the
+  variant was incomplete and `48,000 Ks` after the full set was selected. The
+  option rows, gallery, and fixed phone navigation fit without horizontal
+  overflow in the screenshot. No source change was required from this test.
+- Phone gallery frame correction (2026-11-14): removed the extra Product
+  Detail outer card border/background/shadow below the phone breakpoint so the
+  main photo and thumbnail row share one aligned gallery edge without a second
+  side frame protruding beyond them. Tablet and desktop retain the existing
+  framed detail card.
 
 
 ## Production publishing status snapshot (2026-11-10; superseded by the current follow-up below)
