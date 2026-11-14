@@ -182,7 +182,7 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(mobileNav, /new ResizeObserver\(updateHeight\)/);
 });
 
-test("Layers panel starts closed and controls a functional left-side layer stack and masks", () => {
+test("Layers panel starts closed and controls a functional right-side layer stack and masks", () => {
   assert.match(source, /const \[layersOpen, setLayersOpen\] = useState\(false\)/);
   assert.match(source, /<EditorLayersPanel[\s\S]*?open=\{layersOpen\}[\s\S]*?onToggle=\{\(\) => setLayersOpen\(\(open\) => !open\)\}[\s\S]*?onAddLayer=\{addLayer\}[\s\S]*?onAddMask=\{createLayerMask\}[\s\S]*?onDeleteLayer=\{deleteLayer\}/);
   assert.match(source, /<div className="relative min-h-0 flex-1">[\s\S]*?ref=\{viewportRef\}/);
@@ -191,9 +191,11 @@ test("Layers panel starts closed and controls a functional left-side layer stack
   assert.match(source, /function createLayerMask\(id: string\)[\s\S]*?setSelectedTarget\("mask"\)/);
   assert.match(source, /function deleteLayer\(id: string\)[\s\S]*?deleteEditorLayer\(layers, id\)/);
   assert.match(layersPanel, /aria-label="Layers panel"/);
+  assert.match(layersPanel, /data-dock-side="right"/);
+  assert.match(layersPanel, /dark:bg-\[#2b2b2b\]/);
   assert.match(layersPanel, /aria-label=\{open \? "Collapse Layers panel" : "Expand Layers panel"\}/);
   assert.match(layersPanel, /aria-expanded=\{open\}/);
-  assert.match(layersPanel, /style=\{\{ left: open \? PANEL_WIDTH : 0 \}\}/);
+  assert.match(layersPanel, /style=\{\{ right: open \? PANEL_WIDTH : 0 \}\}/);
   for (const label of ["Add layer", "Rename", "Duplicate", "Delete", "Hide", "Show", "mask", "Move"]) {
     assert.match(layersPanel, new RegExp(label, "i"));
   }

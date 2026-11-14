@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Dock Layers on the right in a Photoshop-inspired panel
+
+- Moved the initially collapsed Layers dock to the Editor viewport's right edge and moved its toggle arrow to the left edge of the dock.
+- Applied a compact neutral graphite/light-gray treatment with Photoshop-like blue selected-layer feedback; the existing Header Light/Dark toggle still changes the panel colors. Layer and mask operations remain unchanged.
+- The exact reference image was not available in the repository or the inherited message attachments, so this is a Photoshop-inspired right dock—not a pixel-exact recreation of the screenshot. Reattach the image to refine its precise panel tabs, controls, and spacing.
+- Validation: right-edge placement is checked in responsive Chromium for 390×844 and 320×740; TypeScript, ESLint, all Node suites, and the Cloudflare/OpenNext build are rerun for this positioning/style update.
+
 ### 2026-11-14 — Implement functional Layers and non-destructive vector masks
 
 - Replaced the left-side panel's “controls later” shell with an initially collapsed, theme-aware layer stack. The current vector artwork layer model supports add/select/rename/reorder, show/hide, lock, duplicate/delete, opacity and blend mode. Canvas drawing appends to the selected unlocked layer.
@@ -526,3 +533,4 @@ Sources supplied by the project owner on 2026-11-10:
 - Use a responsive layout that stacks cards on narrow screens.
 
 The current `/admin` page follows these cues but uses clearly labeled local preview data. The linked references are visual guidance only; they do not define live metrics or authorization behavior.
+- Validation: all repository Node tests passed **32/32**; TypeScript and ESLint passed; Cloudflare/OpenNext production build passed. Chromium CDP confirmed the dock's right-edge geometry at 390×844 and 320×740, the separated top arrow, 844×390 landscape stacking, desktop open/close, and Light/Dark color switching. Existing layer-mask, Product/Phone, mockup and tier regressions also passed. The screenshot-specific visual match remains open until the reference is attached.

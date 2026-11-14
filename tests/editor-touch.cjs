@@ -239,12 +239,13 @@ async function main() {
         layerCount: panel.querySelector('[aria-label="Layer count"]')?.textContent,
         initialLayer: !!panel.querySelector('[aria-label="Select Layer 1"]'),
         addLayer: !!panel.querySelector('[aria-label="Add layer"]'),
-        left: panelBox.left,
+        right: panelBox.right,
         width: panelBox.width,
-        viewportLeft: viewport.left,
+        viewportRight: viewport.right,
         viewportWidth: viewport.width,
-        arrowLeft: buttonBox.left,
-        panelRight: panelBox.right,
+        arrowRight: buttonBox.right,
+        panelLeft: panelBox.left,
+        dockSide: panel.dataset.dockSide,
         expanded: button.getAttribute("aria-expanded"),
       };
     });
@@ -252,9 +253,10 @@ async function main() {
     assert.equal(openLayers.layerCount, "1");
     assert.equal(openLayers.initialLayer, true, "The blank artwork layer exists on load");
     assert.equal(openLayers.addLayer, true, "The panel can create a new layer");
-    assert.ok(Math.abs(openLayers.left - openLayers.viewportLeft) < 1, "Layers panel opens from the viewport's left edge");
+    assert.equal(openLayers.dockSide, "right");
+    assert.ok(Math.abs(openLayers.right - openLayers.viewportRight) < 1, "Layers panel docks to the viewport's right edge");
     assert.ok(openLayers.width <= openLayers.viewportWidth * 0.86 + 1, "Layers panel fits narrow phone screens");
-    assert.ok(Math.abs(openLayers.arrowLeft - openLayers.panelRight) < 1, "The same arrow is reachable at the open panel edge");
+    assert.ok(Math.abs(openLayers.arrowRight - openLayers.panelLeft) < 1, "The collapse arrow remains reachable at the open panel edge");
     assert.equal(openLayers.expanded, "true");
     if (width === 390) {
       await tap('button[aria-label="Add layer"]');
@@ -499,6 +501,7 @@ async function main() {
     });
     assert.ok(desktopHeader.height > 0 && desktopHeader.mobile === "none" && desktopHeader.desktop !== "none", "Reuse the existing desktop Header Bar");
     assert.ok(desktopHeader.bar2Top >= desktopHeader.headerBottom - 1 && desktopHeader.editorTop >= desktopHeader.bar2Bottom - 1, "Desktop Bar 2 stays below Header and above editor");
+    await clickMouse('button[aria-label="Expand Layers panel"]');
     const themeBefore = await evaluate(() => {
       const slot = document.querySelector("[data-editor-shared-header]");
       const themeButton = [...slot.querySelectorAll("button")].find((button) => {
@@ -511,6 +514,7 @@ async function main() {
         shell: getComputedStyle(document.querySelector("main")).backgroundColor,
         bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
         productBox: getComputedStyle(document.querySelector('select[aria-label="Product"]')).backgroundColor,
+        layersPanel: getComputedStyle(document.querySelector('aside[aria-label="Layers panel"]')).backgroundColor,
         button: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
       };
     });
@@ -521,20 +525,22 @@ async function main() {
       shell: getComputedStyle(document.querySelector("main")).backgroundColor,
       bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
       productBox: getComputedStyle(document.querySelector('select[aria-label="Product"]')).backgroundColor,
+      layersPanel: getComputedStyle(document.querySelector('aside[aria-label="Layers panel"]')).backgroundColor,
     }));
     assert.notEqual(themeAfter.dark, themeBefore.dark, "Header Dark/Light toggles the root theme");
     assert.notEqual(themeAfter.shell, themeBefore.shell, "Editor workspace responds to Header theme toggle");
     assert.notEqual(themeAfter.bar, themeBefore.bar, "Header Bar 2 responds to Header theme toggle");
     assert.notEqual(themeAfter.productBox, themeBefore.productBox, "Product box responds to Header theme toggle");
+    assert.notEqual(themeAfter.layersPanel, themeBefore.layersPanel, "Photoshop-style Layers dock responds to Header theme toggle");
     await clickPoint(themeBefore.button);
     await pause(180);
     assert.equal(await evaluate(() => document.documentElement.classList.contains("dark")), themeBefore.dark, "Header theme toggle restores the original mode");
-    console.log("PASS Header Dark/Light toggle: editor shell, compact bar, and Product dropdown respond in both modes");
-    await clickMouse('button[aria-label="Expand Layers panel"]');
+    console.log("PASS Header Dark/Light toggle: editor shell, compact bar, Product dropdown, and Layers dock respond in both modes");
     assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"] h2')?.textContent), "Layers");
+    assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"]')?.dataset.dockSide), "right");
     await clickMouse('button[aria-label="Collapse Layers panel"]');
     assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"]')), null);
-    console.log("PASS desktop: left Layers arrow opens and collapses the panel");
+    console.log("PASS desktop: right-side Layers arrow opens and collapses the Photoshop-inspired panel");
     const desktopButton = await rect('button[aria-label="Canvas options"]');
     assert.equal(desktopButton.w, 14); assert.equal(desktopButton.h, 14);
     console.log("PASS desktop 1280×900: original control size and no mobile toolbar");

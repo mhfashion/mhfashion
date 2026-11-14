@@ -25,7 +25,7 @@ import type {
 } from "@/lib/editor-layers";
 
 const PANEL_WIDTH = "min(17rem, 86vw)";
-const iconButtonClass = "flex h-9 w-9 shrink-0 items-center justify-center rounded text-text-secondary outline-none hover:bg-bg hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-35 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11";
+const iconButtonClass = "flex h-9 w-9 shrink-0 items-center justify-center rounded text-text-secondary outline-none hover:bg-[#d8d8d8] hover:text-[#111] disabled:cursor-not-allowed disabled:opacity-35 focus-visible:ring-2 focus-visible:ring-[#3986c6] dark:hover:bg-[#414141] dark:hover:text-white [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11";
 const BLEND_MODES: { value: EditorLayerBlendMode; label: string }[] = [
   { value: "normal", label: "Normal" },
   { value: "multiply", label: "Multiply" },
@@ -98,10 +98,11 @@ export default function EditorLayersPanel({
       {open && (
         <aside
           aria-label="Layers panel"
-          className="absolute inset-y-0 left-0 z-30 flex min-h-0 flex-col overflow-y-auto overscroll-contain border-r border-border bg-bg-surface text-text-primary shadow-xl"
+          data-dock-side="right"
+          className="absolute inset-y-0 right-0 z-30 flex min-h-0 flex-col overflow-y-auto overscroll-contain border-l border-[#bcbcbc] bg-[#e8e8e8] text-[#202020] shadow-xl dark:border-[#171717] dark:bg-[#2b2b2b] dark:text-[#dedede] dark:shadow-black/60"
           style={{ width: PANEL_WIDTH }}
         >
-          <div className="sticky top-0 z-10 flex h-11 shrink-0 items-center gap-2 border-b border-border bg-bg-surface px-3">
+          <div className="sticky top-0 z-10 flex h-11 shrink-0 items-center gap-2 border-b border-[#bcbcbc] bg-[#dedede] px-3 dark:border-[#171717] dark:bg-[#343434]">
             <Layers size={15} aria-hidden="true" className="text-text-secondary" />
             <h2 className="text-sm font-semibold">Layers</h2>
             <span aria-label="Layer count" className="text-xs text-text-muted">{layers.length}</span>
@@ -132,7 +133,7 @@ export default function EditorLayersPanel({
                       key={layer.id}
                       role="listitem"
                       data-layer-id={layer.id}
-                      className={`rounded-md border p-1 ${isSelected ? "border-accent/60 bg-accent/5" : "border-transparent hover:border-border"}`}
+                      className={`rounded-sm border p-1 ${isSelected ? "border-[#488ccc] bg-[#d2e5f8] dark:border-[#71afe5] dark:bg-[#3f5b73]" : "border-transparent hover:border-[#bbbbbb] dark:hover:border-[#595959]"}`}
                     >
                       <div className="flex min-w-0 items-center gap-0.5">
                         <button
@@ -151,7 +152,7 @@ export default function EditorLayersPanel({
                             aria-label={`Select ${layer.name}`}
                             aria-pressed={isSelected && selectedTarget === "artwork"}
                             onClick={() => onSelectLayer(layer.id, "artwork")}
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded outline-none focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 ${isSelected && selectedTarget === "artwork" ? "text-accent" : "text-text-secondary"}`}
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded outline-none focus-visible:ring-2 focus-visible:ring-[#3986c6] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 ${isSelected && selectedTarget === "artwork" ? "text-[#2474b5] dark:text-[#86c5ff]" : "text-text-secondary"}`}
                           >
                           <span
                             aria-hidden="true"
@@ -181,7 +182,7 @@ export default function EditorLayersPanel({
                               aria-pressed={isSelected && selectedTarget === "artwork"}
                               onClick={() => onSelectLayer(layer.id, "artwork")}
                               onDoubleClick={() => beginRename(layer)}
-                              className={`h-9 min-w-0 flex-1 truncate rounded px-1 text-left text-xs outline-none focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 ${isSelected && selectedTarget === "artwork" ? "text-text-primary" : "text-text-secondary"}`}
+                            className={`h-9 min-w-0 flex-1 truncate rounded px-1 text-left text-xs outline-none focus-visible:ring-2 focus-visible:ring-[#3986c6] [@media(pointer:coarse)]:h-11 ${isSelected && selectedTarget === "artwork" ? "font-semibold text-[#171717] dark:text-white" : "text-text-secondary"}`}
                             >
                               {layer.name}
                             </button>
@@ -289,10 +290,10 @@ export default function EditorLayersPanel({
         aria-label={open ? "Collapse Layers panel" : "Expand Layers panel"}
         aria-expanded={open}
         onClick={onToggle}
-        className="absolute top-1/2 z-40 flex h-11 w-10 -translate-y-1/2 items-center justify-center rounded-r-md border border-border border-l-0 bg-bg-surface text-text-secondary shadow-md outline-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent"
-        style={{ left: open ? PANEL_WIDTH : 0 }}
+        className="absolute top-2 z-40 flex h-11 w-10 items-center justify-center rounded-l-md border border-border border-r-0 bg-bg-surface text-text-secondary shadow-md outline-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent"
+        style={{ right: open ? PANEL_WIDTH : 0 }}
       >
-        {open ? <ChevronLeft size={17} aria-hidden="true" /> : <ChevronRight size={17} aria-hidden="true" />}
+        {open ? <ChevronRight size={17} aria-hidden="true" /> : <ChevronLeft size={17} aria-hidden="true" />}
       </button>
     </>
   );
