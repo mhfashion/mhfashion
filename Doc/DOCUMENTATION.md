@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Restore selectable Product and remove Choose defaults
+
+- Replaced the fixed Product value with a compact 92px dropdown. It has no `Choose` option, defaults to `T-Shirt`, allows `Phone`, and keeps `Hoodie`, `Cup`, `Kids`, and `Bag` visible but inactive until their rules are specified.
+- Removed `Choose` from the GSM dropdown and selected `160 GSM` as its initial value. Changing between T-Shirt and Phone preserves the GSM selection. Phone still switches to disabled Brand/Model placeholders and permits only one visible Front Mockup; returning to T-Shirt restores the previous Back Mockup.
+- The left Layers panel remains a closed-by-default shell only. The owner has now requested Photoshop-style functions including new layers, masks, and deletion. Those operations are not yet implemented; the exact meaning of `Mark` and how layer edits should apply across the print canvas and Front/Back Mockups need clarification before connecting controls to artwork.
+- Validation: canvas-shell **11/11**, all repository Node tests **27/27**, TypeScript, changed-file ESLint, Cloudflare/OpenNext build, Chromium Product/GSM and Phone mockup checks at 390×844 and 320×740, desktop theme and mouse checks, Layers shell toggle checks, and `git diff --check` passed.
+
 ### 2026-11-14 — Fix Product to T-Shirt and add the Layers panel shell
 
 - Reduced the `Product` value box to 92px and made it a fixed, read-only `T-Shirt` value for this step. Product switching is intentionally not exposed; the prior Phone-specific rules remain in the code but are not reachable in the current UI. The `GSM`, `Color`, and `Size` fields remain in place.

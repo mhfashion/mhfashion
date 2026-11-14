@@ -4,11 +4,11 @@ import { useState } from "react";
 import KittlCanvas from "@/components/KittlCanvas";
 import Header from "@/components/Header";
 import EditorHeaderBar2 from "@/components/EditorHeaderBar2";
-import { DEFAULT_EDITOR_PRODUCT } from "@/lib/editor-product";
+import { DEFAULT_EDITOR_GSM, DEFAULT_EDITOR_PRODUCT, type EditorProduct } from "@/lib/editor-product";
 
 export default function CreatePage() {
-  const product = DEFAULT_EDITOR_PRODUCT;
-  const [gsm, setGsm] = useState("");
+  const [product, setProduct] = useState<EditorProduct>(DEFAULT_EDITOR_PRODUCT);
+  const [gsm, setGsm] = useState(DEFAULT_EDITOR_GSM);
 
   return (
     <div className="flex h-[calc(100dvh-var(--mobile-navigation-height,4rem))] min-h-0 flex-col overflow-hidden md:h-dvh">
@@ -17,6 +17,7 @@ export default function CreatePage() {
       </div>
       <EditorHeaderBar2
         product={product}
+        onProductChange={setProduct}
         gsm={gsm}
         onGsmChange={setGsm}
       />
