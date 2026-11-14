@@ -620,6 +620,11 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   variant was incomplete and `48,000 Ks` after the full set was selected. The
   option rows, gallery, and fixed phone navigation fit without horizontal
   overflow in the screenshot. No source change was required from this test.
+- Phone gallery frame correction (2026-11-14): removed the extra Product
+  Detail outer card border/background/shadow below the phone breakpoint so the
+  main photo and thumbnail row share one aligned gallery edge without a second
+  side frame protruding beyond them. Tablet and desktop retain the existing
+  framed detail card.
 
 
 ## Production publishing status snapshot (2026-11-10; superseded by the current follow-up below)

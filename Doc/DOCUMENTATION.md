@@ -17,6 +17,17 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Phone Product Detail gallery frame alignment
+
+- Removed the extra outer Product Detail card border, background, padding, and
+  shadow below the phone breakpoint. The main product photo and the thumbnail
+  row now sit on the same aligned gallery edge without a second side frame
+  protruding beside them.
+- Kept the framed card treatment for tablet and desktop through the responsive
+  `sm` breakpoint and above.
+- Validation: production build and `git diff --check` are required before the
+  direct-to-`main` push for this change.
+
 ### 2026-11-14 — Add Editor Header Bar 2 placeholders
 
 - Reduced Bar 2 from 56px to a compact 44px row. `Product` now offers `T-Shirt`, `Phone`, `Hoodie`, `Cup`, `Kids`, and `Bag`; `GSM` offers `160`, `180`, `200`, and `240 GSM`. Their selected values are local to the editor toolbar and do not yet change the mockup or pricing.
