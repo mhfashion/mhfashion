@@ -1,8 +1,14 @@
 "use client";
 
 import { Grid2X2, Plus, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
+import {
+  claimLargeArtworkTier,
+  getArtworkMaxEdgePx,
+  reconcileLargeArtworkTier,
+  releaseLargeArtworkTier,
+} from "@/lib/editor-artwork-tiers";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
 
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
@@ -41,6 +47,7 @@ export default function KittlCanvas() {
   const [showGrid, setShowGrid] = useState(false);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [artworkStrokes, setArtworkStrokes] = useState<ArtworkStroke[]>([]);
+  const [largeArtworkTierOwner, setLargeArtworkTierOwner] = useState<MockupSide | null>(null);
   const [nodePositions, setNodePositions] = useState<Record<WorkspaceNode, Point>>({
     "Print canvas": { x: 0, y: 0 },
     "Front Mockup": { x: 0, y: 0 },
@@ -57,6 +64,12 @@ export default function KittlCanvas() {
   const panGestureRef = useRef(false);
   const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
   const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
+  const handleLargeTierRequested = useCallback((side: MockupSide) => {
+    setLargeArtworkTierOwner((current) => claimLargeArtworkTier(current, side));
+  }, []);
+  const handleArtworkDisplayedEdgeChange = useCallback((side: MockupSide, longestEdgePx: number) => {
+    setLargeArtworkTierOwner((current) => reconcileLargeArtworkTier(current, side, longestEdgePx));
+  }, []);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -319,6 +332,7 @@ export default function KittlCanvas() {
 
   function removeMockup(side: MockupSide) {
     setMockups((current) => current.filter((item) => item !== side));
+    setLargeArtworkTierOwner((current) => releaseLargeArtworkTier(current, side));
   }
 
   return (
@@ -497,7 +511,13 @@ export default function KittlCanvas() {
                     }}
                   />
                 )}
-                <MockupArtwork side={side} strokes={artworkStrokes} />
+                <MockupArtwork
+                  side={side}
+                  strokes={artworkStrokes}
+                  maxArtworkEdgePx={getArtworkMaxEdgePx(side, largeArtworkTierOwner)}
+                  onLargeTierRequested={handleLargeTierRequested}
+                  onArtworkDisplayedEdgeChange={handleArtworkDisplayedEdgeChange}
+                />
               </div>
             </section>
           ))}
