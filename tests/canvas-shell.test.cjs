@@ -14,6 +14,8 @@ const header = readFileSync(path.join(__dirname, "../apps/web/src/components/Hea
 const headerBar2 = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorHeaderBar2.tsx"), "utf8");
 const productGsmSelect = headerBar2.split("function PendingSelect")[0] ?? "";
 const layersPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayersPanel.tsx"), "utf8");
+const artworkLayers = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorArtworkLayers.tsx"), "utf8");
+const layerModelSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-layers.ts"), "utf8");
 function loadArtworkTiers() {
   const fileName = path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts");
   const compiled = ts.transpileModule(tierSource, {
@@ -75,12 +77,13 @@ test("canvas and each mockup are independently draggable with live connector wir
   assert.match(source, /\[visibleMockups, nodePositions, pan, zoom\]/);
 });
 
-test("canvas freehand strokes appear live on equal-size mockup boxes with a shared artwork tier", () => {
-  assert.match(source, /type ArtworkStroke = \{ points: Point\[\] \}/);
+test("canvas strokes are stored on selected layers and shared with equal-size mockup boxes", () => {
   assert.match(source, /onPointerDown=\{startArtworkStroke\}/);
-  assert.match(source, /function startArtworkStroke[\s\S]*?setArtworkStrokes\(/);
-  assert.match(source, /function moveArtworkStroke[\s\S]*?setArtworkStrokes\(/);
-  assert.match(source, /<ArtworkOverlay strokes=\{artworkStrokes\} \/>/);
+  assert.match(source, /function startArtworkStroke[\s\S]*?selectedLayer = layers\.find/);
+  assert.match(source, /function startArtworkStroke[\s\S]*?appendLayerStroke\(/);
+  assert.match(source, /function moveArtworkStroke[\s\S]*?updateLayerLastStroke\(/);
+  assert.match(source, /<ArtworkOverlay[\s\S]*?layers=\{layers\}/);
+  assert.match(source, /<MockupArtwork[\s\S]*?layers=\{layers\}/);
   assert.match(source, /className=\{`relative z-10 w-\[min\(18\.25rem,78vw\)\] shrink-0/);
   assert.doesNotMatch(source, /Back Mockup" \? "w-\[min\(14rem/);
   assert.match(mockupArtwork, /scale\(\$\{BASE_ARTWORK_SCALE \* safeTransform\.scale\}\)/);
@@ -96,7 +99,7 @@ test("canvas freehand strokes appear live on equal-size mockup boxes with a shar
 });
 
 test("artwork on each Mockup can be moved and resized as one object", () => {
-  assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?strokes=\{artworkStrokes\}/);
+  assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?layers=\{layers\}[\s\S]*?maxArtworkEdgePx=/);
   assert.match(mockupArtwork, /aria-label=\{`Move \$\{side\} artwork`\}/);
   assert.match(mockupArtwork, /mode === "move"/);
   assert.match(mockupArtwork, /startTransform\("resize", event\)/);
@@ -179,16 +182,32 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(mobileNav, /new ResizeObserver\(updateHeight\)/);
 });
 
-test("Layers panel starts closed and toggles a left-side scaffold without layer operations", () => {
+test("Layers panel starts closed and controls a functional left-side layer stack and masks", () => {
   assert.match(source, /const \[layersOpen, setLayersOpen\] = useState\(false\)/);
-  assert.match(source, /<EditorLayersPanel open=\{layersOpen\} onToggle=\{\(\) => setLayersOpen\(\(open\) => !open\)\} \/>/);
+  assert.match(source, /<EditorLayersPanel[\s\S]*?open=\{layersOpen\}[\s\S]*?onToggle=\{\(\) => setLayersOpen\(\(open\) => !open\)\}[\s\S]*?onAddLayer=\{addLayer\}[\s\S]*?onAddMask=\{createLayerMask\}[\s\S]*?onDeleteLayer=\{deleteLayer\}/);
   assert.match(source, /<div className="relative min-h-0 flex-1">[\s\S]*?ref=\{viewportRef\}/);
+  assert.match(source, /createEditorArtworkLayer\("layer-1", "Layer 1"\)/);
+  assert.match(source, /function addLayer\(\)[\s\S]*?setSelectedLayerId\(id\)/);
+  assert.match(source, /function createLayerMask\(id: string\)[\s\S]*?setSelectedTarget\("mask"\)/);
+  assert.match(source, /function deleteLayer\(id: string\)[\s\S]*?deleteEditorLayer\(layers, id\)/);
   assert.match(layersPanel, /aria-label="Layers panel"/);
   assert.match(layersPanel, /aria-label=\{open \? "Collapse Layers panel" : "Expand Layers panel"\}/);
   assert.match(layersPanel, /aria-expanded=\{open\}/);
   assert.match(layersPanel, /style=\{\{ left: open \? PANEL_WIDTH : 0 \}\}/);
-  assert.match(layersPanel, /Layer controls will be added step by step\./);
-  assert.doesNotMatch(layersPanel, /aria-label="(?:Add|Delete|Duplicate|Lock) layer/i);
+  for (const label of ["Add layer", "Rename", "Duplicate", "Delete", "Hide", "Show", "mask", "Move"]) {
+    assert.match(layersPanel, new RegExp(label, "i"));
+  }
+  assert.match(layersPanel, /aria-label="Layer list" role="list"/);
+  assert.match(layersPanel, /aria-label=\{`Blend mode for \$\{selectedLayer\.name\}`\}/);
+  assert.match(layersPanel, /aria-label=\{`Opacity for \$\{selectedLayer\.name\}`\}/);
+  assert.match(layersPanel, /Hide \(black\)/);
+  assert.match(layersPanel, /Reveal \(white\)/);
+  assert.match(artworkLayers, /<mask[\s\S]*?maskUnits="userSpaceOnUse"/);
+  assert.match(artworkLayers, /stroke\.mode === "hide" \? "black" : "white"/);
+  assert.match(artworkLayers, /mask=\{layer\.mask !== null \? `url\(#\$\{maskId\}\)` : undefined\}/);
+  assert.match(artworkLayers, /mixBlendMode: layer\.blendMode/);
+  assert.match(layerModelSource, /export function addLayerMask/);
+  assert.match(layerModelSource, /export function deleteEditorLayer/);
 });
 
 test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {

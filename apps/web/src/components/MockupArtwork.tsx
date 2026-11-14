@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import EditorArtworkLayers from "@/components/EditorArtworkLayers";
 import { LARGE_ARTWORK_EDGE_PX, SMALL_ARTWORK_EDGE_PX } from "@/lib/editor-artwork-tiers";
+import type { ArtworkStroke, EditorArtworkLayer, MaskBrushMode } from "@/lib/editor-layers";
 
 type MockupSide = "Front Mockup" | "Back Mockup";
 type Point = { x: number; y: number };
-type Stroke = { points: Point[] };
 type Transform = { x: number; y: number; scale: number };
 type Bounds = { x: number; y: number; width: number; height: number };
 type Drag = {
@@ -20,7 +21,7 @@ type Drag = {
 const BASE_ARTWORK_SCALE = 0.82;
 const PIXELS_PER_VIEWBOX_UNIT = 4.5;
 
-function getArtworkBounds(strokes: Stroke[]): Bounds {
+function getArtworkBounds(strokes: ArtworkStroke[]): Bounds {
   let minX = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
@@ -88,14 +89,18 @@ function toViewBoxPoint(svg: SVGSVGElement, clientX: number, clientY: number): P
 
 export default function MockupArtwork({
   side,
-  strokes,
+  layers,
+  selectedMaskLayerId,
+  maskBrushMode,
   maxArtworkEdgePx,
   onLargeTierRequested,
   onArtworkDisplayedEdgeChange,
   viewZoom,
 }: {
   side: MockupSide;
-  strokes: Stroke[];
+  layers: EditorArtworkLayer[];
+  selectedMaskLayerId: string | null;
+  maskBrushMode: MaskBrushMode;
   maxArtworkEdgePx: number;
   onLargeTierRequested: (side: MockupSide) => void;
   onArtworkDisplayedEdgeChange: (side: MockupSide, longestEdgePx: number) => void;
@@ -103,6 +108,7 @@ export default function MockupArtwork({
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
+  const strokes = useMemo(() => layers.filter((layer) => layer.visible).flatMap((layer) => layer.strokes), [layers]);
   const bounds = useMemo(() => getArtworkBounds(strokes), [strokes]);
   const maxArtworkScale = getMaxArtworkScale(bounds, maxArtworkEdgePx);
   const [transform, setTransform] = useState<Transform>(() => ({ x: 0, y: 0, scale: Math.min(1, maxArtworkScale) }));
@@ -152,14 +158,6 @@ export default function MockupArtwork({
   useEffect(() => {
     onArtworkDisplayedEdgeChange(side, displayedLongestEdgePx);
   }, [displayedLongestEdgePx, onArtworkDisplayedEdgeChange, side]);
-  const artwork = useMemo(() => strokes.map((stroke, index) => {
-    const path = stroke.points.map((point, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ");
-    return stroke.points.length === 1 ? (
-      <circle key={index} cx={stroke.points[0].x * 1000} cy={stroke.points[0].y * 1200} r="12" fill="#202124" />
-    ) : (
-      <path key={index} d={path} fill="none" stroke="#202124" strokeWidth="24" strokeLinecap="round" strokeLinejoin="round" />
-    );
-  }), [strokes]);
 
   const startTransform = (mode: Drag["mode"], event: React.PointerEvent<SVGElement>) => {
     const svg = svgRef.current;
@@ -245,7 +243,11 @@ export default function MockupArtwork({
       className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible touch-none"
     >
       <g transform={`translate(${500 + safeTransform.x} ${600 + safeTransform.y}) scale(${BASE_ARTWORK_SCALE * safeTransform.scale}) translate(-500 -600)`}>
-        {artwork}
+        <EditorArtworkLayers
+          layers={layers}
+          selectedMaskLayerId={selectedMaskLayerId}
+          maskBrushMode={maskBrushMode}
+        />
       </g>
       <rect
         data-artwork-move-touch-target

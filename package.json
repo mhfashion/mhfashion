@@ -13,6 +13,7 @@
     "test:browser-guards": "node --test tests/browser-guards.test.cjs",
     "test:canvas-spec": "node --test tests/canvas-spec.test.cjs",
     "test:canvas-shell": "node --test tests/canvas-shell.test.cjs",
+    "test:editor-layers": "node --test tests/editor-layers.test.cjs",
     "test:guide:http": "node --test tests/guide-http.test.cjs"
   }
 }

@@ -62,7 +62,10 @@ async function main() {
         const element = document.querySelector(sel);
         if (!element) throw new Error(`Missing ${sel}`);
         const viewport = document.querySelector('[aria-label="Editor viewport"]');
-        if (viewport.contains(element)) {
+        const panel = document.querySelector('[aria-label="Layers panel"]');
+        if (panel?.contains(element)) {
+          element.scrollIntoView({ block: "nearest", inline: "nearest" });
+        } else if (viewport.contains(element)) {
           const r = element.getBoundingClientRect();
           const v = viewport.getBoundingClientRect();
           viewport.scrollTop += r.y + r.height / 2 - (v.y + v.height / 2);
@@ -85,7 +88,7 @@ async function main() {
       return {
         scrollTop: v.scrollTop,
         view: w.style.transform,
-        source: document.querySelector('section[aria-label="Print canvas"] svg path')?.getAttribute("d") || "",
+        source: document.querySelector('section[aria-label="Print canvas"] svg path[data-editor-artwork-stroke="true"]')?.getAttribute("d") || "",
         nodes: Object.fromEntries([...document.querySelectorAll("section[aria-label]")].map((s) => [s.getAttribute("aria-label"), s.style.transform])),
         overlays: [...document.querySelectorAll('svg[role="group"]')].map((s) => ({
           label: s.getAttribute("aria-label"),
@@ -233,7 +236,9 @@ async function main() {
       const buttonBox = button.getBoundingClientRect();
       return {
         title: panel.querySelector("h2")?.textContent,
-        note: panel.textContent.includes("Layer controls will be added step by step."),
+        layerCount: panel.querySelector('[aria-label="Layer count"]')?.textContent,
+        initialLayer: !!panel.querySelector('[aria-label="Select Layer 1"]'),
+        addLayer: !!panel.querySelector('[aria-label="Add layer"]'),
         left: panelBox.left,
         width: panelBox.width,
         viewportLeft: viewport.left,
@@ -244,11 +249,52 @@ async function main() {
       };
     });
     assert.equal(openLayers.title, "Layers");
-    assert.equal(openLayers.note, true, "Panel is only a scaffold, with no layer behavior yet");
+    assert.equal(openLayers.layerCount, "1");
+    assert.equal(openLayers.initialLayer, true, "The blank artwork layer exists on load");
+    assert.equal(openLayers.addLayer, true, "The panel can create a new layer");
     assert.ok(Math.abs(openLayers.left - openLayers.viewportLeft) < 1, "Layers panel opens from the viewport's left edge");
     assert.ok(openLayers.width <= openLayers.viewportWidth * 0.86 + 1, "Layers panel fits narrow phone screens");
     assert.ok(Math.abs(openLayers.arrowLeft - openLayers.panelRight) < 1, "The same arrow is reachable at the open panel edge");
     assert.equal(openLayers.expanded, "true");
+    if (width === 390) {
+      await tap('button[aria-label="Add layer"]');
+      assert.equal(await evaluate(() => document.querySelectorAll('[aria-label="Layer list"] [role="listitem"]').length), 2);
+      await tap('button[aria-label="Add mask to Layer 2"]');
+      assert.equal(await evaluate(() => !!document.querySelector('[aria-label="Stop editing Layer 2 mask"]')), true, "Adding a mask selects it for editing");
+      assert.equal(await evaluate(() => document.querySelector('[aria-label="Layer mask painting controls"]')?.textContent.includes("Painting on layer mask")), true);
+      await tap('button[aria-label="Reveal artwork with mask"]');
+      assert.equal(await evaluate(() => document.querySelector('[aria-label="Reveal artwork with mask"]')?.getAttribute("aria-pressed")), "true");
+      await tap('button[aria-label="Hide artwork with mask"]');
+      await tap('button[aria-label="Select Layer 2"]');
+      await tap('button[aria-label="Collapse Layers panel"]');
+
+      let layerCanvas = await rect('canvas[aria-label="Blank print canvas"]');
+      await drag({ x: layerCanvas.x + layerCanvas.w * 0.2, y: layerCanvas.y + layerCanvas.h * 0.35 }, { x: layerCanvas.x + layerCanvas.w * 0.8, y: layerCanvas.y + layerCanvas.h * 0.45 });
+      assert.ok(await evaluate(() => !!document.querySelector('section[aria-label="Print canvas"] svg path[data-editor-artwork-stroke="true"]')), "Artwork draws onto the selected layer");
+
+      await tap('button[aria-label="Expand Layers panel"]');
+      await tap('button[aria-label="Select Layer 2 mask"]');
+      await tap('button[aria-label="Collapse Layers panel"]');
+      layerCanvas = await rect('canvas[aria-label="Blank print canvas"]');
+      await drag({ x: layerCanvas.x + layerCanvas.w * 0.35, y: layerCanvas.y + layerCanvas.h * 0.38 }, { x: layerCanvas.x + layerCanvas.w * 0.65, y: layerCanvas.y + layerCanvas.h * 0.42 });
+      const paintedMask = await evaluate(() => {
+        const svg = document.querySelector('section[aria-label="Print canvas"] svg');
+        const mask = svg.querySelector('mask path[stroke="black"]');
+        const maskedArtwork = [...svg.querySelectorAll("g[mask]")].some((group) => group.querySelector('[data-editor-artwork-stroke="true"]'));
+        return { hasHideStroke: !!mask?.getAttribute("d"), maskedArtwork };
+      });
+      assert.ok(paintedMask.hasHideStroke, "Black brush strokes are saved as mask pixels, not destructive artwork erasure");
+      assert.equal(paintedMask.maskedArtwork, true, "The source layer is actually clipped through its mask");
+
+      await tap('button[aria-label="Expand Layers panel"]');
+      await tap('button[aria-label="Duplicate Layer 2"]');
+      assert.equal(await evaluate(() => document.querySelectorAll('[aria-label="Layer list"] [role="listitem"]').length), 3);
+      await tap('button[aria-label="Delete Layer 2 copy"]');
+      assert.equal(await evaluate(() => document.querySelectorAll('[aria-label="Layer list"] [role="listitem"]').length), 2);
+      await tap('button[aria-label="Delete Layer 1"]');
+      assert.equal(await evaluate(() => document.querySelectorAll('[aria-label="Layer list"] [role="listitem"]').length), 1);
+      assert.equal(await evaluate(() => !!document.querySelector('[aria-label="Select Layer 2"]')), true, "Deleting another layer preserves the selected artwork");
+    }
     await tap('button[aria-label="Collapse Layers panel"]');
     assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"]')), null, "Arrow collapses the panel again");
 
@@ -413,6 +459,27 @@ async function main() {
     await tap('button[aria-label="Canvas options"]');
     await tap('button[aria-label="Add Mockup"]');
     assert.equal(await evaluate(() => getComputedStyle(document.querySelector('[aria-label="Editor viewport"]').firstElementChild).flexDirection), "column");
+    await tap('button[aria-label="Expand Layers panel"]');
+    await tap('button[aria-label="Add layer"]');
+    await tap('button[aria-label="Add mask to Layer 2"]');
+    const compactPanel = await evaluate(() => {
+      const panel = document.querySelector('[aria-label="Layers panel"]');
+      return { scrollHeight: panel.scrollHeight, clientHeight: panel.clientHeight };
+    });
+    if (compactPanel.scrollHeight > compactPanel.clientHeight) {
+      await evaluate(() => {
+        const panel = document.querySelector('[aria-label="Layers panel"]');
+        panel.scrollTop = panel.scrollHeight;
+      });
+    }
+    const reachableMaskControls = await evaluate(() => {
+      const panel = document.querySelector('[aria-label="Layers panel"]');
+      const controls = document.querySelector('[aria-label="Layer mask painting controls"]').getBoundingClientRect();
+      const bounds = panel.getBoundingClientRect();
+      return { top: controls.top >= bounds.top - 1, bottom: controls.bottom <= bounds.bottom + 1 };
+    });
+    assert.equal(reachableMaskControls.top && reachableMaskControls.bottom, true, "Layer-mask properties remain scroll-reachable in a short landscape viewport");
+    await tap('button[aria-label="Collapse Layers panel"]');
     await tap('button[aria-label="Zoom out"]');
     assert.equal(await evaluate(() => document.querySelector('[aria-label="View zoom"]').textContent), "75%");
     console.log("PASS phone landscape 844×390: touch controls and stacking survive the desktop breakpoint");

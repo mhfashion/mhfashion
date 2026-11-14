@@ -17,6 +17,14 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Implement functional Layers and non-destructive vector masks
+
+- Replaced the left-side panel's “controls later” shell with an initially collapsed, theme-aware layer stack. The current vector artwork layer model supports add/select/rename/reorder, show/hide, lock, duplicate/delete, opacity and blend mode. Canvas drawing appends to the selected unlocked layer.
+- Added Photoshop-style Layer Masks: add/remove a mask, select it independently from its artwork, and paint black to hide or white to reveal using the print canvas. Source strokes remain intact. Ordered visible layers, opacity/blend and masks are rendered on the print canvas and shared Front/Back previews; per-mockup move/resize and the existing transferable artwork tier remain independent and unchanged.
+- The panel and its Properties/mask controls scroll on short screens. Mobile browser coverage exercises layer create, artwork drawing, hide/reveal mask strokes, duplicate/delete, and reachability at a 844×390 landscape viewport as well as the existing 390×844 and 320×740 phone checks.
+- Limitations: artwork and mask strokes are vector and page-memory only. Raster/pixel selection masks, undo/redo, serialized/browser/account saving, production export, and broader Photoshop features are not claimed in this slice; continue those only from the owner's next explicit instructions.
+- Validation: all repository Node tests **32/32**, TypeScript, changed-file ESLint, Next.js and Cloudflare/OpenNext production builds, Chromium touch/mouse checks, and `git diff --check` passed. Physical Android/iPhone testing remains outstanding.
+
 ### 2026-11-14 — Restore selectable Product and remove Choose defaults
 
 - Replaced the fixed Product value with a compact 92px dropdown. It has no `Choose` option, defaults to `T-Shirt`, allows `Phone`, and keeps `Hoodie`, `Cup`, `Kids`, and `Bag` visible but inactive until their rules are specified.

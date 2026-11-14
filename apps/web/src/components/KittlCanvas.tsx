@@ -3,6 +3,7 @@
 import { Grid2X2, Hand, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
+import EditorArtworkLayers from "@/components/EditorArtworkLayers";
 import EditorLayersPanel from "@/components/EditorLayersPanel";
 import {
   claimLargeArtworkTier,
@@ -11,6 +12,18 @@ import {
   releaseLargeArtworkTier,
 } from "@/lib/editor-artwork-tiers";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
+import {
+  addLayerMask,
+  appendLayerStroke,
+  createEditorArtworkLayer,
+  deleteEditorLayer,
+  duplicateEditorLayer,
+  removeLayerMask,
+  reorderEditorLayer,
+  updateEditorLayer,
+  updateLayerLastStroke,
+} from "@/lib/editor-layers";
+import type { EditorArtworkLayer, EditorLayerAppearance, LayerEditTarget, MaskBrushMode } from "@/lib/editor-layers";
 import type { EditorProduct } from "@/lib/editor-product";
 
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
@@ -19,23 +32,26 @@ type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
 type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
 type Connector = { side: MockupSide; path: string; start: Point; end: Point };
-type ArtworkStroke = { points: Point[] };
-type ActiveArtworkStroke = { pointerId: number; points: Point[] };
+type ActiveArtworkStroke = {
+  pointerId: number;
+  layerId: string;
+  target: LayerEditTarget;
+  maskBrushMode: MaskBrushMode;
+  points: Point[];
+};
 
-function ArtworkOverlay({ strokes, scale = 1 }: { strokes: ArtworkStroke[]; scale?: number }) {
+function ArtworkOverlay({
+  layers,
+  selectedMaskLayerId,
+  maskBrushMode,
+}: {
+  layers: EditorArtworkLayer[];
+  selectedMaskLayerId: string | null;
+  maskBrushMode: MaskBrushMode;
+}) {
   return (
     <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" className="pointer-events-none absolute inset-0 z-20 h-full w-full">
-      <g transform={`translate(500 600) scale(${scale}) translate(-500 -600)`}>
-        {strokes.map((stroke, index) => {
-          const points = stroke.points;
-          const path = points.map((point, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ");
-          return points.length === 1 ? (
-            <circle key={index} cx={points[0].x * 1000} cy={points[0].y * 1200} r="12" fill="#202124" />
-          ) : (
-            <path key={index} d={path} fill="none" stroke="#202124" strokeWidth="24" strokeLinecap="round" strokeLinejoin="round" />
-          );
-        })}
-      </g>
+      <EditorArtworkLayers layers={layers} selectedMaskLayerId={selectedMaskLayerId} maskBrushMode={maskBrushMode} />
     </svg>
   );
 }
@@ -50,11 +66,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [showGrid, setShowGrid] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
+  const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>("layer-1");
+  const [selectedTarget, setSelectedTarget] = useState<LayerEditTarget>("artwork");
+  const [maskBrushMode, setMaskBrushMode] = useState<MaskBrushMode>("hide");
+  const nextLayerIdRef = useRef(2);
   const visibleMockups = useMemo(
     () => product === "Phone" ? mockups.filter((side) => side === "Front Mockup") : mockups,
     [mockups, product],
   );
-  const [artworkStrokes, setArtworkStrokes] = useState<ArtworkStroke[]>([]);
   const [largeArtworkTierOwner, setLargeArtworkTierOwner] = useState<MockupSide | null>(null);
   const activeLargeArtworkTierOwner =
     product === "Phone" && largeArtworkTierOwner === "Back Mockup" ? null : largeArtworkTierOwner;
@@ -287,12 +307,27 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
+    if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) return;
     event.preventDefault();
     event.stopPropagation();
     const point = toCanvasPoint(event.clientX, event.clientY);
-    activeArtworkStrokeRef.current = { pointerId: event.pointerId, points: [point] };
+    const activeStroke: ActiveArtworkStroke = {
+      pointerId: event.pointerId,
+      layerId: selectedLayer.id,
+      target: selectedTarget,
+      maskBrushMode,
+      points: [point],
+    };
+    activeArtworkStrokeRef.current = activeStroke;
     event.currentTarget.setPointerCapture(event.pointerId);
-    setArtworkStrokes((current) => [...current, { points: [point] }]);
+    setLayers((current) => appendLayerStroke(
+      current,
+      activeStroke.layerId,
+      activeStroke.target,
+      { points: [point] },
+      activeStroke.maskBrushMode,
+    ));
   }
 
   function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -300,8 +335,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!active || active.pointerId !== event.pointerId) return;
     event.preventDefault();
     active.points.push(toCanvasPoint(event.clientX, event.clientY));
-    const updatedStroke = { points: [...active.points] };
-    setArtworkStrokes((current) => [...current.slice(0, -1), updatedStroke]);
+    setLayers((current) => updateLayerLastStroke(
+      current,
+      active.layerId,
+      active.target,
+      { points: [...active.points] },
+      active.maskBrushMode,
+    ));
   }
 
   function endArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -360,6 +400,65 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function removeMockup(side: MockupSide) {
     setMockups((current) => current.filter((item) => item !== side));
     setLargeArtworkTierOwner((current) => releaseLargeArtworkTier(current, side));
+  }
+
+  function addLayer() {
+    const id = `layer-${nextLayerIdRef.current++}`;
+    const number = nextLayerIdRef.current - 1;
+    setLayers((current) => [createEditorArtworkLayer(id, `Layer ${number}`), ...current]);
+    setSelectedLayerId(id);
+    setSelectedTarget("artwork");
+  }
+
+  function toggleLayerVisibility(id: string) {
+    const layer = layers.find((item) => item.id === id);
+    if (layer) setLayers((current) => updateEditorLayer(current, id, { visible: !layer.visible }));
+  }
+
+  function toggleLayerLock(id: string) {
+    const layer = layers.find((item) => item.id === id);
+    if (layer) setLayers((current) => updateEditorLayer(current, id, { locked: !layer.locked }));
+  }
+
+  function createLayerMask(id: string) {
+    setLayers((current) => addLayerMask(current, id));
+    setSelectedLayerId(id);
+    setSelectedTarget("mask");
+    setMaskBrushMode("hide");
+  }
+
+  function deleteLayerMask(id: string) {
+    setLayers((current) => removeLayerMask(current, id));
+    if (selectedLayerId === id && selectedTarget === "mask") setSelectedTarget("artwork");
+  }
+
+  function duplicateLayer(id: string) {
+    const newId = `layer-${nextLayerIdRef.current++}`;
+    setLayers((current) => duplicateEditorLayer(current, id, newId));
+    setSelectedLayerId(newId);
+    setSelectedTarget("artwork");
+  }
+
+  function deleteLayer(id: string) {
+    const index = layers.findIndex((layer) => layer.id === id);
+    const next = deleteEditorLayer(layers, id);
+    setLayers(next);
+    if (selectedLayerId === id) {
+      setSelectedLayerId(next[Math.min(index, next.length - 1)]?.id ?? null);
+      setSelectedTarget("artwork");
+    }
+  }
+
+  function renameLayer(id: string, name: string) {
+    setLayers((current) => updateEditorLayer(current, id, { name }));
+  }
+
+  function moveLayer(id: string, direction: -1 | 1) {
+    setLayers((current) => reorderEditorLayer(current, id, direction));
+  }
+
+  function updateLayer(id: string, update: EditorLayerAppearance) {
+    setLayers((current) => updateEditorLayer(current, id, update));
   }
 
   function resetView() {
@@ -456,7 +555,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     }}
                   />
                 )}
-                <ArtworkOverlay strokes={artworkStrokes} />
+                <ArtworkOverlay
+                  layers={layers}
+                  selectedMaskLayerId={selectedTarget === "mask" ? selectedLayerId : null}
+                  maskBrushMode={maskBrushMode}
+                />
                 <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
                   <button
                     type="button"
@@ -560,7 +663,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   )}
                   <MockupArtwork
                     side={side}
-                    strokes={artworkStrokes}
+                    layers={layers}
+                    selectedMaskLayerId={selectedTarget === "mask" ? selectedLayerId : null}
+                    maskBrushMode={maskBrushMode}
                     maxArtworkEdgePx={getArtworkMaxEdgePx(side, activeLargeArtworkTierOwner)}
                     onLargeTierRequested={handleLargeTierRequested}
                     onArtworkDisplayedEdgeChange={handleArtworkDisplayedEdgeChange}
@@ -571,7 +676,29 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
             ))}
           </div>
         </div>
-        <EditorLayersPanel open={layersOpen} onToggle={() => setLayersOpen((open) => !open)} />
+        <EditorLayersPanel
+          open={layersOpen}
+          onToggle={() => setLayersOpen((open) => !open)}
+          layers={layers}
+          selectedLayerId={selectedLayerId}
+          selectedTarget={selectedTarget}
+          maskBrushMode={maskBrushMode}
+          onSelectLayer={(id, target) => {
+            setSelectedLayerId(id);
+            setSelectedTarget(target);
+          }}
+          onAddLayer={addLayer}
+          onToggleVisibility={toggleLayerVisibility}
+          onToggleLock={toggleLayerLock}
+          onAddMask={createLayerMask}
+          onRemoveMask={deleteLayerMask}
+          onRenameLayer={renameLayer}
+          onDuplicateLayer={duplicateLayer}
+          onDeleteLayer={deleteLayer}
+          onMoveLayer={moveLayer}
+          onUpdateLayer={updateLayer}
+          onMaskBrushModeChange={setMaskBrushMode}
+        />
       </div>
     </main>
   );
