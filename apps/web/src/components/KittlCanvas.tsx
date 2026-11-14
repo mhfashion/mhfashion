@@ -1,7 +1,7 @@
 "use client";
 
 import { Grid2X2, Hand, Minus, Plus, RotateCcw, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
 import {
   claimLargeArtworkTier,
@@ -10,6 +10,7 @@ import {
   releaseLargeArtworkTier,
 } from "@/lib/editor-artwork-tiers";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
+import type { EditorProduct } from "@/lib/editor-product";
 
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 type MockupSide = "Front Mockup" | "Back Mockup";
@@ -38,7 +39,7 @@ function ArtworkOverlay({ strokes, scale = 1 }: { strokes: ArtworkStroke[]; scal
   );
 }
 
-export default function KittlCanvas() {
+export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [spaceHeld, setSpaceHeld] = useState(false);
@@ -47,8 +48,14 @@ export default function KittlCanvas() {
   const [touchPanEnabled, setTouchPanEnabled] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
+  const visibleMockups = useMemo(
+    () => product === "Phone" ? mockups.filter((side) => side === "Front Mockup") : mockups,
+    [mockups, product],
+  );
   const [artworkStrokes, setArtworkStrokes] = useState<ArtworkStroke[]>([]);
   const [largeArtworkTierOwner, setLargeArtworkTierOwner] = useState<MockupSide | null>(null);
+  const activeLargeArtworkTierOwner =
+    product === "Phone" && largeArtworkTierOwner === "Back Mockup" ? null : largeArtworkTierOwner;
   const [nodePositions, setNodePositions] = useState<Record<WorkspaceNode, Point>>({
     "Print canvas": { x: 0, y: 0 },
     "Front Mockup": { x: 0, y: 0 },
@@ -163,7 +170,7 @@ export default function KittlCanvas() {
       const canvasRect = toWorkspaceRect(canvas);
       const next: Connector[] = [];
 
-      for (const side of mockups) {
+      for (const side of visibleMockups) {
         const surface = mockupSurfaceRefs.current[side];
         if (!surface) continue;
         const mockupRect = toWorkspaceRect(surface);
@@ -207,7 +214,7 @@ export default function KittlCanvas() {
 
     const initialFrame = window.requestAnimationFrame(updateConnectors);
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateConnectors);
-    [workspace, canvas, ...mockups.map((side) => mockupSurfaceRefs.current[side]).filter(Boolean)].forEach((element) => {
+    [workspace, canvas, ...visibleMockups.map((side) => mockupSurfaceRefs.current[side]).filter(Boolean)].forEach((element) => {
       if (element) observer?.observe(element);
     });
     window.addEventListener("resize", updateConnectors);
@@ -216,7 +223,7 @@ export default function KittlCanvas() {
       observer?.disconnect();
       window.removeEventListener("resize", updateConnectors);
     };
-  }, [mockups, nodePositions, pan, zoom]);
+  }, [visibleMockups, nodePositions, pan, zoom]);
 
   function startPan(event: React.PointerEvent<HTMLDivElement>) {
     if (panStartRef.current || (event.pointerType === "touch" && !event.isPrimary)) return;
@@ -341,6 +348,7 @@ export default function KittlCanvas() {
   }
 
   function addMockup(side: MockupSide) {
+    if (product === "Phone" && side === "Back Mockup") return;
     setMockups((current) => {
       const sides = new Set([...current, side]);
       return (["Front Mockup", "Back Mockup"] as const).filter((item) => sides.has(item));
@@ -499,6 +507,7 @@ export default function KittlCanvas() {
             <section
               key={side}
               aria-label={side}
+              hidden={product === "Phone" && side === "Back Mockup"}
               onPointerDown={(event) => startNodeDrag(side, event)}
               onPointerMove={moveNodeDrag}
               onPointerUp={endNodeDrag}
@@ -525,7 +534,7 @@ export default function KittlCanvas() {
                 }}
                 className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]"
               >
-                {side === "Front Mockup" && (
+                {product === "T-Shirt" && side === "Front Mockup" && (
                   <button
                     type="button"
                     aria-label="Add Back Mockup"
@@ -549,7 +558,7 @@ export default function KittlCanvas() {
                 <MockupArtwork
                   side={side}
                   strokes={artworkStrokes}
-                  maxArtworkEdgePx={getArtworkMaxEdgePx(side, largeArtworkTierOwner)}
+                  maxArtworkEdgePx={getArtworkMaxEdgePx(side, activeLargeArtworkTierOwner)}
                   onLargeTierRequested={handleLargeTierRequested}
                   onArtworkDisplayedEdgeChange={handleArtworkDisplayedEdgeChange}
                   viewZoom={zoom}

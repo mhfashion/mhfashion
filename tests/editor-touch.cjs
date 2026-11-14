@@ -190,6 +190,8 @@ async function main() {
         bar2Labels: controls.map((control) => control.getAttribute("aria-label") || control.textContent.trim()),
         bar2Disabled: [...toolbar.querySelectorAll("button")].every((button) => button.disabled),
         selectOptions: [...toolbar.querySelectorAll("select")].map((select) => [...select.options].map((option) => option.textContent)),
+        selectedProduct: toolbar.querySelector('select[aria-label="Product"]').value,
+        futureProductsDisabled: [...toolbar.querySelector('select[aria-label="Product"]').options].filter((option) => option.disabled).map((option) => option.value),
         mobileHeader: getComputedStyle(slot.firstElementChild).display,
         desktopHeader: getComputedStyle(slot.lastElementChild).display,
       };
@@ -199,14 +201,13 @@ async function main() {
     assert.deepEqual(initial.bar2Labels, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
     assert.ok(initial.bar2Height <= 44, "Header Bar 2 is compact");
     assert.deepEqual(initial.selectOptions, [
-      ["Choose", "T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"],
+      ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"],
       ["Choose", "160 GSM", "180 GSM", "200 GSM", "240 GSM"],
     ]);
+    assert.equal(initial.selectedProduct, "T-Shirt");
+    assert.deepEqual(initial.futureProductsDisabled, ["Hoodie", "Cup", "Kids", "Bag"]);
     assert.ok(initial.bar2Disabled, "Color, Size, Save and Buy remain placeholders");
-    if (width === 390) {
-      assert.equal(await chooseSelect('select[aria-label="Product"]', "Phone"), "Phone");
-      assert.equal(await chooseSelect('select[aria-label="GSM"]', "200 GSM"), "200 GSM");
-    }
+    if (width === 390) assert.equal(await chooseSelect('select[aria-label="GSM"]', "200 GSM"), "200 GSM");
     assert.ok(initial.mainBottom <= initial.navTop + 1, "Editor stays above mobile navigation");
     assert.ok(initial.bodyHeight <= initial.viewportHeight + 1, "Editor and nav do not create document overflow");
     const options = await rect('button[aria-label="Canvas options"]');
@@ -294,6 +295,40 @@ async function main() {
     const cancelRect = await rect(`${overlay("Back")} rect[aria-label^="Move"]`, false);
     await drag({ x: cancelRect.x + cancelRect.w / 2, y: cancelRect.y + cancelRect.h / 2 }, { x: cancelRect.x + cancelRect.w / 2 + 8, y: cancelRect.y + cancelRect.h / 2 + 6 });
     assert.notEqual((await snapshot()).overlays[1].transform, afterMulti.overlays[1].transform);
+    if (width === 390) {
+      assert.equal(await chooseSelect('select[aria-label="Product"]', "Phone"), "Phone");
+      const phoneState = await evaluate(() => {
+        const toolbar = document.querySelector('[aria-label="Header Bar 2"]');
+        const controls = [...toolbar.querySelectorAll("select, button")];
+        return {
+          labels: controls.map((control) => control.getAttribute("aria-label") || control.textContent.trim()),
+          visibleMockups: [...document.querySelectorAll('section[aria-label$="Mockup"]')].filter((section) => getComputedStyle(section).display !== "none").length,
+          backHidden: document.querySelector('section[aria-label="Back Mockup"]')?.hidden,
+          frontVisible: getComputedStyle(document.querySelector('section[aria-label="Front Mockup"]')).display !== "none",
+          addBack: document.querySelectorAll('button[aria-label="Add Back Mockup"]').length,
+          pendingDisabled: ["Brand", "Model"].every((label) => toolbar.querySelector(`select[aria-label="${label}"]`)?.disabled),
+        };
+      });
+      assert.deepEqual(phoneState.labels, ["Product", "Brand", "Model", "Color", "Save", "Buy"]);
+      assert.equal(phoneState.visibleMockups, 1, "Phone selection shows only one Mockup");
+      assert.equal(phoneState.backHidden, true, "The Back Mockup is unavailable for Phone");
+      assert.equal(phoneState.frontVisible, true, "Phone keeps the Front Mockup");
+      assert.equal(phoneState.addBack, 0, "Phone has no Back Mockup add control");
+      assert.ok(phoneState.pendingDisabled, "Brand and Model stay placeholders until values are specified");
+      assert.equal(await chooseSelect('select[aria-label="Product"]', "T-Shirt"), "T-Shirt");
+      const apparelState = await evaluate(() => ({
+        gsm: document.querySelector('select[aria-label="GSM"]')?.value,
+        size: [...document.querySelectorAll('[aria-label="Header Bar 2"] button')].some((button) => button.textContent.trim() === "Size"),
+        backVisible: getComputedStyle(document.querySelector('section[aria-label="Back Mockup"]')).display !== "none",
+        addBack: document.querySelectorAll('button[aria-label="Add Back Mockup"]').length,
+      }));
+      assert.equal(apparelState.gsm, "", "Changing Product clears the previous GSM selection");
+      assert.equal(apparelState.size, true);
+      assert.equal(apparelState.backVisible, true, "T-Shirt restores its previously configured Back Mockup");
+      assert.equal(apparelState.addBack, 1, "T-Shirt shows the Back Mockup control");
+      await tap('button[aria-label="Add Back Mockup"]');
+      assert.equal(await evaluate(() => document.querySelectorAll('section[aria-label="Back Mockup"]').length), 1);
+    }
     console.log(`PASS phone ${width}×${height}: touch controls, scroll, move, resize, both tier directions, release, pan/zoom, second-finger/cancel`);
   }
   async function tinyArtwork() {

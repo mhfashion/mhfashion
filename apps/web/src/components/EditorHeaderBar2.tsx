@@ -1,22 +1,29 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import type { EditorProduct } from "@/lib/editor-product";
 
-const PRODUCTS = ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"] as const;
+const PRODUCT_OPTIONS = ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"] as const;
+const FUTURE_PRODUCTS = ["Hoodie", "Cup", "Kids", "Bag"] as const;
 const GSM_OPTIONS = ["160 GSM", "180 GSM", "200 GSM", "240 GSM"] as const;
+
+type CompactSelectProps = {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange?: (value: string) => void;
+  disabled?: boolean;
+  disabledOptions?: readonly string[];
+};
 
 function CompactSelect({
   label,
   value,
   options,
   onChange,
-}: {
-  label: string;
-  value: string;
-  options: readonly string[];
-  onChange: (value: string) => void;
-}) {
+  disabled = false,
+  disabledOptions = [],
+}: CompactSelectProps) {
   return (
     <label className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-text-secondary">
       <span>{label}</span>
@@ -24,12 +31,13 @@ function CompactSelect({
         <select
           aria-label={label}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="h-9 appearance-none rounded-md border border-border bg-bg-surface py-1 pl-2.5 pr-7 text-xs font-medium text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          disabled={disabled}
+          onChange={(event) => onChange?.(event.target.value)}
+          className="h-9 appearance-none rounded-md border border-border bg-bg-surface py-1 pl-2.5 pr-7 text-xs font-medium text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-60"
         >
-          <option value="">Choose</option>
+          {!value && <option value="">Choose</option>}
           {options.map((option) => (
-            <option key={option} value={option}>
+            <option key={option} value={option} disabled={disabledOptions.includes(option)}>
               {option}
             </option>
           ))}
@@ -44,9 +52,26 @@ function CompactSelect({
   );
 }
 
-export default function EditorHeaderBar2() {
-  const [product, setProduct] = useState("");
-  const [gsm, setGsm] = useState("");
+function PendingSelect({ label }: { label: string }) {
+  return (
+    <CompactSelect label={label} value="" options={[]} disabled />
+  );
+}
+
+export default function EditorHeaderBar2({
+  product,
+  onProductChange,
+  gsm,
+  onGsmChange,
+}: {
+  product: EditorProduct;
+  onProductChange: (product: EditorProduct) => void;
+  gsm: string;
+  onGsmChange: (gsm: string) => void;
+}) {
+  function changeProduct(value: string) {
+    if (value === "T-Shirt" || value === "Phone") onProductChange(value);
+  }
 
   return (
     <div
@@ -56,8 +81,21 @@ export default function EditorHeaderBar2() {
     >
       <div className="flex h-full w-max min-w-full items-center justify-between gap-2">
         <div className="flex shrink-0 items-center gap-2.5">
-          <CompactSelect label="Product" value={product} options={PRODUCTS} onChange={setProduct} />
-          <CompactSelect label="GSM" value={gsm} options={GSM_OPTIONS} onChange={setGsm} />
+          <CompactSelect
+            label="Product"
+            value={product}
+            options={PRODUCT_OPTIONS}
+            disabledOptions={FUTURE_PRODUCTS}
+            onChange={changeProduct}
+          />
+          {product === "T-Shirt" ? (
+            <CompactSelect label="GSM" value={gsm} options={GSM_OPTIONS} onChange={onGsmChange} />
+          ) : (
+            <>
+              <PendingSelect label="Brand" />
+              <PendingSelect label="Model" />
+            </>
+          )}
           <button
             type="button"
             disabled
@@ -65,13 +103,15 @@ export default function EditorHeaderBar2() {
           >
             Color
           </button>
-          <button
-            type="button"
-            disabled
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-border bg-bg-surface px-2.5 text-xs font-medium text-text-secondary disabled:cursor-default disabled:opacity-100"
-          >
-            Size
-          </button>
+          {product === "T-Shirt" && (
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-border bg-bg-surface px-2.5 text-xs font-medium text-text-secondary disabled:cursor-default disabled:opacity-100"
+            >
+              Size
+            </button>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <button

@@ -17,9 +17,16 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Make the first Product choices control Bar 2 and Mockups
+
+- `T-Shirt` is the default supported product. Its Bar 2 shows `GSM` and the existing `Size` placeholder; `Color`, `Save`, and `Buy` remain in the row. Selecting `Phone` hides `GSM`/`Size` and shows disabled `Brand`/`Model` placeholders because no brand/model options have been specified; `Color` remains visible.
+- On Phone, only one usable Front Mockup is shown and the Back-add control is unavailable. A T-Shirt Back Mockup is preserved while Phone is active and reappears when switching back to T-Shirt. The Front/Back transferable artwork tier remains usable for T-Shirt, and the single Phone mockup receives the large tier. The Product list keeps `Hoodie`, `Cup`, `Kids`, and `Bag` visible but disabled until their rules are specified; no attribute or brand/model options were invented.
+- Updated `/create`, the shared Product type, `EditorHeaderBar2`, `KittlCanvas`, tests, and current-state documentation. This supersedes the placeholder-only Product/GSM behavior in the following earlier log entry.
+- Validation: canvas-shell **10/10**, all repository Node tests **26/26**, TypeScript, changed-file ESLint, Next.js production build, Chromium Product switching on phone viewports (conditional fields, Phone's single visible mockup/no Back-add control, preserved T-Shirt Back state), desktop mouse/touch regressions, and `git diff --check` passed. Physical Android/iPhone verification remains unavailable.
+
 ### 2026-11-14 — Add Editor Header Bar 2 placeholders
 
-- Reduced Bar 2 from 56px to a compact 44px row. `Product` now offers `T-Shirt`, `Phone`, `Hoodie`, `Cup`, `Kids`, and `Bag`; `GSM` offers `160`, `180`, `200`, and `240 GSM`. Their selected values are local to the editor toolbar and do not yet change the mockup or pricing.
+- Reduced Bar 2 from 56px to a compact 44px row. At that stage, `Product` offered `T-Shirt`, `Phone`, `Hoodie`, `Cup`, `Kids`, and `Bag`; `GSM` offered `160`, `180`, `200`, and `240 GSM`. Product/GSM selections were local to the toolbar before the product-dependent rules were implemented above.
 - Kept `Color` in place as requested. `Size`, `Save`, and `Buy` remain disabled placeholders pending later specifications. The row horizontally scrolls on narrow screens.
 - Connected Bar 2, the Editor workspace chrome, touch controls, and canvas-options menu to the existing theme tokens. Toggling Dark/Light in the site Header changes the Editor and dropdown appearance; the white print canvas and neutral mockup preview remain stable.
 - Validation: all repository Node tests **26/26**, canvas-shell tests **10/10**, TypeScript, changed-file ESLint, Next.js production build, Chromium Product/GSM selections, portrait/landscape interactions, desktop Header theme toggle and color changes, and `git diff --check` passed.

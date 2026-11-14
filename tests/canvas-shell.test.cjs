@@ -23,7 +23,7 @@ function loadArtworkTiers() {
   return module.exports;
 }
 
-test("canvas options expose Show Grid and add the temporary Front Mockup box", () => {
+test("canvas options expose Show Grid and enforce product-specific mockup limits", () => {
   assert.match(source, /aria-label="Canvas options"/);
   assert.match(source, /<span>Show Grid<\/span>/);
   assert.match(source, /aria-checked=\{showGrid\}/);
@@ -31,7 +31,11 @@ test("canvas options expose Show Grid and add the temporary Front Mockup box", (
   assert.match(source, /aria-label="Add Mockup"[\s\S]*?addMockup\("Front Mockup"\)/);
   assert.match(source, /aria-label="Add Back Mockup"[\s\S]*?addMockup\("Back Mockup"\)/);
   assert.match(source, /type MockupSide = "Front Mockup" \| "Back Mockup"/);
-  assert.match(source, /side === "Front Mockup" && \([\s\S]*?aria-label="Add Back Mockup"/);
+  assert.match(source, /product === "T-Shirt" && side === "Front Mockup" && \([\s\S]*?aria-label="Add Back Mockup"/);
+  assert.match(source, /if \(product === "Phone" && side === "Back Mockup"\) return/);
+  assert.match(source, /product === "Phone" \? mockups\.filter\(\(side\) => side === "Front Mockup"\)/);
+  assert.match(source, /hidden=\{product === "Phone" && side === "Back Mockup"\}/);
+  assert.match(source, /activeLargeArtworkTierOwner =\s*product === "Phone" && largeArtworkTierOwner === "Back Mockup" \? null : largeArtworkTierOwner/);
   assert.match(mockupSection, /aria-label="Add Back Mockup"[\s\S]*?absolute -left-\[35px\] top-\[calc\(50%\+1\.25rem\)\] z-30[\s\S]*?h-11 w-11[\s\S]*?md:-left-5 md:h-3\.5 md:w-3\.5/);
   assert.doesNotMatch(mockupHeader, /Add Back Mockup/);
   assert.match(source, /aria-label=\{`Close \$\{side\}`}[^]*?removeMockup\(side\)/);
@@ -58,7 +62,7 @@ test("canvas and each mockup are independently draggable with live connector wir
   assert.match(source, /aria-label="Canvas and mockup connections"/);
   assert.match(source, /connectors\.map\(\(connection\) => \(/);
   assert.match(source, /<path d=\{connection\.path\}[^>]*stroke="#8f72d4"/);
-  assert.match(source, /for \(const side of mockups\)/);
+  assert.match(source, /for \(const side of visibleMockups\)/);
   assert.match(source, /mockupSurfaceRefs\.current\[side\]/);
   assert.match(source, /onPointerDown=\{\(event\) => startNodeDrag\("Print canvas", event\)\}/);
   assert.match(source, /onPointerDown=\{\(event\) => startNodeDrag\(side, event\)\}/);
@@ -66,7 +70,7 @@ test("canvas and each mockup are independently draggable with live connector wir
   assert.match(source, /event\.currentTarget\.setPointerCapture\(event\.pointerId\)/);
   assert.match(source, /touch-none select-none/);
   assert.match(source, /ResizeObserver\(updateConnectors\)/);
-  assert.match(source, /\[mockups, nodePositions, pan, zoom\]/);
+  assert.match(source, /\[visibleMockups, nodePositions, pan, zoom\]/);
 });
 
 test("canvas freehand strokes appear live on equal-size mockup boxes with a shared artwork tier", () => {
@@ -79,7 +83,7 @@ test("canvas freehand strokes appear live on equal-size mockup boxes with a shar
   assert.doesNotMatch(source, /Back Mockup" \? "w-\[min\(14rem/);
   assert.match(mockupArtwork, /scale\(\$\{BASE_ARTWORK_SCALE \* safeTransform\.scale\}\)/);
   assert.match(source, /largeArtworkTierOwner/);
-  assert.match(source, /maxArtworkEdgePx=\{getArtworkMaxEdgePx\(side, largeArtworkTierOwner\)\}/);
+  assert.match(source, /maxArtworkEdgePx=\{getArtworkMaxEdgePx\(side, activeLargeArtworkTierOwner\)\}/);
   assert.match(source, /onLargeTierRequested=\{handleLargeTierRequested\}/);
   assert.match(source, /onArtworkDisplayedEdgeChange=\{handleArtworkDisplayedEdgeChange\}/);
   assert.match(mockupArtwork, /useEffect\(\(\) => \{[\s\S]*?scaleAroundCenter\(bounds, current, maxArtworkScale\)/);
@@ -176,21 +180,28 @@ test("phone view pan is captured before editing and navigation reserves its meas
 test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {
   assert.match(createRoute, /import Header from "@\/components\/Header"/);
   assert.match(createRoute, /data-editor-shared-header[^]*?<Header \/>/);
-  assert.match(createRoute, /<Header \/>[\s\S]*?<KittlCanvas \/>/);
+  assert.match(createRoute, /<Header \/>[\s\S]*?<KittlCanvas product=\{product\} \/>/);
   assert.match(createRoute, /h-\[calc\(100dvh-var\(--mobile-navigation-height,4rem\)\)\][\s\S]*md:h-dvh/);
   assert.match(header, /import MobileNav from "\.\/MobileNav"/);
   assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
 });
 
-test("Editor Header Bar 2 is compact, theme-aware, and exposes Product/GSM choices", () => {
+test("Editor Header Bar 2 switches attributes by Product and keeps unspecified product choices inactive", () => {
   assert.match(createRoute, /import EditorHeaderBar2 from "@\/components\/EditorHeaderBar2"/);
-  assert.match(createRoute, /<Header \/>[\s\S]*?<EditorHeaderBar2 \/>[\s\S]*?<KittlCanvas \/>/);
+  assert.match(createRoute, /useState<EditorProduct>\(DEFAULT_EDITOR_PRODUCT\)/);
+  assert.match(createRoute, /onProductChange=\{changeProduct\}/);
+  assert.match(createRoute, /<KittlCanvas product=\{product\} \/>/);
+  assert.match(createRoute, /<Header \/>[\s\S]*?<EditorHeaderBar2[\s\S]*?\/>[\s\S]*?<KittlCanvas product=\{product\} \/>/);
   assert.match(headerBar2, /aria-label="Header Bar 2"/);
   assert.match(headerBar2, /h-11 w-full/);
-  assert.match(headerBar2, /const PRODUCTS = \["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"\]/);
+  assert.match(headerBar2, /const PRODUCT_OPTIONS = \["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"\]/);
+  assert.match(headerBar2, /const FUTURE_PRODUCTS = \["Hoodie", "Cup", "Kids", "Bag"\]/);
   assert.match(headerBar2, /const GSM_OPTIONS = \["160 GSM", "180 GSM", "200 GSM", "240 GSM"\]/);
-  assert.match(headerBar2, /CompactSelect label="Product"/);
-  assert.match(headerBar2, /CompactSelect label="GSM"/);
+  assert.match(headerBar2, /label="Product"[\s\S]*?disabledOptions=\{FUTURE_PRODUCTS\}/);
+  assert.match(headerBar2, /product === "T-Shirt" \? \([\s\S]*?label="GSM"/);
+  assert.match(headerBar2, /<PendingSelect label="Brand" \/>/);
+  assert.match(headerBar2, /<PendingSelect label="Model" \/>/);
+  assert.match(headerBar2, /product === "T-Shirt" && \([\s\S]*?>\s*Size\s*</);
   assert.match(headerBar2, /aria-label=\{label\}/);
   assert.match(headerBar2, />\s*Color\s*</);
   assert.match(headerBar2, />\s*Size\s*</);
@@ -202,4 +213,6 @@ test("Editor Header Bar 2 is compact, theme-aware, and exposes Product/GSM choic
   assert.match(headerBar2, /overflow-x-auto/);
   assert.match(source, /bg-bg text-text-primary/);
   assert.match(source, /border-border bg-bg px-2/);
+  assert.match(headerBar2, /value === "Phone"/);
+  assert.match(headerBar2, /import type \{ EditorProduct \} from "@\/lib\/editor-product"/);
 });
