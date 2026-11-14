@@ -45,7 +45,7 @@ const tabs: { id: Tab; label: string }[] = [
 
 function OptionButton({ selected, children, onClick }: { selected: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${selected ? "border-accent bg-accent/10 text-accent shadow-sm" : "border-border bg-bg hover:border-accent/60"}`}>
+    <button type="button" onClick={onClick} className={`rounded-md border px-1.5 py-1 text-[8px] font-semibold leading-none transition ${selected ? "border-accent bg-accent/10 text-accent shadow-sm" : "border-border bg-bg hover:border-accent/60"}`}>
       {selected && <Check size={12} className="mr-1 inline-block" aria-hidden="true" />}
       {children}
     </button>
@@ -54,9 +54,9 @@ function OptionButton({ selected, children, onClick }: { selected: boolean; chil
 
 function OptionGroup({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-bg/70 p-2.5 shadow-[0_4px_18px_rgba(30,40,20,0.04)]">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-black tracking-tight">{title}</h3>
+    <div className="rounded-lg border border-border/70 bg-bg/70 p-1.5 shadow-[0_4px_18px_rgba(30,40,20,0.04)]">
+      <div className="mb-1 flex items-center justify-between gap-1">
+        <h3 className="text-[9px] font-black leading-none tracking-tight">{title}</h3>
         {action}
       </div>
       <div className="flex flex-wrap gap-2">{children}</div>
@@ -123,12 +123,12 @@ export default function ProductDetailClient({ product, related }: Props) {
 
           <div className="mt-4 flex flex-wrap items-center gap-2 border-b border-border/70 pb-3"><span className="text-2xl font-black text-accent">{price}</span><span className="rounded-full bg-accent/10 px-2 py-1 text-[10px] font-black text-accent">↓ 15%</span><span className="text-xs text-text-faint line-through">28,000 Ks</span></div>
 
-          <div className="mt-3 grid gap-2 xl:grid-cols-2">
+          <div className="mt-2 grid gap-1 xl:grid-cols-2">
             <OptionGroup title="Size" action={<button type="button" className="text-[10px] font-bold text-accent"><Ruler size={12} className="mr-1 inline" />Size Guide</button>}>
               {sizes.map((size) => <OptionButton key={size} selected={selectedSize === size} onClick={() => setSelectedSize(size)}>{size}</OptionButton>)}
             </OptionGroup>
             <OptionGroup title={`Color: ${selectedColor}`}>
-              {colors.map((color) => <button key={color.name} type="button" aria-label={color.name} onClick={() => setSelectedColor(color.name)} className={`h-8 w-8 rounded-full border-2 ${color.className} ${selectedColor === color.name ? "border-accent ring-2 ring-accent/25 ring-offset-2" : "border-border"}`} />)}
+              {colors.map((color) => <button key={color.name} type="button" aria-label={color.name} onClick={() => setSelectedColor(color.name)} className={`h-5 w-5 rounded-full border ${color.className} ${selectedColor === color.name ? "border-accent ring-1 ring-accent/25 ring-offset-1" : "border-border"}`} />)}
             </OptionGroup>
             <OptionGroup title="Material" action={<span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-black text-accent-foreground">New</span>}>
               <OptionButton selected onClick={() => undefined}>Cotton</OptionButton><OptionButton selected={false} onClick={() => undefined}>Premium Cotton</OptionButton><OptionButton selected={false} onClick={() => undefined}>Polyester</OptionButton><OptionButton selected={false} onClick={() => undefined}>Blend</OptionButton>
