@@ -41,6 +41,21 @@ This log records completed website-related changes in the connected repository. 
 - ပြောင်းလဲသည့် source: `KittlCanvas.tsx`, `MockupArtwork.tsx`, `MobileBottomNav.tsx`, `/create/page.tsx`, root layout။ `tests/canvas-shell.test.cjs` တွင် mobile regression assertions ထည့်ထားပြီး `tests/editor-touch.cjs` သည် Node 22 နှင့် local Chromium CDP endpoint ကိုသာ သုံးသည့် reusable touch integration check ဖြစ်သည်။ Dependency အသစ် မထည့်ပါ။
 - Validation: Node tests **24/24**၊ TypeScript၊ changed-file ESLint၊ Next.js/OpenNext Cloudflare build နှင့် `git diff --check` အောင်မြင်သည်။ Chromium တွင် 390×844၊ 320×740 portrait touch၊ 740×390 နှင့် 844×390 landscape၊ tiny selected Artwork ကို ထပ်မံရွှေ့ခြင်း/resize၊ tier နှစ်ဖက်လုံး လွှဲပြောင်းခြင်း/release၊ pan/zoom၊ Zoom 25% screen-sized controls/readable badge၊ second-touch/cancel နှင့် desktop control-size/mouse drawing/Back resize regression တို့ကို စမ်းသပ်အောင်မြင်သည်။
 - Limitation: physical Android/iPhone နှင့် iOS Safari ပေါ်တွင် မစမ်းရသေးပါ။ Artwork/state များသည် အရင်အတိုင်း page memory တွင်သာ ရှိသည်။ Native app၊ multi-touch pinch editor သို့မဟုတ် roadmap feature အသစ်များ မထည့်ပါ။
+### 2026-11-14 — Phone Product Detail option and price verification
+
+- Exercised the X Marks Product Detail flow at a 390×844 phone viewport. The
+  gallery, option rows, price area, and fixed phone navigation rendered without
+  horizontal overflow in the captured phone screenshot.
+- Verified the price sequence: initial `20,000 – 24,000 Ks`; Size alone keeps
+  the range; Size + Color + Material + GSM changes it to `24,000 Ks`; Quantity
+  2 while the required set is incomplete shows `40,000 – 48,000 Ks`; Quantity
+  2 after all four required choices shows `48,000 Ks`.
+- This was an interaction/verification pass only; no application source change
+  was required. The local server could not render a product route because this
+  sandbox has no Supabase catalog environment variables, so the live catalog
+  page was used for the click-through check while the 390×844 screenshot was
+  also inspected locally.
+
 ### 2026-11-14 — Phone interaction audit and copyright placement correction
 
 - Audited the phone-visible navigation and Product Detail controls. The mobile
