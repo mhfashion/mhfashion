@@ -221,6 +221,51 @@ async function main() {
     assert.ok(initial.mainBottom <= initial.navTop + 1, "Editor stays above mobile navigation");
     assert.ok(initial.bodyHeight <= initial.viewportHeight + 1, "Editor and nav do not create document overflow");
 
+    const closedEditSidebar = await evaluate(() => ({
+      expanded: document.querySelector('button[aria-label="Expand Edit sidebar"]')?.getAttribute("aria-expanded"),
+      panel: document.querySelector('aside[aria-label="Edit sidebar"]'),
+    }));
+    assert.equal(closedEditSidebar.expanded, "false", "Edit sidebar starts collapsed");
+    assert.equal(closedEditSidebar.panel, null);
+    await tap('button[aria-label="Expand Edit sidebar"]');
+    const editSidebar = await evaluate(() => {
+      const panel = document.querySelector('aside[aria-label="Edit sidebar"]');
+      const toggle = document.querySelector('button[aria-label="Collapse Edit sidebar"]');
+      const panelBox = panel.getBoundingClientRect();
+      const toggleBox = toggle.getBoundingClientRect();
+      return {
+        title: panel.querySelector('[role="heading"]')?.textContent,
+        side: panel.dataset.dockSide,
+        left: panelBox.left,
+        right: panelBox.right,
+        width: panelBox.width,
+        viewportLeft: document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect().left,
+        tools: [...panel.querySelectorAll('nav[aria-label="Edit sidebar tools"] button')].map((button) => button.textContent.trim()),
+        disabled: [...panel.querySelectorAll('nav[aria-label="Edit sidebar tools"] button')].every((button) => button.disabled),
+        toggleLeft: toggleBox.left,
+        toggleWidth: toggleBox.width,
+        toggleHeight: toggleBox.height,
+        toggleRadius: getComputedStyle(toggle).borderRadius,
+        toggleBackground: getComputedStyle(toggle).backgroundColor,
+        accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
+      };
+    });
+    assert.equal(editSidebar.title, "Edit sidebar");
+    assert.equal(editSidebar.side, "left");
+    assert.ok(Math.abs(editSidebar.left - editSidebar.viewportLeft) < 1, "Edit sidebar docks to the left edge");
+    assert.ok(editSidebar.width <= 224, "Canva-like placeholder sidebar stays compact");
+    assert.deepEqual(editSidebar.tools, ["Design", "Elements", "Text", "Brand", "Uploads", "Draw", "Projects", "Apps"]);
+    assert.equal(editSidebar.disabled, true, "Temporary tool placeholders do not imply unfinished features are active");
+    assert.ok(Math.abs(editSidebar.toggleLeft - editSidebar.right) < 1, "Open-state toggle sits on the panel's outer edge");
+    assert.equal(editSidebar.toggleWidth, 44, "Phone Edit toggle remains finger-sized");
+    assert.equal(editSidebar.toggleHeight, 44);
+    assert.ok(Number.parseFloat(editSidebar.toggleRadius) >= 20, "Edit sidebar toggle is circular");
+    assert.equal(editSidebar.toggleBackground, `rgb(${editSidebar.accent})`, "Edit toggle uses the app's current theme accent");
+    await tap('button[aria-label="Expand Layers panel"]');
+    assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Edit sidebar"]')), null, "Opening the opposite dock closes Edit on phone to prevent overlap");
+    assert.equal(await evaluate(() => Boolean(document.querySelector('aside[aria-label="Layers panel"]'))), true, "The Layers panel opens on the opposite side");
+    await tap('button[aria-label="Collapse Layers panel"]');
+
     const closedLayers = await evaluate(() => ({
       expanded: document.querySelector('button[aria-label="Expand Layers panel"]')?.getAttribute("aria-expanded"),
       panel: document.querySelector('aside[aria-label="Layers panel"]'),
@@ -534,6 +579,29 @@ async function main() {
     assert.ok(desktopHeader.height > 0 && desktopHeader.mobile === "none" && desktopHeader.desktop !== "none", "Reuse the existing desktop Header Bar");
     assert.ok(desktopHeader.bar2Top >= desktopHeader.headerBottom - 1 && desktopHeader.editorTop >= desktopHeader.bar2Bottom - 1, "Desktop Bar 2 stays below Header and above editor");
     await clickMouse('button[aria-label="Expand Layers panel"]');
+    await clickMouse('button[aria-label="Expand Edit sidebar"]');
+    const desktopDocks = await evaluate(() => {
+      const edit = document.querySelector('aside[aria-label="Edit sidebar"]').getBoundingClientRect();
+      const layers = document.querySelector('aside[aria-label="Layers panel"]').getBoundingClientRect();
+      return { editRight: edit.right, layersLeft: layers.left, editWidth: edit.width };
+    });
+    assert.ok(desktopDocks.editWidth <= 224 && desktopDocks.editRight < desktopDocks.layersLeft, "Desktop Edit and Layers panels dock opposite sides without overlap");
+    await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, mobile: true, deviceScaleFactor: 1 });
+    await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+    await pause(180);
+    const resizedDocks = await evaluate(() => ({
+      width: innerWidth,
+      editOpen: Boolean(document.querySelector('aside[aria-label="Edit sidebar"]')),
+      layersOpen: Boolean(document.querySelector('aside[aria-label="Layers panel"]')),
+    }));
+    assert.equal(resizedDocks.width, 390);
+    assert.equal(resizedDocks.editOpen, false, "Narrowing the viewport closes the Edit sidebar");
+    assert.equal(resizedDocks.layersOpen, false, "Narrowing the viewport also closes the Layers panel");
+    await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, mobile: false, deviceScaleFactor: 1 });
+    await send("Emulation.setTouchEmulationEnabled", { enabled: false, maxTouchPoints: 5 });
+    await pause(180);
+    await clickMouse('button[aria-label="Expand Layers panel"]');
+    console.log("PASS resize: desktop-open sidebars close before they can overlap at phone width");
     const themeBefore = await evaluate(() => {
       const slot = document.querySelector("[data-editor-shared-header]");
       const themeButton = [...slot.querySelectorAll("button")].find((button) => {

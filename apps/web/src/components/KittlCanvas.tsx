@@ -4,6 +4,7 @@ import { Grid2X2, Hand, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
+import EditorEditSidebar from "@/components/EditorEditSidebar";
 import EditorLayersPanel from "@/components/EditorLayersPanel";
 import {
   claimLargeArtworkTier,
@@ -65,6 +66,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [touchPanEnabled, setTouchPanEnabled] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [editSidebarOpen, setEditSidebarOpen] = useState(false);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("layer-1");
@@ -75,6 +77,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     () => product === "Phone" ? mockups.filter((side) => side === "Front Mockup") : mockups,
     [mockups, product],
   );
+  function toggleLayersPanel() {
+    if (!layersOpen && window.matchMedia("(max-width: 767px)").matches) setEditSidebarOpen(false);
+    setLayersOpen((open) => !open);
+  }
+  function toggleEditSidebar() {
+    if (!editSidebarOpen && window.matchMedia("(max-width: 767px)").matches) setLayersOpen(false);
+    setEditSidebarOpen((open) => !open);
+  }
   const [largeArtworkTierOwner, setLargeArtworkTierOwner] = useState<MockupSide | null>(null);
   const activeLargeArtworkTierOwner =
     product === "Phone" && largeArtworkTierOwner === "Back Mockup" ? null : largeArtworkTierOwner;
@@ -99,6 +109,17 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }, []);
   const handleArtworkDisplayedEdgeChange = useCallback((side: MockupSide, longestEdgePx: number) => {
     setLargeArtworkTierOwner((current) => reconcileLargeArtworkTier(current, side, longestEdgePx));
+  }, []);
+
+  useEffect(() => {
+    const narrowViewport = window.matchMedia("(max-width: 767px)");
+    const closeSidebarsBeforeTheyOverlap = (event: MediaQueryListEvent) => {
+      if (!event.matches) return;
+      setLayersOpen(false);
+      setEditSidebarOpen(false);
+    };
+    narrowViewport.addEventListener("change", closeSidebarsBeforeTheyOverlap);
+    return () => narrowViewport.removeEventListener("change", closeSidebarsBeforeTheyOverlap);
   }, []);
 
   useEffect(() => {
@@ -676,9 +697,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
             ))}
           </div>
         </div>
+        <EditorEditSidebar open={editSidebarOpen} onToggle={toggleEditSidebar} />
         <EditorLayersPanel
           open={layersOpen}
-          onToggle={() => setLayersOpen((open) => !open)}
+          onToggle={toggleLayersPanel}
           layers={layers}
           selectedLayerId={selectedLayerId}
           selectedTarget={selectedTarget}

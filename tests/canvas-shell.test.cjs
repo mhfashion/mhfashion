@@ -14,6 +14,7 @@ const header = readFileSync(path.join(__dirname, "../apps/web/src/components/Hea
 const headerBar2 = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorHeaderBar2.tsx"), "utf8");
 const productGsmSelect = headerBar2.split("function PendingSelect")[0] ?? "";
 const layersPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayersPanel.tsx"), "utf8");
+const editSidebar = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorEditSidebar.tsx"), "utf8");
 const artworkLayers = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorArtworkLayers.tsx"), "utf8");
 const layerModelSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-layers.ts"), "utf8");
 function loadArtworkTiers() {
@@ -184,7 +185,7 @@ test("phone view pan is captured before editing and navigation reserves its meas
 
 test("Compact Photoshop-style Layers panel docks right and controls its functional stack and masks", () => {
   assert.match(source, /const \[layersOpen, setLayersOpen\] = useState\(false\)/);
-  assert.match(source, /<EditorLayersPanel[\s\S]*?open=\{layersOpen\}[\s\S]*?onToggle=\{\(\) => setLayersOpen\(\(open\) => !open\)\}[\s\S]*?onAddLayer=\{addLayer\}[\s\S]*?onAddMask=\{createLayerMask\}[\s\S]*?onDeleteLayer=\{deleteLayer\}/);
+  assert.match(source, /<EditorLayersPanel[\s\S]*?open=\{layersOpen\}[\s\S]*?onToggle=\{toggleLayersPanel\}[\s\S]*?onAddLayer=\{addLayer\}[\s\S]*?onAddMask=\{createLayerMask\}[\s\S]*?onDeleteLayer=\{deleteLayer\}/);
   assert.match(source, /<div className="relative min-h-0 flex-1">[\s\S]*?ref=\{viewportRef\}/);
   assert.match(source, /createEditorArtworkLayer\("layer-1", "Layer 1"\)/);
   assert.match(source, /function addLayer\(\)[\s\S]*?setSelectedLayerId\(id\)/);
@@ -220,6 +221,25 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(layersPanel, /aria-label="Layer actions"/);
   assert.match(layerModelSource, /export function addLayerMask/);
   assert.match(layerModelSource, /export function deleteEditorLayer/);
+});
+
+test("Edit sidebar starts collapsed on the left with temporary Canva-like categories", () => {
+  assert.match(source, /const \[editSidebarOpen, setEditSidebarOpen\] = useState\(false\)/);
+  assert.match(source, /function toggleLayersPanel\(\)[\s\S]*?matchMedia\("\(max-width: 767px\)"\)[\s\S]*?setEditSidebarOpen\(false\)/);
+  assert.match(source, /function toggleEditSidebar\(\)[\s\S]*?matchMedia\("\(max-width: 767px\)"\)[\s\S]*?setLayersOpen\(false\)/);
+  assert.match(source, /const closeSidebarsBeforeTheyOverlap = \(event: MediaQueryListEvent\)[\s\S]*?setLayersOpen\(false\)[\s\S]*?setEditSidebarOpen\(false\)/);
+  assert.match(source, /addEventListener\("change", closeSidebarsBeforeTheyOverlap\)/);
+  assert.match(source, /<EditorEditSidebar open=\{editSidebarOpen\} onToggle=\{toggleEditSidebar\} \/>/);
+  assert.match(editSidebar, /aria-label="Edit sidebar"/);
+  assert.match(editSidebar, /data-dock-side="left"/);
+  assert.match(editSidebar, /aria-label="Edit sidebar tools"/);
+  assert.match(editSidebar, /aria-label=\{open \? "Collapse Edit sidebar" : "Expand Edit sidebar"\}/);
+  assert.match(editSidebar, /style=\{\{ left: open \? PANEL_WIDTH : 0 \}\}/);
+  assert.match(editSidebar, /h-7 w-7[^\"]*rounded-full[^\"]*bg-accent[^\"]*text-accent-foreground/);
+  assert.match(editSidebar, /disabled[\s\S]*?This tool will be defined in a later Editor step/);
+  for (const label of ["Design", "Elements", "Text", "Brand", "Uploads", "Draw", "Projects", "Apps"]) {
+    assert.match(editSidebar, new RegExp(`label: "${label}"`));
+  }
 });
 
 test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {

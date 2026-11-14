@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-15 — Add the temporary Edit sidebar
+
+- Added the `Edit sidebar` opposite the right-side Layers dock, on the left. It begins collapsed and opens/closes with a matching small round, app-accent-colored arrow control.
+- Added disabled Canva-like placeholders for `Design`, `Elements`, `Text`, `Brand`, `Uploads`, `Draw`, `Projects`, and `Apps`; their actual content and actions remain pending the owner's next step-by-step instructions.
+- On narrow screens, opening one dock closes the other to avoid panel overlap; resizing from desktop into the narrow breakpoint closes both docks. Desktop can keep both sidebars open. Both use theme-aware styling and touch-friendly controls.
+- Validation: all repository Node suites **33/33**, TypeScript, changed-file ESLint with no warnings, Cloudflare/OpenNext production build, and responsive Chromium checks passed. CDP verified all eight disabled tool labels, collapsed-by-default left docking, mobile mutual exclusion and desktop-to-phone resize handling, nonoverlapping desktop docks, app accent color in Light/Dark, touch-sized mobile control, and existing editor/layer regressions. Physical-device checks remain outstanding.
+
 ### 2026-11-15 — Remove unused Layers rows and accent the circular toggle
 
 - Kept the existing compact right-side panel, but removed the unused `Channels`, `Paths`, top `Menu`, and `Kind` rows. The functional Layers title, blend/opacity, Lock/Fill, layer/mask rows, and bottom action strip remain.
