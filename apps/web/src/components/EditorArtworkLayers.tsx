@@ -20,14 +20,17 @@ function StrokeShape({
   width: number;
   className?: string;
 }) {
+  const strokeWidth = color === "#202124" && stroke.tool === "brush" ? 52 : width;
+  const strokeOpacity = color === "#202124" && stroke.tool === "brush" ? 0.68 : undefined;
   if (stroke.points.length === 0) return null;
   if (stroke.points.length === 1) {
     return (
       <circle
         cx={stroke.points[0].x * 1000}
         cy={stroke.points[0].y * 1200}
-        r={width / 2}
+        r={strokeWidth / 2}
         fill={color}
+        opacity={strokeOpacity}
         data-editor-artwork-stroke={color === "#202124" ? "true" : undefined}
         className={className}
       />
@@ -38,7 +41,8 @@ function StrokeShape({
       d={pathFor(stroke)}
       fill="none"
       stroke={color}
-      strokeWidth={width}
+      strokeWidth={strokeWidth}
+      strokeOpacity={strokeOpacity}
       strokeLinecap="round"
       strokeLinejoin="round"
       data-editor-artwork-stroke={color === "#202124" ? "true" : undefined}

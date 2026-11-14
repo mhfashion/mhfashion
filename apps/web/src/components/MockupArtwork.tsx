@@ -35,7 +35,7 @@ function getArtworkBounds(strokes: ArtworkStroke[]): Bounds {
     }
   }
   if (!Number.isFinite(minX)) return { x: 300, y: 360, width: 400, height: 480 };
-  const pad = 18;
+  const pad = strokes.some((stroke) => stroke.tool === "brush") ? 32 : 18;
   const left = Math.max(0, minX - pad);
   const top = Math.max(0, minY - pad);
   const right = Math.min(1000, maxX + pad);

@@ -5,6 +5,7 @@ const test = require("node:test");
 const ts = require("typescript");
 const source = readFileSync(path.join(__dirname, "../apps/web/src/components/KittlCanvas.tsx"), "utf8");
 const mockupArtwork = readFileSync(path.join(__dirname, "../apps/web/src/components/MockupArtwork.tsx"), "utf8");
+const toolsBar = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorToolsBar.tsx"), "utf8");
 const tierSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts"), "utf8");
 const mockupSection = source.split('{mockups.map((side) => (')[1] ?? "";
 const mockupHeader = mockupSection.split('className="relative aspect-square w-full')[0] ?? "";
@@ -99,6 +100,31 @@ test("canvas strokes are stored on selected layers and shared with equal-size mo
   assert.match(source, /node === "Print canvas" && event\.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture/);
 });
 
+test("compact bottom-center Tools bar exposes requested tools and connected actions", () => {
+  assert.match(source, /<EditorToolsBar[\s\S]*?activeTool=\{activeTool\}[\s\S]*?canUndo=\{undoStack\.length > 0\}/);
+  assert.match(source, /onToggleCollapsed=\{\(\) => setToolsCollapsed/);
+  assert.match(source, /hideOnMobile=\{layersOpen \|\| editSidebarOpen\}/);
+  assert.match(toolsBar, /data-testid="editor-tools-bar"/);
+  assert.match(toolsBar, /absolute inset-x-0 bottom-2 z-50 flex justify-center/);
+  assert.match(toolsBar, /hideOnMobile \? "max-md:hidden"/);
+  assert.match(toolsBar, /rounded-2xl/);
+  assert.match(toolsBar, /h-7 w-7/);
+  for (const label of ["Move", "Pen", "Hand tool", "Brush", "Eraser", "Text", "Remove BG", "Undo"]) {
+    assert.ok(toolsBar.includes(`label: "${label}"`) || toolsBar.includes(`aria-label="${label}"`), `missing ${label}`);
+  }
+  assert.match(toolsBar, /Expand editor tools/);
+  assert.match(toolsBar, /Collapse editor tools/);
+  assert.match(source, /activeTool === "hand" && event\.button === 0/);
+  assert.match(source, /activeTool !== "move"/);
+  assert.match(source, /function eraseArtworkAt\(/);
+  assert.match(source, /function undoCanvasAction\(/);
+  assert.match(source, /function rememberLayerSnapshot\(/);
+  assert.match(layerModelSource, /tool\?: "pen" \| "brush"/);
+  assert.match(layerModelSource, /return \{ \.\.\.stroke, points:/);
+  assert.match(artworkLayers, /stroke\.tool === "brush" \? 52 : width/);
+  assert.match(mockupArtwork, /strokes\.some\(\(stroke\) => stroke\.tool === "brush"\) \? 32 : 18/);
+});
+
 test("artwork on each Mockup can be moved and resized as one object", () => {
   assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?layers=\{layers\}[\s\S]*?maxArtworkEdgePx=/);
   assert.match(mockupArtwork, /aria-label=\{`Move \$\{side\} artwork`\}/);
@@ -176,7 +202,7 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(source, /onPointerDownCapture=\{startPan\}/);
   assert.match(source, /onPointerMoveCapture=\{movePan\}/);
   assert.match(source, /onLostPointerCapture=\{endPan\}/);
-  assert.match(source, /touchPanEnabled \? "touch-none" : "touch-pan-y"/);
+  assert.match(source, /\(touchPanEnabled \|\| activeTool === "hand"\) \? "touch-none" : "touch-pan-y"/);
   assert.match(createRoute, /100dvh-var\(--mobile-navigation-height,4rem\)/);
   assert.match(createRoute, /md:h-dvh/);
   assert.match(mobileNav, /setProperty\("--mobile-navigation-height"/);

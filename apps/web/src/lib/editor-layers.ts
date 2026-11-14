@@ -1,5 +1,5 @@
 export type ArtworkPoint = { x: number; y: number };
-export type ArtworkStroke = { points: ArtworkPoint[] };
+export type ArtworkStroke = { points: ArtworkPoint[]; tool?: "pen" | "brush" };
 export type MaskBrushMode = "hide" | "reveal";
 export type LayerEditTarget = "artwork" | "mask";
 export type EditorLayerBlendMode = "normal" | "multiply" | "screen" | "overlay";
@@ -34,7 +34,7 @@ export function createEditorArtworkLayer(id: string, name: string): EditorArtwor
 }
 
 function copyStroke(stroke: ArtworkStroke): ArtworkStroke {
-  return { points: stroke.points.map((point) => ({ ...point })) };
+  return { ...stroke, points: stroke.points.map((point) => ({ ...point })) };
 }
 
 export function appendLayerStroke(

@@ -17,6 +17,12 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-15 — Add a compact bottom-center Editor Tools bar
+
+- Added a small, rounded, theme-aware dock at the bottom center of `/create`, with a circular expand/collapse control and 28 px icon buttons for Move, Pen, Hand, Brush, Eraser, Text, Undo, and Remove BG. At 390 × 844 the dock measured 291 × 42 px and cleared the measured mobile navigation. It hides on narrow screens while either side panel is open so it does not cover panel controls.
+- Pen and Brush add distinct strokes to the selected unlocked artwork layer and mirror to both mockup previews; Brush renders thicker and softer than Pen. Eraser removes whole strokes touched on the selected artwork layer or active mask. Undo restores the last draw/erase snapshot, bounded to 30 actions. Move uses the current canvas/mockup movement interactions; Hand pans the shared workspace. Text and Remove BG show availability notices because text objects, image upload, and the background-removal pipeline are not implemented yet.
+- Validation: canvas shell **13/13**, canvas spec **1/1**, browser guards **1/1**, Guide **9/9**, and editor layer model **6/6** passed; TypeScript, changed-file ESLint, `git diff --check`, and Cloudflare/OpenNext production build passed. The production Chromium editor-touch suite passed across 390 × 844, 320 × 740, two landscape sizes, and desktop. A separate production pointer smoke test confirmed Pen/Brush appearance, Undo/Eraser, Move, Hand, Text/Remove BG notices, and collapse/expand. A real 390 × 844 touch test verified 28 px Brush selection, Brush drawing, and dock collapse/expand.
+
 ### 2026-11-15 — Add the temporary Edit sidebar
 
 - Added the `Edit sidebar` opposite the right-side Layers dock, on the left. It begins collapsed and opens/closes with a matching small round, app-accent-colored arrow control.

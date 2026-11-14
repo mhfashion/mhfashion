@@ -4,6 +4,7 @@ import { Grid2X2, Hand, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
+import EditorToolsBar, { type EditorTool } from "@/components/EditorToolsBar";
 import EditorEditSidebar from "@/components/EditorEditSidebar";
 import EditorLayersPanel from "@/components/EditorLayersPanel";
 import {
@@ -37,6 +38,7 @@ type ActiveArtworkStroke = {
   pointerId: number;
   layerId: string;
   target: LayerEditTarget;
+  tool: "pen" | "brush";
   maskBrushMode: MaskBrushMode;
   points: Point[];
 };
@@ -67,6 +69,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [showGrid, setShowGrid] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [editSidebarOpen, setEditSidebarOpen] = useState(false);
+  const [activeTool, setActiveTool] = useState<EditorTool>("pen");
+  const [toolsCollapsed, setToolsCollapsed] = useState(false);
+  const [toolNotice, setToolNotice] = useState("");
+  const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("layer-1");
@@ -104,6 +110,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const panGestureRef = useRef(false);
   const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
   const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
+  const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget } | null>(null);
   const handleLargeTierRequested = useCallback((side: MockupSide) => {
     setLargeArtworkTierOwner((current) => claimLargeArtworkTier(current, side));
   }, []);
@@ -271,8 +278,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function startPan(event: React.PointerEvent<HTMLDivElement>) {
     if (panStartRef.current || (event.pointerType === "touch" && !event.isPrimary)) return;
     const middleButtonPan = event.button === 1;
-    const touchPan = touchPanEnabled && event.pointerType === "touch" && event.isPrimary;
-    if (!middleButtonPan && !touchPan && (!spaceHeld || event.button !== 0)) return;
+    const handToolPan = activeTool === "hand" && event.button === 0;
+    const touchPan = (touchPanEnabled || activeTool === "hand") && event.pointerType === "touch" && event.isPrimary;
+    if (!middleButtonPan && !handToolPan && !touchPan && (!spaceHeld || event.button !== 0)) return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
     event.preventDefault();
     event.stopPropagation();
@@ -326,32 +334,80 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     };
   }
 
+  function rememberLayerSnapshot() {
+    setUndoStack((current) => [...current.slice(-29), layers]);
+  }
+
+  function eraseArtworkAt(point: Point, layerId: string, target: LayerEditTarget) {
+    const radiusPx = 180;
+    const isTouched = (stroke: { points: Point[] }) => stroke.points.some((strokePoint) =>
+      Math.hypot(
+        (strokePoint.x - point.x) * PRINT_CANVAS_SPEC.widthPx,
+        (strokePoint.y - point.y) * PRINT_CANVAS_SPEC.heightPx,
+      ) <= radiusPx,
+    );
+    setLayers((current) => current.map((layer) => {
+      if (layer.id !== layerId || layer.locked) return layer;
+      if (target === "mask") {
+        if (layer.mask === null) return layer;
+        const mask = layer.mask.filter((stroke) => !isTouched(stroke));
+        return mask.length === layer.mask.length ? layer : { ...layer, mask };
+      }
+      const strokes = layer.strokes.filter((stroke) => !isTouched(stroke));
+      return strokes.length === layer.strokes.length ? layer : { ...layer, strokes };
+    }));
+  }
+
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    if (activeTool === "move" || activeTool === "hand") return;
+    if (activeTool === "text" || activeTool === "remove-bg") {
+      event.preventDefault();
+      event.stopPropagation();
+      setToolNotice(activeTool === "text"
+        ? "Text objects are not connected to this canvas yet."
+        : "Remove BG needs an uploaded image; background removal is not connected yet.");
+      return;
+    }
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
     if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) return;
     event.preventDefault();
     event.stopPropagation();
     const point = toCanvasPoint(event.clientX, event.clientY);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    if (activeTool === "eraser") {
+      rememberLayerSnapshot();
+      activeEraserRef.current = { pointerId: event.pointerId, layerId: selectedLayer.id, target: selectedTarget };
+      eraseArtworkAt(point, selectedLayer.id, selectedTarget);
+      return;
+    }
+    const tool = activeTool === "brush" ? "brush" : "pen";
     const activeStroke: ActiveArtworkStroke = {
       pointerId: event.pointerId,
       layerId: selectedLayer.id,
       target: selectedTarget,
+      tool,
       maskBrushMode,
       points: [point],
     };
     activeArtworkStrokeRef.current = activeStroke;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    rememberLayerSnapshot();
     setLayers((current) => appendLayerStroke(
       current,
       activeStroke.layerId,
       activeStroke.target,
-      { points: [point] },
+      { points: [point], tool },
       activeStroke.maskBrushMode,
     ));
   }
 
   function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    const eraser = activeEraserRef.current;
+    if (eraser?.pointerId === event.pointerId) {
+      event.preventDefault();
+      eraseArtworkAt(toCanvasPoint(event.clientX, event.clientY), eraser.layerId, eraser.target);
+      return;
+    }
     const active = activeArtworkStrokeRef.current;
     if (!active || active.pointerId !== event.pointerId) return;
     event.preventDefault();
@@ -360,20 +416,38 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       current,
       active.layerId,
       active.target,
-      { points: [...active.points] },
+      { points: [...active.points], tool: active.tool },
       active.maskBrushMode,
     ));
   }
 
   function endArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (activeEraserRef.current?.pointerId === event.pointerId) activeEraserRef.current = null;
     if (activeArtworkStrokeRef.current?.pointerId !== event.pointerId) return;
     activeArtworkStrokeRef.current = null;
   }
 
+  function undoCanvasAction() {
+    if (undoStack.length === 0) return;
+    setLayers(undoStack[undoStack.length - 1]);
+    setUndoStack((current) => current.slice(0, -1));
+    setToolNotice("");
+  }
+
+  function chooseTool(tool: EditorTool) {
+    setActiveTool(tool);
+    setToolNotice(tool === "text"
+      ? "Text objects are not connected to this canvas yet."
+      : tool === "remove-bg"
+        ? "Remove BG needs an uploaded image; background removal is not connected yet."
+        : "");
+  }
+
   function startNodeDrag(node: WorkspaceNode, event: React.PointerEvent<HTMLElement>) {
     if (activeNodeDragRef.current || event.button !== 0 || !event.isPrimary) return;
+    if (activeTool === "hand") return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
-    if (node === "Print canvas" && event.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    if (node === "Print canvas" && event.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture(event.clientX, event.clientY) && activeTool !== "move") return;
     // A blank mockup swipe scrolls on phones; its header remains the explicit drag surface.
     if (event.pointerType === "touch" && node !== "Print canvas" &&
       !(event.target instanceof Element && event.target.closest("[data-node-drag-handle]"))) return;
@@ -512,7 +586,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onAuxClick={(event) => {
             if (event.button === 1) event.preventDefault();
           }}
-          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${touchPanEnabled ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
+          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
         >
           <div
             ref={workspaceRef}
@@ -722,6 +796,16 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onMaskBrushModeChange={setMaskBrushMode}
         />
       </div>
+      <EditorToolsBar
+        activeTool={activeTool}
+        collapsed={toolsCollapsed}
+        canUndo={undoStack.length > 0}
+        notice={toolNotice}
+        onSelect={chooseTool}
+        onUndo={undoCanvasAction}
+        onToggleCollapsed={() => setToolsCollapsed((collapsed) => !collapsed)}
+        hideOnMobile={layersOpen || editSidebarOpen}
+      />
     </main>
   );
 }
