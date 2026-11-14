@@ -604,6 +604,15 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
 - Price-display correction (2026-11-14): a single price is now shown only when
   Size, Color, Material, and GSM are all selected. If any required choice is
   still missing, the page continues to show the quantity-adjusted price range.
+- Phone interaction audit and correction (2026-11-14): made the mobile header
+  search icon open a real `/mh-fashion?q=...` search form; made Product Detail
+  Share use the Web Share API with clipboard fallback, and connected Size Guide
+  and review actions to their tabs. Fit Type and Sleeve controls now retain
+  their selected state, and MH Fashion phone controls now navigate to category
+  choices or execute the existing sort query instead of being no-op buttons.
+  The global CopyrightBar is hidden below the desktop breakpoint so phone shows
+  copyright only inside the mobile side drawer; desktop copyright behavior is
+  unchanged. Build passed; lint reported no errors and only existing warnings.
 
 
 ## Production publishing status snapshot (2026-11-10; superseded by the current follow-up below)

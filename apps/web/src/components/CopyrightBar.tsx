@@ -12,7 +12,7 @@ export default function CopyrightBar() {
 
   return (
     <footer
-      className={`mt-auto border-t border-border px-4 py-3 md:px-8 ${
+      className={`mt-auto hidden border-t border-border px-4 py-3 md:block md:px-8 ${
         isHome ? "md:border-t-0 md:py-0" : "md:py-4"
       }`}
     >

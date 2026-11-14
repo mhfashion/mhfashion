@@ -75,6 +75,7 @@ function LinkRow({
 
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { currency, toggleCurrency } = useCurrency();
   const { locale, setLocale, t } = useI18n();
@@ -84,7 +85,7 @@ export default function MobileNav() {
     <>
       {/* Top bar — always on top, fixed height (h-14) used to position the
           drawer/backdrop directly beneath it. */}
-      <div className="flex md:hidden items-center justify-between h-14 px-4 border-b border-border bg-bg sticky top-0 z-50">
+      <div className="relative flex md:hidden items-center justify-between h-14 px-4 border-b border-border bg-bg sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
           <button onClick={() => setOpen((o) => !o)} aria-label={t("actions.toggleMenu")}>
             <Menu size={20} />
@@ -94,9 +95,12 @@ export default function MobileNav() {
           </span>
         </div>
         <div className="flex items-center gap-3 text-text-secondary">
-          <Search size={17} />
+          <button type="button" aria-label={t("actions.search")} onClick={() => setSearchOpen((value) => !value)}>
+            <Search size={17} />
+          </button>
           <NotificationBell />
         </div>
+        {searchOpen && <form action="/mh-fashion" method="get" onSubmit={() => setSearchOpen(false)} className="absolute left-3 right-3 top-full z-[60] mt-2 flex items-center gap-2 rounded-full border border-border bg-bg-surface px-3 py-2 shadow-xl"><Search size={15} className="text-text-muted" /><input autoFocus name="q" type="search" placeholder={t("actions.searchProducts")} className="w-full bg-transparent text-xs outline-none placeholder:text-text-faint" /></form>}
       </div>
 
       {/* Backdrop — dims the page below the header, closes the drawer on click */}

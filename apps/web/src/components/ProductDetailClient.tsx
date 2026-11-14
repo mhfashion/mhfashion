@@ -75,6 +75,8 @@ export default function ProductDetailClient({ product, related }: Props) {
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
   const [selectedGsm, setSelectedGsm] = useState<string | null>(null);
+  const [selectedFit, setSelectedFit] = useState("Oversized");
+  const [selectedSleeve, setSelectedSleeve] = useState("Short Sleeve");
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<Tab>("details");
   const [activeImage, setActiveImage] = useState(0);
@@ -102,6 +104,11 @@ export default function ProductDetailClient({ product, related }: Props) {
   const buyNow = () => {
     addQuantityToCart();
     router.push("/cart");
+  };
+  const shareProduct = async () => {
+    const shareData = { title: product.name, text: `Check out ${product.name} on MH Fashion`, url: window.location.href };
+    if (navigator.share) await navigator.share(shareData).catch(() => undefined);
+    else if (navigator.clipboard) await navigator.clipboard.writeText(window.location.href);
   };
 
   return (
@@ -133,14 +140,14 @@ export default function ProductDetailClient({ product, related }: Props) {
             </div>
             <div className="flex gap-1.5">
               <button type="button" aria-label="Add to wishlist" onClick={() => setFavorite((value) => !value)} className={`rounded-full border border-border p-2.5 ${favorite ? "text-accent" : "text-text-secondary"}`}><Heart size={17} fill={favorite ? "currentColor" : "none"} /></button>
-              <button type="button" aria-label="Share product" className="rounded-full border border-border p-2.5 text-text-secondary"><Share2 size={17} /></button>
+              <button type="button" aria-label="Share product" onClick={shareProduct} className="rounded-full border border-border p-2.5 text-text-secondary"><Share2 size={17} /></button>
             </div>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5 border-b border-border/70 pb-2.5 sm:mt-4 sm:gap-2 sm:pb-3"><span className="text-xl font-black text-accent sm:text-2xl">{price}</span><span className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent sm:text-[10px]">↓ 15%</span><span className="text-[10px] text-text-faint line-through sm:text-xs">28,000 Ks</span></div>
 
           <div className="mt-2 grid gap-1 xl:grid-cols-2">
-            <OptionGroup title="Size" action={<button type="button" className="text-[10px] font-bold text-accent"><Ruler size={12} className="mr-1 inline" />Size Guide</button>}>
+            <OptionGroup title="Size" action={<button type="button" onClick={() => setActiveTab("size")} className="text-[10px] font-bold text-accent"><Ruler size={12} className="mr-1 inline" />Size Guide</button>}>
               {sizes.map((size) => <OptionButton key={size} selected={selectedSize === size} onClick={() => setSelectedSize(size)}>{size}</OptionButton>)}
             </OptionGroup>
             <OptionGroup title={`Color${selectedColor ? `: ${selectedColor}` : ""}`}>
@@ -149,8 +156,8 @@ export default function ProductDetailClient({ product, related }: Props) {
             <OptionGroup title="Material" action={<span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-black text-accent-foreground">New</span>}>
               {materials.map((material) => <OptionButton key={material} selected={selectedMaterial === material} onClick={() => setSelectedMaterial(material)}>{material}</OptionButton>)}
             </OptionGroup>
-            <OptionGroup title="Fit Type"><OptionButton selected onClick={() => undefined}>Oversized</OptionButton><OptionButton selected={false} onClick={() => undefined}>Regular</OptionButton><OptionButton selected={false} onClick={() => undefined}>Slim Fit</OptionButton><OptionButton selected={false} onClick={() => undefined}>Loose Fit</OptionButton></OptionGroup>
-            <OptionGroup title="Sleeve"><OptionButton selected onClick={() => undefined}>Short Sleeve</OptionButton><OptionButton selected={false} onClick={() => undefined}>Long Sleeve</OptionButton></OptionGroup>
+            <OptionGroup title="Fit Type"><OptionButton selected={selectedFit === "Oversized"} onClick={() => setSelectedFit("Oversized")}>Oversized</OptionButton><OptionButton selected={selectedFit === "Regular"} onClick={() => setSelectedFit("Regular")}>Regular</OptionButton><OptionButton selected={selectedFit === "Slim Fit"} onClick={() => setSelectedFit("Slim Fit")}>Slim Fit</OptionButton><OptionButton selected={selectedFit === "Loose Fit"} onClick={() => setSelectedFit("Loose Fit")}>Loose Fit</OptionButton></OptionGroup>
+            <OptionGroup title="Sleeve"><OptionButton selected={selectedSleeve === "Short Sleeve"} onClick={() => setSelectedSleeve("Short Sleeve")}>Short Sleeve</OptionButton><OptionButton selected={selectedSleeve === "Long Sleeve"} onClick={() => setSelectedSleeve("Long Sleeve")}>Long Sleeve</OptionButton></OptionGroup>
             <OptionGroup title="GSM">{gsmOptions.map((gsm) => <OptionButton key={gsm} selected={selectedGsm === gsm} onClick={() => setSelectedGsm(gsm)}>{gsm}</OptionButton>)}</OptionGroup>
           </div>
 
@@ -166,8 +173,8 @@ export default function ProductDetailClient({ product, related }: Props) {
       <section className="mt-4 overflow-hidden rounded-2xl border border-border/70 bg-bg-surface">
         <div className="flex gap-1 overflow-x-auto border-b border-border/70 p-1.5">{tabs.map((tab) => <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`shrink-0 rounded-xl px-3 py-2.5 text-[11px] font-bold ${activeTab === tab.id ? "bg-accent text-accent-foreground" : "text-text-secondary hover:bg-bg"}`}>{tab.label}</button>)}</div>
         <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.55fr)]">
-          <div><h2 className="text-base font-black">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>{activeTab === "details" && <div className="mt-3 space-y-2 text-xs leading-5 text-text-secondary"><p>{product.name} combines a clean everyday silhouette with a comfortable finish made for daily wear.</p><p className="flex items-center gap-2"><Check size={14} className="text-accent" /> Premium fabric and comfortable construction</p><p className="flex items-center gap-2"><Check size={14} className="text-accent" /> Modern minimal design</p></div>}{activeTab === "specifications" && <div className="mt-3 grid gap-2 text-xs text-text-secondary sm:grid-cols-2"><p><b className="text-text-primary">Product type:</b> {product.productType || "T-Shirt"}</p><p><b className="text-text-primary">Color:</b> {selectedColor || "Not selected"}</p><p><b className="text-text-primary">Material:</b> {selectedMaterial || "Not selected"}</p><p><b className="text-text-primary">Size:</b> {selectedSize || "Not selected"}</p><p><b className="text-text-primary">GSM:</b> {selectedGsm || "Not selected"}</p><p><b className="text-text-primary">Fit:</b> Oversized</p></div>}{activeTab === "size" && <p className="mt-3 text-xs leading-5 text-text-secondary">Choose your usual size for a relaxed fit. If you prefer an oversized look, choose one size up.</p>}{activeTab === "reviews" && <p className="mt-3 text-xs leading-5 text-text-secondary">Reviews and verified buyer feedback will appear here as they are connected to the catalog.</p>}{activeTab === "shipping" && <p className="mt-3 text-xs leading-5 text-text-secondary">Orders are prepared for dispatch within 1–2 business days. Returns are accepted within 7 days for eligible items.</p>}</div>
-          <div className="rounded-2xl border border-border/60 bg-bg p-3"><div className="flex items-center justify-between"><div><p className="text-3xl font-black">4.9</p><p className="text-[10px] text-text-muted">Based on 126 reviews</p></div><div className="text-right"><p className="text-sm tracking-wide text-[#f2b511]">★★★★★</p><button type="button" className="mt-2 text-[10px] font-bold text-accent">View all reviews →</button></div></div><div className="mt-3 space-y-1.5 text-[10px] text-text-muted">{[[5, "92%"], [4, "6%"], [3, "1%"], [2, "1%"], [1, "0%"]].map(([stars, percentage]) => <div key={stars} className="flex items-center gap-2"><span>{stars} ★</span><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border"><span className="block h-full rounded-full bg-accent" style={{ width: percentage }} /></span><span>{percentage}</span></div>)}</div></div>
+          <div><h2 className="text-base font-black">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>{activeTab === "details" && <div className="mt-3 space-y-2 text-xs leading-5 text-text-secondary"><p>{product.name} combines a clean everyday silhouette with a comfortable finish made for daily wear.</p><p className="flex items-center gap-2"><Check size={14} className="text-accent" /> Premium fabric and comfortable construction</p><p className="flex items-center gap-2"><Check size={14} className="text-accent" /> Modern minimal design</p></div>}{activeTab === "specifications" && <div className="mt-3 grid gap-2 text-xs text-text-secondary sm:grid-cols-2"><p><b className="text-text-primary">Product type:</b> {product.productType || "T-Shirt"}</p><p><b className="text-text-primary">Color:</b> {selectedColor || "Not selected"}</p><p><b className="text-text-primary">Material:</b> {selectedMaterial || "Not selected"}</p><p><b className="text-text-primary">Size:</b> {selectedSize || "Not selected"}</p><p><b className="text-text-primary">GSM:</b> {selectedGsm || "Not selected"}</p><p><b className="text-text-primary">Fit:</b> {selectedFit}</p><p><b className="text-text-primary">Sleeve:</b> {selectedSleeve}</p></div>}{activeTab === "size" && <p className="mt-3 text-xs leading-5 text-text-secondary">Choose your usual size for a relaxed fit. If you prefer an oversized look, choose one size up.</p>}{activeTab === "reviews" && <p className="mt-3 text-xs leading-5 text-text-secondary">Reviews and verified buyer feedback will appear here as they are connected to the catalog.</p>}{activeTab === "shipping" && <p className="mt-3 text-xs leading-5 text-text-secondary">Orders are prepared for dispatch within 1–2 business days. Returns are accepted within 7 days for eligible items.</p>}</div>
+          <div className="rounded-2xl border border-border/60 bg-bg p-3"><div className="flex items-center justify-between"><div><p className="text-3xl font-black">4.9</p><p className="text-[10px] text-text-muted">Based on 126 reviews</p></div><div className="text-right"><p className="text-sm tracking-wide text-[#f2b511]">★★★★★</p><button type="button" onClick={() => setActiveTab("reviews")} className="mt-2 text-[10px] font-bold text-accent">View all reviews →</button></div></div><div className="mt-3 space-y-1.5 text-[10px] text-text-muted">{[[5, "92%"], [4, "6%"], [3, "1%"], [2, "1%"], [1, "0%"]].map(([stars, percentage]) => <div key={stars} className="flex items-center gap-2"><span>{stars} ★</span><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border"><span className="block h-full rounded-full bg-accent" style={{ width: percentage }} /></span><span>{percentage}</span></div>)}</div></div>
         </div>
       </section>
 
