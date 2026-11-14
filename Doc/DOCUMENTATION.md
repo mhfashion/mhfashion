@@ -23,6 +23,38 @@ This log records completed website-related changes in the connected repository. 
 - When the large-tier owner is reduced to 1500 px or below, or its Mockup is removed, release the tier. If the tier transfers to the other side, clamp the former owner's artwork to 1500 px while preserving its center. Keep the currently displayed pixel dimensions visible while selected.
 - This rule supersedes the fixed Front-3500/Back-1500 assignment in the earlier work-log entry below. Updated `Plan/PLAN.md` first, then implemented shared allocation in `KittlCanvas` and `MockupArtwork`, with a tested allocation helper.
 - Validation: all 22 repository Node tests passed, including 6 canvas-shell tests and tier transfer/release cases; Next.js production build, TypeScript, modified-file ESLint, and `git diff --check` passed. A headless Chromium pointer test drew wide artwork, confirmed Front at **3500 px** and Back at **1500 px**, then resized Back past the threshold and confirmed Back changed to **3500 px** while Front changed to **1500 px**.
+### 2026-11-14 — Product detail reference UI, compact sizing, and variant price display
+
+- Reworked `apps/web/src/app/products/[slug]/page.tsx` to mount the new
+  `ProductDetailClient` detail experience. The page now follows the supplied
+  marketplace-style reference with a compact product gallery, thumbnails,
+  rating/price area, option selectors, quantity, service benefits, details
+  tabs, review summary, shipping copy, and related products.
+- Preserved the three requested product actions: **Buy Now**, **Add to Cart**,
+  and **Edit Design**. Buy Now adds the product and navigates to `/cart`; Add
+  to Cart stays on the page and shows confirmation; Edit Design links to
+  `/create?product=<slug>`.
+- Reduced the main gallery progressively to a compact 280px cap on desktop and
+  phone, centered it on narrow screens, removed outer wrapper boxes around the
+  Size, Color, Material, Fit Type, Sleeve, and Print Style controls, and tuned
+  mobile title, price, spacing, tabs, and three-button action layout to avoid
+  clipping or horizontal overflow.
+- Product cards still show the catalog range before a choice. The detail page
+  starts with the range when no Size, Color, or Material is selected; after any
+  of those choices, it displays one exact-looking client-calculated price.
+  The selected options are reflected in the active states and Specifications
+  tab.
+- Files changed: `apps/web/src/app/products/[slug]/page.tsx`,
+  `apps/web/src/components/ProductDetailClient.tsx`, `Plan/PLAN.md`, and this
+  documentation file.
+- Validation: Next.js production build, TypeScript, and `git diff --check`
+  passed during the implementation sequence. Application commits were pushed
+  directly to `main`; the latest application commit is `fc42b82`.
+- Limitations: the current catalog schema exposes one product image and a
+  price range rather than real per-variant records, so extra thumbnails and
+  option price changes are presentation/prototype states. Selected variant
+  data and calculated price are not yet persisted in cart items; real
+  admin-configured combination pricing remains open work.
 
 ### 2026-11-14 — Enforce provisional Front/Back artwork pixel caps
 

@@ -145,13 +145,21 @@ in a Pricing Management module. Product cards show a range (lowest–highest);
 once a full combination is chosen on the detail page, show the exact price.
 Other product types get their own attribute sets and pricing formulas.
 
+Current product-detail prototype behavior: before any Size, Color, or Material
+selection, the page shows the catalog price range. After the visitor selects
+any of those options, the displayed value switches to one exact-looking price
+using the current client-side variant calculation. The selected variant and
+its calculated price are not yet persisted into the cart item; real
+admin-configured combination pricing remains a follow-up data task.
+
 ### 4.6 Product detail presentation
 
 - Use the full available page width with minimal side gutters; do not constrain the
   page to a narrow centered column or leave broad empty margins.
 - Keep the desktop product gallery compact (about 280px at tablet widths and
-  capped near 360px on desktop); let purchase details use the remaining width.
-  Stack the regions on small screens, with the image fitting the viewport width.
+  capped near 280px in the current implementation); let purchase details use
+  the remaining width. Stack the regions on small screens, with the gallery
+  capped near 280px and centered rather than occupying the full phone width.
 - Keep photo frames and thumbnail outlines to subtle 1px borders. The active
   thumbnail may use the accent color, but should not become a thick frame.
 - On narrow phones, center the main photo and thumbnail row in a compact 200px
@@ -563,6 +571,26 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   editable guide `fabric.Path`, with a custom glyph renderer, arc-length layout,
   alignment/offset/reverse-side behavior, hidden `IText` editing proxy,
   persistence/migration, export rules, performance guidance, and a test matrix.
+
+- Product detail UI/UX update (2026-11-14): redesigned `/products/[slug]` from
+  the compact initial detail page into the supplied marketplace-style reference
+  direction. Added a responsive gallery, thumbnail controls, wishlist/share
+  affordances, rating/price presentation, compact Size/Color/Material/Fit/
+  Sleeve/Print selectors, quantity control, Buy Now/Add to Cart/Edit Design,
+  service benefits, detail tabs, review summary, shipping copy, and related
+  products. The main gallery was progressively reduced to a compact 280px
+  desktop/mobile cap; the option groups intentionally have no outer wrapper
+  boxes. Product cards retain their existing links.
+- Variant-price interaction update (2026-11-14): product cards continue to show
+  price ranges; the detail page shows the range before any Size, Color, or
+  Material choice, then switches to one displayed price after a choice. This is
+  currently client-side prototype pricing and is not yet carried into cart
+  persistence. Mobile spacing, typography, gallery sizing, horizontal tabs,
+  and the three action buttons were tuned together with desktop behavior.
+- Validation for the product-detail changes: Next.js production build,
+  TypeScript, and `git diff --check` passed. The application changes were pushed
+  directly to `main` in commits `4d93a86`, `3620fe4`, `45b9935`, `caf13dd`,
+  `6adf382`, `e6ab9ba`, `76323f3`, and `fc42b82`.
 
 
 ## Production publishing status snapshot (2026-11-10; superseded by the current follow-up below)
