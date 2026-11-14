@@ -17,10 +17,17 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Make the 3500 px artwork tier transferable
+
+- Owner clarification: the 3500 px large tier is not permanently assigned to Front. Either Front or Back may claim it; while one side's longest artwork edge exceeds 1500 px, that side may use up to 3500 px and the other side is capped at 1500 px. If both sides remain at or below 1500 px, either may claim the large tier by resizing above 1500 px. The numeric values remain provisional, not final print specifications.
+- When the large-tier owner is reduced to 1500 px or below, or its Mockup is removed, release the tier. If the tier transfers to the other side, clamp the former owner's artwork to 1500 px while preserving its center. Keep the currently displayed pixel dimensions visible while selected.
+- This rule supersedes the fixed Front-3500/Back-1500 assignment in the earlier work-log entry below. Updated `Plan/PLAN.md` first, then implemented shared allocation in `KittlCanvas` and `MockupArtwork`, with a tested allocation helper.
+- Validation: all 22 repository Node tests passed, including 6 canvas-shell tests and tier transfer/release cases; Next.js production build, TypeScript, modified-file ESLint, and `git diff --check` passed. A headless Chromium pointer test drew wide artwork, confirmed Front at **3500 px** and Back at **1500 px**, then resized Back past the threshold and confirmed Back changed to **3500 px** while Front changed to **1500 px**.
+
 ### 2026-11-14 — Enforce provisional Front/Back artwork pixel caps
 
-- Per the owner's latest rule, Front is the larger artwork tier and Back is the smaller tier. Enforce provisional maximum longest-edge sizes of **3500 px** for Front and **1500 px** for Back on initialization, pointer resizing, and keyboard resizing; show the live width × height in pixels when the artwork is selected. These output-pixel caps are derived from the fixed 4500 × 5400 PNG canvas coordinate mapping.
-- The owner explicitly said the example values are not final and will provide exact numbers later. Keep them in clearly named provisional constants for a direct update when confirmed; these caps are active interim limits, not final print specifications.
+- Historical implementation before the owner's later clarification: Front was assigned the 3500 px tier and Back the 1500 px tier. This fixed side assignment is superseded; see the newer transferable-tier entry above. The output-pixel values and live-dimension behavior in this dated record describe that earlier implementation only.
+- At that earlier implementation, the numeric caps were treated as provisional interim values. The later owner clarification changed the side allocation, not the provisional status of the numeric values; see the newer entry above.
 - Updated the Plan after implementation to state both the one-large/one-small rule and that the numeric caps are provisional.
 - Validation: canvas shell tests **5/5**, TypeScript, changed-file ESLint, `git diff --check`, and OpenNext Cloudflare Worker production build passed. Headless Chromium on the local production build drew a near-full-canvas stroke, confirmed live dimensions of **2935 × 3500 px** (Front) and **1258 × 1500 px** (Back), then dragged each resize handle well past its limit; both stayed at or under their respective caps.
 
@@ -41,7 +48,7 @@ This log records completed website-related changes in the connected repository. 
 
 ### 2026-11-14 — Live artwork on large Front and small Back previews
 
-- Offset the Front Mockup's Back-add circle 1.25rem below the connector's centerline so it is visually discoverable. Added minimal black freehand drawing inside the fixed canvas; its shared in-memory strokes render live on the canvas and every added mockup. Front remains the larger placeholder (18.25rem, artwork scale 0.82); Back is smaller (14rem, artwork scale 0.48). The canvas can still be repositioned by dragging its border while the interior is used for drawing.
+- Historical implementation: offset the Front Mockup's Back-add circle 1.25rem below the connector's centerline and added minimal black freehand drawing inside the fixed canvas. Its shared in-memory strokes render live on the canvas and every added mockup. At that earlier revision Front used a larger placeholder and Back a smaller one; later owner direction made the boxes equal-sized and the artwork tier transferable. The canvas can still be repositioned by dragging its border while the interior is used for drawing.
 - Validation: canvas specification **1/1**, canvas shell **4/4**, browser guards **1/1**, Guides **9/9**, TypeScript and production/Cloudflare builds passed, workspace ESLint **0 errors / 24 pre-existing warnings**, changed component ESLint clean, `git diff --check` clean. Browser pointer simulation drew a stroke and confirmed it immediately appeared on Canvas, Front, and Back at the different scales; both Back addition and its offset from the wire were visually checked.
 - The stroke preview is transient for the current page only; there is no sticker library, object selection/editing, export integration, or persistence yet. A physical Phone/Mobile viewport was not available for browser verification.
 - Pushed commit `540d5a8`; [Actions run #43476339108](https://github.com/mhfashion/mhfashion/actions/runs/43476339108) failed because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are missing. Production still shows the fixed canvas and prior connector layer, but not the new drawing synchronization or small Back preview.
@@ -142,8 +149,8 @@ The owner requested that requested repository changes be committed and pushed di
 ## Repository Code Audit
 
 - **Repository:** `mhfashion/mhfashion`
-- **Reviewed baseline:** `main` at commit `90dc398` (2026-11-13)
-- **Review type:** Read-only source review plus local build/test/dependency checks. No application code, database, or production deployment was changed.
+- **Reviewed baseline:** `main` at commit `90dc398` (2026-11-13); this is a historical audit baseline, not the current editor implementation.
+- **Review type:** Read-only source review plus local build/test/dependency checks. No application code, database, or production deployment was changed. Later editor changes and current behavior are recorded in the dated work-log entries above and the current baseline in `Plan/PLAN.md`.
 
 ### Executive summary
 

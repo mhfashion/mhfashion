@@ -2,11 +2,22 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-
+const ts = require("typescript");
 const source = readFileSync(path.join(__dirname, "../apps/web/src/components/KittlCanvas.tsx"), "utf8");
 const mockupArtwork = readFileSync(path.join(__dirname, "../apps/web/src/components/MockupArtwork.tsx"), "utf8");
+const tierSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts"), "utf8");
 const mockupSection = source.split('{mockups.map((side) => (')[1] ?? "";
 const mockupHeader = mockupSection.split('className="relative aspect-square w-full')[0] ?? "";
+function loadArtworkTiers() {
+  const fileName = path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts");
+  const compiled = ts.transpileModule(tierSource, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    fileName,
+  }).outputText;
+  const module = { exports: {} };
+  new Function("module", "exports", compiled)(module, module.exports);
+  return module.exports;
+}
 
 test("canvas options expose Show Grid and add the temporary Front Mockup box", () => {
   assert.match(source, /aria-label="Canvas options"/);
@@ -54,7 +65,7 @@ test("canvas and each mockup are independently draggable with live connector wir
   assert.match(source, /\[mockups, nodePositions, pan, zoom\]/);
 });
 
-test("canvas freehand strokes appear live on equal-size mockup boxes with side-specific artwork caps", () => {
+test("canvas freehand strokes appear live on equal-size mockup boxes with a shared artwork tier", () => {
   assert.match(source, /type ArtworkStroke = \{ points: Point\[\] \}/);
   assert.match(source, /onPointerDown=\{startArtworkStroke\}/);
   assert.match(source, /function startArtworkStroke[\s\S]*?setArtworkStrokes\(/);
@@ -63,22 +74,69 @@ test("canvas freehand strokes appear live on equal-size mockup boxes with side-s
   assert.match(source, /className=\{`relative z-10 w-\[min\(18\.25rem,78vw\)\] shrink-0/);
   assert.doesNotMatch(source, /Back Mockup" \? "w-\[min\(14rem/);
   assert.match(mockupArtwork, /scale\(\$\{BASE_ARTWORK_SCALE \* safeTransform\.scale\}\)/);
+  assert.match(source, /largeArtworkTierOwner/);
+  assert.match(source, /maxArtworkEdgePx=\{getArtworkMaxEdgePx\(side, largeArtworkTierOwner\)\}/);
+  assert.match(source, /onLargeTierRequested=\{handleLargeTierRequested\}/);
+  assert.match(source, /onArtworkDisplayedEdgeChange=\{handleArtworkDisplayedEdgeChange\}/);
+  assert.match(mockupArtwork, /useEffect\(\(\) => \{[\s\S]*?scaleAroundCenter\(bounds, current, maxArtworkScale\)/);
+  assert.match(mockupArtwork, /onLargeTierRequested\(side\)/);
+  assert.doesNotMatch(mockupArtwork, /PROVISIONAL_(FRONT|BACK)_MAX_EDGE_PX/);
   assert.match(source, /function isCanvasEdgeGesture\([\s\S]*?return clientX - rect\.left <= edge/);
   assert.match(source, /node === "Print canvas" && event\.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture/);
 });
 
 test("artwork on each Mockup can be moved and resized as one object", () => {
-  assert.match(source, /<MockupArtwork side=\{side\} strokes=\{artworkStrokes\} \/>/);
+  assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?strokes=\{artworkStrokes\}/);
   assert.match(mockupArtwork, /aria-label=\{`Move \$\{side\} artwork`\}/);
   assert.match(mockupArtwork, /mode === "move"/);
   assert.match(mockupArtwork, /startTransform\("resize", event\)/);
   assert.match(mockupArtwork, /aria-label=\{`Resize mockup artwork; maximum edge \$\{maxArtworkEdgePx\} px`\}/);
   assert.match(mockupArtwork, /setPointerCapture\(event\.pointerId\)/);
-  assert.match(mockupArtwork, /PROVISIONAL_FRONT_MAX_EDGE_PX = 3500/);
-  assert.match(mockupArtwork, /PROVISIONAL_BACK_MAX_EDGE_PX = 1500/);
-  assert.match(mockupArtwork, /side === "Front Mockup" \? PROVISIONAL_FRONT_MAX_EDGE_PX : PROVISIONAL_BACK_MAX_EDGE_PX/);
-  assert.match(mockupArtwork, /Math\.max\(0\.25, Math\.min\(maxArtworkScale,/);
+  assert.match(mockupArtwork, /Math\.max\(0\.25, Math\.min\((?:gestureMaxScale|keyboardMaxScale),/);
   assert.match(mockupArtwork, /maxEdgePx \/ originalEdgePx/);
   assert.match(mockupArtwork, /displayedWidthPx = Math\.round\(frame\.width \* PIXELS_PER_VIEWBOX_UNIT\)/);
   assert.match(mockupArtwork, /data-artwork-max-edge-px=\{maxArtworkEdgePx\}/);
+});
+
+test("the large artwork tier transfers between Front and Back and is released at 1500 px", () => {
+  const {
+    LARGE_ARTWORK_EDGE_PX,
+    SMALL_ARTWORK_EDGE_PX,
+    claimLargeArtworkTier,
+    getArtworkMaxEdgePx,
+    reconcileLargeArtworkTier,
+    releaseLargeArtworkTier,
+  } = loadArtworkTiers();
+  let owner = null;
+
+  assert.equal(getArtworkMaxEdgePx("Front Mockup", owner), LARGE_ARTWORK_EDGE_PX);
+  assert.equal(getArtworkMaxEdgePx("Back Mockup", owner), LARGE_ARTWORK_EDGE_PX);
+
+  owner = claimLargeArtworkTier(owner, "Front Mockup");
+  assert.equal(getArtworkMaxEdgePx("Front Mockup", owner), 3500);
+  assert.equal(getArtworkMaxEdgePx("Back Mockup", owner), 1500);
+
+  owner = claimLargeArtworkTier(owner, "Back Mockup");
+  assert.equal(getArtworkMaxEdgePx("Front Mockup", owner), 1500);
+  assert.equal(getArtworkMaxEdgePx("Back Mockup", owner), 3500);
+
+  owner = reconcileLargeArtworkTier(owner, "Back Mockup", SMALL_ARTWORK_EDGE_PX);
+  assert.equal(owner, null);
+  assert.equal(getArtworkMaxEdgePx("Front Mockup", owner), LARGE_ARTWORK_EDGE_PX);
+  assert.equal(getArtworkMaxEdgePx("Back Mockup", owner), LARGE_ARTWORK_EDGE_PX);
+
+  owner = reconcileLargeArtworkTier(null, "Back Mockup", SMALL_ARTWORK_EDGE_PX + 1);
+  assert.equal(owner, "Back Mockup");
+  owner = claimLargeArtworkTier(owner, "Front Mockup");
+  assert.equal(owner, "Front Mockup");
+  assert.equal(getArtworkMaxEdgePx("Front Mockup", owner), 3500);
+  assert.equal(getArtworkMaxEdgePx("Back Mockup", owner), 1500);
+  owner = reconcileLargeArtworkTier(owner, "Front Mockup", SMALL_ARTWORK_EDGE_PX);
+  assert.equal(owner, null);
+  assert.equal(getArtworkMaxEdgePx("Front Mockup", owner), LARGE_ARTWORK_EDGE_PX);
+  assert.equal(getArtworkMaxEdgePx("Back Mockup", owner), LARGE_ARTWORK_EDGE_PX);
+
+  owner = claimLargeArtworkTier(owner, "Front Mockup");
+  owner = releaseLargeArtworkTier(owner, "Front Mockup");
+  assert.equal(owner, null);
 });

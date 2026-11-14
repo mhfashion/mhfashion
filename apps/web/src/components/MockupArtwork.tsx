@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { LARGE_ARTWORK_EDGE_PX, SMALL_ARTWORK_EDGE_PX } from "@/lib/editor-artwork-tiers";
 
 type MockupSide = "Front Mockup" | "Back Mockup";
 type Point = { x: number; y: number };
@@ -18,9 +19,6 @@ type Drag = {
 
 const BASE_ARTWORK_SCALE = 0.82;
 const PIXELS_PER_VIEWBOX_UNIT = 4.5;
-// Provisional caps use the upper ends of the owner's ranges; replace when exact values are confirmed.
-const PROVISIONAL_FRONT_MAX_EDGE_PX = 3500;
-const PROVISIONAL_BACK_MAX_EDGE_PX = 1500;
 
 function getArtworkBounds(strokes: Stroke[]): Bounds {
   let minX = Number.POSITIVE_INFINITY;
@@ -54,9 +52,12 @@ function getDisplayedBounds(bounds: Bounds, transform: Transform): Bounds {
   };
 }
 
-function getMaxArtworkScale(bounds: Bounds, side: MockupSide): number {
-  const maxEdgePx = side === "Front Mockup" ? PROVISIONAL_FRONT_MAX_EDGE_PX : PROVISIONAL_BACK_MAX_EDGE_PX;
-  const originalEdgePx = Math.max(bounds.width, bounds.height) * PIXELS_PER_VIEWBOX_UNIT * BASE_ARTWORK_SCALE;
+function getOriginalArtworkEdgePx(bounds: Bounds): number {
+  return Math.max(bounds.width, bounds.height) * PIXELS_PER_VIEWBOX_UNIT * BASE_ARTWORK_SCALE;
+}
+
+function getMaxArtworkScale(bounds: Bounds, maxEdgePx: number): number {
+  const originalEdgePx = getOriginalArtworkEdgePx(bounds);
   return Math.max(0.25, Math.min(3, maxEdgePx / originalEdgePx));
 }
 
@@ -85,18 +86,40 @@ function toViewBoxPoint(svg: SVGSVGElement, clientX: number, clientY: number): P
   };
 }
 
-export default function MockupArtwork({ side, strokes }: { side: MockupSide; strokes: Stroke[] }) {
+export default function MockupArtwork({
+  side,
+  strokes,
+  maxArtworkEdgePx,
+  onLargeTierRequested,
+  onArtworkDisplayedEdgeChange,
+}: {
+  side: MockupSide;
+  strokes: Stroke[];
+  maxArtworkEdgePx: number;
+  onLargeTierRequested: (side: MockupSide) => void;
+  onArtworkDisplayedEdgeChange: (side: MockupSide, longestEdgePx: number) => void;
+}) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
   const bounds = useMemo(() => getArtworkBounds(strokes), [strokes]);
-  const maxArtworkScale = getMaxArtworkScale(bounds, side);
-  const maxArtworkEdgePx = side === "Front Mockup" ? PROVISIONAL_FRONT_MAX_EDGE_PX : PROVISIONAL_BACK_MAX_EDGE_PX;
+  const maxArtworkScale = getMaxArtworkScale(bounds, maxArtworkEdgePx);
   const [transform, setTransform] = useState<Transform>(() => ({ x: 0, y: 0, scale: Math.min(1, maxArtworkScale) }));
   const [selected, setSelected] = useState(false);
   const safeTransform = transform.scale > maxArtworkScale ? scaleAroundCenter(bounds, transform, maxArtworkScale) : transform;
   const frame = getDisplayedBounds(bounds, safeTransform);
   const displayedWidthPx = Math.round(frame.width * PIXELS_PER_VIEWBOX_UNIT);
   const displayedHeightPx = Math.round(frame.height * PIXELS_PER_VIEWBOX_UNIT);
+  const displayedLongestEdgePx = strokes.length === 0 ? 0 : Math.max(displayedWidthPx, displayedHeightPx);
+  useEffect(() => {
+    if (transform.scale <= maxArtworkScale) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Persist the clamp so a later tier transfer cannot restore the old oversized scale.
+    setTransform((current) => current.scale > maxArtworkScale
+      ? scaleAroundCenter(bounds, current, maxArtworkScale)
+      : current);
+  }, [bounds, maxArtworkScale, transform.scale]);
+  useEffect(() => {
+    onArtworkDisplayedEdgeChange(side, displayedLongestEdgePx);
+  }, [displayedLongestEdgePx, onArtworkDisplayedEdgeChange, side]);
   const artwork = useMemo(() => strokes.map((stroke, index) => {
     const path = stroke.points.map((point, pointIndex) => `${pointIndex === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ");
     return stroke.points.length === 1 ? (
@@ -141,7 +164,13 @@ export default function MockupArtwork({ side, strokes }: { side: MockupSide; str
       return;
     }
     const radius = Math.hypot(point.x - drag.center.x, point.y - drag.center.y);
-    const scale = Math.max(0.25, Math.min(maxArtworkScale, drag.origin.scale * radius / drag.startRadius));
+    const requestedScale = drag.origin.scale * radius / drag.startRadius;
+    const claimsLargeTier = getOriginalArtworkEdgePx(bounds) * requestedScale > SMALL_ARTWORK_EDGE_PX;
+    if (claimsLargeTier) {
+      onLargeTierRequested(side);
+    }
+    const gestureMaxScale = claimsLargeTier ? getMaxArtworkScale(bounds, LARGE_ARTWORK_EDGE_PX) : maxArtworkScale;
+    const scale = Math.max(0.25, Math.min(gestureMaxScale, requestedScale));
     setTransform(scaleAroundCenter(bounds, drag.origin, scale));
   };
 
@@ -150,7 +179,13 @@ export default function MockupArtwork({ side, strokes }: { side: MockupSide; str
   };
 
   const resizeByKeyboard = (amount: number) => {
-    const scale = Math.max(0.25, Math.min(maxArtworkScale, safeTransform.scale + amount));
+    const requestedScale = safeTransform.scale + amount;
+    const claimsLargeTier = getOriginalArtworkEdgePx(bounds) * requestedScale > SMALL_ARTWORK_EDGE_PX;
+    if (claimsLargeTier) {
+      onLargeTierRequested(side);
+    }
+    const keyboardMaxScale = claimsLargeTier ? getMaxArtworkScale(bounds, LARGE_ARTWORK_EDGE_PX) : maxArtworkScale;
+    const scale = Math.max(0.25, Math.min(keyboardMaxScale, requestedScale));
     setTransform(scaleAroundCenter(bounds, safeTransform, scale));
   };
 
