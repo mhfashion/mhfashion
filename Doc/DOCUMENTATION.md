@@ -32,8 +32,7 @@ This log records completed website-related changes in the connected repository. 
   protruding beside them.
 - Kept the framed card treatment for tablet and desktop through the responsive
   `sm` breakpoint and above.
-- Validation: production build and `git diff --check` are required before the
-  direct-to-`main` push for this change.
+- Validation: the merged Cloudflare/OpenNext production build and `git diff --check` passed before the direct-to-`main` push.
 
 ### 2026-11-14 — Add Editor Header Bar 2 placeholders
 
