@@ -99,7 +99,7 @@ export default function ProductDetailClient({ product, related }: Props) {
   return (
     <>
       <section className="grid gap-2 rounded-xl border border-border/70 bg-bg-surface p-1.5 shadow-[0_8px_30px_rgba(30,40,20,0.06)] sm:p-2 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:gap-2.5 lg:p-2.5">
-        <div className="mx-auto min-w-0 w-full max-w-[240px] lg:max-w-[280px]">
+        <div className="mx-auto min-w-0 w-full max-w-[min(100%,280px)] lg:max-w-[280px]">
           <div className="relative aspect-square overflow-hidden rounded-2xl border border-border/70 bg-bg">
             {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-text-muted">Product preview</div>}
             {product.isNew && <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-[10px] font-black text-accent-foreground">NEW</span>}
@@ -120,7 +120,7 @@ export default function ProductDetailClient({ product, related }: Props) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-accent">MH Fashion</p>
-              <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">{product.name}</h1>
+              <h1 className="mt-1 text-xl font-black tracking-tight sm:text-3xl">{product.name}</h1>
               <div className="mt-1.5 flex items-center gap-2 text-[11px] text-text-secondary"><span className="font-black tracking-wide text-[#f2b511]">★★★★★</span><b className="text-text-primary">4.9</b><span>·</span><span>126 sold</span></div>
             </div>
             <div className="flex gap-1.5">
@@ -129,7 +129,7 @@ export default function ProductDetailClient({ product, related }: Props) {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-b border-border/70 pb-3"><span className="text-2xl font-black text-accent">{price}</span><span className="rounded-full bg-accent/10 px-2 py-1 text-[10px] font-black text-accent">↓ 15%</span><span className="text-xs text-text-faint line-through">28,000 Ks</span></div>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-b border-border/70 pb-2.5 sm:mt-4 sm:gap-2 sm:pb-3"><span className="text-xl font-black text-accent sm:text-2xl">{price}</span><span className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent sm:text-[10px]">↓ 15%</span><span className="text-[10px] text-text-faint line-through sm:text-xs">28,000 Ks</span></div>
 
           <div className="mt-2 grid gap-1 xl:grid-cols-2">
             <OptionGroup title="Size" action={<button type="button" className="text-[10px] font-bold text-accent"><Ruler size={12} className="mr-1 inline" />Size Guide</button>}>
@@ -147,7 +147,7 @@ export default function ProductDetailClient({ product, related }: Props) {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xs font-black">Quantity</span><div className="flex items-center rounded-full border border-border bg-bg"><button type="button" aria-label="Decrease quantity" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-2.5"><Minus size={14} /></button><span className="min-w-8 text-center text-sm font-bold">{quantity}</span><button type="button" aria-label="Increase quantity" onClick={() => setQuantity((value) => value + 1)} className="p-2.5"><Plus size={14} /></button></div><span className="flex items-center gap-1 text-[11px] font-bold text-accent"><Check size={14} /> In Stock · Ready to ship</span></div>
-          <div className="mt-3 grid grid-cols-3 gap-1.5"><button type="button" onClick={buyNow} className="rounded-lg bg-accent px-2 py-2.5 text-[11px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:text-xs"><ShoppingCart size={14} className="mr-1 inline" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} className="rounded-lg border-2 border-accent px-2 py-2.5 text-[11px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button><a href={`/create?product=${encodeURIComponent(product.slug)}`} className="rounded-lg border border-border px-2 py-2.5 text-center text-[11px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:text-xs">Edit Design</a></div>
+          <div className="mt-3 grid grid-cols-3 gap-1 sm:gap-1.5"><button type="button" onClick={buyNow} className="min-w-0 whitespace-nowrap rounded-lg bg-accent px-1 py-2.5 text-[9px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:px-2 sm:text-xs"><ShoppingCart size={12} className="mr-0.5 inline sm:mr-1 sm:h-[14px] sm:w-[14px]" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} className="min-w-0 whitespace-nowrap rounded-lg border-2 border-accent px-1 py-2.5 text-[9px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:px-2 sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button><a href={`/create?product=${encodeURIComponent(product.slug)}`} className="min-w-0 whitespace-nowrap rounded-lg border border-border px-1 py-2.5 text-center text-[9px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:px-2 sm:text-xs">Edit Design</a></div>
         </div>
       </section>
 
