@@ -153,8 +153,19 @@ async function main() {
     const initial = await evaluate(() => {
       const main = document.querySelector("main").getBoundingClientRect();
       const nav = document.querySelector('[aria-label="Mobile navigation"]').getBoundingClientRect();
-      return { mainBottom: main.bottom, navTop: nav.top, bodyHeight: document.documentElement.scrollHeight, viewportHeight: innerHeight };
+      const slot = document.querySelector("[data-editor-shared-header]");
+      const header = slot.getBoundingClientRect();
+      const editor = document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect();
+      return {
+        mainBottom: main.bottom, navTop: nav.top,
+        bodyHeight: document.documentElement.scrollHeight, viewportHeight: innerHeight,
+        headerHeight: header.height, headerBottom: header.bottom, editorTop: editor.top,
+        mobileHeader: getComputedStyle(slot.firstElementChild).display,
+        desktopHeader: getComputedStyle(slot.lastElementChild).display,
+      };
     });
+    assert.ok(initial.headerHeight > 0 && initial.mobileHeader !== "none" && initial.desktopHeader === "none", "Reuse the existing mobile Header Bar");
+    assert.ok(initial.editorTop >= initial.headerBottom - 1, "Editor workspace begins below the Header Bar");
     assert.ok(initial.mainBottom <= initial.navTop + 1, "Editor stays above mobile navigation");
     assert.ok(initial.bodyHeight <= initial.viewportHeight + 1, "Editor and nav do not create document overflow");
     const options = await rect('button[aria-label="Canvas options"]');
@@ -293,6 +304,18 @@ async function main() {
     console.log("PASS phone landscape 844×390: touch controls and stacking survive the desktop breakpoint");
     await load(1280, 900, false);
     assert.equal(await evaluate(() => getComputedStyle(document.querySelector('[aria-label="Touch view controls"]')).display), "none");
+    const desktopHeader = await evaluate(() => {
+      const slot = document.querySelector("[data-editor-shared-header]");
+      return {
+        height: slot.getBoundingClientRect().height,
+        headerBottom: slot.getBoundingClientRect().bottom,
+        editorTop: document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect().top,
+        mobile: getComputedStyle(slot.firstElementChild).display,
+        desktop: getComputedStyle(slot.lastElementChild).display,
+      };
+    });
+    assert.ok(desktopHeader.height > 0 && desktopHeader.mobile === "none" && desktopHeader.desktop !== "none", "Reuse the existing desktop Header Bar");
+    assert.ok(desktopHeader.editorTop >= desktopHeader.headerBottom - 1, "Desktop editor workspace begins below the Header Bar");
     const desktopButton = await rect('button[aria-label="Canvas options"]');
     assert.equal(desktopButton.w, 14); assert.equal(desktopButton.h, 14);
     console.log("PASS desktop 1280×900: original control size and no mobile toolbar");

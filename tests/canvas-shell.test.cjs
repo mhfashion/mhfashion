@@ -10,6 +10,7 @@ const mockupSection = source.split('{mockups.map((side) => (')[1] ?? "";
 const mockupHeader = mockupSection.split('className="relative aspect-square w-full')[0] ?? "";
 const createRoute = readFileSync(path.join(__dirname, "../apps/web/src/app/create/page.tsx"), "utf8");
 const mobileNav = readFileSync(path.join(__dirname, "../apps/web/src/components/MobileBottomNav.tsx"), "utf8");
+const header = readFileSync(path.join(__dirname, "../apps/web/src/components/Header.tsx"), "utf8");
 function loadArtworkTiers() {
   const fileName = path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts");
   const compiled = ts.transpileModule(tierSource, {
@@ -169,4 +170,13 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(createRoute, /md:h-dvh/);
   assert.match(mobileNav, /setProperty\("--mobile-navigation-height"/);
   assert.match(mobileNav, /new ResizeObserver\(updateHeight\)/);
+});
+
+test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {
+  assert.match(createRoute, /import Header from "@\/components\/Header"/);
+  assert.match(createRoute, /data-editor-shared-header[^]*?<Header \/>/);
+  assert.match(createRoute, /<Header \/>[\s\S]*?<KittlCanvas \/>/);
+  assert.match(createRoute, /h-\[calc\(100dvh-var\(--mobile-navigation-height,4rem\)\)\][\s\S]*md:h-dvh/);
+  assert.match(header, /import MobileNav from "\.\/MobileNav"/);
+  assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
 });

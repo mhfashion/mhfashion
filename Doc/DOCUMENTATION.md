@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Reuse the existing web Header Bar in Editor
+
+- Mounted the existing `Header` component above the `/create` editor workspace. Its current responsive behavior is reused as-is: mobile hamburger/logo bar on phones and the floating navigation/actions bar on desktop; no second editor-specific Header or redesign was added.
+- Kept the editor inside the remaining viewport height below the Header and above the measured mobile bottom navigation. Updated canvas-shell assertions and the reusable Chromium check to verify the appropriate existing Header is visible and the editor starts below it at mobile and desktop sizes.
+- Validation: canvas-shell tests **9/9**, all repository Node tests **25/25**, TypeScript, modified-file ESLint, Next.js production build, Chromium portrait/landscape mobile interactions and desktop mouse interactions, and `git diff --check` passed. The existing Header is visible above the editor at the phone and desktop browser sizes tested.
+- Limitation: the existing mobile Header and bottom navigation together leave less vertical editor space on phone; this task intentionally preserves the site's current Header design and controls.
+
 ### 2026-11-14 — Phone/Mobile Editor ကို အတည်ပြုထားသော Desktop system နှင့်တူအောင် ပြင်ဆင်ခြင်း
 
 - လက်ရှိ Desktop ဒီဇိုင်းနှင့် shared 3500/1500 px tier ကို မပြောင်းပါ။ Front/Back Artwork group တစ်ခုချင်းစီကို လက်ဖြင့် သီးခြားရွှေ့/resize ပြုလုပ်နိုင်ပြီး အကြီး tier ကို နှစ်ဖက်လုံး ပြောင်းသုံးနိုင်သည်။ Overlay ပြင်ဆင်မှုကြောင့် source strokes သို့မဟုတ် outer Mockup box မပြောင်းပါ။
