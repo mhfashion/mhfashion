@@ -392,9 +392,10 @@ async function main() {
     const options = await rect('button[aria-label="Canvas options"]');
     assert.equal(options.w, 44); assert.equal(options.h, 44);
     await tap('button[aria-label="Canvas options"]');
-    await tap('button[aria-label="Add Mockup"]');
+    await tap('button[aria-label="Add Front Mockup"]');
+    await tap('button[aria-label="Canvas options"]');
     const addBack = await rect('button[aria-label="Add Back Mockup"]');
-    assert.equal(addBack.w, 44); assert.equal(addBack.h, 44);
+    assert.ok(addBack.h >= 43, "Back Mockup menu row stays finger-tall");
     await tap('button[aria-label="Add Back Mockup"]');
     const surface = await rect('section[aria-label="Front Mockup"] > div:last-child');
     const beforeSwipe = await snapshot();
@@ -447,10 +448,14 @@ async function main() {
     assert.ok(Math.abs(zoomHit.w - 44) < 1, "Viewport zoom does not shrink/grow the finger hit target");
     for (let n = 0; n < 4; n++) await tap('button[aria-label="Zoom out"]');
     assert.equal(await evaluate(() => document.querySelector('[aria-label="View zoom"]').textContent), "25%");
-    for (const sel of ['button[aria-label="Canvas options"]', 'button[aria-label="Add Back Mockup"]', 'button[aria-label="Close Front Mockup"]']) {
+    for (const sel of ['button[aria-label="Canvas options"]', 'button[aria-label="Close Front Mockup"]']) {
       const control = await rect(sel, false);
       assert.ok(Math.abs(control.w - 44) < 1 && Math.abs(control.h - 44) < 1, `Control stays finger-sized at 25%: ${sel}`);
     }
+    await tap('button[aria-label="Canvas options"]');
+    const menuRow = await rect('button[aria-label="Add Back Mockup"]', false);
+    assert.ok(Math.abs(menuRow.h - 44) < 1, "Mockup menu row stays finger-tall at 25% zoom");
+    await tap('button[aria-label="Canvas options"]');
     const label = await rect('section[aria-label="Front Mockup"] [data-artwork-touch-dimensions]', false);
     assert.ok(label.h >= 23, "Dimensions badge stays screen-readable at 25% zoom");
     await tap('button[aria-label="Reset view"]');
@@ -483,7 +488,7 @@ async function main() {
         visibleMockups: [...document.querySelectorAll('section[aria-label$="Mockup"]')].filter((section) => getComputedStyle(section).display !== "none").length,
         backHidden: document.querySelector('section[aria-label="Back Mockup"]')?.hidden,
         frontVisible: getComputedStyle(document.querySelector('section[aria-label="Front Mockup"]')).display !== "none",
-        addBack: document.querySelectorAll('button[aria-label="Add Back Mockup"]').length,
+        addBackInMockupBox: document.querySelectorAll('section[aria-label="Front Mockup"] button[aria-label="Add Back Mockup"]').length,
         pendingDisabled: ["Brand", "Model"].every((label) => toolbar.querySelector(`select[aria-label="${label}"]`)?.disabled),
       };
     });
@@ -491,25 +496,44 @@ async function main() {
     assert.equal(phoneState.visibleMockups, 1, "Phone shows one usable Mockup");
     assert.equal(phoneState.backHidden, true, "Phone hides the Back Mockup");
     assert.equal(phoneState.frontVisible, true);
-    assert.equal(phoneState.addBack, 0, "Phone has no Back add control");
+    assert.equal(phoneState.addBackInMockupBox, 0, "Mockup boxes carry no add control");
+    assert.deepEqual(await canvasMenuItems(), ["Show Grid", "Add Front Mockup"], "Phone offers only the Front Mockup entry");
+    await closeCanvasMenu();
     assert.ok(phoneState.pendingDisabled, "Brand and Model remain placeholders");
     assert.equal(await chooseSelect('select[aria-label="Product"]', "T-Shirt"), "T-Shirt");
     const apparelState = await evaluate(() => ({
       gsm: document.querySelector('select[aria-label="GSM"]')?.value,
       size: [...document.querySelectorAll('[aria-label="Header Bar 2"] button')].some((button) => button.textContent.trim() === "Size"),
       backVisible: getComputedStyle(document.querySelector('section[aria-label="Back Mockup"]')).display !== "none",
-      addBack: document.querySelectorAll('button[aria-label="Add Back Mockup"]').length,
+      addBackInMockupBox: document.querySelectorAll('section[aria-label="Front Mockup"] button[aria-label="Add Back Mockup"]').length,
     }));
     assert.equal(apparelState.gsm, width === 390 ? "200 GSM" : "160 GSM", "No GSM choice was cleared while switching products");
     assert.equal(apparelState.size, true);
     assert.equal(apparelState.backVisible, true, "T-Shirt restores its Back Mockup");
-    assert.equal(apparelState.addBack, 1, "T-Shirt permits adding Back Mockup");
+    assert.equal(apparelState.addBackInMockupBox, 0, "Mockup boxes carry no add control");
+    assert.deepEqual(await canvasMenuItems(), ["Show Grid", "Add Front Mockup", "Add Back Mockup"], "Apparel exposes both mockup sides");
+    await closeCanvasMenu();
     console.log(`PASS phone ${width}×${height}: Product/GSM options, no Choose, Phone mockup limit, Layers toggle and touch editor regressions`);
+  }
+  async function canvasMenuItems() {
+    await evaluate(() => {
+      const dot = document.querySelector('button[aria-label="Canvas options"]');
+      if (dot.getAttribute('aria-expanded') === 'false') dot.click();
+    });
+    await pause(160);
+    return evaluate(() => [...document.querySelectorAll('[role="menu"][aria-label="Canvas options"] button')].map((item) => item.getAttribute('aria-label') || item.textContent.trim()));
+  }
+  async function closeCanvasMenu() {
+    await evaluate(() => {
+      const dot = document.querySelector('button[aria-label="Canvas options"]');
+      if (dot.getAttribute('aria-expanded') === 'true') dot.click();
+    });
+    await pause(120);
   }
   async function tinyArtwork() {
     await load(390, 844, true);
     await tap('button[aria-label="Canvas options"]');
-    await tap('button[aria-label="Add Mockup"]');
+    await tap('button[aria-label="Add Front Mockup"]');
     await tap('canvas[aria-label="Blank print canvas"]');
     const tinyHit = await rect(`${overlay("Front")} [data-artwork-move-touch-target]`);
     assert.ok(Math.abs(tinyHit.w - 44) < 1 && Math.abs(tinyHit.h - 44) < 1);
@@ -548,7 +572,7 @@ async function main() {
     const landscapeOptions = await rect('button[aria-label="Canvas options"]');
     assert.equal(landscapeOptions.w, 44);
     await tap('button[aria-label="Canvas options"]');
-    await tap('button[aria-label="Add Mockup"]');
+    await tap('button[aria-label="Add Front Mockup"]');
     assert.equal(await evaluate(() => getComputedStyle(document.querySelector('[aria-label="Editor viewport"]').firstElementChild).flexDirection), "column");
     await tap('button[aria-label="Expand Layers panel"]');
     await tap('button[aria-label="Add layer"]');
@@ -679,7 +703,8 @@ async function main() {
     assert.equal(desktopButton.w, 14); assert.equal(desktopButton.h, 14);
     console.log("PASS desktop 1280×900: original control size and no mobile toolbar");
     await clickMouse('button[aria-label="Canvas options"]');
-    await clickMouse('button[aria-label="Add Mockup"]');
+    await clickMouse('button[aria-label="Add Front Mockup"]');
+    await clickMouse('button[aria-label="Canvas options"]');
     await clickMouse('button[aria-label="Add Back Mockup"]');
     const desktopCanvas = await rect('canvas[aria-label="Blank print canvas"]');
     const begin = { x: desktopCanvas.x + 28, y: desktopCanvas.y + 28 };

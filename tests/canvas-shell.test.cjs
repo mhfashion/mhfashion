@@ -29,20 +29,23 @@ function loadArtworkTiers() {
   return module.exports;
 }
 
-test("canvas options expose Show Grid and enforce product-specific mockup limits", () => {
+test("compact canvas options menu exposes Show Grid and the two product mockup sides", () => {
   assert.match(source, /aria-label="Canvas options"/);
   assert.match(source, /<span>Show Grid<\/span>/);
   assert.match(source, /aria-checked=\{showGrid\}/);
   assert.match(source, /setShowGrid\(\(visible\) => !visible\)/);
-  assert.match(source, /aria-label="Add Mockup"[\s\S]*?addMockup\("Front Mockup"\)/);
+  assert.match(source, /aria-label="Add Front Mockup"[\s\S]*?addMockup\("Front Mockup"\)/);
+  assert.match(source, /<span>Front Mockup<\/span>[\s\S]*?<span>Back Mockup<\/span>/);
+  assert.doesNotMatch(source, /aria-label="Add Mockup"/);
   assert.match(source, /aria-label="Add Back Mockup"[\s\S]*?addMockup\("Back Mockup"\)/);
   assert.match(source, /type MockupSide = "Front Mockup" \| "Back Mockup"/);
-  assert.match(source, /product === "T-Shirt" && side === "Front Mockup" && \([\s\S]*?aria-label="Add Back Mockup"/);
+  assert.match(source, /\{product === "Phone" \? null : \([\s\S]*?aria-label="Add Back Mockup"/);
   assert.match(source, /if \(product === "Phone" && side === "Back Mockup"\) return/);
   assert.match(source, /product === "Phone" \? mockups\.filter\(\(side\) => side === "Front Mockup"\)/);
   assert.match(source, /hidden=\{product === "Phone" && side === "Back Mockup"\}/);
   assert.match(source, /activeLargeArtworkTierOwner =\s*product === "Phone" && largeArtworkTierOwner === "Back Mockup" \? null : largeArtworkTierOwner/);
-  assert.match(mockupSection, /aria-label="Add Back Mockup"[\s\S]*?absolute -left-\[35px\] top-\[calc\(50%\+1\.25rem\)\] z-30[\s\S]*?h-11 w-11[\s\S]*?md:-left-5 md:h-3\.5 md:w-3\.5/);
+  assert.doesNotMatch(mockupSection, /aria-label="Add Back Mockup"/);
+  assert.doesNotMatch(source, /-left-\[35px\]/);
   assert.doesNotMatch(mockupHeader, /Add Back Mockup/);
   assert.match(source, /aria-label=\{`Close \$\{side\}`}[^]*?removeMockup\(side\)/);
   assert.match(source, /function removeMockup\(side: MockupSide\)[\s\S]*?filter\(\(item\) => item !== side\)/);
@@ -59,6 +62,13 @@ test("grid is optional, and the initial canvas has no visible specification badg
   assert.match(source, /aria-label=\{side\}/);
   assert.match(source, /setShowGrid\(\(visible\) => !visible\)[\s\S]*?setMenuOpen\(false\)/);
   assert.match(source, /absolute -right-5 top-1\/2[\s\S]*?h-3\.5 w-3\.5/);
+  assert.match(source, /min-w-36 rounded-md border border-border bg-bg-surface p-1 shadow-lg/);
+  assert.doesNotMatch(source, /min-w-44|p-1\.5 shadow-lg/);
+  assert.match(source, /gap-1\.5 rounded px-2 py-1 text-left text-xs/);
+  assert.match(source, /<Grid2X2 size=\{13\}/);
+  assert.match(source, /rounded-full bg-accent shadow-sm ring-1 ring-accent\/40 hover:bg-accent\/80/);
+  assert.match(source, /h-1 w-1 rounded-full bg-accent-foreground/);
+  assert.doesNotMatch(source, /bg-\[#a58be8\]|hover:bg-\[#8f72d4\]/);
   assert.match(source, /backgroundSize: "10% 10%"/g);
   assert.match(source, /flex-col items-center justify-start overflow-auto[\s\S]*md:overflow-hidden/);
   assert.match(source, /md:flex-row md:gap-12/);
@@ -67,7 +77,10 @@ test("grid is optional, and the initial canvas has no visible specification badg
 test("canvas and each mockup are independently draggable with live connector wires", () => {
   assert.match(source, /aria-label="Canvas and mockup connections"/);
   assert.match(source, /connectors\.map\(\(connection\) => \(/);
-  assert.match(source, /<path d=\{connection\.path\}[^>]*stroke="#8f72d4"/);
+  assert.match(source, /className="pointer-events-none absolute inset-0 z-0 overflow-visible text-accent"/);
+  assert.match(source, /<path d=\{connection\.path\}[^>]*stroke="currentColor"/);
+  assert.match(source, /<circle cx=\{connection\.start\.x\}[^>]*fill="currentColor"/);
+  assert.doesNotMatch(source, /#8f72d4/);
   assert.match(source, /for \(const side of visibleMockups\)/);
   assert.match(source, /mockupSurfaceRefs\.current\[side\]/);
   assert.match(source, /onPointerDown=\{\(event\) => startNodeDrag\("Print canvas", event\)\}/);

@@ -596,12 +596,12 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
               "--editor-inverse-zoom": 1 / zoom,
             } as React.CSSProperties}
           >
-            <svg className="pointer-events-none absolute inset-0 z-0 overflow-visible" width="100%" height="100%" aria-label="Canvas and mockup connections">
+            <svg className="pointer-events-none absolute inset-0 z-0 overflow-visible text-accent" width="100%" height="100%" aria-label="Canvas and mockup connections">
               {connectors.map((connection) => (
                 <g key={connection.side}>
-                  <path d={connection.path} fill="none" stroke="#8f72d4" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx={connection.start.x} cy={connection.start.y} r="2.5" fill="#8f72d4" />
-                  <circle cx={connection.end.x} cy={connection.end.y} r="2.5" fill="#8f72d4" />
+                  <path d={connection.path} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx={connection.start.x} cy={connection.start.y} r="2.5" fill="currentColor" />
+                  <circle cx={connection.end.x} cy={connection.end.y} r="2.5" fill="currentColor" />
                 </g>
               ))}
             </svg>
@@ -612,7 +612,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
               onPointerUp={endNodeDrag}
               onPointerCancel={endNodeDrag}
               onLostPointerCapture={endNodeDrag}
-              className={`relative z-10 w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : "cursor-grab"}`}
+              className={`relative ${menuOpen ? "z-30" : "z-10"} w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : "cursor-grab"}`}
               style={{ transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
             >
               <div className="relative">
@@ -662,15 +662,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     aria-haspopup="menu"
                     aria-expanded={menuOpen}
                     onClick={() => setMenuOpen((open) => !open)}
-                    className="-m-[15px] flex h-11 w-11 items-center justify-center rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:m-0 md:h-3.5 md:w-3.5 [@media(pointer:coarse)]:-m-[15px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
+                    className="-m-[15px] flex h-11 w-11 items-center justify-center rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-accent md:m-0 md:h-3.5 md:w-3.5 [@media(pointer:coarse)]:-m-[15px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
                   >
-                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm hover:bg-[#8f72d4]"><span className="h-1 w-1 rounded-full bg-white" /></span>
+                    <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent shadow-sm ring-1 ring-accent/40 hover:bg-accent/80"><span className="h-1 w-1 rounded-full bg-accent-foreground" /></span>
                   </button>
                   {menuOpen && (
                     <div
                       role="menu"
                       aria-label="Canvas options"
-                    className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-44 rounded-md border border-border bg-bg-surface p-1.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-3 md:-translate-y-1/2 [@media(pointer:coarse)]:origin-top-right [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
+                    className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-36 rounded-md border border-border bg-bg-surface p-1 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-2 md:-translate-y-1/2 [@media(pointer:coarse)]:origin-top-right [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
                     >
                       <button
                         type="button"
@@ -680,25 +680,44 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                           setShowGrid((visible) => !visible);
                           setMenuOpen(false);
                         }}
-                        className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                        className="flex min-h-11 w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:text-text-faint md:min-h-0 [@media(pointer:coarse)]:min-h-11"
                       >
-                        <Grid2X2 size={15} aria-hidden="true" />
+                        <Grid2X2 size={13} aria-hidden="true" />
                         <span>Show Grid</span>
-                        <span className={`ml-auto h-3.5 w-3.5 rounded-sm border ${showGrid ? "border-accent bg-accent" : "border-border-light"}`} aria-hidden="true" />
+                        <span className={`ml-auto h-3 w-3 rounded-sm border ${showGrid ? "border-accent bg-accent" : "border-border-light"}`} aria-hidden="true" />
                       </button>
                       <button
                         type="button"
                         role="menuitem"
-                        aria-label="Add Mockup"
+                        aria-label="Add Front Mockup"
+                        title={visibleMockups.includes("Front Mockup") ? "Front Mockup is already attached" : "Attach the Front Mockup box"}
+                        disabled={visibleMockups.includes("Front Mockup")}
                         onClick={() => {
                           addMockup("Front Mockup");
                           setMenuOpen(false);
                         }}
-                        className="flex min-h-11 w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                        className="flex min-h-11 w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:text-text-faint md:min-h-0 [@media(pointer:coarse)]:min-h-11"
                       >
-                        <Plus size={15} aria-hidden="true" />
-                        <span>Add Mockup</span>
+                        <Plus size={13} aria-hidden="true" />
+                        <span>Front Mockup</span>
                       </button>
+                      {product === "Phone" ? null : (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          aria-label="Add Back Mockup"
+                          title={visibleMockups.includes("Back Mockup") ? "Back Mockup is already attached" : "Attach the Back Mockup box"}
+                          disabled={visibleMockups.includes("Back Mockup")}
+                          onClick={() => {
+                            addMockup("Back Mockup");
+                            setMenuOpen(false);
+                          }}
+                          className="flex min-h-11 w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:text-text-faint md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                        >
+                          <Plus size={13} aria-hidden="true" />
+                          <span>Back Mockup</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -735,17 +754,6 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   }}
                   className="relative aspect-square w-full border border-[#a58be8] bg-[#e6e7e9] shadow-[0_5px_18px_rgba(50,35,90,0.08)]"
                 >
-                  {product === "T-Shirt" && side === "Front Mockup" && (
-                    <button
-                      type="button"
-                      aria-label="Add Back Mockup"
-                      title="Add Back Mockup"
-                      onClick={() => addMockup("Back Mockup")}
-                      className="absolute -left-[35px] top-[calc(50%+1.25rem)] z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white outline-none focus-visible:ring-2 focus-visible:ring-[#8f72d4] md:-left-5 md:h-3.5 md:w-3.5 [@media(pointer:coarse)]:-left-[35px] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
-                    >
-                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#a58be8] shadow-sm hover:bg-[#8f72d4]"><Plus size={8} aria-hidden="true" /></span>
-                    </button>
-                  )}
                   {showGrid && (
                     <div
                       aria-hidden="true"
