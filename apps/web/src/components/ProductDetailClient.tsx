@@ -87,8 +87,8 @@ export default function ProductDetailClient({ product, related }: Props) {
   const gsmPrice = { "160 GSM": 0, "180 GSM": 1000, "200 GSM": 2000, "240 GSM": 3500 }[selectedGsm ?? ""] ?? 0;
   const variantPriceMin = product.priceMinKs + sizePrice + colorPrice + materialPrice + gsmPrice;
   const variantPriceMax = product.priceMaxKs + sizePrice + colorPrice + materialPrice + gsmPrice;
-  const hasVariantSelection = selectedSize !== null || selectedColor !== null || selectedMaterial !== null || selectedGsm !== null;
-  const price = hasVariantSelection
+  const hasCompleteVariantSelection = selectedSize !== null && selectedColor !== null && selectedMaterial !== null && selectedGsm !== null;
+  const price = hasCompleteVariantSelection
     ? `${(variantPriceMax * quantity).toLocaleString("en-US")} Ks`
     : formatRangeKs(variantPriceMin * quantity, variantPriceMax * quantity);
   const addQuantityToCart = () => {

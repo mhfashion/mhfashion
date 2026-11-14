@@ -60,11 +60,11 @@ This log records completed website-related changes in the connected repository. 
   Size, Color, Material, Fit Type, Sleeve, and Print Style controls, and tuned
   mobile title, price, spacing, tabs, and three-button action layout to avoid
   clipping or horizontal overflow.
-- Product cards still show the catalog range before a choice. The detail page
-  starts with the range when no Size, Color, or Material is selected; after any
-  of those choices, it displays one exact-looking client-calculated price.
-  The selected options are reflected in the active states and Specifications
-  tab.
+- Product cards still show the catalog range. The detail page keeps showing a
+  quantity-adjusted range until all four required choices—Size, Color, Material,
+  and GSM—are selected; only then does it display one exact-looking
+  client-calculated price. The selected options are reflected in the active
+  states and Specifications tab.
 - Files changed: `apps/web/src/app/products/[slug]/page.tsx`,
   `apps/web/src/components/ProductDetailClient.tsx`, `Plan/PLAN.md`, and this
   documentation file.
