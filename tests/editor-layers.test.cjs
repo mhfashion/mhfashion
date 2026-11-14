@@ -44,13 +44,15 @@ test("new layers get editable defaults and drawing remains isolated to the selec
 
 test("brush styling metadata survives live updates and layer duplication", () => {
   const layer = createEditorArtworkLayer("one", "Layer 1");
-  const brushStroke = { ...pointStroke(0.2, 0.4), tool: "brush" };
+  const brushStroke = { ...pointStroke(0.2, 0.4), tool: "brush", color: "#f97316" };
   const drawn = appendLayerStroke([layer], "one", "artwork", brushStroke, "hide");
-  const updated = updateLayerLastStroke(drawn, "one", "artwork", { ...pointStroke(0.25, 0.45), tool: "brush" }, "hide");
+  const updated = updateLayerLastStroke(drawn, "one", "artwork", { ...pointStroke(0.25, 0.45), tool: "brush", color: "#f97316" }, "hide");
   const duplicate = duplicateEditorLayer(updated, "one", "copy")[0];
 
   assert.equal(updated[0].strokes[0].tool, "brush");
+  assert.equal(updated[0].strokes[0].color, "#f97316");
   assert.equal(duplicate.strokes[0].tool, "brush");
+  assert.equal(duplicate.strokes[0].color, "#f97316");
   assert.notStrictEqual(duplicate.strokes[0].points, updated[0].strokes[0].points);
 });
 

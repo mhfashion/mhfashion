@@ -41,6 +41,7 @@ type ActiveArtworkStroke = {
   tool: "pen" | "brush";
   maskBrushMode: MaskBrushMode;
   points: Point[];
+  color: string;
 };
 
 function ArtworkOverlay({
@@ -72,6 +73,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [activeTool, setActiveTool] = useState<EditorTool>("pen");
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const [toolNotice, setToolNotice] = useState("");
+  const [foregroundColor, setForegroundColor] = useState("#202124");
+  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
@@ -361,12 +364,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     if (activeTool === "move" || activeTool === "hand") return;
-    if (activeTool === "text" || activeTool === "remove-bg") {
+    if (activeTool === "remove-bg") {
       event.preventDefault();
       event.stopPropagation();
-      setToolNotice(activeTool === "text"
-        ? "Text objects are not connected to this canvas yet."
-        : "Remove BG needs an uploaded image; background removal is not connected yet.");
+      setToolNotice("Remove BG needs an uploaded image; background removal is not connected yet.");
       return;
     }
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
@@ -389,6 +390,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       tool,
       maskBrushMode,
       points: [point],
+      color: foregroundColor,
     };
     activeArtworkStrokeRef.current = activeStroke;
     rememberLayerSnapshot();
@@ -396,7 +398,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       current,
       activeStroke.layerId,
       activeStroke.target,
-      { points: [point], tool },
+      { points: [point], tool, color: foregroundColor },
       activeStroke.maskBrushMode,
     ));
   }
@@ -416,7 +418,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       current,
       active.layerId,
       active.target,
-      { points: [...active.points], tool: active.tool },
+      { points: [...active.points], tool: active.tool, color: active.color },
       active.maskBrushMode,
     ));
   }
@@ -436,11 +438,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function chooseTool(tool: EditorTool) {
     setActiveTool(tool);
-    setToolNotice(tool === "text"
-      ? "Text objects are not connected to this canvas yet."
-      : tool === "remove-bg"
-        ? "Remove BG needs an uploaded image; background removal is not connected yet."
-        : "");
+    setToolNotice(tool === "remove-bg"
+      ? "Remove BG needs an uploaded image; background removal is not connected yet."
+      : "");
   }
 
   function startNodeDrag(node: WorkspaceNode, event: React.PointerEvent<HTMLElement>) {
@@ -801,7 +801,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         collapsed={toolsCollapsed}
         canUndo={undoStack.length > 0}
         notice={toolNotice}
+        foregroundColor={foregroundColor}
+        backgroundColor={backgroundColor}
         onSelect={chooseTool}
+        onForegroundColorChange={setForegroundColor}
+        onBackgroundColorChange={setBackgroundColor}
         onUndo={undoCanvasAction}
         onToggleCollapsed={() => setToolsCollapsed((collapsed) => !collapsed)}
         hideOnMobile={layersOpen || editSidebarOpen}

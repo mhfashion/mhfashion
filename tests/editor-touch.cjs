@@ -55,6 +55,25 @@ async function main() {
       if (await evaluate(() => !!document.querySelector('button[aria-label="Canvas options"]'))) break;
     }
     await pause(500);
+    const toolbar = await evaluate(() => {
+      const bar = document.querySelector('[data-testid="editor-tools-bar"]');
+      if (!bar) throw new Error("Missing responsive Editor Tools bar");
+      const foreground = bar.querySelector('button[aria-label="Foreground Color"]');
+      const background = bar.querySelector('button[aria-label="Background Color"]');
+      const bounds = bar.getBoundingClientRect();
+      return {
+        foregroundVisible: !!foreground && bounds.width > 0 && bounds.height > 0,
+        backgroundVisible: !!background && bounds.width > 0 && bounds.height > 0,
+        textToolPresent: !!bar.querySelector('button[aria-label="Text"]'),
+        top: bounds.top,
+        bottom: bounds.bottom,
+        viewportHeight: window.innerHeight,
+      };
+    });
+    assert.ok(toolbar.foregroundVisible, `Foreground swatch missing at ${width}×${height}`);
+    assert.ok(toolbar.backgroundVisible, `Background swatch missing at ${width}×${height}`);
+    assert.equal(toolbar.textToolPresent, false, `Text Tool should be absent at ${width}×${height}`);
+    assert.ok(toolbar.top >= 0 && toolbar.bottom <= toolbar.viewportHeight, `Tools bar must remain in view at ${width}×${height}`);
   }
   async function rect(selector, scroll = true) {
     if (scroll) {

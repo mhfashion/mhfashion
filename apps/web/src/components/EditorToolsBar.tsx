@@ -9,18 +9,22 @@ import {
   ImageMinus,
   Move,
   Pen,
-  Type,
   Undo2,
 } from "lucide-react";
+import { useRef } from "react";
 
-export type EditorTool = "move" | "pen" | "hand" | "brush" | "eraser" | "text" | "remove-bg";
+export type EditorTool = "move" | "pen" | "hand" | "brush" | "eraser" | "remove-bg";
 
 type Props = {
   activeTool: EditorTool;
   collapsed: boolean;
   canUndo: boolean;
   notice: string;
+  foregroundColor: string;
+  backgroundColor: string;
   onSelect: (tool: EditorTool) => void;
+  onForegroundColorChange: (color: string) => void;
+  onBackgroundColorChange: (color: string) => void;
   onUndo: () => void;
   onToggleCollapsed: () => void;
   hideOnMobile?: boolean;
@@ -32,7 +36,6 @@ const tools = [
   { id: "hand", label: "Hand tool", Icon: Hand },
   { id: "brush", label: "Brush", Icon: Brush },
   { id: "eraser", label: "Eraser", Icon: Eraser },
-  { id: "text", label: "Text", Icon: Type },
   { id: "remove-bg", label: "Remove BG", Icon: ImageMinus },
 ] as const;
 
@@ -41,11 +44,18 @@ export default function EditorToolsBar({
   collapsed,
   canUndo,
   notice,
+  foregroundColor,
+  backgroundColor,
   onSelect,
+  onForegroundColorChange,
+  onBackgroundColorChange,
   onUndo,
   onToggleCollapsed,
   hideOnMobile = false,
 }: Props) {
+  const foregroundInputRef = useRef<HTMLInputElement>(null);
+  const backgroundInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className={`pointer-events-none absolute inset-x-0 bottom-2 z-50 flex justify-center px-2 md:bottom-3 ${hideOnMobile ? "max-md:hidden" : ""}`} data-testid="editor-tools-positioner">
       <section
@@ -68,6 +78,42 @@ export default function EditorToolsBar({
                 <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
               </button>
             ))}
+            <div role="group" aria-label="Color swatches" className="relative h-8 w-10 shrink-0">
+              <input
+                ref={foregroundInputRef}
+                type="color"
+                value={foregroundColor}
+                onChange={(event) => onForegroundColorChange(event.target.value)}
+                aria-hidden="true"
+                tabIndex={-1}
+                className="sr-only"
+              />
+              <input
+                ref={backgroundInputRef}
+                type="color"
+                value={backgroundColor}
+                onChange={(event) => onBackgroundColorChange(event.target.value)}
+                aria-hidden="true"
+                tabIndex={-1}
+                className="sr-only"
+              />
+              <button
+                type="button"
+                aria-label="Background Color"
+                title="Background Color"
+                onClick={() => backgroundInputRef.current?.click()}
+                className="absolute right-0 top-0 h-6 w-6 rounded border border-border shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                style={{ backgroundColor }}
+              />
+              <button
+                type="button"
+                aria-label="Foreground Color"
+                title="Foreground Color"
+                onClick={() => foregroundInputRef.current?.click()}
+                className="absolute bottom-0 left-0 z-10 h-6 w-6 rounded border border-border shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                style={{ backgroundColor: foregroundColor }}
+              />
+            </div>
             <span className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
             <button
               type="button"

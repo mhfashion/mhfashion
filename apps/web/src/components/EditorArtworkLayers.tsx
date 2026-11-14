@@ -14,14 +14,16 @@ function StrokeShape({
   color,
   width,
   className,
+  isArtwork = false,
 }: {
   stroke: ArtworkStroke;
   color: string;
   width: number;
   className?: string;
+  isArtwork?: boolean;
 }) {
-  const strokeWidth = color === "#202124" && stroke.tool === "brush" ? 52 : width;
-  const strokeOpacity = color === "#202124" && stroke.tool === "brush" ? 0.68 : undefined;
+  const strokeWidth = isArtwork && stroke.tool === "brush" ? 52 : width;
+  const strokeOpacity = isArtwork && stroke.tool === "brush" ? 0.68 : undefined;
   if (stroke.points.length === 0) return null;
   if (stroke.points.length === 1) {
     return (
@@ -31,7 +33,7 @@ function StrokeShape({
         r={strokeWidth / 2}
         fill={color}
         opacity={strokeOpacity}
-        data-editor-artwork-stroke={color === "#202124" ? "true" : undefined}
+        data-editor-artwork-stroke={isArtwork ? "true" : undefined}
         className={className}
       />
     );
@@ -45,7 +47,7 @@ function StrokeShape({
       strokeOpacity={strokeOpacity}
       strokeLinecap="round"
       strokeLinejoin="round"
-      data-editor-artwork-stroke={color === "#202124" ? "true" : undefined}
+      data-editor-artwork-stroke={isArtwork ? "true" : undefined}
       className={className}
     />
   );
@@ -96,7 +98,7 @@ export default function EditorArtworkLayers({
             )}
             <g transform={transform} mask={layer.mask !== null ? `url(#${maskId})` : undefined}>
               {layer.strokes.map((stroke, index) => (
-                <StrokeShape key={index} stroke={stroke} color="#202124" width={24} />
+                <StrokeShape key={index} stroke={stroke} color={stroke.color ?? "#202124"} width={24} isArtwork />
               ))}
             </g>
             {selectedMaskLayerId === layer.id && layer.mask !== null && (

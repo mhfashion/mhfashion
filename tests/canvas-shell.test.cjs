@@ -109,9 +109,22 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(toolsBar, /hideOnMobile \? "max-md:hidden"/);
   assert.match(toolsBar, /rounded-2xl/);
   assert.match(toolsBar, /h-7 w-7/);
-  for (const label of ["Move", "Pen", "Hand tool", "Brush", "Eraser", "Text", "Remove BG", "Undo"]) {
+  for (const label of ["Move", "Pen", "Hand tool", "Brush", "Eraser", "Remove BG", "Undo"]) {
     assert.ok(toolsBar.includes(`label: "${label}"`) || toolsBar.includes(`aria-label="${label}"`), `missing ${label}`);
   }
+  assert.doesNotMatch(toolsBar, /id: "text"|label: "Text"/);
+  assert.doesNotMatch(source, /activeTool === "text"|tool === "text"|Text objects are not connected/);
+  assert.match(toolsBar, /role="group" aria-label="Color swatches"/);
+  assert.match(toolsBar, /aria-label="Foreground Color"/);
+  assert.match(toolsBar, /aria-label="Background Color"/);
+  assert.equal((toolsBar.match(/type="color"/g) ?? []).length, 2);
+  assert.match(source, /const \[foregroundColor, setForegroundColor\] = useState\("#202124"\)/);
+  assert.match(source, /const \[backgroundColor, setBackgroundColor\] = useState\("#ffffff"\)/);
+  assert.match(source, /color: foregroundColor/);
+  assert.match(source, /foregroundColor=\{foregroundColor\}/);
+  assert.match(source, /backgroundColor=\{backgroundColor\}/);
+  assert.match(layerModelSource, /color\?: string/);
+  assert.match(artworkLayers, /color=\{stroke\.color \?\? "#202124"\}/);
   assert.match(toolsBar, /Expand editor tools/);
   assert.match(toolsBar, /Collapse editor tools/);
   assert.match(source, /activeTool === "hand" && event\.button === 0/);
