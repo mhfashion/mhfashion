@@ -182,7 +182,7 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(mobileNav, /new ResizeObserver\(updateHeight\)/);
 });
 
-test("Layers panel starts closed and controls a functional right-side layer stack and masks", () => {
+test("Compact Photoshop-style Layers panel docks right and controls its functional stack and masks", () => {
   assert.match(source, /const \[layersOpen, setLayersOpen\] = useState\(false\)/);
   assert.match(source, /<EditorLayersPanel[\s\S]*?open=\{layersOpen\}[\s\S]*?onToggle=\{\(\) => setLayersOpen\(\(open\) => !open\)\}[\s\S]*?onAddLayer=\{addLayer\}[\s\S]*?onAddMask=\{createLayerMask\}[\s\S]*?onDeleteLayer=\{deleteLayer\}/);
   assert.match(source, /<div className="relative min-h-0 flex-1">[\s\S]*?ref=\{viewportRef\}/);
@@ -192,7 +192,17 @@ test("Layers panel starts closed and controls a functional right-side layer stac
   assert.match(source, /function deleteLayer\(id: string\)[\s\S]*?deleteEditorLayer\(layers, id\)/);
   assert.match(layersPanel, /aria-label="Layers panel"/);
   assert.match(layersPanel, /data-dock-side="right"/);
-  assert.match(layersPanel, /dark:bg-\[#2b2b2b\]/);
+  assert.match(layersPanel, /role="tablist" aria-label="Panel tabs"/);
+  assert.match(layersPanel, /role="tab" aria-selected="true"/);
+  assert.match(layersPanel, /Channels[\s\S]*?Paths/);
+  assert.match(layersPanel, />Kind</);
+  assert.match(layersPanel, /disabled[^>]*aria-label="Layer kind filter"/);
+  assert.match(layersPanel, /Opacity:/);
+  assert.match(layersPanel, /Lock:/);
+  assert.match(layersPanel, /Fill:/);
+  assert.match(layersPanel, /disabled[^>]*aria-label="Fill 100 percent"/);
+  assert.match(layersPanel, /text-\[11px\]/);
+  assert.match(layersPanel, /dark:bg-\[#303030\]/);
   assert.match(layersPanel, /aria-label=\{open \? "Collapse Layers panel" : "Expand Layers panel"\}/);
   assert.match(layersPanel, /aria-expanded=\{open\}/);
   assert.match(layersPanel, /style=\{\{ right: open \? PANEL_WIDTH : 0 \}\}/);
@@ -200,14 +210,15 @@ test("Layers panel starts closed and controls a functional right-side layer stac
     assert.match(layersPanel, new RegExp(label, "i"));
   }
   assert.match(layersPanel, /aria-label="Layer list" role="list"/);
-  assert.match(layersPanel, /aria-label=\{`Blend mode for \$\{selectedLayer\.name\}`\}/);
-  assert.match(layersPanel, /aria-label=\{`Opacity for \$\{selectedLayer\.name\}`\}/);
+  assert.match(layersPanel, /Blend mode for \$\{selectedLayer\.name\}/);
+  assert.match(layersPanel, /Opacity for \$\{selectedLayer\.name\}/);
   assert.match(layersPanel, /Hide \(black\)/);
   assert.match(layersPanel, /Reveal \(white\)/);
   assert.match(artworkLayers, /<mask[\s\S]*?maskUnits="userSpaceOnUse"/);
   assert.match(artworkLayers, /stroke\.mode === "hide" \? "black" : "white"/);
   assert.match(artworkLayers, /mask=\{layer\.mask !== null \? `url\(#\$\{maskId\}\)` : undefined\}/);
   assert.match(artworkLayers, /mixBlendMode: layer\.blendMode/);
+  assert.match(layersPanel, /aria-label="Layer actions"/);
   assert.match(layerModelSource, /export function addLayerMask/);
   assert.match(layerModelSource, /export function deleteEditorLayer/);
 });

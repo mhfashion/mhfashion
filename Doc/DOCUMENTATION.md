@@ -17,6 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-14 — Compact Layers panel to match supplied Photoshop layout
+
+- Reworked the right-side dock to follow the owner's supplied 398×770 Photoshop reference: compact `Layers / Channels / Paths` tabs; a `Kind` filter row; `Normal` blend and numeric opacity; `Lock / Fill` controls; short visibility/thumbnail/name/mask rows; and a compact bottom action strip. Reduced the panel to a 16rem maximum and labels to 11px; the row overflow menu holds rename/reorder/duplicate/delete and mask operations.
+- Artwork and mask thumbnails preview their vector strokes. The working controls remain functional; screenshot-specific items not supported by the editor yet (Channels/Paths content, kind filters, pixel locks, Fill, effects, adjustment layers, and groups) are explicitly disabled. Portrait phones retain 44px touch targets; short-landscape viewports (≤500px tall) hide the decorative Kind row and reduce toolbar controls to free scrolling room for the layer/mask list.
+- Reference source: user attachment `pasted_file_OMaJAy_image.png` (398×770), supplied 2026-11-14; it is not copied into the repository.
+- Validation: all repository Node suites **32/32**, TypeScript, changed-file ESLint with no warnings, Next.js/Cloudflare OpenNext production build, and `git diff --check` passed. Chromium verified the 16rem maximum width and 11px row labels at 1280×900, 390×844/320×740 portrait, 740×390 and 844×390 landscape including mask-control scrolling, right-dock open/close, theme switching, create/draw/duplicate/delete, mask hide/reveal, and existing Phone/T-Shirt, Front/Back, and 3500/1500px tier behaviors. Physical-device checks remain outstanding.
+
 ### 2026-11-14 — Dock Layers on the right in a Photoshop-inspired panel
 
 - Moved the initially collapsed Layers dock to the Editor viewport's right edge and moved its toggle arrow to the left edge of the dock.

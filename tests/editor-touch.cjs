@@ -235,7 +235,7 @@ async function main() {
       const panelBox = panel.getBoundingClientRect();
       const buttonBox = button.getBoundingClientRect();
       return {
-        title: panel.querySelector("h2")?.textContent,
+        title: panel.querySelector('[role="heading"]')?.textContent,
         layerCount: panel.querySelector('[aria-label="Layer count"]')?.textContent,
         initialLayer: !!panel.querySelector('[aria-label="Select Layer 1"]'),
         addLayer: !!panel.querySelector('[aria-label="Add layer"]'),
@@ -246,6 +246,13 @@ async function main() {
         arrowRight: buttonBox.right,
         panelLeft: panelBox.left,
         dockSide: panel.dataset.dockSide,
+        tabHeight: panel.querySelector('[role="tablist"]').getBoundingClientRect().height,
+        actionBarHeight: panel.querySelector('[aria-label="Layer actions"]').getBoundingClientRect().height,
+        layerRowHeight: panel.querySelector('[aria-label="Layer list"] [role="listitem"]').getBoundingClientRect().height,
+        kindDisabled: panel.querySelector('button[aria-label="Layer kind filter"]').disabled,
+        kindOpacity: getComputedStyle(panel.querySelector('button[aria-label="Layer kind filter"]')).opacity,
+        fillDisabled: panel.querySelector('button[aria-label="Fill 100 percent"]').disabled,
+        fillOpacity: getComputedStyle(panel.querySelector('button[aria-label="Fill 100 percent"]')).opacity,
         expanded: button.getAttribute("aria-expanded"),
       };
     });
@@ -256,14 +263,22 @@ async function main() {
     assert.equal(openLayers.dockSide, "right");
     assert.ok(Math.abs(openLayers.right - openLayers.viewportRight) < 1, "Layers panel docks to the viewport's right edge");
     assert.ok(openLayers.width <= openLayers.viewportWidth * 0.86 + 1, "Layers panel fits narrow phone screens");
+    assert.ok(openLayers.width <= 257, "Compact Photoshop panel stays within its 16rem maximum width");
     assert.ok(Math.abs(openLayers.arrowRight - openLayers.panelLeft) < 1, "The collapse arrow remains reachable at the open panel edge");
+    assert.equal(openLayers.tabHeight, 44, "Portrait touch tab row stays 44px tall");
+    assert.equal(openLayers.actionBarHeight, 44, "Portrait touch action bar stays 44px tall");
+    assert.ok(openLayers.layerRowHeight >= 44, "Portrait touch layer rows preserve at least a 44px target");
+    assert.equal(openLayers.kindDisabled, true, "Kind filtering remains a nonfunctional disabled placeholder");
+    assert.ok(Number(openLayers.kindOpacity) < 1, "Kind filtering is visibly dimmed");
+    assert.equal(openLayers.fillDisabled, true, "Fill remains a nonfunctional disabled placeholder");
+    assert.ok(Number(openLayers.fillOpacity) < 1, "Fill is visibly dimmed");
     assert.equal(openLayers.expanded, "true");
     if (width === 390) {
       await tap('button[aria-label="Add layer"]');
       assert.equal(await evaluate(() => document.querySelectorAll('[aria-label="Layer list"] [role="listitem"]').length), 2);
       await tap('button[aria-label="Add mask to Layer 2"]');
       assert.equal(await evaluate(() => !!document.querySelector('[aria-label="Stop editing Layer 2 mask"]')), true, "Adding a mask selects it for editing");
-      assert.equal(await evaluate(() => document.querySelector('[aria-label="Layer mask painting controls"]')?.textContent.includes("Painting on layer mask")), true);
+      assert.equal(await evaluate(() => document.querySelector('[aria-label="Layer mask painting controls"]')?.textContent.includes("Mask: black hides · white reveals")), true);
       await tap('button[aria-label="Reveal artwork with mask"]');
       assert.equal(await evaluate(() => document.querySelector('[aria-label="Reveal artwork with mask"]')?.getAttribute("aria-pressed")), "true");
       await tap('button[aria-label="Hide artwork with mask"]');
@@ -289,10 +304,13 @@ async function main() {
       assert.equal(paintedMask.maskedArtwork, true, "The source layer is actually clipped through its mask");
 
       await tap('button[aria-label="Expand Layers panel"]');
+      await tap('button[aria-label="Layer options for Layer 2"]');
       await tap('button[aria-label="Duplicate Layer 2"]');
       assert.equal(await evaluate(() => document.querySelectorAll('[aria-label="Layer list"] [role="listitem"]').length), 3);
+      await tap('button[aria-label="Layer options for Layer 2 copy"]');
       await tap('button[aria-label="Delete Layer 2 copy"]');
       assert.equal(await evaluate(() => document.querySelectorAll('[aria-label="Layer list"] [role="listitem"]').length), 2);
+      await tap('button[aria-label="Layer options for Layer 1"]');
       await tap('button[aria-label="Delete Layer 1"]');
       assert.equal(await evaluate(() => document.querySelectorAll('[aria-label="Layer list"] [role="listitem"]').length), 1);
       assert.equal(await evaluate(() => !!document.querySelector('[aria-label="Select Layer 2"]')), true, "Deleting another layer preserves the selected artwork");
@@ -464,20 +482,29 @@ async function main() {
     await tap('button[aria-label="Expand Layers panel"]');
     await tap('button[aria-label="Add layer"]');
     await tap('button[aria-label="Add mask to Layer 2"]');
-    const compactPanel = await evaluate(() => {
+    const shortLandscapeLayout = await evaluate(() => {
       const panel = document.querySelector('[aria-label="Layers panel"]');
-      return { scrollHeight: panel.scrollHeight, clientHeight: panel.clientHeight };
+      const list = panel.querySelector('[aria-label="Layer list"]');
+      return {
+        tabs: panel.querySelector('[role="tablist"]').getBoundingClientRect().height,
+        actions: panel.querySelector('[aria-label="Layer actions"]').getBoundingClientRect().height,
+        kindDisplay: getComputedStyle(panel.querySelector('[aria-label="Layer kind filters"]')).display,
+        layerRow: list.querySelector('[role="listitem"]').getBoundingClientRect().height,
+        maskButton: panel.querySelector('[aria-label="Hide artwork with mask"]').getBoundingClientRect().height,
+        listHeight: list.getBoundingClientRect().height,
+      };
     });
-    if (compactPanel.scrollHeight > compactPanel.clientHeight) {
-      await evaluate(() => {
-        const panel = document.querySelector('[aria-label="Layers panel"]');
-        panel.scrollTop = panel.scrollHeight;
-      });
-    }
+    assert.equal(shortLandscapeLayout.tabs, 32, "Short-landscape tab chrome is compact");
+    assert.equal(shortLandscapeLayout.actions, 32, "Short-landscape bottom actions are compact");
+    assert.equal(shortLandscapeLayout.kindDisplay, "none", "Decorative Kind filter strip collapses on short landscape");
+    assert.ok(shortLandscapeLayout.layerRow >= 44, "Layer rows keep usable touch height in short landscape");
+    assert.ok(shortLandscapeLayout.maskButton <= 32 && shortLandscapeLayout.maskButton >= 27, "Short-landscape mask button stays compact but tappable");
+    assert.ok(shortLandscapeLayout.listHeight >= 60, "Short-landscape layer list leaves scrollable mask space");
+    await evaluate(() => document.querySelector('[aria-label="Layer mask painting controls"]').scrollIntoView({ block: "nearest" }));
     const reachableMaskControls = await evaluate(() => {
-      const panel = document.querySelector('[aria-label="Layers panel"]');
+      const list = document.querySelector('[aria-label="Layer list"]');
       const controls = document.querySelector('[aria-label="Layer mask painting controls"]').getBoundingClientRect();
-      const bounds = panel.getBoundingClientRect();
+      const bounds = list.getBoundingClientRect();
       return { top: controls.top >= bounds.top - 1, bottom: controls.bottom <= bounds.bottom + 1 };
     });
     assert.equal(reachableMaskControls.top && reachableMaskControls.bottom, true, "Layer-mask properties remain scroll-reachable in a short landscape viewport");
@@ -515,9 +542,13 @@ async function main() {
         bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
         productBox: getComputedStyle(document.querySelector('select[aria-label="Product"]')).backgroundColor,
         layersPanel: getComputedStyle(document.querySelector('aside[aria-label="Layers panel"]')).backgroundColor,
+        layersWidth: document.querySelector('aside[aria-label="Layers panel"]').getBoundingClientRect().width,
+        layerNameSize: getComputedStyle(document.querySelector('button[aria-label="Select Layer 1 artwork"]')).fontSize,
         button: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
       };
     });
+    assert.ok(themeBefore.layersWidth <= 257, "Desktop panel is visibly narrower than its previous oversized 17rem width");
+    assert.equal(themeBefore.layerNameSize, "11px", "Photoshop-style layer rows use compact type");
     await clickPoint(themeBefore.button);
     await pause(180);
     const themeAfter = await evaluate(() => ({
@@ -536,7 +567,7 @@ async function main() {
     await pause(180);
     assert.equal(await evaluate(() => document.documentElement.classList.contains("dark")), themeBefore.dark, "Header theme toggle restores the original mode");
     console.log("PASS Header Dark/Light toggle: editor shell, compact bar, Product dropdown, and Layers dock respond in both modes");
-    assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"] h2')?.textContent), "Layers");
+    assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"] [role="heading"]')?.textContent), "Layers");
     assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"]')?.dataset.dockSide), "right");
     await clickMouse('button[aria-label="Collapse Layers panel"]');
     assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"]')), null);
