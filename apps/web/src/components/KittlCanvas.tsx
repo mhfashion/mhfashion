@@ -32,6 +32,7 @@ type PanStart = { pointerId: number; startX: number; startY: number; panX: numbe
 type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
+type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Point };
 type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
 type Connector = { side: MockupSide; path: string; start: Point; end: Point };
 type ActiveArtworkStroke = {
@@ -48,14 +49,27 @@ function ArtworkOverlay({
   layers,
   selectedMaskLayerId,
   maskBrushMode,
+  transform,
+  moveEnabled,
+  onMoveStart,
+  onMove,
+  onMoveEnd,
 }: {
   layers: EditorArtworkLayer[];
   selectedMaskLayerId: string | null;
   maskBrushMode: MaskBrushMode;
+  transform: Point;
+  moveEnabled: boolean;
+  onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
+  onMove: (event: React.PointerEvent<SVGSVGElement>) => void;
+  onMoveEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
 }) {
   return (
-    <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" className="pointer-events-none absolute inset-0 z-20 h-full w-full">
-      <EditorArtworkLayers layers={layers} selectedMaskLayerId={selectedMaskLayerId} maskBrushMode={maskBrushMode} />
+    <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={onMove} onPointerUp={onMoveEnd} onPointerCancel={onMoveEnd} onLostPointerCapture={onMoveEnd} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
+      <g transform={`translate(${500 + transform.x} ${600 + transform.y}) translate(-500 -600)`}>
+        <EditorArtworkLayers layers={layers} selectedMaskLayerId={selectedMaskLayerId} maskBrushMode={maskBrushMode} />
+      </g>
+      {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
     </svg>
   );
 }
@@ -77,6 +91,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
   const [redoStack, setRedoStack] = useState<EditorArtworkLayer[][]>([]);
+  const [canvasArtworkTransform, setCanvasArtworkTransform] = useState<Point>({ x: 0, y: 0 });
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("layer-1");
@@ -115,6 +130,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
   const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget } | null>(null);
+  const canvasArtworkDragRef = useRef<CanvasArtworkDrag | null>(null);
   const handleLargeTierRequested = useCallback((side: MockupSide) => {
     setLargeArtworkTierOwner((current) => claimLargeArtworkTier(current, side));
   }, []);
@@ -361,6 +377,28 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       const strokes = layer.strokes.filter((stroke) => !isTouched(stroke));
       return strokes.length === layer.strokes.length ? layer : { ...layer, strokes };
     }));
+  }
+
+  function startCanvasArtworkMove(event: React.PointerEvent<SVGRectElement>) {
+    if (event.button !== 0 || !event.isPrimary || layers.every((layer) => layer.strokes.length === 0)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const start = toCanvasPoint(event.clientX, event.clientY);
+    event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
+    canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin: canvasArtworkTransform };
+  }
+  function moveCanvasArtwork(event: React.PointerEvent<SVGSVGElement>) {
+    const drag = canvasArtworkDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    setCanvasArtworkTransform({
+      x: Math.max(-420, Math.min(420, drag.origin.x + (point.x - drag.start.x) * 1000)),
+      y: Math.max(-520, Math.min(520, drag.origin.y + (point.y - drag.start.y) * 1200)),
+    });
+  }
+  function endCanvasArtworkMove(event: React.PointerEvent<SVGSVGElement>) {
+    if (canvasArtworkDragRef.current?.pointerId === event.pointerId) canvasArtworkDragRef.current = null;
   }
 
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -673,6 +711,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   layers={layers}
                   selectedMaskLayerId={selectedTarget === "mask" ? selectedLayerId : null}
                   maskBrushMode={maskBrushMode}
+                  transform={canvasArtworkTransform}
+                  moveEnabled={activeTool === "move"}
+                  onMoveStart={startCanvasArtworkMove}
+                  onMove={moveCanvasArtwork}
+                  onMoveEnd={endCanvasArtworkMove}
                 />
                 <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
                   <button
@@ -837,6 +880,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         onBackgroundColorChange={setBackgroundColor}
         onUndo={undoCanvasAction}
         onRedo={redoCanvasAction}
+        onSwapColors={() => {
+          const nextForeground = backgroundColor;
+          setBackgroundColor(foregroundColor);
+          setForegroundColor(nextForeground);
+        }}
         onToggleCollapsed={() => setToolsCollapsed((collapsed) => !collapsed)}
         hideOnMobile={layersOpen || editSidebarOpen}
       />

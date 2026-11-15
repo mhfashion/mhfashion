@@ -17,6 +17,15 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-15 — Canva-style Edit rail, Photoshop color swap, and canvas Move tool
+
+- Reworked the Edit sidebar into a compact left icon rail like Canva. The rail remains narrow when idle; clicking a Design, Elements, Text, Brand, Uploads, Draw, Projects, or Apps icon opens the wider Edit box and highlights that category with a short honest status description. The existing circular expand/collapse control and Phone/Desktop overlap guard remain in place.
+- Updated the Tools Bar color controls to keep the overlapping Photoshop-style foreground/background squares and added a small circular swap control. Clicking either square opens its color picker; clicking `Swap foreground and background colors` exchanges the two colors. New Pen/Brush strokes continue to use the current foreground color.
+- Move Tool now has a dedicated interactive target over the print canvas artwork. With Move selected, dragging the canvas artwork changes its shared source overlay transform within bounded canvas offsets; the existing independent Front/Back mockup movement remains unchanged.
+- Files: `apps/web/src/components/EditorEditSidebar.tsx`, `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, and `tests/editor-touch.cjs`.
+- Validation: canvas shell **13/13**, editor layers **6/6**, browser guards **1/1**, TypeScript, Next.js production build, and `git diff --check` passed. Production Chromium editor-touch passed at 390 × 844, 320 × 740, both landscape sizes, and 1280 × 900 desktop.
+- Limitations: Edit categories currently provide layout and honest status text rather than connected Canva asset libraries; canvas Move uses a bounded in-memory transform and does not yet serialize to a document draft or export.
+
 ### 2026-11-15 — Add Shape / Gradient / Redo tools and shrink editor controls
 
 - Owner request: added `Shape`, `Gradient`, and `Redo` to the compact bottom Tools Bar. Shape and Gradient select their tools and show an honest availability notice because their vector-shape and gradient-fill pipelines are not connected yet. Redo is functional and paired with the existing bounded 30-snapshot artwork Undo history; making a new draw/erase action clears the redo branch.

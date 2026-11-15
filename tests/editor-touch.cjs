@@ -293,7 +293,7 @@ async function main() {
     assert.ok(Math.abs(editSidebar.left - editSidebar.viewportLeft) < 1, "Edit sidebar docks to the left edge");
     assert.ok(editSidebar.width <= 224, "Canva-like placeholder sidebar stays compact");
     assert.deepEqual(editSidebar.tools, ["Design", "Elements", "Text", "Brand", "Uploads", "Draw", "Projects", "Apps"]);
-    assert.equal(editSidebar.disabled, true, "Temporary tool placeholders do not imply unfinished features are active");
+    assert.equal(editSidebar.disabled, false, "Canva rail items can open the expanded tool box");
     assert.ok(Math.abs(editSidebar.toggleLeft - editSidebar.right) < 1, "Open-state toggle sits on the panel's outer edge");
     assert.equal(editSidebar.toggleWidth, 44, "Phone Edit toggle remains finger-sized");
     assert.equal(editSidebar.toggleHeight, 44);

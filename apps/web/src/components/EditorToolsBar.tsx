@@ -11,6 +11,7 @@ import {
   Move,
   Pen,
   Redo2,
+  RefreshCw,
   Square,
   Undo2,
 } from "lucide-react";
@@ -31,6 +32,7 @@ type Props = {
   onBackgroundColorChange: (color: string) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onSwapColors: () => void;
   onToggleCollapsed: () => void;
   hideOnMobile?: boolean;
 };
@@ -59,6 +61,7 @@ export default function EditorToolsBar({
   onBackgroundColorChange,
   onUndo,
   onRedo,
+  onSwapColors,
   onToggleCollapsed,
   hideOnMobile = false,
 }: Props) {
@@ -87,7 +90,7 @@ export default function EditorToolsBar({
                 <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
               </button>
             ))}
-            <div role="group" aria-label="Color swatches" className="relative h-8 w-10 shrink-0">
+            <div role="group" aria-label="Color swatches" className="relative h-9 w-11 shrink-0">
               <input
                 ref={foregroundInputRef}
                 type="color"
@@ -122,6 +125,15 @@ export default function EditorToolsBar({
                 className="absolute bottom-0 left-0 z-10 h-6 w-6 rounded border border-border shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 style={{ backgroundColor: foregroundColor }}
               />
+              <button
+                type="button"
+                aria-label="Swap foreground and background colors"
+                title="Swap foreground/background colors"
+                onClick={onSwapColors}
+                className="absolute -right-1 -bottom-1 z-20 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-bg-surface text-text-secondary shadow-sm outline-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <RefreshCw size={10} aria-hidden="true" />
+              </button>
             </div>
             <span className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
             <button

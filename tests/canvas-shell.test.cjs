@@ -293,10 +293,17 @@ test("Edit sidebar starts collapsed on the left with temporary Canva-like catego
   assert.match(editSidebar, /aria-label=\{open \? "Collapse Edit sidebar" : "Expand Edit sidebar"\}/);
   assert.match(editSidebar, /style=\{\{ left: open \? PANEL_WIDTH : 0 \}\}/);
   assert.match(editSidebar, /h-7 w-7[^\"]*rounded-full[^\"]*bg-accent[^\"]*text-accent-foreground/);
-  assert.match(editSidebar, /disabled[\s\S]*?This tool will be defined in a later Editor step/);
+  assert.match(editSidebar, /aria-label="Edit sidebar rail"/);
+  assert.match(editSidebar, /Open \${label} in Edit sidebar/);
+  assert.match(editSidebar, /setActiveLabel\(label\)/);
+  assert.match(editSidebar, /aria-live="polite"/);
   for (const label of ["Design", "Elements", "Text", "Brand", "Uploads", "Draw", "Projects", "Apps"]) {
     assert.match(editSidebar, new RegExp(`label: "${label}"`));
   }
+  assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
+  assert.match(source, /canvasArtworkTransform/);
+  assert.match(source, /Move canvas artwork/);
+  assert.match(source, /startCanvasArtworkMove/);
 });
 
 test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {
