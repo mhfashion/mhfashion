@@ -23,6 +23,7 @@ import {
   UnlockKeyhole,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import EditorLayerPreview, { EDITOR_ARTWORK_VIEWBOX } from "@/components/EditorLayerPreview";
 import type {
   ArtworkStroke,
   EditorArtworkLayer,
@@ -53,10 +54,13 @@ function ArtworkThumbnail({ layer }: { layer: EditorArtworkLayer }) {
       className="relative block h-7 w-10 shrink-0 overflow-hidden border border-[#858585] bg-white"
       style={{ backgroundImage: "linear-gradient(45deg,#d2d2d2 25%,transparent 25%),linear-gradient(-45deg,#d2d2d2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d2d2d2 75%),linear-gradient(-45deg,transparent 75%,#d2d2d2 75%)", backgroundSize: "8px 8px", backgroundPosition: "0 0,0 4px,4px -4px,-4px 0" }}
     >
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet">
+      <svg className="absolute inset-0 h-full w-full" viewBox={EDITOR_ARTWORK_VIEWBOX} preserveAspectRatio="xMidYMid meet">
         {layer.strokes.map((stroke, index) => (
           <path key={index} d={strokePath(stroke)} fill="none" stroke="#242424" strokeWidth="46" strokeLinecap="round" strokeLinejoin="round" />
         ))}
+        {(layer.shape !== null || layer.text !== null || layer.image !== null) && (
+          <EditorLayerPreview paths={layer.shape?.paths} text={layer.text} image={layer.image} />
+        )}
       </svg>
     </span>
   );

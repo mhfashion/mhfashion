@@ -16,10 +16,14 @@ const {
   addLayerMask,
   appendLayerStroke,
   createEditorArtworkLayer,
+  createEditorImageLayer,
+  createEditorShapeLayer,
+  createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
   removeLayerMask,
   reorderEditorLayer,
+  setEditorLayerText,
   updateEditorLayer,
   updateLayerLastStroke,
 } = layerModel.exports;
@@ -33,8 +37,8 @@ test("new layers get editable defaults and drawing remains isolated to the selec
   const drawn = appendLayerStroke(original, "two", "artwork", pointStroke(0.2, 0.4), "hide");
 
   assert.deepEqual(first, {
-    id: "one", name: "Layer 1", visible: true, locked: false, opacity: 100,
-    blendMode: "normal", strokes: [], mask: null,
+    id: "one", name: "Layer 1", kind: "artwork", visible: true, locked: false, opacity: 100,
+    blendMode: "normal", strokes: [], mask: null, text: null, shape: null, image: null,
   });
   assert.equal(original[1].strokes.length, 0, "Updates are immutable");
   assert.equal(drawn[0].strokes.length, 0);
@@ -114,4 +118,33 @@ test("duplicate copies artwork/mask data without sharing mutable arrays and dele
   assert.notStrictEqual(copy.mask, withMask[0].mask);
   assert.equal(deleteEditorLayer(duplicated, "copy").length, 1);
   assert.equal(deleteEditorLayer(duplicated, "one")[0].id, "copy");
+});
+
+test("Add Text, element and upload layers keep their own content and stay in the layer stack", () => {
+  const text = createEditorTextLayer("text-1", "Text 1", {
+    value: "", x: 500, y: 600, fontSize: 110, color: "#202124",
+  });
+  assert.equal(text.kind, "text");
+  assert.equal(text.text.value, "");
+
+  const typed = setEditorLayerText([text], "text-1", "MH FASHION");
+  assert.equal(typed[0].text.value, "MH FASHION");
+  assert.equal(text.text.value, "", "Typing is immutable");
+  assert.equal(setEditorLayerText([text], "missing", "x")[0].text.value, "");
+
+  const shape = createEditorShapeLayer("shape-1", "Wave line", {
+    paths: [{ d: "M 1 1 L 2 2", stroke: "#000", strokeWidth: 8, fill: "none" }],
+  });
+  assert.equal(shape.kind, "shape");
+  assert.equal(shape.shape.paths.length, 1);
+
+  const image = createEditorImageLayer("image-1", "photo.jpg", {
+    src: "data:image/jpeg;base64,AAAA", x: 100, y: 100, width: 800, height: 600, byteSize: 40960,
+  });
+  assert.equal(image.kind, "image");
+  assert.equal(image.image.byteSize, 40960);
+
+  const duplicatedText = duplicateEditorLayer(typed, "text-1", "text-2")[0];
+  assert.equal(duplicatedText.text.value, "MH FASHION");
+  assert.notStrictEqual(duplicatedText.text, typed[0].text);
 });

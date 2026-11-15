@@ -288,8 +288,8 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /function toggleEditSidebar\(\)[\s\S]*?matchMedia\("\(max-width: 767px\)"\)[\s\S]*?setLayersOpen\(false\)/);
   assert.match(source, /const closeSidebarsBeforeTheyOverlap = \(event: MediaQueryListEvent\)[\s\S]*?setLayersOpen\(false\)[\s\S]*?setEditSidebarOpen\(false\)/);
   assert.match(source, /addEventListener\("change", closeSidebarsBeforeTheyOverlap\)/);
-  assert.match(source, /<EditorEditSidebar open=\{editSidebarOpen\} onToggle=\{toggleEditSidebar\} \/>/);
-  assert.match(editSidebar, /aria-label=\{`\$\{activeSection\} editor sidebar`\}/);
+  assert.match(source, /<EditorEditSidebar[\s\S]*?open=\{editSidebarOpen\}[\s\S]*?onAddDesign=\{addCanvasDesign\}[\s\S]*?onAddElement=\{addCanvasElementLayer\}[\s\S]*?onAddText=\{addCanvasTextLayer\}[\s\S]*?onUploadImage=\{addCanvasUpload\}/);
+  assert.match(editSidebar, /aria-label=\{activeSection \+ " editor sidebar"\}/);
   assert.match(editSidebar, /data-dock-side="left"/);
   assert.match(editSidebar, /\{railVisible && \(/);
   assert.match(editSidebar, /\{hasPanel && \(/);
@@ -299,10 +299,10 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /const \[railVisible, setRailVisible\] = useState\(false\)/);
   assert.match(editSidebar, /const hasPanel = railVisible && open/);
   assert.match(editSidebar, /aria-label=\{hasPanel \? "Collapse Edit sidebar" : railVisible \? "Hide Edit sidebar" : "Expand Edit sidebar"\}/);
-  assert.match(editSidebar, /style=\{\{ left: hasPanel \? `calc\(3rem \+ \$\{PANEL_WIDTH\}\)` : railVisible \? "3rem" : 0 \}\}/);
-  assert.match(editSidebar, /h-7 w-7[^\"]*rounded-full[^\"]*bg-accent[^\"]*text-accent-foreground/);
+  assert.match(editSidebar, /style=\{\{ left: hasPanel \? "calc\(3rem \+ " \+ PANEL_WIDTH \+ "\)" : railVisible \? "3rem" : 0 \}\}/);
+  assert.match(editSidebar, /h-7 w-7[^"]*rounded-full[^"]*bg-accent[^"]*text-accent-foreground/);
   assert.match(editSidebar, /aria-label="Edit sidebar rail"/);
-  assert.match(editSidebar, /Open \${label} in Edit sidebar/);
+  assert.match(editSidebar, /"Open " \+ label \+ " in Edit sidebar"/);
   assert.match(editSidebar, /setActiveSection\(section\)/);
   for (const label of ["Designs", "Elements", "Text", "Upload", "Image Create"]) {
     assert.match(editSidebar, new RegExp(`label: "${label}"`));
@@ -311,14 +311,68 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /MH Fashion designs/);
   assert.match(editSidebar, /Search elements/);
   assert.match(editSidebar, /Add Text/);
-  assert.match(editSidebar, /Choose an image/);
+  assert.match(editSidebar, /Choose a photo/);
   assert.match(editSidebar, /Create Image/);
-  assert.match(editSidebar, /R2 SVG design loading/);
-  assert.match(editSidebar, /configured KB\/MB limit/);
+  assert.match(editSidebar, /R2 SVG source listing is still pending/);
+  assert.match(editSidebar, /formatByteSize\(uploadLimitBytes\)/);
+  // Text: Add Text is compact and lists design text layers as per-layer thumbnails.
+  assert.match(editSidebar, /self-start rounded-lg[^"]*text-\[11px\] font-bold text-accent/);
+  assert.match(editSidebar, /Text layers in Designs/);
+  assert.match(editSidebar, /aria-label="Design text layers"/);
+  assert.doesNotMatch(editSidebar, /Text to add/);
+  // Elements: every design layer is its own thumbnail card, like Designs.
+  assert.match(editSidebar, /aria-label="Design elements" className="grid grid-cols-2 gap-2"/);
+  assert.match(editSidebar, /function ElementCard/);
+  assert.match(editSidebar, /<ArtworkFrame>/);
+  // Image Create has no search field.
+  assert.doesNotMatch(editSidebar, /Search image ideas/);
+  assert.doesNotMatch(editSidebar, /Search uploads/);
+  // Sidebar categories and canvas actions share the editor layer model.
+  assert.match(editSidebar, /MH_DESIGN_LIBRARY/);
+  assert.match(editSidebar, /MH_DESIGN_TEXT_LAYERS/);
+  assert.match(editSidebar, /onAddText\(\)/);
+  assert.match(editSidebar, /onAddText\(layer\.text\)/);
+  assert.match(editSidebar, /onUploadImage\(file\)/);
+  // Add Text types straight onto the canvas and lands in the Layers stack.
+  assert.match(source, /const \[editingTextLayerId, setEditingTextLayerId\] = useState<string \| null>\(null\)/);
+  assert.match(source, /function addCanvasTextLayer\(source\?: DesignLibraryText \| null\)/);
+  assert.match(source, /createEditorTextLayer\(id, `Text \$\{label\}`/);
+  assert.match(source, /setEditingTextLayerId\(id\)/);
+  assert.match(source, /data-editor-text-editor="true"/);
+  assert.match(source, /aria-label="Type text on the canvas"/);
+  assert.match(source, /onEditingTextChange\?\.\(event\.target\.value\)/);
+  assert.match(source, /setEditorLayerText\(current, editingTextLayerId, value\)/);
+  assert.match(source, /editingTextLayer=\{editingTextLayer\}/);
+  // Every sidebar addition must be reachable in the Layers stack.
+  assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
+  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 4, "Text, element, design and upload reveal the Layers stack");
+  assert.match(layersPanel, /EditorLayerPreview paths=\{layer\.shape\?\.paths\} text=\{layer\.text\} image=\{layer\.image\}/);
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
   assert.match(source, /canvasLayerTransforms/);
   assert.match(source, /Move canvas artwork/);
   assert.match(source, /startCanvasArtworkMove/);
+});
+
+test("Sidebar catalogs come from the MH Fashion design library and uploads honour the size limit", () => {
+  const designLibrary = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-design-library.ts"), "utf8");
+  const uploadSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-upload.ts"), "utf8");
+  const layerPreview = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
+  // One thumbnail per individual layer, shared by canvas, Layers panel and sidebar cards.
+  assert.match(designLibrary, /export const MH_DESIGN_LIBRARY: DesignLibraryEntry\[\]/);
+  assert.match(designLibrary, /export const MH_DESIGN_LAYERS/);
+  assert.match(designLibrary, /export const MH_DESIGN_TEXT_LAYERS/);
+  assert.match(designLibrary, /designLayerToEditorLayer/);
+  assert.match(designLibrary, /designToEditorLayers/);
+  assert.match(designLibrary, /pending-r2-endpoint/, "R2 SVG listing is still the pending source");
+  // Uploads are reduced to the registered KB/MB policy before they reach the canvas.
+  assert.match(uploadSource, /export const UPLOAD_MAX_BYTES/);
+  assert.match(uploadSource, /await createImageBitmap\(file\)/);
+  assert.match(uploadSource, /blob\.size <= maxBytes/);
+  assert.match(uploadSource, /export function imageLayerBox/);
+  assert.match(uploadSource, /export function formatByteSize/);
+  assert.match(layerPreview, /data-editor-text-content="true"/);
+  assert.match(layerPreview, /data-editor-shape-path="true"/);
+  assert.match(layerPreview, /data-editor-image-content="true"/);
 });
 
 test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {

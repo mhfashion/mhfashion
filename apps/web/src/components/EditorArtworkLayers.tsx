@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import type { ArtworkStroke, EditorArtworkLayer, MaskBrushMode } from "@/lib/editor-layers";
+import EditorLayerPreview from "@/components/EditorLayerPreview";
 
 function pathFor(stroke: ArtworkStroke) {
   return stroke.points
@@ -59,19 +60,25 @@ export default function EditorArtworkLayers({
   layerOffsets,
   selectedMaskLayerId = null,
   maskBrushMode = "hide",
+  hiddenTextLayerId = null,
 }: {
   layers: EditorArtworkLayer[];
   transform?: string;
   layerOffsets?: Record<string, { x: number; y: number }>;
   selectedMaskLayerId?: string | null;
   maskBrushMode?: MaskBrushMode;
+  /** The layer currently being typed on the print canvas is rendered by the inline editor. */
+  hiddenTextLayerId?: string | null;
 }) {
   const rawId = useId();
   const instanceId = `editor-layer-${rawId.replace(/[^a-zA-Z0-9_-]/g, "") || "preview"}`;
 
   return (
     <>
-      {[...layers].reverse().filter((layer) => layer.visible).map((layer) => {
+      {[...layers]
+        .reverse()
+        .filter((layer) => layer.visible && layer.id !== hiddenTextLayerId)
+        .map((layer) => {
         const maskId = `${instanceId}-${layer.id.replace(/[^a-zA-Z0-9_-]/g, "")}-mask`;
         const offset = layerOffsets?.[layer.id];
         const layerTransform = offset ? `translate(${offset.x} ${offset.y})` : undefined;
@@ -104,6 +111,11 @@ export default function EditorArtworkLayers({
               {layer.strokes.map((stroke, index) => (
                 <StrokeShape key={index} stroke={stroke} color={stroke.color ?? "#202124"} width={24} isArtwork />
               ))}
+              {(layer.shape !== null || layer.text !== null || layer.image !== null) && (
+                <g data-editor-layer-kind={layer.kind}>
+                  <EditorLayerPreview paths={layer.shape?.paths} text={layer.text} image={layer.image} />
+                </g>
+              )}
             </g>
             {selectedMaskLayerId === layer.id && layer.mask !== null && (
               <g transform={transform} pointerEvents="none" opacity="0.6">

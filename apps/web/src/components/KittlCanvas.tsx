@@ -4,6 +4,7 @@ import { Grid2X2, Hand, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
+import { EDITOR_TEXT_FONT_FAMILY } from "@/components/EditorLayerPreview";
 import EditorToolsBar, { type EditorTool } from "@/components/EditorToolsBar";
 import EditorEditSidebar from "@/components/EditorEditSidebar";
 import EditorLayersPanel from "@/components/EditorLayersPanel";
@@ -18,15 +19,44 @@ import {
   addLayerMask,
   appendLayerStroke,
   createEditorArtworkLayer,
+  createEditorImageLayer,
+  createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
   removeLayerMask,
   reorderEditorLayer,
+  setEditorLayerText,
   updateEditorLayer,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
-import type { EditorArtworkLayer, EditorLayerAppearance, LayerEditTarget, MaskBrushMode } from "@/lib/editor-layers";
+import type {
+  EditorArtworkLayer,
+  EditorLayerAppearance,
+  EditorTextContent,
+  LayerEditTarget,
+  MaskBrushMode,
+} from "@/lib/editor-layers";
+import {
+  designLayerToEditorLayer,
+  designToEditorLayers,
+} from "@/lib/editor-design-library";
+import type {
+  DesignLibraryEntry,
+  DesignLibraryLayer,
+  DesignLibraryText,
+} from "@/lib/editor-design-library";
+import {
+  UPLOAD_MAX_BYTES,
+  compressImageUpload,
+  formatByteSize,
+  imageLayerBox,
+} from "@/lib/editor-upload";
 import type { EditorProduct } from "@/lib/editor-product";
+
+// The shared artwork space is 1000 x 1200 units; new text starts centred on it.
+const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
+const DEFAULT_TEXT_FONT_SIZE = 110;
+const TEXT_EDIT_BOX_WIDTH = 900;
 
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 type MockupSide = "Front Mockup" | "Back Mockup";
@@ -52,9 +82,12 @@ function ArtworkOverlay({
   transform,
   layerOffsets,
   moveEnabled,
+  editingTextLayer,
   onMoveStart,
   onMove,
   onMoveEnd,
+  onEditingTextChange,
+  onEditingTextCommit,
 }: {
   layers: EditorArtworkLayer[];
   selectedMaskLayerId: string | null;
@@ -62,14 +95,62 @@ function ArtworkOverlay({
   transform: Point;
   layerOffsets: Record<string, Point>;
   moveEnabled: boolean;
+  editingTextLayer?: EditorArtworkLayer | null;
   onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
   onMove: (event: React.PointerEvent<SVGSVGElement>) => void;
   onMoveEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
+  onEditingTextChange?: (value: string) => void;
+  onEditingTextCommit?: () => void;
 }) {
+  const editingText = editingTextLayer?.text ?? null;
+  const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
   return (
     <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={onMove} onPointerUp={onMoveEnd} onPointerCancel={onMoveEnd} onLostPointerCapture={onMoveEnd} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
       <g transform={`translate(${500 + transform.x} ${600 + transform.y}) translate(-500 -600)`}>
-        <EditorArtworkLayers layers={layers} layerOffsets={layerOffsets} selectedMaskLayerId={selectedMaskLayerId} maskBrushMode={maskBrushMode} />
+        <EditorArtworkLayers
+          layers={layers}
+          layerOffsets={layerOffsets}
+          selectedMaskLayerId={selectedMaskLayerId}
+          maskBrushMode={maskBrushMode}
+          hiddenTextLayerId={editingTextLayerId}
+        />
+        {editingText && (
+          // Typing goes straight onto the print canvas: the focused field shares the
+          // layer's font size and centre, so the caret sits where the text is drawn.
+          <foreignObject
+            x={editingText.x - TEXT_EDIT_BOX_WIDTH / 2}
+            y={editingText.y - editingText.fontSize}
+            width={TEXT_EDIT_BOX_WIDTH}
+            height={editingText.fontSize * 1.32}
+            pointerEvents="auto"
+            data-editor-text-editor="true"
+          >
+            <input
+              autoFocus
+              value={editingText.value}
+              aria-label="Type text on the canvas"
+              placeholder="Type your text"
+              onChange={(event) => onEditingTextChange?.(event.target.value)}
+              onBlur={() => onEditingTextCommit?.()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              className="w-full border-0 bg-transparent text-center leading-none outline-none placeholder:text-[#9aa0a6]"
+              style={{
+                height: `${editingText.fontSize * 1.32}px`,
+                lineHeight: `${editingText.fontSize * 1.32}px`,
+                fontSize: `${editingText.fontSize}px`,
+                color: editingText.color,
+                caretColor: editingText.color,
+                fontFamily: EDITOR_TEXT_FONT_FAMILY,
+                fontWeight: 700,
+                outline: "2px dashed rgba(76, 157, 22, 0.7)",
+                outlineOffset: "6px",
+              }}
+            />
+          </foreignObject>
+        )}
       </g>
       {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
     </svg>
@@ -101,6 +182,17 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [selectedTarget, setSelectedTarget] = useState<LayerEditTarget>("artwork");
   const [maskBrushMode, setMaskBrushMode] = useState<MaskBrushMode>("hide");
   const nextLayerIdRef = useRef(2);
+  const nextTextLayerLabelRef = useRef(1);
+  // Set while a text layer is being typed directly on the print canvas.
+  const [editingTextLayerId, setEditingTextLayerId] = useState<string | null>(null);
+  const editingTextLayer = useMemo(
+    () => layers.find((layer) => layer.id === editingTextLayerId) ?? null,
+    [editingTextLayerId, layers],
+  );
+  const canvasUploadLayers = useMemo(
+    () => layers.filter((layer) => layer.kind === "image"),
+    [layers],
+  );
   const visibleMockups = useMemo(
     () => product === "Phone" ? mockups.filter((side) => side === "Front Mockup") : mockups,
     [mockups, product],
@@ -567,10 +659,95 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function selectLayer(id: string, target: LayerEditTarget, multi = false) {
     setSelectedLayerId(id);
     setSelectedTarget(target);
+    setEditingTextLayerId(null);
     setSelectedLayerIds((current) => {
       if (!multi || target === "mask") return [id];
       return current.includes(id) ? (current.length > 1 ? current.filter((item) => item !== id) : current) : [...current, id];
     });
+  }
+
+  function claimLayerId() {
+    return `layer-${nextLayerIdRef.current++}`;
+  }
+
+  // A new layer must be visible in the Layers stack. On desktop both docks can be
+  // open; on phones the existing mutual-exclusion rule keeps only one dock at a time.
+  function revealLayersStack() {
+    if (window.matchMedia("(min-width: 768px)").matches) setLayersOpen(true);
+  }
+
+  /** Add Text: the text layer lands in the Layers stack and the canvas is ready for typing. */
+  function addCanvasTextLayer(source?: DesignLibraryText | null) {
+    const id = claimLayerId();
+    const label = nextTextLayerLabelRef.current++;
+    const content: EditorTextContent = {
+      value: source?.value ?? "",
+      x: source?.x ?? CANVAS_ARTWORK_CENTER.x,
+      y: source?.y ?? CANVAS_ARTWORK_CENTER.y,
+      fontSize: source?.fontSize ?? DEFAULT_TEXT_FONT_SIZE,
+      color: source?.color ?? foregroundColor,
+    };
+    setLayers((current) => [
+      createEditorTextLayer(id, `Text ${label}`, content),
+      ...current,
+    ]);
+    setSelectedLayerId(id);
+    setSelectedLayerIds([id]);
+    setSelectedTarget("artwork");
+    setEditingTextLayerId(id);
+    revealLayersStack();
+  }
+
+  function addCanvasElementLayer(source: DesignLibraryLayer) {
+    const id = claimLayerId();
+    const created = designLayerToEditorLayer(source, id);
+    setLayers((current) => [created, ...current]);
+    setSelectedLayerId(id);
+    setSelectedLayerIds([id]);
+    setSelectedTarget("artwork");
+    setEditingTextLayerId(created.kind === "text" ? id : null);
+    revealLayersStack();
+  }
+
+  function addCanvasDesign(design: DesignLibraryEntry) {
+    const created = designToEditorLayers(design, claimLayerId);
+    if (!created.length) return;
+    setLayers((current) => [...created, ...current]);
+    const topLevel = created[created.length - 1];
+    setSelectedLayerId(topLevel.id);
+    setSelectedLayerIds([topLevel.id]);
+    setSelectedTarget("artwork");
+    setEditingTextLayerId(null);
+    revealLayersStack();
+  }
+
+  async function addCanvasUpload(file: File) {
+    try {
+      const compressed = await compressImageUpload(file);
+      const id = claimLayerId();
+      const box = imageLayerBox(compressed.width, compressed.height);
+      setLayers((current) => [
+        createEditorImageLayer(id, compressed.fileName || "Upload", {
+          src: compressed.src,
+          byteSize: compressed.byteSize,
+          ...box,
+        }),
+        ...current,
+      ]);
+      setSelectedLayerId(id);
+      setSelectedLayerIds([id]);
+      setSelectedTarget("artwork");
+      setEditingTextLayerId(null);
+      setToolNotice(`Upload reduced to ${formatByteSize(compressed.byteSize)} and added to the canvas.`);
+      revealLayersStack();
+    } catch (error) {
+      setToolNotice(error instanceof Error ? error.message : "That image could not be uploaded.");
+    }
+  }
+
+  function updateEditingText(value: string) {
+    if (!editingTextLayerId) return;
+    setLayers((current) => setEditorLayerText(current, editingTextLayerId, value));
   }
 
   function addLayer() {
@@ -617,6 +794,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const index = layers.findIndex((layer) => layer.id === id);
     const next = deleteEditorLayer(layers, id);
     setLayers(next);
+    if (editingTextLayerId === id) setEditingTextLayerId(null);
     if (selectedLayerId === id) {
       setSelectedLayerId(next[Math.min(index, next.length - 1)]?.id ?? null);
       setSelectedTarget("artwork");
@@ -736,9 +914,12 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   transform={{ x: 0, y: 0 }}
                   layerOffsets={canvasLayerTransforms}
                   moveEnabled={activeTool === "move"}
+                  editingTextLayer={editingTextLayer}
                   onMoveStart={startCanvasArtworkMove}
                   onMove={moveCanvasArtwork}
                   onMoveEnd={endCanvasArtworkMove}
+                  onEditingTextChange={updateEditingText}
+                  onEditingTextCommit={() => setEditingTextLayerId(null)}
                 />
                 <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
                   <button
@@ -865,7 +1046,16 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
             ))}
           </div>
         </div>
-        <EditorEditSidebar open={editSidebarOpen} onToggle={toggleEditSidebar} />
+        <EditorEditSidebar
+          open={editSidebarOpen}
+          onToggle={toggleEditSidebar}
+          uploadLimitBytes={UPLOAD_MAX_BYTES}
+          uploads={canvasUploadLayers}
+          onAddDesign={addCanvasDesign}
+          onAddElement={addCanvasElementLayer}
+          onAddText={addCanvasTextLayer}
+          onUploadImage={addCanvasUpload}
+        />
         <EditorLayersPanel
           open={layersOpen}
           onToggle={toggleLayersPanel}

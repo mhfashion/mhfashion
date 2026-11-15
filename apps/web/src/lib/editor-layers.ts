@@ -4,16 +4,43 @@ export type MaskBrushMode = "hide" | "reveal";
 export type LayerEditTarget = "artwork" | "mask";
 export type EditorLayerBlendMode = "normal" | "multiply" | "screen" | "overlay";
 export type LayerMaskStroke = ArtworkStroke & { mode: MaskBrushMode };
+export type EditorLayerKind = "artwork" | "text" | "shape" | "image";
+export type EditorTextContent = {
+  value: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  color: string;
+};
+export type EditorShapePath = {
+  d: string;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+};
+export type EditorShapeContent = { paths: EditorShapePath[] };
+export type EditorImageContent = {
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  byteSize: number;
+};
 
 export type EditorArtworkLayer = {
   id: string;
   name: string;
+  kind: EditorLayerKind;
   visible: boolean;
   locked: boolean;
   opacity: number;
   blendMode: EditorLayerBlendMode;
   strokes: ArtworkStroke[];
   mask: LayerMaskStroke[] | null;
+  text: EditorTextContent | null;
+  shape: EditorShapeContent | null;
+  image: EditorImageContent | null;
 };
 
 export type EditorLayerAppearance = Partial<
@@ -24,13 +51,55 @@ export function createEditorArtworkLayer(id: string, name: string): EditorArtwor
   return {
     id,
     name,
+    kind: "artwork",
     visible: true,
     locked: false,
     opacity: 100,
     blendMode: "normal",
     strokes: [],
     mask: null,
+    text: null,
+    shape: null,
+    image: null,
   };
+}
+
+export function createEditorTextLayer(
+  id: string,
+  name: string,
+  text: EditorTextContent,
+): EditorArtworkLayer {
+  return { ...createEditorArtworkLayer(id, name), kind: "text", text: { ...text } };
+}
+
+export function createEditorShapeLayer(
+  id: string,
+  name: string,
+  shape: EditorShapeContent,
+): EditorArtworkLayer {
+  return {
+    ...createEditorArtworkLayer(id, name),
+    kind: "shape",
+    shape: { paths: shape.paths.map((path) => ({ ...path })) },
+  };
+}
+
+export function createEditorImageLayer(
+  id: string,
+  name: string,
+  image: EditorImageContent,
+): EditorArtworkLayer {
+  return { ...createEditorArtworkLayer(id, name), kind: "image", image: { ...image } };
+}
+
+export function setEditorLayerText(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  value: string,
+): EditorArtworkLayer[] {
+  return layers.map((layer) =>
+    layer.id === layerId && layer.text ? { ...layer, text: { ...layer.text, value } } : layer,
+  );
 }
 
 function copyStroke(stroke: ArtworkStroke): ArtworkStroke {
@@ -130,6 +199,9 @@ export function duplicateEditorLayer(
     locked: false,
     strokes: source.strokes.map(copyStroke),
     mask: source.mask?.map((stroke) => ({ ...copyStroke(stroke), mode: stroke.mode })) ?? null,
+    text: source.text ? { ...source.text } : null,
+    shape: source.shape ? { paths: source.shape.paths.map((path) => ({ ...path })) } : null,
+    image: source.image ? { ...source.image } : null,
   };
   const next = [...layers];
   next.splice(index, 0, duplicate);
