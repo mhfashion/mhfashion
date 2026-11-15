@@ -740,3 +740,9 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Expanded the Text Adjustment panel with a searchable/filterable font browser, recent-font chips, selected-font highlighting, and live font previews. Choosing a font updates the selected text layer immediately without re-entering text.
 - Kept the existing direct-canvas text workflow and all typography controls intact. The font browser is scrollable and touch-safe on Phone/Mobile while remaining compact on Web/Desktop.
 - Validation: Next.js production build passed; canvas-shell **14/14**; editor-layers **11/11**; `git diff --check` passed. Existing lint state remains **0 errors / 26 warnings**.
+
+### 2026-11-15 — Preserve MH Fashion Layer Box styling
+
+- Owner clarification: the Layers Box must retain the MH Fashion Photoshop-style visual treatment rather than the new Kittl-inspired surface styling. Restored the previous Layers Box presentation while preserving all existing behavior: layer selection, drag reorder, folder groups, masks, links, appearance controls, and adjustment entry point.
+- Kittl-inspired styling remains scoped to the Edit rail, design/element cards, Adjustment panel, Text controls, and Canvas interaction affordances. The Layers Box is intentionally excluded from that visual treatment.
+- Validation: canvas-shell **14/14**, editor-layers **11/11**, Next.js production build passed, and `git diff --check` passed.

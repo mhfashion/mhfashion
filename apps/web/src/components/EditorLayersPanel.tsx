@@ -161,25 +161,25 @@ export default function EditorLayersPanel({
         <aside
           aria-label="Layers panel"
           data-dock-side="right"
-          className="absolute inset-y-0 right-0 z-30 flex min-h-0 flex-col overflow-hidden border-l border-white/10 bg-[#101518]/95 text-[#eef5f2] shadow-2xl shadow-black/30 backdrop-blur-xl dark:border-white/10 dark:bg-[#101518]/95 dark:text-[#eef5f2]"
+          className="absolute inset-y-0 right-0 z-30 flex min-h-0 flex-col overflow-hidden border-l border-[#b7b7b7] bg-[#e8e8e8] text-[#202020] shadow-xl dark:border-[#1b1b1b] dark:bg-[#303030] dark:text-[#dedede] dark:shadow-black/60"
           style={{ width: PANEL_WIDTH }}
         >
-          <div aria-label="Layers panel title" className="relative flex h-11 shrink-0 items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#1d2429] via-[#252f35] to-[#303b41] px-3 text-white [@media(pointer:coarse)]:h-12">
-            <span role="heading" aria-level={2} className="relative flex h-full items-center text-[12px] font-semibold tracking-tight [@media(pointer:coarse)]:px-1">
+          <div aria-label="Layers panel title" className="relative flex h-8 shrink-0 items-center border-b border-[#b7b7b7] bg-[#d3d3d3] px-1 dark:border-[#202020] dark:bg-[#242424] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8">
+            <span role="heading" aria-level={2} className="relative flex h-full items-center border-r border-[#b7b7b7] px-2.5 text-[11px] font-semibold text-[#202020] dark:border-[#202020] dark:text-white [@media(pointer:coarse)]:px-3">
               Layers
-              <span className="absolute inset-x-0 bottom-1 h-[2px] rounded-full bg-accent shadow-[0_0_8px_#d4ff3f]" />
+              <span className="absolute inset-x-0 bottom-0 h-[2px] bg-accent" />
             </span>
-            <span aria-label="Layer count" className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-bold text-accent">{layers.length}</span>
+            <span aria-label="Layer count" className="sr-only">{layers.length}</span>
           </div>
 
-          <div className="flex h-10 shrink-0 items-center gap-1 border-b border-white/10 bg-white/[0.03] px-2 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8">
+          <div className="flex h-8 shrink-0 items-center gap-1 border-b border-[#b7b7b7] px-1.5 dark:border-[#242424] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8">
             <select
               id="editor-layer-blend-mode"
               aria-label={selectedLayer ? `Blend mode for ${selectedLayer.name}` : "Blend mode"}
               value={selectedLayer?.blendMode ?? "normal"}
               disabled={!selectedLayer || selectedLayer.locked}
               onChange={(event) => selectedLayer && onUpdateLayer(selectedLayer.id, { blendMode: event.target.value as EditorLayerBlendMode })}
-              className="h-7 min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-2 text-[11px] text-white outline-none focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent/30 disabled:opacity-60 [@media(pointer:coarse)]:h-9 [@media(pointer:coarse)_and_(max-height:500px)]:h-6"
+              className="h-6 min-w-0 flex-1 border border-[#a0a0a0] bg-[#f7f7f7] px-1 text-[11px] text-[#202020] outline-none focus-visible:ring-1 focus-visible:ring-[#69aee2] disabled:opacity-60 dark:border-[#1d1d1d] dark:bg-[#202020] dark:text-white [@media(pointer:coarse)]:h-9 [@media(pointer:coarse)_and_(max-height:500px)]:h-6"
             >
               {BLEND_MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
             </select>
@@ -216,7 +216,7 @@ export default function EditorLayersPanel({
             </div>
           </div>
 
-          <div aria-label="Layer list" role="list" className="min-h-0 flex-1 overflow-y-auto bg-[#0b1012] [scrollbar-color:#3b4d53_transparent]">
+          <div aria-label="Layer list" role="list" className="min-h-0 flex-1 overflow-y-auto bg-[#f1f1f1] dark:bg-[#333333]">
             {layers.length === 0 ? (
               <div className="flex min-h-20 items-center justify-center px-3 text-center text-[11px] text-[#b9b9b9]">No layers yet. Use the new-layer button below.</div>
             ) : layers.map((layer, index) => {
@@ -224,18 +224,18 @@ export default function EditorLayersPanel({
               const isGroupHeader = layer.groupId !== null && firstGroupIndex === index;
               const isGroupCollapsed = layer.groupId ? collapsedGroups.has(layer.groupId) : false;
               if (isGroupCollapsed) return isGroupHeader ? (
-                <div key={`group-${layer.groupId}`} role="listitem" className="flex min-h-9 items-center gap-1 border-b border-white/10 bg-[#1b272b] px-2 text-[10px] font-semibold text-white">
+                <div key={`group-${layer.groupId}`} role="listitem" className="flex min-h-8 items-center gap-1 border-b border-[#c9c9c9] bg-[#dedede] px-2 text-[10px] font-semibold dark:border-[#292929] dark:bg-[#2c2c2c] dark:text-white">
                   <button type="button" aria-label={`Expand group ${layer.groupId}`} onClick={() => setCollapsedGroups((current) => { const next = new Set(current); next.delete(layer.groupId!); return next; })} className={TINY_ICON}><ChevronRight size={13} /></button>
                   <button type="button" aria-label={`Select group ${layer.groupId}`} onClick={() => onSelectGroup(layer.groupId!)} className="flex min-w-0 flex-1 items-center gap-1 truncate text-left"><FolderPlus size={13} aria-hidden="true" /> Group</button>
                 </div>
               ) : null;
               const isSelected = selectedLayerIds.includes(layer.id);
               const isMaskSelected = isSelected && selectedTarget === "mask";
-                const rowClass = `relative flex min-h-11 items-center gap-1 border-b border-white/[0.06] px-1 transition-colors ${isSelected ? "bg-accent/15 ring-inset ring-1 ring-accent/40" : "bg-transparent hover:bg-white/[0.06]"} [@media(pointer:coarse)]:min-h-12`;
+                const rowClass = `relative flex min-h-9 items-center gap-1 border-b border-[#c9c9c9] px-1 dark:border-[#292929] ${isSelected ? "bg-[#d2e5f8] dark:bg-[#4b5661]" : "bg-[#f1f1f1] hover:bg-[#e5e5e5] dark:bg-[#353535] dark:hover:bg-[#404040]"} [@media(pointer:coarse)]:min-h-11`;
               return (
                 <div key={layer.id} className="relative">
                   {isGroupHeader && (
-                    <div className="flex h-8 items-center gap-1 border-b border-white/10 bg-[#1b272b] px-2 text-[10px] font-semibold text-white">
+                    <div className="flex h-7 items-center gap-1 border-b border-[#b7b7b7] bg-[#dedede] px-2 text-[10px] font-semibold dark:border-[#242424] dark:bg-[#2c2c2c] dark:text-white">
                       <button type="button" aria-label={`Collapse group ${layer.groupId}`} onClick={() => setCollapsedGroups((current) => new Set(current).add(layer.groupId!))} className={TINY_ICON}><ChevronLeft size={13} className="-rotate-90" /></button>
                       <button type="button" aria-label={`Select group ${layer.groupId}`} onClick={() => onSelectGroup(layer.groupId!)} className="flex min-w-0 flex-1 items-center gap-1 truncate text-left"><FolderPlus size={13} aria-hidden="true" /> Group</button>
                     </div>
