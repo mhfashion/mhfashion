@@ -85,9 +85,9 @@ export default function EditorToolsBar({
                 type="button"
                 aria-label={label}
                 aria-pressed={activeTool === id}
-                title={label}
+                title={id === "hand" ? "Pan canvas — Hand tool" : label}
                 onClick={() => onSelect(id)}
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${activeTool === id ? "bg-accent text-accent-foreground" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
               >
                 <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
               </button>

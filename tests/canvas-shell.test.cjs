@@ -130,6 +130,8 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
     assert.ok(toolsBar.includes(`label: "${label}"`) || toolsBar.includes(`aria-label="${label}"`), `missing ${label}`);
   }
   assert.match(toolsBar, /id: "text"/);
+  assert.match(toolsBar, /Pan canvas — Hand tool/);
+  assert.match(toolsBar, /shadow-\[0_2px_8px_rgba\(212,255,63,.35\)\]/);
   assert.match(source, /activeTool === "text"/);
   assert.match(source, /addCanvasTextLayer\(undefined, \{ x: point\.x \* 1000, y: point\.y \* 1200 \}\)/);
   assert.match(toolsBar, /role="group" aria-label="Color swatches"/);
@@ -239,6 +241,8 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(source, /onPointerMoveCapture=\{movePan\}/);
   assert.match(source, /onLostPointerCapture=\{endPan\}/);
   assert.match(source, /\(touchPanEnabled \|\| activeTool === "hand"\) \? "touch-none" : "touch-pan-y"/);
+  assert.match(source, /data-pan-mode=\{\(touchPanEnabled \|\| activeTool === "hand"\) \? "hand" : "scroll"\}/);
+  assert.match(source, /spaceHeld \|\| touchPanEnabled \|\| activeTool === "hand"\) \? "cursor-grab"/);
   assert.match(createRoute, /100dvh-var\(--mobile-navigation-height,4rem\)/);
   assert.match(createRoute, /md:h-dvh/);
   assert.match(mobileNav, /setProperty\("--mobile-navigation-height"/);

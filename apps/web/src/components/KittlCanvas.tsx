@@ -1098,8 +1098,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   return (
     <main className="relative flex h-full min-h-0 flex-col overflow-hidden bg-bg text-text-primary">
       <div role="toolbar" aria-label="Touch view controls" className="z-40 hidden shrink-0 items-center justify-center gap-1 border-b border-border bg-bg px-2 py-1 [@media(pointer:coarse)]:flex">
-        <button type="button" aria-label="Pan view" aria-pressed={touchPanEnabled} onClick={() => setTouchPanEnabled((enabled) => !enabled)} className={`flex h-11 items-center gap-1.5 rounded px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-accent ${touchPanEnabled ? "bg-accent/10 text-accent" : "text-text-secondary"}`}>
-          <Hand size={16} aria-hidden="true" />
+        <button type="button" aria-label="Pan view" aria-pressed={touchPanEnabled} onClick={() => setTouchPanEnabled((enabled) => !enabled)} className={`group flex h-11 items-center gap-2 rounded-full border px-3 text-xs font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-accent ${touchPanEnabled ? "border-accent/50 bg-accent/15 text-accent shadow-[0_0_12px_rgba(212,255,63,.16)]" : "border-transparent text-text-secondary hover:border-border hover:bg-bg-surface"}`}>
+          <span className={`flex h-7 w-7 items-center justify-center rounded-full ${touchPanEnabled ? "bg-accent text-accent-foreground" : "bg-bg-surface text-text-secondary group-hover:text-text-primary"}`}><Hand size={16} strokeWidth={2.1} aria-hidden="true" /></span>
           <span>Pan view</span>
         </button>
         <button type="button" aria-label="Zoom out" disabled={zoom <= 0.25} onClick={() => setZoom((current) => Math.max(0.25, current - 0.25))} className="flex h-11 w-11 items-center justify-center rounded text-text-secondary outline-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-accent"><Minus size={17} aria-hidden="true" /></button>
@@ -1119,7 +1119,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onAuxClick={(event) => {
             if (event.button === 1) event.preventDefault();
           }}
-          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : spaceHeld ? "cursor-grab" : "cursor-default"}`}
+          data-pan-mode={(touchPanEnabled || activeTool === "hand") ? "hand" : "scroll"}
+          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : "cursor-default"}`}
         >
           <div
             ref={workspaceRef}

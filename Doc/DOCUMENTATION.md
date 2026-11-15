@@ -767,3 +767,10 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Added deterministic Shape Builder geometry for closed axis-aligned rectangle paths. `Merge` produces one compound path, `Intersect` produces the overlap rectangle, and `Subtract` produces the remaining rectangle pieces. Unsupported path syntax is preserved safely with the selected builder mode instead of being destructively rewritten.
 - Added regression coverage for all three rectangle operations. The Layers Box remains unchanged.
 - Validation: canvas-shell **15/15**, editor-layers **12/12**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-16 — Kittl-inspired Pan/Hand tool interaction
+
+- Improved the Pan/Hand tool without changing the Layer Box. The Hand tool now has a clearer Kittl-inspired active icon state, a pan-specific tooltip, accent glow, and grab/grabbing cursor feedback.
+- Preserved and clarified the interaction model: Hand tool + left drag, Space + left drag, middle-button drag, and touch Pan mode all move the editor viewport. The viewport now exposes `data-pan-mode="hand|scroll"` for reliable state styling and testing.
+- Refined the Phone/Mobile Pan view control into a rounded active pill with a dedicated hand icon badge while retaining zoom and reset controls.
+- Validation: canvas-shell **15/15**, editor-layers **12/12**, Next.js production build passed, and `git diff --check` passed.
