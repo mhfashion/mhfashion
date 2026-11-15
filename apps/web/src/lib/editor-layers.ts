@@ -24,6 +24,9 @@ export type EditorTextContent = {
   effectOffset?: number;
   effectBlur?: number;
   outlineWidth?: number;
+  textDecoration?: "none" | "line" | "cut" | "oblique";
+  decorationColor?: string;
+  decorationWidth?: number;
 };
 export type EditorShapePath = {
   d: string;
@@ -31,7 +34,8 @@ export type EditorShapePath = {
   stroke?: string;
   strokeWidth?: number;
 };
-export type EditorShapeContent = { paths: EditorShapePath[] };
+export type EditorShapeBuilderMode = "select" | "merge" | "subtract" | "intersect";
+export type EditorShapeContent = { paths: EditorShapePath[]; builderMode?: EditorShapeBuilderMode };
 export type EditorImageContent = {
   src: string;
   x: number;
@@ -99,7 +103,7 @@ export function createEditorShapeLayer(
   return {
     ...createEditorArtworkLayer(id, name),
     kind: "shape",
-    shape: { paths: shape.paths.map((path) => ({ ...path })) },
+    shape: { paths: shape.paths.map((path) => ({ ...path })), builderMode: shape.builderMode ?? "select" },
   };
 }
 
@@ -124,7 +128,7 @@ export function setEditorLayerText(
 export function updateEditorLayerTextStyle(
   layers: EditorArtworkLayer[],
   layerId: string,
-  update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth">>,
+  update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth">>,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => {
     if (layer.id !== layerId || !layer.text) return layer;
@@ -139,6 +143,14 @@ export function updateEditorLayerTextStyle(
       },
     };
   });
+}
+
+export function updateEditorShapeBuilderMode(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  builderMode: EditorShapeBuilderMode,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => layer.id === layerId && layer.shape ? { ...layer, shape: { ...layer.shape, builderMode } } : layer);
 }
 
 function copyStroke(stroke: ArtworkStroke): ArtworkStroke {
@@ -306,7 +318,7 @@ export function duplicateEditorLayer(
     strokes: source.strokes.map(copyStroke),
     mask: source.mask?.map((stroke) => ({ ...copyStroke(stroke), mode: stroke.mode })) ?? null,
     text: source.text ? { ...source.text } : null,
-    shape: source.shape ? { paths: source.shape.paths.map((path) => ({ ...path })) } : null,
+    shape: source.shape ? { paths: source.shape.paths.map((path) => ({ ...path })), builderMode: source.shape.builderMode } : null,
     image: source.image ? { ...source.image } : null,
   };
   const next = [...layers];

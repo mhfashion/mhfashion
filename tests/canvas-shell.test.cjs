@@ -320,8 +320,9 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
     assert.ok(adjustmentsPanel.includes(`title=\"${section}\"`), `missing ${section} adjustment section`);
   }
   assert.match(adjustmentsPanel, /aria-label="Search fonts"/);
-  assert.match(adjustmentsPanel, /aria-label="Text effect"/);
-  assert.match(adjustmentsPanel, /aria-label="Text transformation"/);
+  assert.match(adjustmentsPanel, /aria-label="Apply text shadow"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Text shadow softness"/);
+  assert.match(adjustmentsPanel, /aria-label={`Text transform \$\{shape\}`}/);
   assert.match(layerModelSource, /textEffect\?: "none" \| "shadow" \| "outline"/);
   assert.match(layerPreview, /data-editor-text-transform/);
 });

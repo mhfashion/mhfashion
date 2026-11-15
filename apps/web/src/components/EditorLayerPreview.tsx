@@ -43,6 +43,9 @@ export default function EditorLayerPreview({
           <g transform={transform} data-editor-text-transform={text.textTransform ?? "none"}>
             {text.textEffect === "shadow" && <text x={text.x + (text.effectOffset ?? 12)} y={text.y + (text.effectOffset ?? 12)} fontSize={text.fontSize} fill={text.effectColor ?? "#000000"} opacity={0.72} textAnchor={textAnchor} style={textStyle} data-editor-text-shadow="true">{text.value}</text>}
             <text x={text.x} y={text.y} fontSize={text.fontSize} fill={text.color} stroke={text.textEffect === "outline" ? (text.effectColor ?? "#000000") : "none"} strokeWidth={text.textEffect === "outline" ? (text.outlineWidth ?? 6) : 0} paintOrder="stroke" textAnchor={textAnchor} style={textStyle} data-editor-text-content="true">{text.value}</text>
+            {text.textDecoration === "line" && <line x1={text.x - text.fontSize * 2.2} y1={text.y + text.fontSize * 0.28} x2={text.x + text.fontSize * 2.2} y2={text.y + text.fontSize * 0.28} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={text.decorationWidth ?? 4} strokeLinecap="round" data-editor-text-decoration="line" />}
+            {text.textDecoration === "cut" && <rect x={text.x - text.fontSize * 2.2} y={text.y - text.fontSize * 0.34} width={text.fontSize * 4.4} height={text.decorationWidth ?? 4} fill={text.decorationColor ?? "#d4ff3f"} opacity="0.8" data-editor-text-decoration="cut" />}
+            {text.textDecoration === "oblique" && <line x1={text.x - text.fontSize * 2.1} y1={text.y + text.fontSize * 0.2} x2={text.x - text.fontSize * 1.5} y2={text.y - text.fontSize * 0.1} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={text.decorationWidth ?? 4} data-editor-text-decoration="oblique" />}
           </g>
         );
       })()}

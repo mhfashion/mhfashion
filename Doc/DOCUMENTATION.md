@@ -753,3 +753,10 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Added live text effect state to the text layer model for `None`, `Shadow`, and `Outline`, including effect color, shadow offset, and outline width. Added the first live transform presets (`Plain`, `Arch`, `Wave`, `Circle`) to the Adjustment UI while keeping text editable.
 - Preserved the MH Fashion Layer Box styling and behavior; this pass changes the Adjustment panel and text renderer only. The supplied reference was used as a visual direction for grouping and density, not copied as a branded asset.
 - Validation: canvas-shell **15/15**, editor-layers **11/11**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-16 — Distinct MH Fashion adjustment controls
+
+- Added MH Fashion-specific alignment controls using icon buttons for left, center, and right alignment instead of a generic select field. Added slider-based Opacity and Fill controls with live percentage readouts.
+- Expanded the compact Adjustment panel with text effect preset tiles, shadow offset/softness, outline width, decoration controls (line, color cut, oblique), transform tiles, and live Canvas rendering for shadow, outline, and decoration marks.
+- Added a Shape Builder section for shape layers with Select, Merge, Subtract, and Intersect modes. The selected mode is stored immutably on the shape layer and is ready for the next multi-path boolean geometry pass; Layer Box styling was not changed.
+- Validation: canvas-shell **15/15**, editor-layers **11/11**, Next.js production build passed, and `git diff --check` passed.

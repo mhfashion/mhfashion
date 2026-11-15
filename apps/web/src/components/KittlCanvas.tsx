@@ -33,6 +33,7 @@ import {
   ungroupEditorLayers,
   unlinkEditorLayers,
   updateEditorLayerTextStyle,
+  updateEditorShapeBuilderMode,
   updateEditorLayer,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
@@ -154,7 +155,7 @@ function ArtworkOverlay({
   onMoveEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
   onEditingTextChange?: (value: string) => void;
   onEditingTextCommit?: () => void;
-  onEditingTextStyle?: (update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth">>) => void;
+  onEditingTextStyle?: (update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth">>) => void;
   onResizeStart: (event: React.PointerEvent<SVGCircleElement>) => void;
   onResize: (event: React.PointerEvent<SVGSVGElement>) => void;
   onResizeEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
@@ -972,9 +973,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!selectedLayerId) return;
     setLayers((current) => setEditorLayerText(current, selectedLayerId, value));
   }
-  function updateSelectedTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth">>) {
+  function updateSelectedTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth">>) {
     if (!selectedLayerId) return;
     setLayers((current) => updateEditorLayerTextStyle(current, selectedLayerId, update));
+  }
+
+  function updateSelectedShapeBuilder(builderMode: "select" | "merge" | "subtract" | "intersect") {
+    if (!selectedLayerId) return;
+    setLayers((current) => updateEditorShapeBuilderMode(current, selectedLayerId, builderMode));
   }
 
   function addLayer() {
@@ -1343,6 +1349,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onUpdateLayer={updateLayer}
           onUpdateText={updateSelectedText}
           onUpdateTextStyle={updateSelectedTextStyle}
+          onUpdateShapeBuilder={updateSelectedShapeBuilder}
         />}
         {!adjustmentsOpen && <EditorLayersPanel
           open={layersOpen}
