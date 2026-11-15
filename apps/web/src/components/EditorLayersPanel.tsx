@@ -234,13 +234,14 @@ export default function EditorLayersPanel({
               const isMaskSelected = isSelected && selectedTarget === "mask";
                 const rowClass = `relative flex min-h-9 items-center gap-1 border-b border-[#c9c9c9] px-1 dark:border-[#292929] ${isSelected ? "bg-[#d2e5f8] dark:bg-[#4b5661]" : "bg-[#f1f1f1] hover:bg-[#e5e5e5] dark:bg-[#353535] dark:hover:bg-[#404040]"} [@media(pointer:coarse)]:min-h-11`;
               return (
-                <div key={layer.id} role="listitem" data-layer-id={layer.id} draggable onDragStart={() => setDraggedLayerId(layer.id)} onDragEnd={() => setDraggedLayerId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedLayerId && draggedLayerId !== layer.id) onMoveLayerToIndex(draggedLayerId, index); setDraggedLayerId(null); }}>
+                <div key={layer.id} className="relative">
                   {isGroupHeader && (
-                    <div className="absolute -top-8 left-0 right-0 z-10 flex h-7 items-center gap-1 border-b border-[#b7b7b7] bg-[#dedede] px-1 text-[10px] font-semibold dark:border-[#242424] dark:bg-[#2c2c2c] dark:text-white">
+                    <div className="flex h-7 items-center gap-1 border-b border-[#b7b7b7] bg-[#dedede] px-2 text-[10px] font-semibold dark:border-[#242424] dark:bg-[#2c2c2c] dark:text-white">
                       <button type="button" aria-label={`Collapse group ${layer.groupId}`} onClick={() => setCollapsedGroups((current) => new Set(current).add(layer.groupId!))} className={TINY_ICON}><ChevronLeft size={13} className="-rotate-90" /></button>
                       <FolderPlus size={13} aria-hidden="true" /> Group
                     </div>
                   )}
+                  <div role="listitem" data-layer-id={layer.id} draggable onDragStart={() => setDraggedLayerId(layer.id)} onDragEnd={() => setDraggedLayerId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedLayerId && draggedLayerId !== layer.id) onMoveLayerToIndex(draggedLayerId, index); setDraggedLayerId(null); }}>
                   <button type="button" aria-label={`${layer.visible ? "Hide" : "Show"} ${layer.name}`} aria-pressed={layer.visible} onClick={() => onToggleVisibility(layer.id)} className={`${TINY_ICON} h-7 w-7 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-8`}>
                     {layer.visible ? <Eye size={13} aria-hidden="true" /> : <EyeOff size={13} aria-hidden="true" />}
                   </button>
@@ -277,6 +278,7 @@ export default function EditorLayersPanel({
                       <button type="button" role="menuitem" aria-label={`Delete ${layer.name}`} onClick={() => { onDeleteLayer(layer.id); setMenuLayerId(null); }} className="flex min-h-7 w-full items-center gap-2 px-2 text-left text-red-700 hover:bg-[#d1d1d1] dark:text-red-300 dark:hover:bg-[#464646] [@media(pointer:coarse)]:min-h-11"><Trash2 size={12} aria-hidden="true" /> Delete</button>
                     </div>
                   )}
+                </div>
                 </div>
               );
             })}
