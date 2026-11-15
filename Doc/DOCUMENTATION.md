@@ -17,6 +17,16 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-15 — Owner-directed Canva-style Editor Sidebar first slice
+
+- Replaced the temporary left Edit sidebar categories with the owner-requested five-category flow: `Designs`, `Elements`, `Text`, `Upload`, and `Image Create`.
+- The Sidebar is hidden by default like the Layers panel. Its circular arrow reveals a compact icon rail; selecting a rail item opens the larger panel. A second arrow click hides the rail/panel. The panel uses touch-sized controls and remains protected by the existing mobile mutual-exclusion behavior with Layers.
+- Added the requested panel surfaces: top search for Designs, Elements, Text, Upload, and Image Create; design cards; design-layer entries; Add Text; image file selection with the configured KB/MB compression requirement shown; and an AI prompt/Create Image action.
+- Files: `apps/web/src/components/EditorEditSidebar.tsx`, `tests/canvas-shell.test.cjs`, `Plan/PLAN.md`.
+- Validation: canvas-shell tests passed after updating the assertions for the owner-requested categories and hidden → rail → panel interaction. `npm ci` completed successfully and installed the existing workspace dependencies.
+- Validation: the canvas-shell suite passed **13/13**, TypeScript passed, the Next.js production build passed, and `git diff --check` passed. Workspace lint completed with **0 errors / 26 existing warnings**; no new lint error was introduced by this change.
+- Limitations: the repository currently has no connected R2 design-library endpoint, SVG-layer extraction endpoint, canvas text/image object model, upload compression/insertion handler, or AI image-generation/download service. The first slice therefore records the UI and interaction contract without claiming those service integrations are complete.
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.

@@ -282,7 +282,7 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(layerModelSource, /export function deleteEditorLayer/);
 });
 
-test("Edit sidebar starts collapsed on the left with temporary Canva-like categories", () => {
+test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requested categories", () => {
   assert.match(source, /const \[editSidebarOpen, setEditSidebarOpen\] = useState\(false\)/);
   assert.match(source, /function toggleLayersPanel\(\)[\s\S]*?matchMedia\("\(max-width: 767px\)"\)[\s\S]*?setEditSidebarOpen\(false\)/);
   assert.match(source, /function toggleEditSidebar\(\)[\s\S]*?matchMedia\("\(max-width: 767px\)"\)[\s\S]*?setLayersOpen\(false\)/);
@@ -292,16 +292,25 @@ test("Edit sidebar starts collapsed on the left with temporary Canva-like catego
   assert.match(editSidebar, /aria-label="Edit sidebar"/);
   assert.match(editSidebar, /data-dock-side="left"/);
   assert.match(editSidebar, /aria-label="Edit sidebar tools"/);
-  assert.match(editSidebar, /aria-label=\{open \? "Collapse Edit sidebar" : "Expand Edit sidebar"\}/);
-  assert.match(editSidebar, /style=\{\{ left: open \? PANEL_WIDTH : 0 \}\}/);
+  assert.match(editSidebar, /const \[railVisible, setRailVisible\] = useState\(false\)/);
+  assert.match(editSidebar, /const hasPanel = railVisible && open/);
+  assert.match(editSidebar, /aria-label=\{hasPanel \? "Collapse Edit sidebar" : railVisible \? "Hide Edit sidebar" : "Expand Edit sidebar"\}/);
+  assert.match(editSidebar, /style=\{\{ left: hasPanel \? PANEL_WIDTH : railVisible \? "3rem" : 0 \}\}/);
   assert.match(editSidebar, /h-7 w-7[^\"]*rounded-full[^\"]*bg-accent[^\"]*text-accent-foreground/);
   assert.match(editSidebar, /aria-label="Edit sidebar rail"/);
   assert.match(editSidebar, /Open \${label} in Edit sidebar/);
-  assert.match(editSidebar, /setActiveLabel\(label\)/);
-  assert.match(editSidebar, /aria-live="polite"/);
-  for (const label of ["Design", "Elements", "Text", "Brand", "Uploads", "Draw", "Projects", "Apps"]) {
+  assert.match(editSidebar, /setActiveSection\(label\)/);
+  for (const label of ["Designs", "Elements", "Text", "Upload", "Image Create"]) {
     assert.match(editSidebar, new RegExp(`label: "${label}"`));
   }
+  assert.match(editSidebar, /Search designs/);
+  assert.match(editSidebar, /MH Fashion designs/);
+  assert.match(editSidebar, /Search elements/);
+  assert.match(editSidebar, /Add Text/);
+  assert.match(editSidebar, /Choose an image/);
+  assert.match(editSidebar, /Create Image/);
+  assert.match(editSidebar, /R2 SVG design loading/);
+  assert.match(editSidebar, /configured KB\/MB limit/);
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
   assert.match(source, /canvasLayerTransforms/);
   assert.match(source, /Move canvas artwork/);
