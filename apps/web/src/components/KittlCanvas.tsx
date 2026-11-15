@@ -21,6 +21,7 @@ import {
   appendLayerStroke,
   createEditorArtworkLayer,
   createEditorImageLayer,
+  createEditorShapeLayer,
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
@@ -71,6 +72,7 @@ type PanStart = { pointerId: number; startX: number; startY: number; panX: numbe
 type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
+type PenAnchor = Point;
 type CanvasBounds = { x: number; y: number; width: number; height: number };
 type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
 type CanvasLayerResizeDrag = { pointerId: number; start: Point; origin: Record<string, number>; handle: string };
@@ -272,6 +274,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [toolNotice, setToolNotice] = useState("");
   const [foregroundColor, setForegroundColor] = useState("#202124");
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
+  const [penAnchors, setPenAnchors] = useState<PenAnchor[]>([]);
+  const [penHoverPoint, setPenHoverPoint] = useState<Point | null>(null);
   const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
   const [redoStack, setRedoStack] = useState<EditorArtworkLayer[][]>([]);
   const [canvasLayerTransforms, setCanvasLayerTransforms] = useState<Record<string, Point>>({});
@@ -707,9 +711,50 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (canvasLayerRotateRef.current?.pointerId === event.pointerId) canvasLayerRotateRef.current = null;
   }
 
+  function finishPenPath(close = false) {
+    if (penAnchors.length < 2) {
+      setPenAnchors([]);
+      setPenHoverPoint(null);
+      return;
+    }
+    const pathData = penAnchors.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ") + (close ? " Z" : "");
+    const id = claimLayerId();
+    rememberLayerSnapshot();
+    const shapeLayer = createEditorShapeLayer(id, `Pen path ${nextLayerIdRef.current - 1}`, {
+      paths: [{ d: pathData, fill: close ? `${foregroundColor}22` : "none", stroke: foregroundColor, strokeWidth: 18 }],
+    });
+    setLayers((current) => [shapeLayer, ...current]);
+    setSelectedLayerId(id);
+    setSelectedLayerIds([id]);
+    setSelectedTarget("artwork");
+    setPenAnchors([]);
+    setPenHoverPoint(null);
+    setActiveTool("move");
+    setToolNotice("Pen path added to Layers.");
+    revealLayersStack();
+  }
+
+  function addPenAnchor(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    const first = penAnchors[0];
+    if (first && penAnchors.length >= 3 && Math.hypot(point.x - first.x, point.y - first.y) < 0.035) {
+      finishPenPath(true);
+      return;
+    }
+    setPenAnchors((current) => [...current, point]);
+    setPenHoverPoint(point);
+  }
+
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     if (activeTool === "move" || activeTool === "hand") return;
+    if (activeTool === "pen") {
+      addPenAnchor(event);
+      return;
+    }
     if (["remove-bg", "shape", "gradient"].includes(activeTool)) {
       event.preventDefault();
       event.stopPropagation();
@@ -762,6 +807,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (activeTool === "pen") {
+      setPenHoverPoint(toCanvasPoint(event.clientX, event.clientY));
+      return;
+    }
     const eraser = activeEraserRef.current;
     if (eraser?.pointerId === event.pointerId) {
       event.preventDefault();
@@ -804,6 +853,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function chooseTool(tool: EditorTool) {
+    if (tool !== "pen" && penAnchors.length > 0) {
+      setPenAnchors([]);
+      setPenHoverPoint(null);
+    }
     setActiveTool(tool);
     setToolNotice(tool === "remove-bg"
       ? "Remove BG needs an uploaded image; background removal is not connected yet."
@@ -1166,6 +1219,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   onPointerUp={endArtworkStroke}
                   onPointerCancel={endArtworkStroke}
                   onLostPointerCapture={endArtworkStroke}
+                  onDoubleClick={() => activeTool === "pen" && finishPenPath(false)}
                   className="block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
                   style={{
                     backgroundColor: "#ffffff",
@@ -1209,6 +1263,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   onRotate={rotateCanvasLayer}
                   onRotateEnd={endCanvasLayerRotate}
                 />
+                {activeTool === "pen" && penAnchors.length > 0 && (
+                  <svg aria-label="Pen path preview" viewBox="0 0 1000 1200" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
+                    <path d={penAnchors.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ")} fill="none" stroke={foregroundColor} strokeWidth="10" strokeDasharray="16 10" vectorEffect="non-scaling-stroke" />
+                    {penHoverPoint && <line x1={penAnchors[penAnchors.length - 1].x * 1000} y1={penAnchors[penAnchors.length - 1].y * 1200} x2={penHoverPoint.x * 1000} y2={penHoverPoint.y * 1200} stroke={foregroundColor} strokeWidth="8" strokeDasharray="10 10" vectorEffect="non-scaling-stroke" />}
+                    {penAnchors.map((point, index) => <circle key={`${point.x}-${point.y}-${index}`} cx={point.x * 1000} cy={point.y * 1200} r={index === 0 ? 13 : 10} fill={index === 0 ? "#ffffff" : foregroundColor} stroke={foregroundColor} strokeWidth="6" vectorEffect="non-scaling-stroke" />)}
+                  </svg>
+                )}
                 <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
                   <button
                     type="button"

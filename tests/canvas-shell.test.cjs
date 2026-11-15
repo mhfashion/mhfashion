@@ -132,6 +132,11 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(toolsBar, /id: "text"/);
   assert.match(toolsBar, /Pan canvas — Hand tool/);
   assert.match(toolsBar, /shadow-\[0_2px_8px_rgba\(212,255,63,.35\)\]/);
+  assert.match(source, /function finishPenPath\(close = false\)/);
+  assert.match(source, /function addPenAnchor/);
+  assert.match(source, /onDoubleClick=\{\(\) => activeTool === "pen" && finishPenPath\(false\)\}/);
+  assert.match(source, /aria-label="Pen path preview"/);
+  assert.match(source, /createEditorShapeLayer\(id, `Pen path/);
   assert.match(source, /activeTool === "text"/);
   assert.match(source, /addCanvasTextLayer\(undefined, \{ x: point\.x \* 1000, y: point\.y \* 1200 \}\)/);
   assert.match(toolsBar, /role="group" aria-label="Color swatches"/);
@@ -396,7 +401,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /editingTextLayer=\{editingTextLayer\}/);
   // Every sidebar addition must be reachable in the Layers stack.
   assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
-  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 4, "Text, element, design and upload reveal the Layers stack");
+  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 5, "Text, element, design, upload and Pen path reveal the Layers stack");
   assert.match(layersPanel, /EditorLayerPreview paths=\{layer\.shape\?\.paths\} text=\{layer\.text\} image=\{layer\.image\}/);
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
   assert.match(source, /canvasLayerTransforms/);

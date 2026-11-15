@@ -774,3 +774,10 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Preserved and clarified the interaction model: Hand tool + left drag, Space + left drag, middle-button drag, and touch Pan mode all move the editor viewport. The viewport now exposes `data-pan-mode="hand|scroll"` for reliable state styling and testing.
 - Refined the Phone/Mobile Pan view control into a rounded active pill with a dedicated hand icon badge while retaining zoom and reset controls.
 - Validation: canvas-shell **15/15**, editor-layers **12/12**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-16 — Kittl-inspired Pen tool foundation
+
+- Reworked the Pen tool from a freehand stroke fallback into a vector anchor workflow. Click adds anchors, the active path previews with a dashed segment and anchor nodes, clicking near the first anchor closes the path, and double-click finishes an open path.
+- Finished paths are created as editable `shape` layers, selected immediately, revealed in the Layers stack on desktop, and styled with the active foreground color. Switching tools clears an unfinished path so partial geometry is not accidentally committed.
+- The workflow is touch-safe because the preview SVG is pointer-events-none and the actual pointer target remains the canvas. Existing Pan, Move, Brush, Mask, and Layer Box behavior was preserved.
+- Validation: canvas-shell **15/15**, editor-layers **12/12**, Next.js production build passed, and `git diff --check` passed.
