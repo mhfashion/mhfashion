@@ -27,6 +27,13 @@ This log records completed website-related changes in the connected repository. 
 - Validation: the canvas-shell suite passed **13/13**, TypeScript passed, the Next.js production build passed, and `git diff --check` passed. Workspace lint completed with **0 errors / 26 existing warnings**; no new lint error was introduced by this change.
 - Limitations: the repository currently has no connected R2 design-library endpoint, SVG-layer extraction endpoint, canvas text/image object model, upload compression/insertion handler, or AI image-generation/download service. The first slice therefore records the UI and interaction contract without claiming those service integrations are complete.
 
+### 2026-11-15 — Keep the Edit rail visible beside the selected section
+
+- Corrected the Sidebar interaction per the owner's follow-up: opening `Designs`, `Text`, or another rail item no longer hides the compact icon rail. The selected category now opens beside the rail as one large section-specific panel, without a duplicate category row inside the panel.
+- Selecting another icon on the still-visible rail switches the large panel content while keeping the rail in place. The circular arrow remains available at the outer panel edge to close the Sidebar.
+- Files: `apps/web/src/components/EditorEditSidebar.tsx`, `tests/canvas-shell.test.cjs`, `Plan/PLAN.md`.
+- Validation: updated the canvas-shell assertions to cover simultaneous rail/panel rendering and section-only panel content. The canvas-shell suite passed **13/13**, TypeScript passed, and `git diff --check` passed. The previous production build remains valid because this correction only changes the existing Sidebar JSX/layout and test assertions; a fresh full build is not required for this UI-only correction.
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.

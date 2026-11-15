@@ -170,7 +170,7 @@ export default function EditorEditSidebar({
 
   return (
     <>
-      {railVisible && !hasPanel && (
+      {railVisible && (
         <aside aria-label="Edit sidebar rail" data-dock-side="left" className="absolute inset-y-0 left-0 z-30 flex w-12 flex-col items-center border-r border-border bg-bg-surface/95 py-2 text-text-primary shadow-xl backdrop-blur">
           <div className="flex flex-col gap-1">
             {SIDEBAR_TOOLS.map(({ label, Icon }) => (
@@ -182,19 +182,10 @@ export default function EditorEditSidebar({
         </aside>
       )}
       {hasPanel && (
-        <aside id="editor-edit-sidebar" aria-label="Edit sidebar" data-dock-side="left" className="absolute inset-y-0 left-0 z-30 flex min-h-0 flex-col overflow-hidden border-r border-border bg-bg-surface text-text-primary shadow-xl" style={{ width: PANEL_WIDTH }}>
+        <aside id="editor-edit-sidebar" aria-label={`${activeSection} editor sidebar`} data-dock-side="left" className="absolute inset-y-0 left-12 z-30 flex min-h-0 flex-col overflow-hidden border-r border-border bg-bg-surface text-text-primary shadow-xl" style={{ width: PANEL_WIDTH }}>
           <div aria-label="Edit sidebar title" className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3 text-[11px] font-semibold [@media(pointer:coarse)]:h-11">
-            <span role="heading" aria-level={2}>Edit</span>
-            <span className="truncate text-text-secondary">{activeSection}</span>
+            <span role="heading" aria-level={2}>{activeSection}</span>
           </div>
-          <nav aria-label="Edit sidebar tools" className="flex h-11 shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-1.5 [@media(pointer:coarse)]:h-14">
-            {SIDEBAR_TOOLS.map(({ label, Icon }) => (
-              <button key={label} type="button" aria-label={label} aria-pressed={activeSection === label} title={label} onClick={() => setActiveSection(label)} className={`flex h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold outline-none [@media(pointer:coarse)]:h-11 ${activeSection === label ? "bg-accent/15 text-accent" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}>
-                <Icon size={15} aria-hidden="true" />
-                <span>{label}</span>
-              </button>
-            ))}
-          </nav>
           <PanelContent section={activeSection} />
         </aside>
       )}
@@ -207,7 +198,7 @@ export default function EditorEditSidebar({
           else showRail();
         }}
         className="absolute top-2 z-40 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
-        style={{ left: hasPanel ? PANEL_WIDTH : railVisible ? "3rem" : 0 }}
+        style={{ left: hasPanel ? `calc(3rem + ${PANEL_WIDTH})` : railVisible ? "3rem" : 0 }}
       >
         {hasPanel ? <ChevronLeft size={17} aria-hidden="true" /> : <ChevronRight size={17} aria-hidden="true" />}
       </button>

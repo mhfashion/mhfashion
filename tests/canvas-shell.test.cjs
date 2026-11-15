@@ -289,17 +289,21 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /const closeSidebarsBeforeTheyOverlap = \(event: MediaQueryListEvent\)[\s\S]*?setLayersOpen\(false\)[\s\S]*?setEditSidebarOpen\(false\)/);
   assert.match(source, /addEventListener\("change", closeSidebarsBeforeTheyOverlap\)/);
   assert.match(source, /<EditorEditSidebar open=\{editSidebarOpen\} onToggle=\{toggleEditSidebar\} \/>/);
-  assert.match(editSidebar, /aria-label="Edit sidebar"/);
+  assert.match(editSidebar, /aria-label=\{`\$\{activeSection\} editor sidebar`\}/);
   assert.match(editSidebar, /data-dock-side="left"/);
-  assert.match(editSidebar, /aria-label="Edit sidebar tools"/);
+  assert.match(editSidebar, /\{railVisible && \(/);
+  assert.match(editSidebar, /\{hasPanel && \(/);
+  assert.match(editSidebar, /left-12/);
+  assert.doesNotMatch(editSidebar, /aria-label="Edit sidebar tools"/);
+  assert.doesNotMatch(editSidebar, /overflow-x-auto border-b border-border/);
   assert.match(editSidebar, /const \[railVisible, setRailVisible\] = useState\(false\)/);
   assert.match(editSidebar, /const hasPanel = railVisible && open/);
   assert.match(editSidebar, /aria-label=\{hasPanel \? "Collapse Edit sidebar" : railVisible \? "Hide Edit sidebar" : "Expand Edit sidebar"\}/);
-  assert.match(editSidebar, /style=\{\{ left: hasPanel \? PANEL_WIDTH : railVisible \? "3rem" : 0 \}\}/);
+  assert.match(editSidebar, /style=\{\{ left: hasPanel \? `calc\(3rem \+ \$\{PANEL_WIDTH\}\)` : railVisible \? "3rem" : 0 \}\}/);
   assert.match(editSidebar, /h-7 w-7[^\"]*rounded-full[^\"]*bg-accent[^\"]*text-accent-foreground/);
   assert.match(editSidebar, /aria-label="Edit sidebar rail"/);
   assert.match(editSidebar, /Open \${label} in Edit sidebar/);
-  assert.match(editSidebar, /setActiveSection\(label\)/);
+  assert.match(editSidebar, /setActiveSection\(section\)/);
   for (const label of ["Designs", "Elements", "Text", "Upload", "Image Create"]) {
     assert.match(editSidebar, new RegExp(`label: "${label}"`));
   }
