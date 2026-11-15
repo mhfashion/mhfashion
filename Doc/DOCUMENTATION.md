@@ -720,3 +720,10 @@ Sources supplied by the project owner on 2026-11-10:
 
 The current `/admin` page follows these cues but uses clearly labeled local preview data. The linked references are visual guidance only; they do not define live metrics or authorization behavior.
 - Validation: all repository Node tests passed **32/32**; TypeScript and ESLint passed; Cloudflare/OpenNext production build passed. Chromium CDP confirmed the dock's right-edge geometry at 390×844 and 320×740, the separated top arrow, 844×390 landscape stacking, desktop open/close, and Light/Dark color switching. Existing layer-mask, Product/Phone, mockup and tier regressions also passed. The screenshot-specific visual match remains open until the reference is attached.
+
+### 2026-11-15 — Kittl Canvas behavior audit and scope gates
+
+- Studied Kittl's public editor documentation for Canvas transforms, Text insertion/editing, Layers, Alignment/Tidy, Text Transformation, Text Shadow, Text Decoration, and Glyphs.
+- Compared those behaviors against the current MH Fashion layer model and renderer without changing implementation code. The current system can absorb basic Kittl-style move/scale/rotate, group/child selection, layer synchronization, direct Text insertion, alignment, tidy spacing, flip, and limited text effects.
+- Recorded architecture expansion points and approval gates for character-level text runs, text-box wrapping, full Arch/Wave/Circle/Flag transformations, stacked shadow/decoration effects, vector node editing, multi-artboard/infinite canvas, and collaboration/version history.
+- Added the detailed comparison and decision checklist to `Doc/KITTL_CANVAS_EDITOR_AUDIT.md`. No advanced feature implementation was started before owner approval.
