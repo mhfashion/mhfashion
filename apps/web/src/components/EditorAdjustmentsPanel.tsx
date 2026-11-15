@@ -1,12 +1,21 @@
 "use client";
 
-import { AlignCenter, AlignLeft, AlignRight, ChevronRight, Minus, Plus, Sparkles } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { EditorArtworkLayer, EditorShapeBuilderMode, EditorTextContent } from "@/lib/editor-layers";
+import type { EditorArtworkLayer, EditorShapeBuilderMode, EditorTextContent, EditorTextEffect, EditorTextEffectKind } from "@/lib/editor-layers";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
 const EDITOR_FONTS = ["Inter", "Arial", "Georgia", "Impact", "Courier New", "Trebuchet MS", "Verdana", "Times New Roman"];
-type TextStyleUpdate = Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth">>;
+type TextStyleUpdate = Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth" | "effects">>;
+const EFFECT_TYPES: { kind: EditorTextEffectKind; label: string; color: string }[] = [
+  { kind: "shadow", label: "Shadow", color: "#111827" },
+  { kind: "outline", label: "Outline", color: "#d4ff3f" },
+  { kind: "glow", label: "Glow", color: "#d4ff3f" },
+  { kind: "offset", label: "Offset", color: "#ff5b8a" },
+  { kind: "echo", label: "Echo", color: "#37d7ff" },
+  { kind: "extrude", label: "Extrude", color: "#7c3aed" },
+  { kind: "stripe", label: "Stripe", color: "#f97316" },
+];
 
 function Section({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
   return (
@@ -36,7 +45,13 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   const text = selectedLayer?.text;
   const [fontQuery, setFontQuery] = useState("");
   const [recentFonts, setRecentFonts] = useState<string[]>([]);
+  const [nextEffectId, setNextEffectId] = useState(1);
   const [openSection, setOpenSection] = useState("Text");
+  const effectStack: EditorTextEffect[] = text ? text.effects ?? (text.textEffect === "shadow"
+    ? [{ id: "legacy-shadow", kind: "shadow", color: text.effectColor ?? "#000000", offsetX: text.effectOffset ?? 12, offsetY: text.effectOffset ?? 12, blur: text.effectBlur ?? 0 }]
+    : text.textEffect === "outline"
+      ? [{ id: "legacy-outline", kind: "outline", color: text.effectColor ?? "#000000", width: text.outlineWidth ?? 6 }]
+      : []) : [];
   const filteredFonts = useMemo(() => {
     const needle = fontQuery.trim().toLowerCase();
     return EDITOR_FONTS.filter((font) => !needle || font.toLowerCase().includes(needle));
@@ -45,6 +60,28 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   function chooseFont(fontFamily: string) {
     onUpdateTextStyle({ fontFamily });
     setRecentFonts((current) => [fontFamily, ...current.filter((font) => font !== fontFamily)].slice(0, 4));
+  }
+  function replaceEffectStack(effects: EditorTextEffect[]) { onUpdateTextStyle({ effects, textEffect: "none" }); }
+  function addTextEffect(kind: EditorTextEffectKind) {
+    const preset = EFFECT_TYPES.find((item) => item.kind === kind);
+    if (!preset) return;
+    const usedIds = new Set(effectStack.map((effect) => effect.id));
+    let nextId = nextEffectId;
+    while (usedIds.has(`text-effect-${nextId}`)) nextId += 1;
+    const id = `text-effect-${nextId}`;
+    setNextEffectId(nextId + 1);
+    replaceEffectStack([...effectStack, { id, kind, color: preset.color, enabled: true }]);
+  }
+  function updateTextEffect(id: string, update: Partial<EditorTextEffect>) {
+    replaceEffectStack(effectStack.map((effect) => effect.id === id ? { ...effect, ...update } : effect));
+  }
+  function moveTextEffect(id: string, direction: -1 | 1) {
+    const index = effectStack.findIndex((effect) => effect.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= effectStack.length) return;
+    const next = [...effectStack];
+    [next[index], next[target]] = [next[target], next[index]];
+    replaceEffectStack(next);
   }
   return <>
     {open && <aside aria-label="Adjustments panel" data-dock-side="right" className="absolute inset-y-0 right-0 z-30 flex min-h-0 flex-col overflow-hidden border-l border-[#b7b7b7] bg-[#e8e8e8] text-[#202020] shadow-xl dark:border-[#1b1b1b] dark:bg-[#303030] dark:text-[#dedede]" style={{ width: PANEL_WIDTH }}>
@@ -85,8 +122,36 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
               </div>
             </Section>
             <Section title="Effects" open={openSection === "Effects"} onToggle={() => toggleSection("Effects")}>
-              <div className="mb-2 flex items-center justify-center rounded-lg border border-border bg-[#151c20] py-2 text-xl font-black tracking-tight text-white"><span className={text.textEffect === "shadow" ? "[text-shadow:3px_3px_0_#050505]" : text.textEffect === "outline" ? "text-transparent [text-shadow:-1px_-1px_0_#d4ff3f,1px_1px_0_#d4ff3f]" : ""}>Aa</span></div>
-              <div className="space-y-2"><div className="grid grid-cols-3 gap-1"><button type="button" aria-label="No text effect" aria-pressed={(text.textEffect ?? "none") === "none"} onClick={() => onUpdateTextStyle({ textEffect: "none" })} className="rounded-lg border border-border px-1 py-2 text-[9px] aria-pressed:border-accent aria-pressed:bg-accent/15">None</button><button type="button" aria-label="Apply text shadow" aria-pressed={text.textEffect === "shadow"} onClick={() => onUpdateTextStyle({ textEffect: "shadow" })} className="rounded-lg border border-border px-1 py-2 text-[9px] aria-pressed:border-accent aria-pressed:bg-accent/15"><Sparkles size={12} className="mx-auto mb-0.5" />Shadow</button><button type="button" aria-label="Apply text outline" aria-pressed={text.textEffect === "outline"} onClick={() => onUpdateTextStyle({ textEffect: "outline" })} className="rounded-lg border border-border px-1 py-2 text-[9px] aria-pressed:border-accent aria-pressed:bg-accent/15">Outline</button></div><label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">Effect color<input aria-label="Text effect color" type="color" value={text.effectColor ?? "#000000"} onChange={(event) => onUpdateTextStyle({ effectColor: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></label>{text.textEffect === "shadow" && <><NumberField label="Offset" value={text.effectOffset ?? 12} min={0} max={80} ariaLabel="Text shadow offset" onChange={(value) => onUpdateTextStyle({ effectOffset: value })} /><NumberField label="Softness" value={text.effectBlur ?? 0} min={0} max={30} ariaLabel="Text shadow softness" onChange={(value) => onUpdateTextStyle({ effectBlur: value })} /></>}{text.textEffect === "outline" && <NumberField label="Outline width" value={text.outlineWidth ?? 6} min={1} max={30} ariaLabel="Text outline width" onChange={(value) => onUpdateTextStyle({ outlineWidth: value })} />}</div>
+              <div className="mb-2 flex items-center justify-center rounded-lg border border-border bg-[#151c20] py-2 text-xl font-black tracking-tight text-white"><span className={effectStack.some((effect) => effect.kind === "shadow") ? "[text-shadow:3px_3px_0_#050505]" : effectStack.some((effect) => effect.kind === "outline") ? "text-transparent [text-shadow:-1px_-1px_0_#d4ff3f,1px_1px_0_#d4ff3f]" : ""}>Aa</span></div>
+              <div className="space-y-2">
+                <div role="group" aria-label="Add text effect" className="grid grid-cols-4 gap-1">
+                  {EFFECT_TYPES.map(({ kind, label }) => <button key={kind} type="button" aria-label={`Apply text ${kind}`} aria-pressed={effectStack.some((effect) => effect.kind === kind)} onClick={() => addTextEffect(kind)} className="min-h-9 rounded-lg border border-border px-1 py-1.5 text-[9px] capitalize transition hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11">{kind === "shadow" ? <Sparkles size={12} className="mx-auto mb-0.5" /> : null}{label}</button>)}
+                  <button type="button" aria-label="No text effect" aria-pressed={effectStack.length === 0} onClick={() => replaceEffectStack([])} className="min-h-9 rounded-lg border border-border px-1 py-1.5 text-[9px] aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11">None</button>
+                </div>
+                <p className="text-[9px] leading-relaxed text-text-muted">Add multiple effects, then reorder and tune each one. Changes render live on the canvas and mockups.</p>
+                <div aria-label="Text effect stack" className="space-y-2">
+                  {effectStack.map((effect, index) => <section key={effect.id} className="rounded-lg border border-border bg-bg/70 p-2">
+                    <div className="mb-2 flex items-center gap-1">
+                      <button type="button" aria-label={`${effect.enabled === false ? "Enable" : "Disable"} ${effect.kind} effect ${index + 1}`} aria-pressed={effect.enabled !== false} onClick={() => updateTextEffect(effect.id, { enabled: effect.enabled === false })} className="min-h-8 min-w-0 flex-1 truncate rounded-md px-2 text-left text-[10px] font-semibold capitalize text-text-primary hover:bg-accent/10 aria-pressed:text-accent">{index + 1}. {effect.kind}</button>
+                      <button type="button" aria-label={`Move ${effect.kind} effect up`} disabled={index === 0} onClick={() => moveTextEffect(effect.id, -1)} className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary hover:bg-accent/10 disabled:opacity-35 [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10"><ArrowUp size={13} /></button>
+                      <button type="button" aria-label={`Move ${effect.kind} effect down`} disabled={index === effectStack.length - 1} onClick={() => moveTextEffect(effect.id, 1)} className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary hover:bg-accent/10 disabled:opacity-35 [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10"><ArrowDown size={13} /></button>
+                      <button type="button" aria-label={`Remove ${effect.kind} effect ${index + 1}`} onClick={() => replaceEffectStack(effectStack.filter((item) => item.id !== effect.id))} className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary hover:bg-rose-500/10 hover:text-rose-500 [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10"><Trash2 size={13} /></button>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">Effect color<input aria-label={`${effect.kind} effect color ${index + 1}`} type="color" value={effect.color} onChange={(event) => updateTextEffect(effect.id, { color: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></label>
+                      {(effect.kind === "shadow" || effect.kind === "offset" || effect.kind === "echo") && <>
+                        <NumberField label="Offset X" value={effect.offsetX ?? 10} min={-80} max={80} ariaLabel={`${effect.kind} offset X ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { offsetX: value })} />
+                        <NumberField label="Offset Y" value={effect.offsetY ?? 10} min={-80} max={80} ariaLabel={`${effect.kind} offset Y ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { offsetY: value })} />
+                      </>}
+                      {(effect.kind === "shadow" || effect.kind === "glow") && <NumberField label={effect.kind === "shadow" ? "Softness" : "Glow softness"} value={effect.blur ?? 4} min={0} max={30} ariaLabel={effect.kind === "shadow" ? "Text shadow softness" : `Glow softness ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { blur: value })} />}
+                      {(effect.kind === "outline" || effect.kind === "glow") && <NumberField label={effect.kind === "outline" ? "Outline width" : "Glow width"} value={effect.width ?? (effect.kind === "outline" ? 6 : 12)} min={1} max={40} ariaLabel={`${effect.kind} width ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { width: value })} />}
+                      {(effect.kind === "echo" || effect.kind === "extrude") && <NumberField label={effect.kind === "echo" ? "Echo count" : "Extrude steps"} value={effect.count ?? (effect.kind === "echo" ? 3 : 8)} min={1} max={16} ariaLabel={`${effect.kind} count ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { count: value })} />}
+                      {(effect.kind === "extrude" || effect.kind === "stripe") && <NumberField label={effect.kind === "extrude" ? "Depth" : "Stripe spacing"} value={effect.distance ?? 18} min={1} max={80} ariaLabel={`${effect.kind} distance ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { distance: value })} />}
+                      {effect.kind === "stripe" && <NumberField label="Stripe width" value={effect.width ?? 4} min={1} max={16} ariaLabel={`Stripe width ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { width: value })} />}
+                    </div>
+                  </section>)}
+                </div>
+              </div>
             </Section>
             <Section title="Decoration" open={openSection === "Decoration"} onToggle={() => toggleSection("Decoration")}>
               <div className="space-y-2"><label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">Style<select aria-label="Text decoration" value={text.textDecoration ?? "none"} onChange={(event) => onUpdateTextStyle({ textDecoration: event.target.value as "none" | "line" | "cut" | "oblique" })} className="w-24 rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-primary"><option value="none">None</option><option value="line">Line</option><option value="cut">Color cut</option><option value="oblique">Oblique</option></select></label><label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">Color<input aria-label="Text decoration color" type="color" value={text.decorationColor ?? "#d4ff3f"} onChange={(event) => onUpdateTextStyle({ decorationColor: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></label><NumberField label="Weight" value={text.decorationWidth ?? 4} min={1} max={24} ariaLabel="Text decoration weight" onChange={(value) => onUpdateTextStyle({ decorationWidth: value })} /></div>

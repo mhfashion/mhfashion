@@ -126,10 +126,10 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(toolsBar, /hideOnMobile \? "max-md:hidden"/);
   assert.match(toolsBar, /rounded-2xl/);
   assert.match(toolsBar, /h-7 w-7/);
-  for (const label of ["Move", "Text", "Pen", "Hand tool", "Brush", "Eraser", "Shape", "Gradient", "Remove BG", "Undo", "Redo"]) {
+  for (const label of ["Move", "Pen", "Hand tool", "Brush", "Eraser", "Shape", "Gradient", "Remove BG", "Undo", "Redo"]) {
     assert.ok(toolsBar.includes(`label: "${label}"`) || toolsBar.includes(`aria-label="${label}"`), `missing ${label}`);
   }
-  assert.match(toolsBar, /id: "text"/);
+  assert.doesNotMatch(toolsBar, /id: "text"|label: "Text"/);
   assert.match(toolsBar, /Pan canvas — Hand tool/);
   assert.match(toolsBar, /shadow-\[0_2px_8px_rgba\(212,255,63,.35\)\]/);
   assert.match(source, /function finishPenPath\(close = false\)/);
@@ -137,8 +137,8 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /onDoubleClick=\{\(\) => activeTool === "pen" && finishPenPath\(false\)\}/);
   assert.match(source, /aria-label="Pen path preview"/);
   assert.match(source, /createEditorShapeLayer\(id, `Pen path/);
-  assert.match(source, /activeTool === "text"/);
-  assert.match(source, /addCanvasTextLayer\(undefined, \{ x: point\.x \* 1000, y: point\.y \* 1200 \}\)/);
+  assert.doesNotMatch(source, /activeTool === "text"/);
+  assert.match(editSidebar, /Add Text/);
   assert.match(toolsBar, /role="group" aria-label="Color swatches"/);
   assert.match(toolsBar, /aria-label="Foreground Color"/);
   assert.match(toolsBar, /aria-label="Background Color"/);
@@ -329,8 +329,16 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
     assert.ok(adjustmentsPanel.includes(`title=\"${section}\"`), `missing ${section} adjustment section`);
   }
   assert.match(adjustmentsPanel, /aria-label="Search fonts"/);
-  assert.match(adjustmentsPanel, /aria-label="Apply text shadow"/);
-  assert.match(adjustmentsPanel, /ariaLabel="Text shadow softness"/);
+  assert.match(adjustmentsPanel, /aria-label=\{`Apply text \$\{kind\}`\}/);
+  assert.match(adjustmentsPanel, /effect\.kind === "shadow" \? "Text shadow softness"/);
+  assert.match(adjustmentsPanel, /aria-label="Text effect stack"/);
+  for (const effect of ["shadow", "outline", "glow", "offset", "echo", "extrude", "stripe"]) {
+    assert.match(adjustmentsPanel, new RegExp(`kind: "${effect}"`));
+  }
+  assert.match(adjustmentsPanel, /Move \$\{effect\.kind\} effect up/);
+  assert.match(adjustmentsPanel, /Remove \$\{effect\.kind\} effect/);
+  assert.match(layerPreview, /data-editor-text-effect/);
+  assert.match(layerModelSource, /effects\?: EditorTextEffect\[\]/);
   assert.match(adjustmentsPanel, /aria-label={`Text transform \$\{shape\}`}/);
   assert.match(adjustmentsPanel, /className=\"mb-2 flex items-center justify-center rounded-lg/);
   assert.match(layerModelSource, /textEffect\?: "none" \| "shadow" \| "outline"/);

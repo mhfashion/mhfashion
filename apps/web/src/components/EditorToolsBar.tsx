@@ -13,12 +13,11 @@ import {
   Redo2,
   RefreshCw,
   Square,
-  Type,
   Undo2,
 } from "lucide-react";
 import { useRef } from "react";
 
-export type EditorTool = "move" | "text" | "pen" | "hand" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
+export type EditorTool = "move" | "pen" | "hand" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
 
 type Props = {
   activeTool: EditorTool;
@@ -40,7 +39,6 @@ type Props = {
 
 const tools = [
   { id: "move", label: "Move", Icon: Move },
-  { id: "text", label: "Text", Icon: Type },
   { id: "pen", label: "Pen", Icon: Pen },
   { id: "hand", label: "Hand tool", Icon: Hand },
   { id: "brush", label: "Brush", Icon: Brush },

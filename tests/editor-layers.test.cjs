@@ -29,6 +29,7 @@ const {
   reorderEditorLayer,
   setEditorLayerText,
   updateEditorLayer,
+  updateEditorLayerTextStyle,
   ungroupEditorLayers,
   unlinkEditorLayers,
   updateLayerLastStroke,
@@ -210,4 +211,21 @@ test("shape builder performs deterministic rectangle merge, subtract, and inters
   const intersected = applyEditorShapeBuilderOperation([layer], layer.id, "intersect")[0];
   assert.equal(intersected.shape.builderMode, "intersect");
   assert.equal(intersected.shape.paths[0].d, "M 300 300 H 500 V 500 H 300 Z");
+});
+
+test("text effects stack immutably and remain independent when a text layer is duplicated", () => {
+  const initial = createEditorTextLayer("text-1", "Text", {
+    value: "MH", x: 500, y: 600, fontSize: 110, color: "#202124",
+  });
+  const effects = [
+    { id: "fx-1", kind: "shadow", color: "#111111", offsetX: 8, offsetY: 12 },
+    { id: "fx-2", kind: "glow", color: "#d4ff3f", blur: 9 },
+  ];
+  const updated = updateEditorLayerTextStyle([initial], initial.id, { effects });
+  const duplicate = duplicateEditorLayer(updated, initial.id, "text-2")[0];
+  assert.deepEqual(updated[0].text.effects, effects);
+  assert.equal(initial.text.effects, undefined, "Effect updates do not mutate the source text");
+  assert.notStrictEqual(updated[0].text.effects, effects);
+  assert.notStrictEqual(duplicate.text.effects, updated[0].text.effects);
+  assert.notStrictEqual(duplicate.text.effects[0], updated[0].text.effects[0]);
 });

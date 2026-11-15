@@ -5,6 +5,21 @@ export type LayerEditTarget = "artwork" | "mask";
 export type EditorLayerBlendMode = "normal" | "multiply" | "screen" | "overlay";
 export type LayerMaskStroke = ArtworkStroke & { mode: MaskBrushMode };
 export type EditorLayerKind = "artwork" | "text" | "shape" | "image";
+export type EditorTextEffectKind = "shadow" | "outline" | "glow" | "offset" | "echo" | "extrude" | "stripe";
+export type EditorTextEffect = {
+  id: string;
+  kind: EditorTextEffectKind;
+  color: string;
+  enabled?: boolean;
+  offsetX?: number;
+  offsetY?: number;
+  blur?: number;
+  width?: number;
+  count?: number;
+  distance?: number;
+  angle?: number;
+  opacity?: number;
+};
 export type EditorTextContent = {
   value: string;
   x: number;
@@ -27,6 +42,7 @@ export type EditorTextContent = {
   textDecoration?: "none" | "line" | "cut" | "oblique";
   decorationColor?: string;
   decorationWidth?: number;
+  effects?: EditorTextEffect[];
 };
 export type EditorShapePath = {
   d: string;
@@ -92,7 +108,7 @@ export function createEditorTextLayer(
   name: string,
   text: EditorTextContent,
 ): EditorArtworkLayer {
-  return { ...createEditorArtworkLayer(id, name), kind: "text", text: { ...text } };
+  return { ...createEditorArtworkLayer(id, name), kind: "text", text: { ...text, effects: text.effects?.map((effect) => ({ ...effect })) } };
 }
 
 export function createEditorShapeLayer(
@@ -128,7 +144,7 @@ export function setEditorLayerText(
 export function updateEditorLayerTextStyle(
   layers: EditorArtworkLayer[],
   layerId: string,
-  update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth">>,
+  update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth" | "effects">>,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => {
     if (layer.id !== layerId || !layer.text) return layer;
@@ -137,6 +153,7 @@ export function updateEditorLayerTextStyle(
       text: {
         ...layer.text,
         ...update,
+        effects: update.effects === undefined ? layer.text.effects : update.effects.map((effect) => ({ ...effect })),
         fontSize: update.fontSize === undefined ? layer.text.fontSize : Math.max(24, Math.min(260, update.fontSize)),
         letterSpacing: update.letterSpacing === undefined ? layer.text.letterSpacing : Math.max(-20, Math.min(80, update.letterSpacing)),
         lineHeight: update.lineHeight === undefined ? layer.text.lineHeight : Math.max(0.7, Math.min(3, update.lineHeight)),
@@ -358,7 +375,7 @@ export function duplicateEditorLayer(
     linkId: null,
     strokes: source.strokes.map(copyStroke),
     mask: source.mask?.map((stroke) => ({ ...copyStroke(stroke), mode: stroke.mode })) ?? null,
-    text: source.text ? { ...source.text } : null,
+    text: source.text ? { ...source.text, effects: source.text.effects?.map((effect) => ({ ...effect })) } : null,
     shape: source.shape ? { paths: source.shape.paths.map((path) => ({ ...path })), builderMode: source.shape.builderMode } : null,
     image: source.image ? { ...source.image } : null,
   };

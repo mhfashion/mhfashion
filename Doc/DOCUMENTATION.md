@@ -781,3 +781,13 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Finished paths are created as editable `shape` layers, selected immediately, revealed in the Layers stack on desktop, and styled with the active foreground color. Switching tools clears an unfinished path so partial geometry is not accidentally committed.
 - The workflow is touch-safe because the preview SVG is pointer-events-none and the actual pointer target remains the canvas. Existing Pan, Move, Brush, Mask, and Layer Box behavior was preserved.
 - Validation: canvas-shell **15/15**, editor-layers **12/12**, Next.js production build passed, and `git diff --check` passed.
+
+
+### 2026-11-16 — Stackable Kittl-inspired text effects and Text tool removal
+
+- Expanded the selected-text Effects section from a single Shadow/Outline choice into a reusable stack of seven editable effect types: Shadow, Outline, Glow, Offset, Echo, Extrude, and Stripe. Each effect can be added more than once, enabled/disabled, recolored, configured with its relevant controls, reordered, and removed; clearing the stack leaves the editable text intact.
+- Added the stack to the shared text-layer model and immutable update/duplicate paths. The common SVG preview renderer now draws those effects on both the print canvas and Front/Back mockups, preserving existing legacy Shadow/Outline settings for older text layers. The effect controls retain compact cards and coarse-pointer target sizes for Phone/Mobile.
+- Removed the Text button and its canvas-click insertion route from the bottom Tools bar. Text insertion remains available through the Edit sidebar's `Add Text` action, which focuses the existing inline text editor.
+- Files: `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`, `Plan/PLAN.md`.
+- Validation: all five relevant unit suites passed **39/39** (Guide 9, browser guards 1, canvas spec 1, canvas-shell 15, editor layers 13); TypeScript passed; Next.js production build and OpenNext Cloudflare Worker build passed; `git diff --check` passed. ESLint reported **0 errors / 26 existing repository warnings**.
+- Limitations: effect rendering is SVG-based and remains live/editable text, but the current transforms are visual presets rather than true per-character warps; gradient/texture fills, multi-color vector exports, and final production print export remain outside this implementation.

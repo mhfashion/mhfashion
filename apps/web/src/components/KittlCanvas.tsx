@@ -766,12 +766,6 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       return;
     }
     const point = toCanvasPoint(event.clientX, event.clientY);
-    if (activeTool === "text") {
-      event.preventDefault();
-      event.stopPropagation();
-      addCanvasTextLayer(undefined, { x: point.x * 1000, y: point.y * 1200 });
-      return;
-    }
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
     if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) return;
     event.preventDefault();
@@ -1027,7 +1021,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!selectedLayerId) return;
     setLayers((current) => setEditorLayerText(current, selectedLayerId, value));
   }
-  function updateSelectedTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth">>) {
+  function updateSelectedTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth" | "effects">>) {
     if (!selectedLayerId) return;
     setLayers((current) => updateEditorLayerTextStyle(current, selectedLayerId, update));
   }
