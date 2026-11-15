@@ -69,8 +69,9 @@ type PanStart = { pointerId: number; startX: number; startY: number; panX: numbe
 type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
+type CanvasBounds = { x: number; y: number; width: number; height: number };
 type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
-type CanvasLayerResizeDrag = { pointerId: number; start: Point; origin: Record<string, number> };
+type CanvasLayerResizeDrag = { pointerId: number; start: Point; origin: Record<string, number>; handle: string };
 type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
 type Connector = { side: MockupSide; path: string; start: Point; end: Point };
 type ActiveArtworkStroke = {
@@ -83,6 +84,35 @@ type ActiveArtworkStroke = {
   color: string;
 };
 
+function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
+  const points = [
+    ...layer.strokes.flatMap((stroke) => stroke.points.map((point) => ({ x: point.x * 1000, y: point.y * 1200 }))),
+    ...(layer.text ? [{ x: layer.text.x - Math.max(layer.text.fontSize, layer.text.value.length * layer.text.fontSize * 0.58) / 2, y: layer.text.y - layer.text.fontSize }, { x: layer.text.x + Math.max(layer.text.fontSize, layer.text.value.length * layer.text.fontSize * 0.58) / 2, y: layer.text.y + layer.text.fontSize * 0.25 }] : []),
+    ...(layer.image ? [{ x: layer.image.x, y: layer.image.y }, { x: layer.image.x + layer.image.width, y: layer.image.y + layer.image.height }] : []),
+    ...((layer.shape?.paths ?? []).flatMap((path) => {
+      const values = path.d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+      return Array.from({ length: Math.floor(values.length / 2) }, (_, index) => ({ x: values[index * 2], y: values[index * 2 + 1] }));
+    })),
+  ];
+  if (!points.length) return null;
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const minX = Math.max(0, Math.min(...xs) - 18);
+  const minY = Math.max(0, Math.min(...ys) - 18);
+  const maxX = Math.min(1000, Math.max(...xs) + 18);
+  const maxY = Math.min(1200, Math.max(...ys) + 18);
+  return { x: minX, y: minY, width: Math.max(24, maxX - minX), height: Math.max(24, maxY - minY) };
+}
+
+function unionCanvasBounds(bounds: CanvasBounds[]): CanvasBounds | null {
+  if (!bounds.length) return null;
+  const minX = Math.min(...bounds.map((bound) => bound.x));
+  const minY = Math.min(...bounds.map((bound) => bound.y));
+  const maxX = Math.max(...bounds.map((bound) => bound.x + bound.width));
+  const maxY = Math.max(...bounds.map((bound) => bound.y + bound.height));
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
 function ArtworkOverlay({
   layers,
   selectedMaskLayerId,
@@ -92,6 +122,7 @@ function ArtworkOverlay({
   moveEnabled,
   editingTextLayer,
   selectedLayerIds,
+  selectionBounds,
   layerScales,
   onMoveStart,
   onMove,
@@ -111,6 +142,7 @@ function ArtworkOverlay({
   moveEnabled: boolean;
   editingTextLayer?: EditorArtworkLayer | null;
   selectedLayerIds: string[];
+  selectionBounds: CanvasBounds | null;
   layerScales: Record<string, number>;
   onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
   onMove: (event: React.PointerEvent<SVGSVGElement>) => void;
@@ -125,14 +157,14 @@ function ArtworkOverlay({
   const editingText = editingTextLayer?.text ?? null;
   const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
   const resizeHandles = [
-    { key: "top-left", x: 120, y: 160 },
-    { key: "top-center", x: 500, y: 160 },
-    { key: "top-right", x: 880, y: 160 },
-    { key: "middle-left", x: 120, y: 600 },
-    { key: "middle-right", x: 880, y: 600 },
-    { key: "bottom-left", x: 120, y: 1040 },
-    { key: "bottom-center", x: 500, y: 1040 },
-    { key: "bottom-right", x: 880, y: 1040 },
+    { key: "top-left", x: selectionBounds?.x ?? 0, y: selectionBounds?.y ?? 0 },
+    { key: "top-center", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0) / 2, y: selectionBounds?.y ?? 0 },
+    { key: "top-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: selectionBounds?.y ?? 0 },
+    { key: "middle-left", x: selectionBounds?.x ?? 0, y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) / 2 },
+    { key: "middle-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) / 2 },
+    { key: "bottom-left", x: selectionBounds?.x ?? 0, y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) },
+    { key: "bottom-center", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0) / 2, y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) },
+    { key: "bottom-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) },
   ];
   return (
     <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={(event) => { onMove(event); onResize(event); }} onPointerUp={(event) => { onMoveEnd(event); onResizeEnd(event); }} onPointerCancel={(event) => { onMoveEnd(event); onResizeEnd(event); }} onLostPointerCapture={(event) => { onMoveEnd(event); onResizeEnd(event); }} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
@@ -194,11 +226,11 @@ function ArtworkOverlay({
         )}
       </g>
       {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
-      {selectedLayerIds.length > 0 && !editingText && (
+      {selectedLayerIds.length > 0 && selectionBounds && !editingText && (
         <g pointerEvents="none" data-editor-transform-controls="true">
-          <rect x="120" y="160" width="760" height="880" fill="none" stroke="#4c9d16" strokeDasharray="10 8" strokeWidth="4" />
+          <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9d16" strokeDasharray="10 8" strokeWidth="4" />
           {resizeHandles.map((handle) => (
-            <circle key={handle.key} cx={handle.x} cy={handle.y} r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} />
+            <circle key={handle.key} cx={handle.x} cy={handle.y} r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" data-resize-handle={handle.key} onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} />
           ))}
         </g>
       )}
@@ -250,6 +282,22 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     () => product === "Phone" ? mockups.filter((side) => side === "Front Mockup") : mockups,
     [mockups, product],
   );
+  const selectionBounds = useMemo(() => {
+    const bounds = selectedLayerIds.flatMap((id) => {
+      const layer = layers.find((item) => item.id === id);
+      const base = layer ? layerCanvasBounds(layer) : null;
+      if (!base) return [];
+      const scale = canvasLayerScales[id] ?? 1;
+      const offset = canvasLayerTransforms[id] ?? { x: 0, y: 0 };
+      return [{
+        x: 500 + offset.x + (base.x - 500) * scale,
+        y: 600 + offset.y + (base.y - 600) * scale,
+        width: base.width * scale,
+        height: base.height * scale,
+      }];
+    });
+    return unionCanvasBounds(bounds);
+  }, [canvasLayerScales, canvasLayerTransforms, layers, selectedLayerIds]);
   function toggleLayersPanel() {
     if (!layersOpen && window.matchMedia("(max-width: 767px)").matches) setEditSidebarOpen(false);
     setLayersOpen((open) => !open);
@@ -586,6 +634,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       pointerId: event.pointerId,
       start,
       origin: Object.fromEntries(ids.map((id) => [id, canvasLayerScales[id] ?? 1])),
+      handle: event.currentTarget.getAttribute("data-resize-handle") ?? "bottom-right",
     };
   }
 
@@ -594,7 +643,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
     const point = toCanvasPoint(event.clientX, event.clientY);
-    const delta = (point.x - drag.start.x) * 1000;
+    const horizontalDelta = point.x - drag.start.x;
+    const verticalDelta = point.y - drag.start.y;
+    const axisDelta = drag.handle.includes("left") || drag.handle.includes("right") ? horizontalDelta : verticalDelta;
+    const direction = drag.handle.includes("left") || drag.handle.includes("top") ? -1 : 1;
+    const delta = axisDelta * direction * 1000;
     const factor = Math.max(0.25, Math.min(3, 1 + delta / 500));
     setCanvasLayerScales(Object.fromEntries(Object.entries(drag.origin).map(([id, scale]) => [id, Math.max(0.25, Math.min(3, scale * factor))])));
   }
@@ -1073,6 +1126,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   moveEnabled={activeTool === "move"}
                   editingTextLayer={editingTextLayer}
                   selectedLayerIds={selectedLayerIds}
+                  selectionBounds={selectionBounds}
                   layerScales={canvasLayerScales}
                   onMoveStart={startCanvasArtworkMove}
                   onMove={moveCanvasArtwork}

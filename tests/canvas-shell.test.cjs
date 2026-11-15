@@ -291,6 +291,10 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(source, /resizeHandles = \[/);
   assert.match(source, /top-left/);
   assert.match(source, /bottom-right/);
+  assert.match(source, /function layerCanvasBounds\(layer: EditorArtworkLayer\)/);
+  assert.match(source, /const selectionBounds = useMemo/);
+  assert.match(source, /selectionBounds=\{selectionBounds\}/);
+  assert.match(source, /x=\{selectionBounds\.x\}/);
   assert.match(artworkLayers, /<mask[\s\S]*?maskUnits="userSpaceOnUse"/);
   assert.match(artworkLayers, /stroke\.mode === "hide" \? "black" : "white"/);
   assert.match(artworkLayers, /mask=\{layer\.mask !== null \? `url\(#\$\{maskId\}\)` : undefined\}/);
