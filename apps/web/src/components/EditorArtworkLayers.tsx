@@ -58,6 +58,7 @@ export default function EditorArtworkLayers({
   layers,
   transform = "translate(500 600) scale(1) translate(-500 -600)",
   layerOffsets,
+  layerScales,
   selectedMaskLayerId = null,
   maskBrushMode = "hide",
   hiddenTextLayerId = null,
@@ -65,6 +66,7 @@ export default function EditorArtworkLayers({
   layers: EditorArtworkLayer[];
   transform?: string;
   layerOffsets?: Record<string, { x: number; y: number }>;
+  layerScales?: Record<string, number>;
   selectedMaskLayerId?: string | null;
   maskBrushMode?: MaskBrushMode;
   /** The layer currently being typed on the print canvas is rendered by the inline editor. */
@@ -81,7 +83,10 @@ export default function EditorArtworkLayers({
         .map((layer) => {
         const maskId = `${instanceId}-${layer.id.replace(/[^a-zA-Z0-9_-]/g, "")}-mask`;
         const offset = layerOffsets?.[layer.id];
-        const layerTransform = offset ? `translate(${offset.x} ${offset.y})` : undefined;
+        const scale = layerScales?.[layer.id] ?? 1;
+        const layerTransform = offset || scale !== 1
+          ? `translate(${offset?.x ?? 0} ${offset?.y ?? 0}) translate(500 600) scale(${scale}) translate(-500 -600)`
+          : undefined;
         return (
           <g key={layer.id} transform={layerTransform} opacity={layer.opacity / 100} style={{ mixBlendMode: layer.blendMode }}>
             {layer.mask !== null && (

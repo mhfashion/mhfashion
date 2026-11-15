@@ -129,9 +129,6 @@ function PanelContent({
             <DesignCard key={design.id} design={design} onAdd={() => onAddDesign(design)} />
           ))}
         </div>
-        <p className="rounded-lg border border-dashed border-border-light p-2 text-[10px] leading-4 text-text-muted">
-          These previews come from the MH Fashion design library; the R2 SVG source listing is still pending.
-        </p>
       </div>
     );
   }
@@ -169,9 +166,6 @@ function PanelContent({
           <Type size={14} aria-hidden="true" />
           Add Text
         </button>
-        <p className="text-[10px] leading-4 text-text-muted">
-          Add Text places a text layer on the canvas and starts typing on the canvas right away.
-        </p>
         <SectionHeading>Text layers in Designs</SectionHeading>
         <div aria-label="Design text layers" className="grid grid-cols-2 gap-2">
           {textLayers.map((layer) => (
@@ -246,9 +240,6 @@ function PanelContent({
         <Sparkles size={15} className="mr-2" aria-hidden="true" />
         Create Image
       </button>
-      <p className="text-[10px] leading-4 text-text-muted">
-        A generated image lands on the canvas as its own layer once the project AI image service is connected.
-      </p>
     </div>
   );
 }

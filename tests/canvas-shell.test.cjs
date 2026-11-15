@@ -313,7 +313,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /Add Text/);
   assert.match(editSidebar, /Choose a photo/);
   assert.match(editSidebar, /Create Image/);
-  assert.match(editSidebar, /R2 SVG source listing is still pending/);
+  assert.doesNotMatch(editSidebar, /R2 SVG source listing is still pending/);
   assert.match(editSidebar, /formatByteSize\(uploadLimitBytes\)/);
   // Text: Add Text is compact and lists design text layers as per-layer thumbnails.
   assert.match(editSidebar, /self-start rounded-lg[^"]*text-\[11px\] font-bold text-accent/);

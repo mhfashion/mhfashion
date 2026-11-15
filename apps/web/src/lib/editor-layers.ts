@@ -102,6 +102,24 @@ export function setEditorLayerText(
   );
 }
 
+export function updateEditorLayerTextStyle(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  update: Partial<Pick<EditorTextContent, "fontSize" | "color">>,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => {
+    if (layer.id !== layerId || !layer.text) return layer;
+    return {
+      ...layer,
+      text: {
+        ...layer.text,
+        ...update,
+        fontSize: update.fontSize === undefined ? layer.text.fontSize : Math.max(24, Math.min(260, update.fontSize)),
+      },
+    };
+  });
+}
+
 function copyStroke(stroke: ArtworkStroke): ArtworkStroke {
   return { ...stroke, points: stroke.points.map((point) => ({ ...point })) };
 }

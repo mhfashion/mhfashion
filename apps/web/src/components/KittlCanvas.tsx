@@ -26,6 +26,7 @@ import {
   removeLayerMask,
   reorderEditorLayer,
   setEditorLayerText,
+  updateEditorLayerTextStyle,
   updateEditorLayer,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
@@ -63,6 +64,7 @@ type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
 type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
+type CanvasLayerResizeDrag = { pointerId: number; start: Point; origin: Record<string, number> };
 type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
 type Connector = { side: MockupSide; path: string; start: Point; end: Point };
 type ActiveArtworkStroke = {
@@ -83,11 +85,17 @@ function ArtworkOverlay({
   layerOffsets,
   moveEnabled,
   editingTextLayer,
+  selectedLayerIds,
+  layerScales,
   onMoveStart,
   onMove,
   onMoveEnd,
   onEditingTextChange,
   onEditingTextCommit,
+  onEditingTextStyle,
+  onResizeStart,
+  onResize,
+  onResizeEnd,
 }: {
   layers: EditorArtworkLayer[];
   selectedMaskLayerId: string | null;
@@ -96,16 +104,22 @@ function ArtworkOverlay({
   layerOffsets: Record<string, Point>;
   moveEnabled: boolean;
   editingTextLayer?: EditorArtworkLayer | null;
+  selectedLayerIds: string[];
+  layerScales: Record<string, number>;
   onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
   onMove: (event: React.PointerEvent<SVGSVGElement>) => void;
   onMoveEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
   onEditingTextChange?: (value: string) => void;
   onEditingTextCommit?: () => void;
+  onEditingTextStyle?: (update: Partial<Pick<EditorTextContent, "fontSize" | "color">>) => void;
+  onResizeStart: (event: React.PointerEvent<SVGCircleElement>) => void;
+  onResize: (event: React.PointerEvent<SVGSVGElement>) => void;
+  onResizeEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
 }) {
   const editingText = editingTextLayer?.text ?? null;
   const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
   return (
-    <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={onMove} onPointerUp={onMoveEnd} onPointerCancel={onMoveEnd} onLostPointerCapture={onMoveEnd} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
+    <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={(event) => { onMove(event); onResize(event); }} onPointerUp={(event) => { onMoveEnd(event); onResizeEnd(event); }} onPointerCancel={(event) => { onMoveEnd(event); onResizeEnd(event); }} onLostPointerCapture={(event) => { onMoveEnd(event); onResizeEnd(event); }} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
       <g transform={`translate(${500 + transform.x} ${600 + transform.y}) translate(-500 -600)`}>
         <EditorArtworkLayers
           layers={layers}
@@ -113,46 +127,63 @@ function ArtworkOverlay({
           selectedMaskLayerId={selectedMaskLayerId}
           maskBrushMode={maskBrushMode}
           hiddenTextLayerId={editingTextLayerId}
+          layerScales={layerScales}
         />
         {editingText && (
           // Typing goes straight onto the print canvas: the focused field shares the
           // layer's font size and centre, so the caret sits where the text is drawn.
           <foreignObject
             x={editingText.x - TEXT_EDIT_BOX_WIDTH / 2}
-            y={editingText.y - editingText.fontSize}
+            y={editingText.y - editingText.fontSize - 72}
             width={TEXT_EDIT_BOX_WIDTH}
-            height={editingText.fontSize * 1.32}
+            height={editingText.fontSize * 1.32 + 72}
             pointerEvents="auto"
             data-editor-text-editor="true"
           >
-            <input
-              autoFocus
-              value={editingText.value}
-              aria-label="Type text on the canvas"
-              placeholder="Type your text"
-              onChange={(event) => onEditingTextChange?.(event.target.value)}
-              onBlur={() => onEditingTextCommit?.()}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
-              }}
-              onPointerDown={(event) => event.stopPropagation()}
-              className="w-full border-0 bg-transparent text-center leading-none outline-none placeholder:text-[#9aa0a6]"
-              style={{
-                height: `${editingText.fontSize * 1.32}px`,
-                lineHeight: `${editingText.fontSize * 1.32}px`,
-                fontSize: `${editingText.fontSize}px`,
-                color: editingText.color,
-                caretColor: editingText.color,
-                fontFamily: EDITOR_TEXT_FONT_FAMILY,
-                fontWeight: 700,
-                outline: "2px dashed rgba(76, 157, 22, 0.7)",
-                outlineOffset: "6px",
-              }}
-            />
+            <div className="flex h-full flex-col items-center gap-2">
+              <div className="flex h-10 items-center gap-2 rounded-md bg-white/95 px-2 shadow-md">
+                <label className="text-[11px] text-[#202124]">Font size
+                  <input type="number" min="24" max="260" value={editingText.fontSize} aria-label="Text font size" onChange={(event) => onEditingTextStyle?.({ fontSize: Number(event.target.value) })} onPointerDown={(event) => event.stopPropagation()} className="ml-1 w-14 rounded border border-[#b8b8b8] px-1 py-1 text-[11px]" />
+                </label>
+                <label className="flex items-center gap-1 text-[11px] text-[#202124]">Color
+                  <input type="color" value={editingText.color} aria-label="Text color" onChange={(event) => onEditingTextStyle?.({ color: event.target.value })} onPointerDown={(event) => event.stopPropagation()} className="h-6 w-7" />
+                </label>
+              </div>
+              <input
+                autoFocus
+                value={editingText.value}
+                aria-label="Type text on the canvas"
+                placeholder="Type your text"
+                onChange={(event) => onEditingTextChange?.(event.target.value)}
+                onBlur={() => onEditingTextCommit?.()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+                className="w-full border-0 bg-transparent text-center leading-none outline-none placeholder:text-[#9aa0a6]"
+                style={{
+                  height: `${editingText.fontSize * 1.32}px`,
+                  lineHeight: `${editingText.fontSize * 1.32}px`,
+                  fontSize: `${editingText.fontSize}px`,
+                  color: editingText.color,
+                  caretColor: editingText.color,
+                  fontFamily: EDITOR_TEXT_FONT_FAMILY,
+                  fontWeight: 700,
+                  outline: "2px dashed rgba(76, 157, 22, 0.7)",
+                  outlineOffset: "6px",
+                }}
+              />
+            </div>
           </foreignObject>
         )}
       </g>
       {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
+      {selectedLayerIds.length > 0 && !editingText && (
+        <g pointerEvents="none" data-editor-transform-controls="true">
+          <rect x="120" y="160" width="760" height="880" fill="none" stroke="#4c9d16" strokeDasharray="10 8" strokeWidth="4" />
+          <circle cx="880" cy="1040" r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" onPointerDown={onResizeStart} aria-label="Resize selected layer" />
+        </g>
+      )}
     </svg>
   );
 }
@@ -175,6 +206,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
   const [redoStack, setRedoStack] = useState<EditorArtworkLayer[][]>([]);
   const [canvasLayerTransforms, setCanvasLayerTransforms] = useState<Record<string, Point>>({});
+  const [canvasLayerScales, setCanvasLayerScales] = useState<Record<string, number>>({});
   const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>(["layer-1"]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
@@ -226,6 +258,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget } | null>(null);
   const canvasArtworkDragRef = useRef<CanvasArtworkDrag | null>(null);
+  const canvasLayerResizeRef = useRef<CanvasLayerResizeDrag | null>(null);
   const handleLargeTierRequested = useCallback((side: MockupSide) => {
     setLargeArtworkTierOwner((current) => claimLargeArtworkTier(current, side));
   }, []);
@@ -475,12 +508,12 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function startCanvasArtworkMove(event: React.PointerEvent<SVGRectElement>) {
-    if (event.button !== 0 || !event.isPrimary || layers.every((layer) => layer.strokes.length === 0)) return;
+    if (event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
     event.stopPropagation();
     const movableIds = selectedLayerIds.filter((id) => {
       const layer = layers.find((item) => item.id === id);
-      return !!layer && !layer.locked && layer.strokes.length > 0;
+      return !!layer && !layer.locked;
     });
     if (movableIds.length === 0) return;
     const start = toCanvasPoint(event.clientX, event.clientY);
@@ -501,6 +534,35 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
   function endCanvasArtworkMove(event: React.PointerEvent<SVGSVGElement>) {
     if (canvasArtworkDragRef.current?.pointerId === event.pointerId) canvasArtworkDragRef.current = null;
+  }
+
+  function startCanvasLayerResize(event: React.PointerEvent<SVGCircleElement>) {
+    if (event.button !== 0 || !event.isPrimary || selectedLayerIds.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const ids = selectedLayerIds.filter((id) => !layers.find((layer) => layer.id === id)?.locked);
+    if (!ids.length) return;
+    const start = toCanvasPoint(event.clientX, event.clientY);
+    event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
+    canvasLayerResizeRef.current = {
+      pointerId: event.pointerId,
+      start,
+      origin: Object.fromEntries(ids.map((id) => [id, canvasLayerScales[id] ?? 1])),
+    };
+  }
+
+  function resizeCanvasLayer(event: React.PointerEvent<SVGSVGElement>) {
+    const drag = canvasLayerResizeRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    const delta = (point.x - drag.start.x) * 1000;
+    const factor = Math.max(0.25, Math.min(3, 1 + delta / 500));
+    setCanvasLayerScales(Object.fromEntries(Object.entries(drag.origin).map(([id, scale]) => [id, Math.max(0.25, Math.min(3, scale * factor))])));
+  }
+
+  function endCanvasLayerResize(event: React.PointerEvent<SVGSVGElement>) {
+    if (canvasLayerResizeRef.current?.pointerId === event.pointerId) canvasLayerResizeRef.current = null;
   }
 
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -749,6 +811,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!editingTextLayerId) return;
     setLayers((current) => setEditorLayerText(current, editingTextLayerId, value));
   }
+  function updateEditingTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color">>) {
+    if (!editingTextLayerId) return;
+    setLayers((current) => updateEditorLayerTextStyle(current, editingTextLayerId, update));
+  }
 
   function addLayer() {
     const id = `layer-${nextLayerIdRef.current++}`;
@@ -915,11 +981,17 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   layerOffsets={canvasLayerTransforms}
                   moveEnabled={activeTool === "move"}
                   editingTextLayer={editingTextLayer}
+                  selectedLayerIds={selectedLayerIds}
+                  layerScales={canvasLayerScales}
                   onMoveStart={startCanvasArtworkMove}
                   onMove={moveCanvasArtwork}
                   onMoveEnd={endCanvasArtworkMove}
                   onEditingTextChange={updateEditingText}
                   onEditingTextCommit={() => setEditingTextLayerId(null)}
+                  onEditingTextStyle={updateEditingTextStyle}
+                  onResizeStart={startCanvasLayerResize}
+                  onResize={resizeCanvasLayer}
+                  onResizeEnd={endCanvasLayerResize}
                 />
                 <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
                   <button
