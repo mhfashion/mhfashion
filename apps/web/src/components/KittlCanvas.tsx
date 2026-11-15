@@ -154,7 +154,7 @@ function ArtworkOverlay({
   onMoveEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
   onEditingTextChange?: (value: string) => void;
   onEditingTextCommit?: () => void;
-  onEditingTextStyle?: (update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight">>) => void;
+  onEditingTextStyle?: (update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth">>) => void;
   onResizeStart: (event: React.PointerEvent<SVGCircleElement>) => void;
   onResize: (event: React.PointerEvent<SVGSVGElement>) => void;
   onResizeEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
@@ -972,7 +972,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!selectedLayerId) return;
     setLayers((current) => setEditorLayerText(current, selectedLayerId, value));
   }
-  function updateSelectedTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight">>) {
+  function updateSelectedTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth">>) {
     if (!selectedLayerId) return;
     setLayers((current) => updateEditorLayerTextStyle(current, selectedLayerId, update));
   }

@@ -15,8 +15,10 @@ const header = readFileSync(path.join(__dirname, "../apps/web/src/components/Hea
 const headerBar2 = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorHeaderBar2.tsx"), "utf8");
 const productGsmSelect = headerBar2.split("function PendingSelect")[0] ?? "";
 const layersPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayersPanel.tsx"), "utf8");
+const adjustmentsPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
 const editSidebar = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorEditSidebar.tsx"), "utf8");
 const artworkLayers = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorArtworkLayers.tsx"), "utf8");
+const layerPreview = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
 const layerModelSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-layers.ts"), "utf8");
 function loadArtworkTiers() {
   const fileName = path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts");
@@ -310,6 +312,18 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(layerModelSource, /export function linkEditorLayers/);
   assert.match(layerModelSource, /export function unlinkEditorLayers/);
   assert.match(layerModelSource, /export function deleteEditorLayer/);
+});
+
+test("Adjustment panel groups Kittl-style text controls into compact expandable sections", () => {
+  assert.match(adjustmentsPanel, /function Section\(/);
+  for (const section of ["Text", "Font", "Style & Alignment", "Effects", "Transform", "Appearance"]) {
+    assert.ok(adjustmentsPanel.includes(`title=\"${section}\"`), `missing ${section} adjustment section`);
+  }
+  assert.match(adjustmentsPanel, /aria-label="Search fonts"/);
+  assert.match(adjustmentsPanel, /aria-label="Text effect"/);
+  assert.match(adjustmentsPanel, /aria-label="Text transformation"/);
+  assert.match(layerModelSource, /textEffect\?: "none" \| "shadow" \| "outline"/);
+  assert.match(layerPreview, /data-editor-text-transform/);
 });
 
 test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requested categories", () => {

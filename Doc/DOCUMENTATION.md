@@ -746,3 +746,10 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Owner clarification: the Layers Box must retain the MH Fashion Photoshop-style visual treatment rather than the new Kittl-inspired surface styling. Restored the previous Layers Box presentation while preserving all existing behavior: layer selection, drag reorder, folder groups, masks, links, appearance controls, and adjustment entry point.
 - Kittl-inspired styling remains scoped to the Edit rail, design/element cards, Adjustment panel, Text controls, and Canvas interaction affordances. The Layers Box is intentionally excluded from that visual treatment.
 - Validation: canvas-shell **14/14**, editor-layers **11/11**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-15 — Compact Kittl-style Adjustment sections and text effects
+
+- Reworked the Adjustment panel into compact expandable sections so related controls no longer create one very long scrolling column. Sections are `Text`, `Font`, `Style & Alignment`, `Effects`, `Transform`, and `Appearance`, each using a plus/minus disclosure control and touch-safe row height.
+- Added live text effect state to the text layer model for `None`, `Shadow`, and `Outline`, including effect color, shadow offset, and outline width. Added the first live transform presets (`Plain`, `Arch`, `Wave`, `Circle`) to the Adjustment UI while keeping text editable.
+- Preserved the MH Fashion Layer Box styling and behavior; this pass changes the Adjustment panel and text renderer only. The supplied reference was used as a visual direction for grouping and density, not copied as a branded asset.
+- Validation: canvas-shell **15/15**, editor-layers **11/11**, Next.js production build passed, and `git diff --check` passed.

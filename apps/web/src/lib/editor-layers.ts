@@ -18,6 +18,12 @@ export type EditorTextContent = {
   underline?: boolean;
   letterSpacing?: number;
   lineHeight?: number;
+  textTransform?: "none" | "arch" | "wave" | "circle";
+  textEffect?: "none" | "shadow" | "outline";
+  effectColor?: string;
+  effectOffset?: number;
+  effectBlur?: number;
+  outlineWidth?: number;
 };
 export type EditorShapePath = {
   d: string;
@@ -118,7 +124,7 @@ export function setEditorLayerText(
 export function updateEditorLayerTextStyle(
   layers: EditorArtworkLayer[],
   layerId: string,
-  update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight">>,
+  update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth">>,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => {
     if (layer.id !== layerId || !layer.text) return layer;
