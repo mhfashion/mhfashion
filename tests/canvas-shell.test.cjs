@@ -264,7 +264,7 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(layersPanel, /Fill for \$\{selectedLayer\.name\}/);
   assert.match(layersPanel, /fillOpacity: Number\(event\.target\.value\)/);
   assert.match(layersPanel, /text-\[11px\]/);
-  assert.match(layersPanel, /dark:bg-\[#303030\]/);
+  assert.match(layersPanel, /bg-\[#101518\]\/95/);
   assert.match(layersPanel, /aria-label=\{open \? "Collapse Layers panel" : "Expand Layers panel"\}/);
   assert.match(layersPanel, /aria-expanded=\{open\}/);
   assert.match(layersPanel, /style=\{\{ right: open \? PANEL_WIDTH : 0 \}\}/);

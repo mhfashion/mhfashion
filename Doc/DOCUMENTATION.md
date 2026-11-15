@@ -727,3 +727,16 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Compared those behaviors against the current MH Fashion layer model and renderer without changing implementation code. The current system can absorb basic Kittl-style move/scale/rotate, group/child selection, layer synchronization, direct Text insertion, alignment, tidy spacing, flip, and limited text effects.
 - Recorded architecture expansion points and approval gates for character-level text runs, text-box wrapping, full Arch/Wave/Circle/Flag transformations, stacked shadow/decoration effects, vector node editing, multi-artboard/infinite canvas, and collaboration/version history.
 - Added the detailed comparison and decision checklist to `Doc/KITTL_CANVAS_EDITOR_AUDIT.md`. No advanced feature implementation was started before owner approval.
+
+### 2026-11-15 — Kittl-inspired MH Fashion editor visual pass
+
+- Approved scope now includes the full Kittl-inspired Canvas direction, but the MH Fashion print-canvas and Front/Back Mockup model remains the source of truth. The visual direction is intentionally inspired rather than copied: dark graphite surfaces, rounded asset cards, clearer context-aware panels, stronger typography hierarchy, live-state accents, and neon-lime MH Fashion focus states.
+- Refined the Edit rail, asset cards, Layers dock, group rows, and Adjustment dock with responsive rounded surfaces, gradient headers, accent glow, compact metadata, stronger selected states, and touch-safe sizing for Phone/Mobile as well as Web/Desktop.
+- No Kittl brand assets or copied proprietary UI were introduced. Advanced behavior work remains staged behind the approved model-expansion plan: text boxes/runs, transformations, effects, alignment/tidy, vector foundations, and future artboard foundations.
+- Files: `Plan/PLAN.md`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorEditSidebar.tsx`.
+
+### 2026-11-15 — Kittl-inspired text font browser
+
+- Expanded the Text Adjustment panel with a searchable/filterable font browser, recent-font chips, selected-font highlighting, and live font previews. Choosing a font updates the selected text layer immediately without re-entering text.
+- Kept the existing direct-canvas text workflow and all typography controls intact. The font browser is scrollable and touch-safe on Phone/Mobile while remaining compact on Web/Desktop.
+- Validation: Next.js production build passed; canvas-shell **14/14**; editor-layers **11/11**; `git diff --check` passed. Existing lint state remains **0 errors / 26 warnings**.
