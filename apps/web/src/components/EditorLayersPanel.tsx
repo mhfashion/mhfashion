@@ -15,7 +15,6 @@ import {
   MoreHorizontal,
   Move,
   Plus,
-  SlidersHorizontal,
   Sparkles,
   Square,
   SquareDashed,
@@ -100,6 +99,7 @@ export default function EditorLayersPanel({
   onMaskBrushModeChange,
   onGroupSelected,
   onUngroupSelected,
+  onLinkSelected,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -122,6 +122,7 @@ export default function EditorLayersPanel({
   onMaskBrushModeChange: (mode: MaskBrushMode) => void;
   onGroupSelected: () => void;
   onUngroupSelected: () => void;
+  onLinkSelected: () => void;
 }) {
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -277,10 +278,9 @@ export default function EditorLayersPanel({
           )}
 
           <div aria-label="Layer actions" className="flex h-8 shrink-0 items-center justify-around border-t border-[#b7b7b7] bg-[#dedede] px-0.5 dark:border-[#1e1e1e] dark:bg-[#292929] [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8">
-            <button type="button" disabled aria-label="Link layers" title="Link layers is not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><Link2 size={13} aria-hidden="true" /></button>
+            <button type="button" aria-label="Link layers" title="Link or unlink selected layers" disabled={selectedLayerIds.length < 2} onClick={onLinkSelected} className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><Link2 size={13} aria-hidden="true" /></button>
             <button type="button" disabled aria-label="Layer effects" title="Layer effects are not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><Sparkles size={13} aria-hidden="true" /></button>
             <button type="button" aria-label={selectedLayer ? (selectedLayer.mask === null ? `Add mask to ${selectedLayer.name}` : `Select ${selectedLayer.name} mask`) : "Add layer mask"} title="Add or select layer mask" disabled={!selectedLayer} onClick={addOrSelectMask} className={TINY_ICON}><SquareDashed size={13} aria-hidden="true" /></button>
-            <button type="button" disabled aria-label="Create adjustment layer" title="Adjustment layers are not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><SlidersHorizontal size={13} aria-hidden="true" /></button>
             <button type="button" aria-label="Group selected layers" title="Group selected layers" disabled={selectedLayerIds.length < 2} onClick={onGroupSelected} className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><FolderPlus size={13} aria-hidden="true" /></button>
             <button type="button" aria-label="Ungroup selected layers" title="Ungroup selected layers" disabled={!selectedLayerIds.some((id) => layers.find((layer) => layer.id === id)?.groupId)} onClick={onUngroupSelected} className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><FolderPlus size={13} aria-hidden="true" className="rotate-180" /></button>
             <button type="button" aria-label="Add layer" title="Create new layer" onClick={onAddLayer} className={TINY_ICON}><Plus size={14} aria-hidden="true" /></button>

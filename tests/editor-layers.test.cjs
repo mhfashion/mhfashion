@@ -21,9 +21,13 @@ const {
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
+  groupEditorLayers,
+  linkEditorLayers,
   removeLayerMask,
   reorderEditorLayer,
   setEditorLayerText,
+  ungroupEditorLayers,
+  unlinkEditorLayers,
   updateEditorLayer,
   updateLayerLastStroke,
 } = layerModel.exports;
@@ -38,7 +42,7 @@ test("new layers get editable defaults and drawing remains isolated to the selec
 
   assert.deepEqual(first, {
     id: "one", name: "Layer 1", kind: "artwork", visible: true, locked: false, opacity: 100,
-    fillOpacity: 100, blendMode: "normal", groupId: null, strokes: [], mask: null, text: null, shape: null, image: null,
+    fillOpacity: 100, blendMode: "normal", groupId: null, linkId: null, strokes: [], mask: null, text: null, shape: null, image: null,
   });
   assert.equal(original[1].strokes.length, 0, "Updates are immutable");
   assert.equal(drawn[0].strokes.length, 0);
@@ -147,4 +151,19 @@ test("Add Text, element and upload layers keep their own content and stay in the
   const duplicatedText = duplicateEditorLayer(typed, "text-1", "text-2")[0];
   assert.equal(duplicatedText.text.value, "MH FASHION");
   assert.notStrictEqual(duplicatedText.text, typed[0].text);
+});
+
+test("groups preserve independent layers while links provide an explicit shared transform membership", () => {
+  const layers = [createEditorArtworkLayer("one", "One"), createEditorArtworkLayer("two", "Two")];
+  const grouped = groupEditorLayers(layers, ["one", "two"], "group-1");
+  assert.equal(grouped[0].groupId, "group-1");
+  assert.equal(grouped[1].groupId, "group-1");
+  const individuallyUngrouped = ungroupEditorLayers(grouped, ["one"]);
+  assert.equal(individuallyUngrouped[0].groupId, null);
+  assert.equal(individuallyUngrouped[1].groupId, "group-1");
+  const linked = linkEditorLayers(individuallyUngrouped, ["one", "two"], "link-1");
+  assert.equal(linked[0].linkId, "link-1");
+  assert.equal(linked[1].linkId, "link-1");
+  assert.equal(unlinkEditorLayers(linked, ["one"])[0].linkId, null);
+  assert.equal(unlinkEditorLayers(linked, ["one"])[1].linkId, "link-1");
 });

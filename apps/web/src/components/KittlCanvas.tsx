@@ -24,10 +24,12 @@ import {
   deleteEditorLayer,
   duplicateEditorLayer,
   groupEditorLayers,
+  linkEditorLayers,
   removeLayerMask,
   reorderEditorLayer,
   setEditorLayerText,
   ungroupEditorLayers,
+  unlinkEditorLayers,
   updateEditorLayerTextStyle,
   updateEditorLayer,
   updateLayerLastStroke,
@@ -216,6 +218,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [selectedTarget, setSelectedTarget] = useState<LayerEditTarget>("artwork");
   const [maskBrushMode, setMaskBrushMode] = useState<MaskBrushMode>("hide");
   const [nextGroupId, setNextGroupId] = useState(1);
+  const [nextLinkId, setNextLinkId] = useState(1);
   const nextLayerIdRef = useRef(2);
   const nextTextLayerLabelRef = useRef(1);
   // Set while a text layer is being typed directly on the print canvas.
@@ -514,7 +517,12 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
     event.stopPropagation();
-    const movableIds = selectedLayerIds.filter((id) => {
+    const requestedIds = new Set(selectedLayerIds);
+    selectedLayerIds.forEach((id) => {
+      const linkId = layers.find((layer) => layer.id === id)?.linkId;
+      if (linkId) layers.filter((layer) => layer.linkId === linkId).forEach((layer) => requestedIds.add(layer.id));
+    });
+    const movableIds = [...requestedIds].filter((id) => {
       const layer = layers.find((item) => item.id === id);
       return !!layer && !layer.locked;
     });
@@ -725,17 +733,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setSelectedLayerId(id);
     setSelectedTarget(target);
     setEditingTextLayerId(null);
-    const selected = layers.find((layer) => layer.id === id);
-    const groupMembers = selected?.groupId
-      ? layers.filter((layer) => layer.groupId === selected.groupId).map((layer) => layer.id)
-      : [id];
     setSelectedLayerIds((current) => {
-      if (!multi || target === "mask") return groupMembers;
-      const members = new Set(groupMembers);
-      return current.some((item) => members.has(item))
-        ? current.filter((item) => !members.has(item))
-        : [...current, ...groupMembers.filter((item) => !current.includes(item))];
+      if (!multi || target === "mask") return [id];
+      return current.includes(id) ? (current.length > 1 ? current.filter((item) => item !== id) : current) : [...current, id];
     });
+    if (target === "mask") setActiveTool("brush");
   }
 
   function claimLayerId() {
@@ -851,6 +853,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setSelectedLayerIds([id]);
     setSelectedTarget("mask");
     setMaskBrushMode("hide");
+    setActiveTool("brush");
   }
 
   function deleteLayerMask(id: string) {
@@ -894,6 +897,17 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function ungroupSelectedLayers() {
     setLayers((current) => ungroupEditorLayers(current, selectedLayerIds));
+  }
+
+  function linkSelectedLayers() {
+    if (selectedLayerIds.length < 2) return;
+    const linked = selectedLayerIds.some((id) => layers.find((layer) => layer.id === id)?.linkId);
+    if (linked) setLayers((current) => unlinkEditorLayers(current, selectedLayerIds));
+    else {
+      const linkId = `link-${nextLinkId}`;
+      setNextLinkId((value) => value + 1);
+      setLayers((current) => linkEditorLayers(current, selectedLayerIds, linkId));
+    }
   }
 
   function updateLayer(id: string, update: EditorLayerAppearance) {
@@ -1171,6 +1185,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onMaskBrushModeChange={setMaskBrushMode}
           onGroupSelected={groupSelectedLayers}
           onUngroupSelected={ungroupSelectedLayers}
+          onLinkSelected={linkSelectedLayers}
         />
       </div>
       <EditorToolsBar

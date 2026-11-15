@@ -63,6 +63,14 @@ This log records completed website-related changes in the connected repository. 
 - Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `Plan/PLAN.md`.
 - Validation: TypeScript passed; editor-layers **7/7**; canvas-shell **14/14**; production build passed; `git diff --check` passed.
 
+### 2026-11-15 — Independent grouped layers, mask brush painting, and linked layers
+
+- Group membership no longer forces every member to be selected. A grouped layer can be selected and moved independently; multi-select remains available for intentionally transforming several members together. The existing Group/Ungroup actions remain non-destructive.
+- Selecting a layer mask now automatically switches to the Brush tool. Creating a new mask does the same, so the user can immediately paint black (`Hide`) or white (`Reveal`) directly on the canvas. The SVG mask keeps a white base plus black/white brush strokes, preserving source artwork for later mask edits/removal.
+- Replaced the disabled adjustment-layer footer slot with a working `Link layers` action. Selecting two or more layers and clicking the link icon assigns a shared link membership; moving any selected linked layer expands the move set to its linked peers. Clicking the same action on linked selections removes the link. Group and Link are separate: groups can be individually selected, while links explicitly synchronize canvas transforms.
+- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
+- Validation: TypeScript passed; editor-layers **8/8**; canvas-shell **14/14**; production build passed; `git diff --check` passed.
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.

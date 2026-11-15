@@ -38,6 +38,7 @@ export type EditorArtworkLayer = {
   fillOpacity: number;
   blendMode: EditorLayerBlendMode;
   groupId: string | null;
+  linkId: string | null;
   strokes: ArtworkStroke[];
   mask: LayerMaskStroke[] | null;
   text: EditorTextContent | null;
@@ -60,6 +61,7 @@ export function createEditorArtworkLayer(id: string, name: string): EditorArtwor
     fillOpacity: 100,
     blendMode: "normal",
     groupId: null,
+    linkId: null,
     strokes: [],
     mask: null,
     text: null,
@@ -224,6 +226,23 @@ export function ungroupEditorLayers(
   return layers.map((layer) => (ids.has(layer.id) ? { ...layer, groupId: null } : layer));
 }
 
+export function linkEditorLayers(
+  layers: EditorArtworkLayer[],
+  layerIds: string[],
+  linkId: string,
+): EditorArtworkLayer[] {
+  const ids = new Set(layerIds);
+  return layers.map((layer) => (ids.has(layer.id) ? { ...layer, linkId } : layer));
+}
+
+export function unlinkEditorLayers(
+  layers: EditorArtworkLayer[],
+  layerIds: string[],
+): EditorArtworkLayer[] {
+  const ids = new Set(layerIds);
+  return layers.map((layer) => (ids.has(layer.id) ? { ...layer, linkId: null } : layer));
+}
+
 export function duplicateEditorLayer(
   layers: EditorArtworkLayer[],
   layerId: string,
@@ -237,6 +256,7 @@ export function duplicateEditorLayer(
     id: newId,
     name: `${source.name} copy`,
     locked: false,
+    linkId: null,
     strokes: source.strokes.map(copyStroke),
     mask: source.mask?.map((stroke) => ({ ...copyStroke(stroke), mode: stroke.mode })) ?? null,
     text: source.text ? { ...source.text } : null,
