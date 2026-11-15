@@ -760,3 +760,10 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Expanded the compact Adjustment panel with text effect preset tiles, shadow offset/softness, outline width, decoration controls (line, color cut, oblique), transform tiles, and live Canvas rendering for shadow, outline, and decoration marks.
 - Added a Shape Builder section for shape layers with Select, Merge, Subtract, and Intersect modes. The selected mode is stored immutably on the shape layer and is ready for the next multi-path boolean geometry pass; Layer Box styling was not changed.
 - Validation: canvas-shell **15/15**, editor-layers **11/11**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-16 — Collapsible previews and Shape Builder geometry
+
+- Kept the Adjustment panel as compact collapsible sections with visible plus/minus disclosure controls. Added dedicated live preview strips for the selected text Shadow/Outline effect and for Plain/Arch/Wave/Circle transformation states.
+- Added deterministic Shape Builder geometry for closed axis-aligned rectangle paths. `Merge` produces one compound path, `Intersect` produces the overlap rectangle, and `Subtract` produces the remaining rectangle pieces. Unsupported path syntax is preserved safely with the selected builder mode instead of being destructively rewritten.
+- Added regression coverage for all three rectangle operations. The Layers Box remains unchanged.
+- Validation: canvas-shell **15/15**, editor-layers **12/12**, Next.js production build passed, and `git diff --check` passed.

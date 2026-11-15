@@ -153,6 +153,47 @@ export function updateEditorShapeBuilderMode(
   return layers.map((layer) => layer.id === layerId && layer.shape ? { ...layer, shape: { ...layer.shape, builderMode } } : layer);
 }
 
+type EditorRect = { x: number; y: number; width: number; height: number };
+function parseAxisAlignedRect(d: string): EditorRect | null {
+  const match = d.match(/^\s*M\s*(-?[\d.]+)\s+(-?[\d.]+)\s+H\s*(-?[\d.]+)\s+V\s*(-?[\d.]+)\s+H\s*(-?[\d.]+)\s+Z\s*$/i);
+  if (!match) return null;
+  const [, x, y, right, bottom] = match;
+  return { x: Number(x), y: Number(y), width: Number(right) - Number(x), height: Number(bottom) - Number(y) };
+}
+function rectPath(rect: EditorRect, source: EditorShapePath): EditorShapePath {
+  return { ...source, d: `M ${rect.x} ${rect.y} H ${rect.x + rect.width} V ${rect.y + rect.height} H ${rect.x} Z` };
+}
+
+/** Applies the supported deterministic Shape Builder operation to the first two closed rectangles. */
+export function applyEditorShapeBuilderOperation(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  builderMode: EditorShapeBuilderMode,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => {
+    if (layer.id !== layerId || !layer.shape || layer.shape.paths.length < 2 || builderMode === "select") {
+      return layer.id === layerId && layer.shape ? { ...layer, shape: { ...layer.shape, builderMode } } : layer;
+    }
+    const [firstPath, secondPath] = layer.shape.paths;
+    const first = parseAxisAlignedRect(firstPath.d);
+    const second = parseAxisAlignedRect(secondPath.d);
+    if (!first || !second) return { ...layer, shape: { ...layer.shape, builderMode } };
+    const left = Math.max(first.x, second.x);
+    const top = Math.max(first.y, second.y);
+    const right = Math.min(first.x + first.width, second.x + second.width);
+    const bottom = Math.min(first.y + first.height, second.y + second.height);
+    if (builderMode === "merge") return { ...layer, shape: { paths: [{ ...firstPath, d: `${firstPath.d} ${secondPath.d}` }], builderMode } };
+    if (right <= left || bottom <= top) return { ...layer, shape: { paths: [firstPath], builderMode } };
+    if (builderMode === "intersect") return { ...layer, shape: { paths: [rectPath({ x: left, y: top, width: right - left, height: bottom - top }, firstPath)], builderMode } };
+    const pieces: EditorShapePath[] = [];
+    if (left > first.x) pieces.push(rectPath({ x: first.x, y: first.y, width: left - first.x, height: first.height }, firstPath));
+    if (right < first.x + first.width) pieces.push(rectPath({ x: right, y: first.y, width: first.x + first.width - right, height: first.height }, firstPath));
+    if (top > first.y) pieces.push(rectPath({ x: left, y: first.y, width: right - left, height: top - first.y }, firstPath));
+    if (bottom < first.y + first.height) pieces.push(rectPath({ x: left, y: bottom, width: right - left, height: first.y + first.height - bottom }, firstPath));
+    return { ...layer, shape: { paths: pieces, builderMode } };
+  });
+}
+
 function copyStroke(stroke: ArtworkStroke): ArtworkStroke {
   return { ...stroke, points: stroke.points.map((point) => ({ ...point })) };
 }

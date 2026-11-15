@@ -323,7 +323,9 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(adjustmentsPanel, /aria-label="Apply text shadow"/);
   assert.match(adjustmentsPanel, /ariaLabel="Text shadow softness"/);
   assert.match(adjustmentsPanel, /aria-label={`Text transform \$\{shape\}`}/);
+  assert.match(adjustmentsPanel, /className=\"mb-2 flex items-center justify-center rounded-lg/);
   assert.match(layerModelSource, /textEffect\?: "none" \| "shadow" \| "outline"/);
+  assert.match(layerModelSource, /export function applyEditorShapeBuilderOperation/);
   assert.match(layerPreview, /data-editor-text-transform/);
 });
 

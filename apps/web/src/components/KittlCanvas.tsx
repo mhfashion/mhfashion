@@ -34,6 +34,7 @@ import {
   unlinkEditorLayers,
   updateEditorLayerTextStyle,
   updateEditorShapeBuilderMode,
+  applyEditorShapeBuilderOperation,
   updateEditorLayer,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
@@ -980,7 +981,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function updateSelectedShapeBuilder(builderMode: "select" | "merge" | "subtract" | "intersect") {
     if (!selectedLayerId) return;
-    setLayers((current) => updateEditorShapeBuilderMode(current, selectedLayerId, builderMode));
+    setLayers((current) => builderMode === "select" ? updateEditorShapeBuilderMode(current, selectedLayerId, builderMode) : applyEditorShapeBuilderOperation(current, selectedLayerId, builderMode));
   }
 
   function addLayer() {

@@ -14,6 +14,7 @@ const layerModel = { exports: {} };
 new Function("module", "exports", compiled)(layerModel, layerModel.exports);
 const {
   addLayerMask,
+  applyEditorShapeBuilderOperation,
   appendLayerStroke,
   createEditorArtworkLayer,
   createEditorImageLayer,
@@ -188,4 +189,25 @@ test("invalid numeric appearance updates do not poison layer opacity", () => {
   assert.equal(updateEditorLayer([layer], "one", { fillOpacity: Number.POSITIVE_INFINITY })[0].fillOpacity, 100);
   assert.equal(updateEditorLayer([layer], "one", { opacity: 125, fillOpacity: -5 })[0].opacity, 100);
   assert.equal(updateEditorLayer([layer], "one", { opacity: 125, fillOpacity: -5 })[0].fillOpacity, 0);
+});
+
+test("shape builder performs deterministic rectangle merge, subtract, and intersect geometry", () => {
+  const layer = createEditorShapeLayer("shape-builder", "Builder", {
+    paths: [
+      { d: "M 100 100 H 500 V 500 H 100 Z", fill: "#111111" },
+      { d: "M 300 300 H 700 V 700 H 300 Z", fill: "#111111" },
+    ],
+  });
+  const merged = applyEditorShapeBuilderOperation([layer], layer.id, "merge")[0];
+  assert.equal(merged.shape.paths.length, 1);
+  assert.match(merged.shape.paths[0].d, /M 100 100.*M 300 300/);
+
+  const subtracted = applyEditorShapeBuilderOperation([layer], layer.id, "subtract")[0];
+  assert.equal(subtracted.shape.builderMode, "subtract");
+  assert.equal(subtracted.shape.paths.length, 2);
+  assert.match(subtracted.shape.paths[0].d, /M 100 100 H 300/);
+
+  const intersected = applyEditorShapeBuilderOperation([layer], layer.id, "intersect")[0];
+  assert.equal(intersected.shape.builderMode, "intersect");
+  assert.equal(intersected.shape.paths[0].d, "M 300 300 H 500 V 500 H 300 Z");
 });
