@@ -76,6 +76,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [foregroundColor, setForegroundColor] = useState("#202124");
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
+  const [redoStack, setRedoStack] = useState<EditorArtworkLayer[][]>([]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("layer-1");
@@ -339,6 +340,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function rememberLayerSnapshot() {
     setUndoStack((current) => [...current.slice(-29), layers]);
+    setRedoStack([]);
   }
 
   function eraseArtworkAt(point: Point, layerId: string, target: LayerEditTarget) {
@@ -364,10 +366,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     if (activeTool === "move" || activeTool === "hand") return;
-    if (activeTool === "remove-bg") {
+    if (["remove-bg", "shape", "gradient"].includes(activeTool)) {
       event.preventDefault();
       event.stopPropagation();
-      setToolNotice("Remove BG needs an uploaded image; background removal is not connected yet.");
+      setToolNotice(activeTool === "shape"
+        ? "Shape Tool is ready for the upcoming vector-shape pipeline."
+        : activeTool === "gradient"
+          ? "Gradient Tool is ready for the upcoming gradient-fill pipeline."
+          : "Remove BG needs an uploaded image; background removal is not connected yet.");
       return;
     }
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
@@ -431,8 +437,17 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function undoCanvasAction() {
     if (undoStack.length === 0) return;
+    setRedoStack((current) => [...current.slice(-29), layers]);
     setLayers(undoStack[undoStack.length - 1]);
     setUndoStack((current) => current.slice(0, -1));
+    setToolNotice("");
+  }
+
+  function redoCanvasAction() {
+    if (redoStack.length === 0) return;
+    setUndoStack((current) => [...current.slice(-29), layers]);
+    setLayers(redoStack[redoStack.length - 1]);
+    setRedoStack((current) => current.slice(0, -1));
     setToolNotice("");
   }
 
@@ -440,7 +455,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setActiveTool(tool);
     setToolNotice(tool === "remove-bg"
       ? "Remove BG needs an uploaded image; background removal is not connected yet."
-      : "");
+      : tool === "shape"
+        ? "Shape Tool is ready for the upcoming vector-shape pipeline."
+        : tool === "gradient"
+          ? "Gradient Tool is ready for the upcoming gradient-fill pipeline."
+          : "");
   }
 
   function startNodeDrag(node: WorkspaceNode, event: React.PointerEvent<HTMLElement>) {
@@ -670,7 +689,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     <div
                       role="menu"
                       aria-label="Canvas options"
-                    className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-36 rounded-md border border-border bg-bg-surface p-1 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-2 md:-translate-y-1/2 [@media(pointer:coarse)]:origin-top-right [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
+                      onPointerDown={(event) => event.stopPropagation()}
+                    className="absolute right-0 top-[calc(100%+4px)] z-30 min-w-28 rounded border border-border bg-bg-surface p-0.5 shadow-lg md:left-full md:right-auto md:top-1/2 md:ml-1 md:-translate-y-1/2 [@media(pointer:coarse)]:origin-top-right [@media(pointer:coarse)]:[transform:scale(var(--editor-inverse-zoom))]"
                     >
                       <button
                         type="button"
@@ -680,11 +700,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                           setShowGrid((visible) => !visible);
                           setMenuOpen(false);
                         }}
-                        className="flex min-h-11 w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:text-text-faint md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                        className="flex h-10 w-full items-center gap-1 rounded px-1.5 py-0.5 text-left text-[10px] text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:text-text-faint md:h-5 [@media(pointer:coarse)]:h-10"
                       >
-                        <Grid2X2 size={13} aria-hidden="true" />
+                        <Grid2X2 size={11} aria-hidden="true" />
                         <span>Show Grid</span>
-                        <span className={`ml-auto h-3 w-3 rounded-sm border ${showGrid ? "border-accent bg-accent" : "border-border-light"}`} aria-hidden="true" />
+                        <span className={`ml-auto h-2.5 w-2.5 rounded-sm border ${showGrid ? "border-accent bg-accent" : "border-border-light"}`} aria-hidden="true" />
                       </button>
                       <button
                         type="button"
@@ -696,9 +716,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                           addMockup("Front Mockup");
                           setMenuOpen(false);
                         }}
-                        className="flex min-h-11 w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:text-text-faint md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                        className="flex h-10 w-full items-center gap-1 rounded px-1.5 py-0.5 text-left text-[10px] text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:text-text-faint md:h-5 [@media(pointer:coarse)]:h-10"
                       >
-                        <Plus size={13} aria-hidden="true" />
+                        <Plus size={11} aria-hidden="true" />
                         <span>Front Mockup</span>
                       </button>
                       {product === "Phone" ? null : (
@@ -712,9 +732,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                             addMockup("Back Mockup");
                             setMenuOpen(false);
                           }}
-                          className="flex min-h-11 w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:text-text-faint md:min-h-0 [@media(pointer:coarse)]:min-h-11"
+                          className="flex h-10 w-full items-center gap-1 rounded px-1.5 py-0.5 text-left text-[10px] text-text-primary outline-none hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:text-text-faint md:h-5 [@media(pointer:coarse)]:h-10"
                         >
-                          <Plus size={13} aria-hidden="true" />
+                          <Plus size={11} aria-hidden="true" />
                           <span>Back Mockup</span>
                         </button>
                       )}
@@ -808,6 +828,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         activeTool={activeTool}
         collapsed={toolsCollapsed}
         canUndo={undoStack.length > 0}
+        canRedo={redoStack.length > 0}
         notice={toolNotice}
         foregroundColor={foregroundColor}
         backgroundColor={backgroundColor}
@@ -815,6 +836,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         onForegroundColorChange={setForegroundColor}
         onBackgroundColorChange={setBackgroundColor}
         onUndo={undoCanvasAction}
+        onRedo={redoCanvasAction}
         onToggleCollapsed={() => setToolsCollapsed((collapsed) => !collapsed)}
         hideOnMobile={layersOpen || editSidebarOpen}
       />

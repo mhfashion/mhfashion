@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Blend,
   Brush,
   ChevronDown,
   ChevronUp,
@@ -9,16 +10,19 @@ import {
   ImageMinus,
   Move,
   Pen,
+  Redo2,
+  Square,
   Undo2,
 } from "lucide-react";
 import { useRef } from "react";
 
-export type EditorTool = "move" | "pen" | "hand" | "brush" | "eraser" | "remove-bg";
+export type EditorTool = "move" | "pen" | "hand" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
 
 type Props = {
   activeTool: EditorTool;
   collapsed: boolean;
   canUndo: boolean;
+  canRedo: boolean;
   notice: string;
   foregroundColor: string;
   backgroundColor: string;
@@ -26,6 +30,7 @@ type Props = {
   onForegroundColorChange: (color: string) => void;
   onBackgroundColorChange: (color: string) => void;
   onUndo: () => void;
+  onRedo: () => void;
   onToggleCollapsed: () => void;
   hideOnMobile?: boolean;
 };
@@ -36,6 +41,8 @@ const tools = [
   { id: "hand", label: "Hand tool", Icon: Hand },
   { id: "brush", label: "Brush", Icon: Brush },
   { id: "eraser", label: "Eraser", Icon: Eraser },
+  { id: "shape", label: "Shape", Icon: Square },
+  { id: "gradient", label: "Gradient", Icon: Blend },
   { id: "remove-bg", label: "Remove BG", Icon: ImageMinus },
 ] as const;
 
@@ -43,6 +50,7 @@ export default function EditorToolsBar({
   activeTool,
   collapsed,
   canUndo,
+  canRedo,
   notice,
   foregroundColor,
   backgroundColor,
@@ -50,6 +58,7 @@ export default function EditorToolsBar({
   onForegroundColorChange,
   onBackgroundColorChange,
   onUndo,
+  onRedo,
   onToggleCollapsed,
   hideOnMobile = false,
 }: Props) {
@@ -125,6 +134,16 @@ export default function EditorToolsBar({
             >
               <Undo2 size={14} strokeWidth={1.9} aria-hidden="true" />
             </button>
+            <button
+              type="button"
+              aria-label="Redo"
+              title="Redo"
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-text-secondary outline-none transition-colors hover:bg-bg hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <Redo2 size={14} strokeWidth={1.9} aria-hidden="true" />
+            </button>
           </div>
         )}
         <button
@@ -132,7 +151,7 @@ export default function EditorToolsBar({
           aria-label={collapsed ? "Expand editor tools" : "Collapse editor tools"}
           aria-expanded={!collapsed}
           onClick={onToggleCollapsed}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent outline-none hover:bg-accent/20 focus-visible:ring-2 focus-visible:ring-accent"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent"
         >
           {collapsed ? <ChevronUp size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}
         </button>

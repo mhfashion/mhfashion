@@ -17,6 +17,15 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-15 — Add Shape / Gradient / Redo tools and shrink editor controls
+
+- Owner request: added `Shape`, `Gradient`, and `Redo` to the compact bottom Tools Bar. Shape and Gradient select their tools and show an honest availability notice because their vector-shape and gradient-fill pipelines are not connected yet. Redo is functional and paired with the existing bounded 30-snapshot artwork Undo history; making a new draw/erase action clears the redo branch.
+- Matching controls: the Tools Bar collapse chevron now uses the same solid `bg-accent` circular-arrow treatment as the Edit sidebar and Layers panel show/hide toggles. The existing panel positions remain edge-safe on Phone so the right Layers arrow does not cover the canvas options control.
+- Canvas menu: reduced the desktop menu from the previous 144 × 82 px treatment to a compact approximately 112 × 62 px box with 20 px rows, 10 px labels, 11 px icons, and 0.5 padding. Phone/Mobile keeps 40 px rows for touch while retaining the smaller box, and menu pointer events are isolated so touch selection remains reliable.
+- Files: `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-touch.cjs`, and `Plan/PLAN.md`.
+- Validation: canvas shell **13/13**, canvas specification **1/1**, browser guards **1/1**, editor layer model **6/6**, and Guide **9/9** passed. TypeScript, `git diff --check`, Next.js production build, and Cloudflare/OpenNext build passed; ESLint remains **0 errors / 25 pre-existing warnings**. The Chromium editor-touch suite passed at 390 × 844, 320 × 740, both landscape sizes, and 1280 × 900 desktop. Final CDP checks confirmed the compact menu entries, theme accent colors/wires, and the updated Tools Bar icons.
+- Limitations: Shape and Gradient are UI-selected tools with notices only; they do not yet create vector shapes or gradient fills. Full-document history, persistence, export, physical-device verification, and Cloudflare deployment remain outstanding.
+
 ### 2026-11-15 — Add color swatches and remove Text Tool from dock
 
 - Applied this request on the latest `main` after preserving 42 remote commits that had arrived since the earlier local checkout, including the new compact Editor Tools bar and editor functionality. Added overlapping Foreground Color and Background Color swatches to the existing responsive bottom-center dock; removed the Text button from that dock, the `EditorTool` type, and its selection notice. The separate Edit sidebar's disabled `Text` category is unchanged.

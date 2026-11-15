@@ -62,10 +62,10 @@ test("grid is optional, and the initial canvas has no visible specification badg
   assert.match(source, /aria-label=\{side\}/);
   assert.match(source, /setShowGrid\(\(visible\) => !visible\)[\s\S]*?setMenuOpen\(false\)/);
   assert.match(source, /absolute -right-5 top-1\/2[\s\S]*?h-3\.5 w-3\.5/);
-  assert.match(source, /min-w-36 rounded-md border border-border bg-bg-surface p-1 shadow-lg/);
+  assert.match(source, /min-w-28 rounded border border-border bg-bg-surface p-0\.5 shadow-lg/);
   assert.doesNotMatch(source, /min-w-44|p-1\.5 shadow-lg/);
-  assert.match(source, /gap-1\.5 rounded px-2 py-1 text-left text-xs/);
-  assert.match(source, /<Grid2X2 size=\{13\}/);
+  assert.match(source, /gap-1 rounded px-1\.5 py-0\.5 text-left text-\[10px\]/);
+  assert.match(source, /<Grid2X2 size=\{11\}/);
   assert.match(source, /rounded-full bg-accent shadow-sm ring-1 ring-accent\/40 hover:bg-accent\/80/);
   assert.match(source, /h-1 w-1 rounded-full bg-accent-foreground/);
   assert.doesNotMatch(source, /bg-\[#a58be8\]|hover:bg-\[#8f72d4\]/);
@@ -122,7 +122,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(toolsBar, /hideOnMobile \? "max-md:hidden"/);
   assert.match(toolsBar, /rounded-2xl/);
   assert.match(toolsBar, /h-7 w-7/);
-  for (const label of ["Move", "Pen", "Hand tool", "Brush", "Eraser", "Remove BG", "Undo"]) {
+  for (const label of ["Move", "Pen", "Hand tool", "Brush", "Eraser", "Shape", "Gradient", "Remove BG", "Undo", "Redo"]) {
     assert.ok(toolsBar.includes(`label: "${label}"`) || toolsBar.includes(`aria-label="${label}"`), `missing ${label}`);
   }
   assert.doesNotMatch(toolsBar, /id: "text"|label: "Text"/);
@@ -140,6 +140,11 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(artworkLayers, /color=\{stroke\.color \?\? "#202124"\}/);
   assert.match(toolsBar, /aria-label=\{collapsed \? "Expand editor tools" : "Collapse editor tools"\}/);
   assert.doesNotMatch(toolsBar, /title=\{collapsed \? "Expand tools" : "Collapse tools"\}/);
+  assert.match(toolsBar, /aria-label="Redo"/);
+  assert.match(toolsBar, /canRedo/);
+  assert.match(source, /redoCanvasAction/);
+  assert.match(toolsBar, /Expand editor tools/);
+  assert.match(toolsBar, /Collapse editor tools/);
   assert.match(source, /activeTool === "hand" && event\.button === 0/);
   assert.match(source, /activeTool !== "move"/);
   assert.match(source, /function eraseArtworkAt\(/);

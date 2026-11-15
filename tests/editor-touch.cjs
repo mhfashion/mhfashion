@@ -414,7 +414,7 @@ async function main() {
     await tap('button[aria-label="Add Front Mockup"]');
     await tap('button[aria-label="Canvas options"]');
     const addBack = await rect('button[aria-label="Add Back Mockup"]');
-    assert.ok(addBack.h >= 43, "Back Mockup menu row stays finger-tall");
+    assert.ok(addBack.h >= 39, "Back Mockup menu row stays compact but finger-usable");
     await tap('button[aria-label="Add Back Mockup"]');
     const surface = await rect('section[aria-label="Front Mockup"] > div:last-child');
     const beforeSwipe = await snapshot();
@@ -473,7 +473,7 @@ async function main() {
     }
     await tap('button[aria-label="Canvas options"]');
     const menuRow = await rect('button[aria-label="Add Back Mockup"]', false);
-    assert.ok(Math.abs(menuRow.h - 44) < 1, "Mockup menu row stays finger-tall at 25% zoom");
+    assert.ok(Math.abs(menuRow.h - 40) < 1, "Mockup menu row stays compact at 25% zoom");
     await tap('button[aria-label="Canvas options"]');
     const label = await rect('section[aria-label="Front Mockup"] [data-artwork-touch-dimensions]', false);
     assert.ok(label.h >= 23, "Dimensions badge stays screen-readable at 25% zoom");
