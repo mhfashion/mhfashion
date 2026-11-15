@@ -296,6 +296,9 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(source, /const selectionBounds = useMemo/);
   assert.match(source, /selectionBounds=\{selectionBounds\}/);
   assert.match(source, /x=\{selectionBounds\.x\}/);
+  assert.match(source, /aria-label="Rotate selected layer"/);
+  assert.match(source, /function startCanvasLayerRotate/);
+  assert.match(source, /layerRotations/);
   assert.match(artworkLayers, /<mask[\s\S]*?maskUnits="userSpaceOnUse"/);
   assert.match(artworkLayers, /stroke\.mode === "hide" \? "black" : "white"/);
   assert.match(artworkLayers, /mask=\{layer\.mask !== null \? `url\(#\$\{maskId\}\)` : undefined\}/);

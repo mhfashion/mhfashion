@@ -120,6 +120,12 @@ This log records completed website-related changes in the connected repository. 
 - Added `Text` to the bottom Tools bar. With Text selected, clicking a position on the canvas creates a new text layer at that exact canvas coordinate and focuses the inline editor so the user can type immediately.
 - Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (26 existing warnings remain).
 
+### 2026-11-15 — Kittl-style editor interaction pass
+
+- Added the missing Photoshop/Kittl-style rotate affordance below the dynamic selection bounds. Rotation is tracked per layer and applied to selected linked layers together; the handle displays a live canvas interaction rather than a fixed-size transform control.
+- Text entry now returns to the Move/selection tool after the inline editor commits, matching the common Kittl flow where Text is an insertion tool and selection resumes after typing.
+- Preserved the existing Text Adjustment typography controls and direct Text tool workflow while extending the canvas transform foundation. Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (26 existing warnings remain).
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.

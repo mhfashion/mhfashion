@@ -72,6 +72,7 @@ type Point = { x: number; y: number };
 type CanvasBounds = { x: number; y: number; width: number; height: number };
 type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
 type CanvasLayerResizeDrag = { pointerId: number; start: Point; origin: Record<string, number>; handle: string };
+type CanvasLayerRotateDrag = { pointerId: number; center: Point; startAngle: number; origin: Record<string, number> };
 type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
 type Connector = { side: MockupSide; path: string; start: Point; end: Point };
 type ActiveArtworkStroke = {
@@ -133,6 +134,10 @@ function ArtworkOverlay({
   onResizeStart,
   onResize,
   onResizeEnd,
+  layerRotations,
+  onRotateStart,
+  onRotate,
+  onRotateEnd,
 }: {
   layers: EditorArtworkLayer[];
   selectedMaskLayerId: string | null;
@@ -153,6 +158,10 @@ function ArtworkOverlay({
   onResizeStart: (event: React.PointerEvent<SVGCircleElement>) => void;
   onResize: (event: React.PointerEvent<SVGSVGElement>) => void;
   onResizeEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
+  layerRotations: Record<string, number>;
+  onRotateStart: (event: React.PointerEvent<SVGCircleElement>) => void;
+  onRotate: (event: React.PointerEvent<SVGSVGElement>) => void;
+  onRotateEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
 }) {
   const editingText = editingTextLayer?.text ?? null;
   const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
@@ -167,7 +176,7 @@ function ArtworkOverlay({
     { key: "bottom-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) },
   ];
   return (
-    <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={(event) => { onMove(event); onResize(event); }} onPointerUp={(event) => { onMoveEnd(event); onResizeEnd(event); }} onPointerCancel={(event) => { onMoveEnd(event); onResizeEnd(event); }} onLostPointerCapture={(event) => { onMoveEnd(event); onResizeEnd(event); }} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
+    <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={(event) => { onMove(event); onResize(event); onRotate(event); }} onPointerUp={(event) => { onMoveEnd(event); onResizeEnd(event); onRotateEnd(event); }} onPointerCancel={(event) => { onMoveEnd(event); onResizeEnd(event); onRotateEnd(event); }} onLostPointerCapture={(event) => { onMoveEnd(event); onResizeEnd(event); onRotateEnd(event); }} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
       <g transform={`translate(${500 + transform.x} ${600 + transform.y}) translate(-500 -600)`}>
         <EditorArtworkLayers
           layers={layers}
@@ -176,6 +185,7 @@ function ArtworkOverlay({
           maskBrushMode={maskBrushMode}
           hiddenTextLayerId={editingTextLayerId}
           layerScales={layerScales}
+          layerRotations={layerRotations}
         />
         {editingText && (
           // Typing goes straight onto the print canvas: the focused field shares the
@@ -236,6 +246,8 @@ function ArtworkOverlay({
           {resizeHandles.map((handle) => (
             <circle key={handle.key} cx={handle.x} cy={handle.y} r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" data-resize-handle={handle.key} onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} />
           ))}
+          <line x1={(selectionBounds.x + selectionBounds.width / 2)} y1={selectionBounds.y + selectionBounds.height} x2={(selectionBounds.x + selectionBounds.width / 2)} y2={selectionBounds.y + selectionBounds.height + 48} stroke="#4c9d16" strokeWidth="4" />
+          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 70} r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" />
         </g>
       )}
     </svg>
@@ -262,6 +274,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [redoStack, setRedoStack] = useState<EditorArtworkLayer[][]>([]);
   const [canvasLayerTransforms, setCanvasLayerTransforms] = useState<Record<string, Point>>({});
   const [canvasLayerScales, setCanvasLayerScales] = useState<Record<string, number>>({});
+  const [canvasLayerRotations, setCanvasLayerRotations] = useState<Record<string, number>>({});
   const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>(["layer-1"]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
@@ -340,6 +353,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget } | null>(null);
   const canvasArtworkDragRef = useRef<CanvasArtworkDrag | null>(null);
   const canvasLayerResizeRef = useRef<CanvasLayerResizeDrag | null>(null);
+  const canvasLayerRotateRef = useRef<CanvasLayerRotateDrag | null>(null);
   const handleLargeTierRequested = useCallback((side: MockupSide) => {
     setLargeArtworkTierOwner((current) => claimLargeArtworkTier(current, side));
   }, []);
@@ -660,6 +674,37 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (canvasLayerResizeRef.current?.pointerId === event.pointerId) canvasLayerResizeRef.current = null;
   }
 
+  function startCanvasLayerRotate(event: React.PointerEvent<SVGCircleElement>) {
+    if (event.button !== 0 || !event.isPrimary || !selectionBounds || selectedLayerIds.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
+    if (!ids.length) return;
+    const center = { x: selectionBounds.x + selectionBounds.width / 2, y: selectionBounds.y + selectionBounds.height / 2 };
+    const start = toCanvasPoint(event.clientX, event.clientY);
+    event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
+    canvasLayerRotateRef.current = {
+      pointerId: event.pointerId,
+      center,
+      startAngle: Math.atan2(start.y * 1200 - center.y, start.x * 1000 - center.x) * (180 / Math.PI),
+      origin: Object.fromEntries(ids.map((id) => [id, canvasLayerRotations[id] ?? 0])),
+    };
+  }
+
+  function rotateCanvasLayer(event: React.PointerEvent<SVGSVGElement>) {
+    const drag = canvasLayerRotateRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    const angle = Math.atan2(point.y * 1200 - drag.center.y, point.x * 1000 - drag.center.x) * (180 / Math.PI);
+    const delta = angle - drag.startAngle;
+    setCanvasLayerRotations(Object.fromEntries(Object.entries(drag.origin).map(([id, rotation]) => [id, rotation + delta])));
+  }
+
+  function endCanvasLayerRotate(event: React.PointerEvent<SVGSVGElement>) {
+    if (canvasLayerRotateRef.current?.pointerId === event.pointerId) canvasLayerRotateRef.current = null;
+  }
+
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     if (activeTool === "move" || activeTool === "hand") return;
@@ -915,6 +960,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!editingTextLayerId) return;
     setLayers((current) => setEditorLayerText(current, editingTextLayerId, value));
   }
+  function commitEditingText() {
+    setEditingTextLayerId(null);
+    setActiveTool("move");
+  }
   function updateEditingTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight">>) {
     if (!editingTextLayerId) return;
     setLayers((current) => updateEditorLayerTextStyle(current, editingTextLayerId, update));
@@ -1138,15 +1187,19 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   selectedLayerIds={selectedLayerIds}
                   selectionBounds={selectionBounds}
                   layerScales={canvasLayerScales}
+                  layerRotations={canvasLayerRotations}
                   onMoveStart={startCanvasArtworkMove}
                   onMove={moveCanvasArtwork}
                   onMoveEnd={endCanvasArtworkMove}
                   onEditingTextChange={updateEditingText}
-                  onEditingTextCommit={() => setEditingTextLayerId(null)}
+                  onEditingTextCommit={commitEditingText}
                   onEditingTextStyle={updateEditingTextStyle}
                   onResizeStart={startCanvasLayerResize}
                   onResize={resizeCanvasLayer}
                   onResizeEnd={endCanvasLayerResize}
+                  onRotateStart={startCanvasLayerRotate}
+                  onRotate={rotateCanvasLayer}
+                  onRotateEnd={endCanvasLayerRotate}
                 />
                 <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
                   <button
