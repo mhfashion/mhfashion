@@ -113,6 +113,13 @@ This log records completed website-related changes in the connected repository. 
 - The eight resize handles are positioned on the calculated corners and side midpoints. Resize direction is handle-aware, so left/top handles grow inward/outward in the expected direction while preserving the layer scale model. Move and resize still use the complete selected ID set, so group-header selection affects the group and child selection affects only the child.
 - Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (26 existing warnings remain).
 
+### 2026-11-15 — Complete text adjustments and direct Text tool typing
+
+- Expanded text layer styling beyond size/color: font family, bold, italic, underline, left/center/right alignment, letter spacing, and line height are now stored on the text layer and rendered on the canvas.
+- The Adjustment panel exposes these controls without requiring the user to re-enter the text. Text content remains editable there as an optional direct edit, while style changes apply immediately to the selected layer.
+- Added `Text` to the bottom Tools bar. With Text selected, clicking a position on the canvas creates a new text layer at that exact canvas coordinate and focuses the inline editor so the user can type immediately.
+- Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (26 existing warnings remain).
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.

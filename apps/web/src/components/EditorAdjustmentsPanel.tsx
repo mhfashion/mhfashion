@@ -18,7 +18,7 @@ export default function EditorAdjustmentsPanel({
   selectedLayer: EditorArtworkLayer | null;
   onUpdateLayer: (id: string, update: Partial<Pick<EditorArtworkLayer, "opacity" | "fillOpacity" | "blendMode">>) => void;
   onUpdateText: (value: string) => void;
-  onUpdateTextStyle: (update: Partial<Pick<EditorTextContent, "fontSize" | "color">>) => void;
+  onUpdateTextStyle: (update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight">>) => void;
 }) {
   const text = selectedLayer?.text;
   return (
@@ -44,6 +44,23 @@ export default function EditorAdjustmentsPanel({
                     </label>
                     <label className="flex items-center justify-between gap-2">Color
                       <input aria-label="Adjustment text color" type="color" value={text.color} onChange={(event) => onUpdateTextStyle({ color: event.target.value })} className="h-7 w-10" />
+                    </label>
+                    <label className="flex items-center justify-between gap-2">Font
+                      <select aria-label="Adjustment font family" value={text.fontFamily ?? "Inter"} onChange={(event) => onUpdateTextStyle({ fontFamily: event.target.value })} className="w-32 border border-[#999] bg-white px-1 py-1 text-[11px] text-[#202020] dark:border-[#555] dark:bg-[#202020] dark:text-white"><option>Inter</option><option>Arial</option><option>Georgia</option><option>Impact</option><option>Courier New</option></select>
+                    </label>
+                    <div className="flex gap-1">
+                      <button type="button" aria-label="Toggle bold text" aria-pressed={(text.fontWeight ?? 700) >= 700} onClick={() => onUpdateTextStyle({ fontWeight: (text.fontWeight ?? 700) >= 700 ? 400 : 700 })} className="flex-1 border border-[#999] px-2 py-1 font-bold">B</button>
+                      <button type="button" aria-label="Toggle italic text" aria-pressed={text.fontStyle === "italic"} onClick={() => onUpdateTextStyle({ fontStyle: text.fontStyle === "italic" ? "normal" : "italic" })} className="flex-1 border border-[#999] px-2 py-1 italic">I</button>
+                      <button type="button" aria-label="Toggle underline text" aria-pressed={text.underline === true} onClick={() => onUpdateTextStyle({ underline: !text.underline })} className="flex-1 border border-[#999] px-2 py-1 underline">U</button>
+                    </div>
+                    <label className="flex items-center justify-between gap-2">Align
+                      <select aria-label="Adjustment text alignment" value={text.textAlign ?? "center"} onChange={(event) => onUpdateTextStyle({ textAlign: event.target.value as "left" | "center" | "right" })} className="w-24 border border-[#999] bg-white px-1 py-1 text-[11px] text-[#202020] dark:border-[#555] dark:bg-[#202020] dark:text-white"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
+                    </label>
+                    <label className="flex items-center justify-between gap-2">Spacing
+                      <input aria-label="Adjustment letter spacing" type="number" min="-20" max="80" value={text.letterSpacing ?? 0} onChange={(event) => onUpdateTextStyle({ letterSpacing: Number(event.target.value) })} className="w-20 border border-[#999] px-1 py-1 text-right" />
+                    </label>
+                    <label className="flex items-center justify-between gap-2">Line height
+                      <input aria-label="Adjustment line height" type="number" min="0.7" max="3" step="0.1" value={text.lineHeight ?? 1.2} onChange={(event) => onUpdateTextStyle({ lineHeight: Number(event.target.value) })} className="w-20 border border-[#999] px-1 py-1 text-right" />
                     </label>
                   </>
                 ) : (

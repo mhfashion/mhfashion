@@ -35,8 +35,14 @@ export default function EditorLayerPreview({
           y={text.y}
           fontSize={text.fontSize}
           fill={text.color}
-          textAnchor="middle"
-          style={{ fontFamily: EDITOR_TEXT_FONT_FAMILY, fontWeight: 700 }}
+          textAnchor={text.textAlign === "left" ? "start" : text.textAlign === "right" ? "end" : "middle"}
+          style={{
+            fontFamily: text.fontFamily ?? EDITOR_TEXT_FONT_FAMILY,
+            fontWeight: text.fontWeight ?? 700,
+            fontStyle: text.fontStyle ?? "normal",
+            textDecoration: text.underline ? "underline" : "none",
+            letterSpacing: `${text.letterSpacing ?? 0}px`,
+          }}
           data-editor-text-content="true"
         >
           {text.value}

@@ -149,7 +149,7 @@ function ArtworkOverlay({
   onMoveEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
   onEditingTextChange?: (value: string) => void;
   onEditingTextCommit?: () => void;
-  onEditingTextStyle?: (update: Partial<Pick<EditorTextContent, "fontSize" | "color">>) => void;
+  onEditingTextStyle?: (update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight">>) => void;
   onResizeStart: (event: React.PointerEvent<SVGCircleElement>) => void;
   onResize: (event: React.PointerEvent<SVGSVGElement>) => void;
   onResizeEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
@@ -208,15 +208,19 @@ function ArtworkOverlay({
                   if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
                 }}
                 onPointerDown={(event) => event.stopPropagation()}
-                className="w-full border-0 bg-transparent text-center leading-none outline-none placeholder:text-[#9aa0a6]"
+                className="w-full border-0 bg-transparent leading-none outline-none placeholder:text-[#9aa0a6]"
                 style={{
                   height: `${editingText.fontSize * 1.32}px`,
-                  lineHeight: `${editingText.fontSize * 1.32}px`,
+                  lineHeight: `${editingText.fontSize * (editingText.lineHeight ?? 1.2)}px`,
                   fontSize: `${editingText.fontSize}px`,
                   color: editingText.color,
                   caretColor: editingText.color,
-                  fontFamily: EDITOR_TEXT_FONT_FAMILY,
-                  fontWeight: 700,
+                  fontFamily: editingText.fontFamily ?? EDITOR_TEXT_FONT_FAMILY,
+                  fontWeight: editingText.fontWeight ?? 700,
+                  fontStyle: editingText.fontStyle ?? "normal",
+                  textAlign: editingText.textAlign ?? "center",
+                  textDecoration: editingText.underline ? "underline" : "none",
+                  letterSpacing: `${editingText.letterSpacing ?? 0}px`,
                   outline: "2px dashed rgba(76, 157, 22, 0.7)",
                   outlineOffset: "6px",
                 }}
@@ -669,11 +673,17 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           : "Remove BG needs an uploaded image; background removal is not connected yet.");
       return;
     }
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    if (activeTool === "text") {
+      event.preventDefault();
+      event.stopPropagation();
+      addCanvasTextLayer(undefined, { x: point.x * 1000, y: point.y * 1200 });
+      return;
+    }
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
     if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) return;
     event.preventDefault();
     event.stopPropagation();
-    const point = toCanvasPoint(event.clientX, event.clientY);
     event.currentTarget.setPointerCapture(event.pointerId);
     if (activeTool === "eraser") {
       rememberLayerSnapshot();
@@ -833,13 +843,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   /** Add Text: the text layer lands in the Layers stack and the canvas is ready for typing. */
-  function addCanvasTextLayer(source?: DesignLibraryText | null) {
+  function addCanvasTextLayer(source?: DesignLibraryText | null, position?: Point) {
     const id = claimLayerId();
     const label = nextTextLayerLabelRef.current++;
     const content: EditorTextContent = {
       value: source?.value ?? "",
-      x: source?.x ?? CANVAS_ARTWORK_CENTER.x,
-      y: source?.y ?? CANVAS_ARTWORK_CENTER.y,
+      x: position?.x ?? source?.x ?? CANVAS_ARTWORK_CENTER.x,
+      y: position?.y ?? source?.y ?? CANVAS_ARTWORK_CENTER.y,
       fontSize: source?.fontSize ?? DEFAULT_TEXT_FONT_SIZE,
       color: source?.color ?? foregroundColor,
     };
@@ -905,7 +915,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!editingTextLayerId) return;
     setLayers((current) => setEditorLayerText(current, editingTextLayerId, value));
   }
-  function updateEditingTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color">>) {
+  function updateEditingTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight">>) {
     if (!editingTextLayerId) return;
     setLayers((current) => updateEditorLayerTextStyle(current, editingTextLayerId, update));
   }
@@ -913,7 +923,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!selectedLayerId) return;
     setLayers((current) => setEditorLayerText(current, selectedLayerId, value));
   }
-  function updateSelectedTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color">>) {
+  function updateSelectedTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight">>) {
     if (!selectedLayerId) return;
     setLayers((current) => updateEditorLayerTextStyle(current, selectedLayerId, update));
   }

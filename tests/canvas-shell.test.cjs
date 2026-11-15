@@ -124,11 +124,12 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(toolsBar, /hideOnMobile \? "max-md:hidden"/);
   assert.match(toolsBar, /rounded-2xl/);
   assert.match(toolsBar, /h-7 w-7/);
-  for (const label of ["Move", "Pen", "Hand tool", "Brush", "Eraser", "Shape", "Gradient", "Remove BG", "Undo", "Redo"]) {
+  for (const label of ["Move", "Text", "Pen", "Hand tool", "Brush", "Eraser", "Shape", "Gradient", "Remove BG", "Undo", "Redo"]) {
     assert.ok(toolsBar.includes(`label: "${label}"`) || toolsBar.includes(`aria-label="${label}"`), `missing ${label}`);
   }
-  assert.doesNotMatch(toolsBar, /id: "text"|label: "Text"/);
-  assert.doesNotMatch(source, /activeTool === "text"|tool === "text"|Text objects are not connected/);
+  assert.match(toolsBar, /id: "text"/);
+  assert.match(source, /activeTool === "text"/);
+  assert.match(source, /addCanvasTextLayer\(undefined, \{ x: point\.x \* 1000, y: point\.y \* 1200 \}\)/);
   assert.match(toolsBar, /role="group" aria-label="Color swatches"/);
   assert.match(toolsBar, /aria-label="Foreground Color"/);
   assert.match(toolsBar, /aria-label="Background Color"/);
@@ -361,7 +362,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /onUploadImage\(file\)/);
   // Add Text types straight onto the canvas and lands in the Layers stack.
   assert.match(source, /const \[editingTextLayerId, setEditingTextLayerId\] = useState<string \| null>\(null\)/);
-  assert.match(source, /function addCanvasTextLayer\(source\?: DesignLibraryText \| null\)/);
+  assert.match(source, /function addCanvasTextLayer\(source\?: DesignLibraryText \| null, position\?: Point\)/);
   assert.match(source, /createEditorTextLayer\(id, `Text \$\{label\}`/);
   assert.match(source, /setEditingTextLayerId\(id\)/);
   assert.match(source, /data-editor-text-editor="true"/);

@@ -11,6 +11,13 @@ export type EditorTextContent = {
   y: number;
   fontSize: number;
   color: string;
+  fontFamily?: string;
+  fontWeight?: number;
+  fontStyle?: "normal" | "italic";
+  textAlign?: "left" | "center" | "right";
+  underline?: boolean;
+  letterSpacing?: number;
+  lineHeight?: number;
 };
 export type EditorShapePath = {
   d: string;
@@ -111,7 +118,7 @@ export function setEditorLayerText(
 export function updateEditorLayerTextStyle(
   layers: EditorArtworkLayer[],
   layerId: string,
-  update: Partial<Pick<EditorTextContent, "fontSize" | "color">>,
+  update: Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight">>,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => {
     if (layer.id !== layerId || !layer.text) return layer;
@@ -121,6 +128,8 @@ export function updateEditorLayerTextStyle(
         ...layer.text,
         ...update,
         fontSize: update.fontSize === undefined ? layer.text.fontSize : Math.max(24, Math.min(260, update.fontSize)),
+        letterSpacing: update.letterSpacing === undefined ? layer.text.letterSpacing : Math.max(-20, Math.min(80, update.letterSpacing)),
+        lineHeight: update.lineHeight === undefined ? layer.text.lineHeight : Math.max(0.7, Math.min(3, update.lineHeight)),
       },
     };
   });
