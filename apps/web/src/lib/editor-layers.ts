@@ -209,6 +209,20 @@ export function reorderEditorLayer(
   return next;
 }
 
+export function moveEditorLayerToIndex(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  targetIndex: number,
+): EditorArtworkLayer[] {
+  const currentIndex = layers.findIndex((layer) => layer.id === layerId);
+  if (currentIndex < 0) return layers;
+  const next = [...layers];
+  const [moved] = next.splice(currentIndex, 1);
+  const clampedIndex = Math.max(0, Math.min(next.length, targetIndex));
+  next.splice(clampedIndex, 0, moved);
+  return next;
+}
+
 export function groupEditorLayers(
   layers: EditorArtworkLayer[],
   layerIds: string[],

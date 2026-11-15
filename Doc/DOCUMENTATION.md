@@ -71,6 +71,13 @@ This log records completed website-related changes in the connected repository. 
 - Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
 - Validation: TypeScript passed; editor-layers **8/8**; canvas-shell **14/14**; production build passed; `git diff --check` passed.
 
+### 2026-11-15 — Photoshop-style layer stack drag reorder and folder groups
+
+- Layer rows in the Layers box are now draggable. Dropping a row above/below another row calls the shared `moveEditorLayerToIndex` helper, so the actual layer array and canvas/mockup stacking order change directly instead of requiring repeated Move Up/Move Down clicks. The menu actions remain available as keyboard-friendly alternatives.
+- Grouped layers now expose a folder-style collapsed/expanded header in the Layers box. Child rows remain individual layer rows with their own thumbnail, visibility, mask, rename, and selection controls. Collapsing only hides the child rows in the panel; it does not flatten or delete them. Group membership stays separate from Link Layers, and individual group children remain independently selectable.
+- Files: `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`.
+- Validation: TypeScript passed; editor-layers **9/9**; canvas-shell **14/14**; production build passed; `git diff --check` passed.
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.

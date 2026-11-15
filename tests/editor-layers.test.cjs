@@ -23,6 +23,7 @@ const {
   duplicateEditorLayer,
   groupEditorLayers,
   linkEditorLayers,
+  moveEditorLayerToIndex,
   removeLayerMask,
   reorderEditorLayer,
   setEditorLayerText,
@@ -166,4 +167,10 @@ test("groups preserve independent layers while links provide an explicit shared 
   assert.equal(linked[1].linkId, "link-1");
   assert.equal(unlinkEditorLayers(linked, ["one"])[0].linkId, null);
   assert.equal(unlinkEditorLayers(linked, ["one"])[1].linkId, "link-1");
+});
+
+test("layer rows can be dropped at an arbitrary stack index", () => {
+  const layers = ["one", "two", "three"].map((id) => createEditorArtworkLayer(id, id));
+  assert.deepEqual(moveEditorLayerToIndex(layers, "three", 0).map((layer) => layer.id), ["three", "one", "two"]);
+  assert.deepEqual(moveEditorLayerToIndex(layers, "one", 3).map((layer) => layer.id), ["two", "three", "one"]);
 });

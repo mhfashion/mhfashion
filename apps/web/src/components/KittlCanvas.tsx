@@ -25,6 +25,7 @@ import {
   duplicateEditorLayer,
   groupEditorLayers,
   linkEditorLayers,
+  moveEditorLayerToIndex,
   removeLayerMask,
   reorderEditorLayer,
   setEditorLayerText,
@@ -887,6 +888,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function moveLayer(id: string, direction: -1 | 1) {
     setLayers((current) => reorderEditorLayer(current, id, direction));
   }
+  function moveLayerToIndex(id: string, targetIndex: number) {
+    setLayers((current) => moveEditorLayerToIndex(current, id, targetIndex));
+  }
 
   function groupSelectedLayers() {
     if (selectedLayerIds.length < 2) return;
@@ -1181,6 +1185,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onDuplicateLayer={duplicateLayer}
           onDeleteLayer={deleteLayer}
           onMoveLayer={moveLayer}
+          onMoveLayerToIndex={moveLayerToIndex}
           onUpdateLayer={updateLayer}
           onMaskBrushModeChange={setMaskBrushMode}
           onGroupSelected={groupSelectedLayers}

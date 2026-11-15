@@ -275,6 +275,11 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(layersPanel, /aria-label="Link layers"/);
   assert.match(layersPanel, /onLinkSelected/);
   assert.match(layersPanel, /aria-label="Layer list" role="list"/);
+  assert.match(layersPanel, /draggable/);
+  assert.match(layersPanel, /onMoveLayerToIndex/);
+  assert.match(layerModelSource, /export function moveEditorLayerToIndex/);
+  assert.match(layersPanel, /Collapse group \$\{layer\.groupId\}/);
+  assert.match(layersPanel, /Expand group \$\{layer\.groupId\}/);
   assert.match(layersPanel, /Blend mode for \$\{selectedLayer\.name\}/);
   assert.match(layersPanel, /Opacity for \$\{selectedLayer\.name\}/);
   assert.match(layersPanel, /Hide \(black\)/);

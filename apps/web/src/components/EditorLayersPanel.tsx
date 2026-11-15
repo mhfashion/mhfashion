@@ -95,6 +95,7 @@ export default function EditorLayersPanel({
   onDuplicateLayer,
   onDeleteLayer,
   onMoveLayer,
+  onMoveLayerToIndex,
   onUpdateLayer,
   onMaskBrushModeChange,
   onGroupSelected,
@@ -118,6 +119,7 @@ export default function EditorLayersPanel({
   onDuplicateLayer: (id: string) => void;
   onDeleteLayer: (id: string) => void;
   onMoveLayer: (id: string, direction: -1 | 1) => void;
+  onMoveLayerToIndex: (id: string, targetIndex: number) => void;
   onUpdateLayer: (id: string, update: LayerUpdate) => void;
   onMaskBrushModeChange: (mode: MaskBrushMode) => void;
   onGroupSelected: () => void;
@@ -127,6 +129,8 @@ export default function EditorLayersPanel({
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [menuLayerId, setMenuLayerId] = useState<string | null>(null);
+  const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const renameInputRef = useRef<HTMLInputElement>(null);
   const selectedLayer = layers.find((layer) => layer.id === selectedLayerId) ?? null;
 
@@ -216,11 +220,26 @@ export default function EditorLayersPanel({
             {layers.length === 0 ? (
               <div className="flex min-h-20 items-center justify-center px-3 text-center text-[11px] text-[#b9b9b9]">No layers yet. Use the new-layer button below.</div>
             ) : layers.map((layer, index) => {
+              const firstGroupIndex = layer.groupId ? layers.findIndex((item) => item.groupId === layer.groupId) : -1;
+              const isGroupHeader = layer.groupId !== null && firstGroupIndex === index;
+              const isGroupCollapsed = layer.groupId ? collapsedGroups.has(layer.groupId) : false;
+              if (isGroupCollapsed) return isGroupHeader ? (
+                <div key={`group-${layer.groupId}`} role="listitem" className="flex min-h-8 items-center gap-1 border-b border-[#c9c9c9] bg-[#dedede] px-2 text-[10px] font-semibold dark:border-[#292929] dark:bg-[#2c2c2c] dark:text-white">
+                  <button type="button" aria-label={`Expand group ${layer.groupId}`} onClick={() => setCollapsedGroups((current) => { const next = new Set(current); next.delete(layer.groupId!); return next; })} className={TINY_ICON}><ChevronRight size={13} /></button>
+                  <FolderPlus size={13} aria-hidden="true" /> Group
+                </div>
+              ) : null;
               const isSelected = selectedLayerIds.includes(layer.id);
               const isMaskSelected = isSelected && selectedTarget === "mask";
                 const rowClass = `relative flex min-h-9 items-center gap-1 border-b border-[#c9c9c9] px-1 dark:border-[#292929] ${isSelected ? "bg-[#d2e5f8] dark:bg-[#4b5661]" : "bg-[#f1f1f1] hover:bg-[#e5e5e5] dark:bg-[#353535] dark:hover:bg-[#404040]"} [@media(pointer:coarse)]:min-h-11`;
               return (
-                <div key={layer.id} role="listitem" data-layer-id={layer.id} className={rowClass}>
+                <div key={layer.id} role="listitem" data-layer-id={layer.id} draggable onDragStart={() => setDraggedLayerId(layer.id)} onDragEnd={() => setDraggedLayerId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedLayerId && draggedLayerId !== layer.id) onMoveLayerToIndex(draggedLayerId, index); setDraggedLayerId(null); }}>
+                  {isGroupHeader && (
+                    <div className="absolute -top-8 left-0 right-0 z-10 flex h-7 items-center gap-1 border-b border-[#b7b7b7] bg-[#dedede] px-1 text-[10px] font-semibold dark:border-[#242424] dark:bg-[#2c2c2c] dark:text-white">
+                      <button type="button" aria-label={`Collapse group ${layer.groupId}`} onClick={() => setCollapsedGroups((current) => new Set(current).add(layer.groupId!))} className={TINY_ICON}><ChevronLeft size={13} className="-rotate-90" /></button>
+                      <FolderPlus size={13} aria-hidden="true" /> Group
+                    </div>
+                  )}
                   <button type="button" aria-label={`${layer.visible ? "Hide" : "Show"} ${layer.name}`} aria-pressed={layer.visible} onClick={() => onToggleVisibility(layer.id)} className={`${TINY_ICON} h-7 w-7 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-8`}>
                     {layer.visible ? <Eye size={13} aria-hidden="true" /> : <EyeOff size={13} aria-hidden="true" />}
                   </button>
