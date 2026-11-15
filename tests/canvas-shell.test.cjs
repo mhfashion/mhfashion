@@ -118,6 +118,8 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /onToggleCollapsed=\{\(\) => setToolsCollapsed/);
   assert.match(source, /hideOnMobile=\{layersOpen \|\| editSidebarOpen\}/);
   assert.match(toolsBar, /data-testid="editor-tools-bar"/);
+  assert.match(toolsBar, /flex-wrap/);
+  assert.doesNotMatch(toolsBar, /overflow-x-auto/);
   assert.match(toolsBar, /absolute inset-x-0 bottom-2 z-50 flex justify-center/);
   assert.match(toolsBar, /hideOnMobile \? "max-md:hidden"/);
   assert.match(toolsBar, /rounded-2xl/);
@@ -301,7 +303,7 @@ test("Edit sidebar starts collapsed on the left with temporary Canva-like catego
     assert.match(editSidebar, new RegExp(`label: "${label}"`));
   }
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
-  assert.match(source, /canvasArtworkTransform/);
+  assert.match(source, /canvasLayerTransforms/);
   assert.match(source, /Move canvas artwork/);
   assert.match(source, /startCanvasArtworkMove/);
 });

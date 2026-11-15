@@ -79,6 +79,7 @@ export default function EditorLayersPanel({
   onToggle,
   layers,
   selectedLayerId,
+  selectedLayerIds,
   selectedTarget,
   maskBrushMode,
   onSelectLayer,
@@ -98,9 +99,10 @@ export default function EditorLayersPanel({
   onToggle: () => void;
   layers: EditorArtworkLayer[];
   selectedLayerId: string | null;
+  selectedLayerIds: string[];
   selectedTarget: LayerEditTarget;
   maskBrushMode: MaskBrushMode;
-  onSelectLayer: (id: string, target: LayerEditTarget) => void;
+  onSelectLayer: (id: string, target: LayerEditTarget, multi?: boolean) => void;
   onAddLayer: () => void;
   onToggleVisibility: (id: string) => void;
   onToggleLock: (id: string) => void;
@@ -202,7 +204,7 @@ export default function EditorLayersPanel({
             {layers.length === 0 ? (
               <div className="flex min-h-20 items-center justify-center px-3 text-center text-[11px] text-[#b9b9b9]">No layers yet. Use the new-layer button below.</div>
             ) : layers.map((layer, index) => {
-              const isSelected = layer.id === selectedLayerId;
+              const isSelected = selectedLayerIds.includes(layer.id);
               const isMaskSelected = isSelected && selectedTarget === "mask";
                 const rowClass = `relative flex min-h-9 items-center gap-1 border-b border-[#c9c9c9] px-1 dark:border-[#292929] ${isSelected ? "bg-[#d2e5f8] dark:bg-[#4b5661]" : "bg-[#f1f1f1] hover:bg-[#e5e5e5] dark:bg-[#353535] dark:hover:bg-[#404040]"} [@media(pointer:coarse)]:min-h-11`;
               return (
@@ -210,13 +212,13 @@ export default function EditorLayersPanel({
                   <button type="button" aria-label={`${layer.visible ? "Hide" : "Show"} ${layer.name}`} aria-pressed={layer.visible} onClick={() => onToggleVisibility(layer.id)} className={`${TINY_ICON} h-7 w-7 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-8`}>
                     {layer.visible ? <Eye size={13} aria-hidden="true" /> : <EyeOff size={13} aria-hidden="true" />}
                   </button>
-                  <button type="button" aria-label={`Select ${layer.name}`} aria-pressed={isSelected && selectedTarget === "artwork"} onClick={() => onSelectLayer(layer.id, "artwork")} onDoubleClick={() => beginRename(layer)} className={`flex h-8 w-11 shrink-0 items-center justify-center border ${isSelected && selectedTarget === "artwork" ? "border-[#91c7f0]" : "border-[#777]"} [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-11`}>
+                  <button type="button" aria-label={`Select ${layer.name}`} aria-pressed={isSelected && selectedTarget === "artwork"} onClick={(event) => onSelectLayer(layer.id, "artwork", event.shiftKey || event.ctrlKey || event.metaKey)} onDoubleClick={() => beginRename(layer)} className={`flex h-8 w-11 shrink-0 items-center justify-center border ${isSelected && selectedTarget === "artwork" ? "border-[#91c7f0]" : "border-[#777]"} [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-11`}>
                     <ArtworkThumbnail layer={layer} />
                   </button>
                   {layer.mask !== null && (
                     <>
                       <Link2 size={10} aria-hidden="true" className="shrink-0 text-[#bdbdbd]" />
-                      <button type="button" aria-label={`${isMaskSelected ? "Stop editing" : "Select"} ${layer.name} mask`} aria-pressed={isMaskSelected} onClick={() => onSelectLayer(layer.id, isMaskSelected ? "artwork" : "mask")} className={`flex h-8 w-10 shrink-0 items-center justify-center border [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-11 ${isMaskSelected ? "border-[#91c7f0] ring-1 ring-[#91c7f0]" : "border-[#777]"}`}>
+                      <button type="button" aria-label={`${isMaskSelected ? "Stop editing" : "Select"} ${layer.name} mask`} aria-pressed={isMaskSelected} onClick={(event) => onSelectLayer(layer.id, isMaskSelected ? "artwork" : "mask", event.shiftKey || event.ctrlKey || event.metaKey)} className={`flex h-8 w-10 shrink-0 items-center justify-center border [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-11 ${isMaskSelected ? "border-[#91c7f0] ring-1 ring-[#91c7f0]" : "border-[#777]"}`}>
                         <MaskThumbnail layer={layer} />
                       </button>
                     </>
@@ -224,7 +226,7 @@ export default function EditorLayersPanel({
                   {renamingLayerId === layer.id ? (
                     <input ref={renameInputRef} aria-label={`Rename ${layer.name}`} value={renameValue} onChange={(event) => setRenameValue(event.target.value)} onBlur={finishRename} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") setRenamingLayerId(null); }} className="min-w-0 flex-1 bg-[#232323] px-1 py-1 text-[11px] text-white outline-none" />
                   ) : (
-                    <button type="button" aria-label={`Select ${layer.name} artwork`} aria-pressed={isSelected && selectedTarget === "artwork"} onClick={() => onSelectLayer(layer.id, "artwork")} onDoubleClick={() => beginRename(layer)} className="min-w-0 flex-1 truncate px-0.5 text-left text-[11px] text-[#202020] dark:text-[#eeeeee]">
+                    <button type="button" aria-label={`Select ${layer.name} artwork`} aria-pressed={isSelected && selectedTarget === "artwork"} onClick={(event) => onSelectLayer(layer.id, "artwork", event.shiftKey || event.ctrlKey || event.metaKey)} onDoubleClick={() => beginRename(layer)} className="min-w-0 flex-1 truncate px-0.5 text-left text-[11px] text-[#202020] dark:text-[#eeeeee]">
                       {layer.name}
                     </button>
                   )}

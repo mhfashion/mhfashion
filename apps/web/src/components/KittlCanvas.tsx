@@ -32,7 +32,7 @@ type PanStart = { pointerId: number; startX: number; startY: number; panX: numbe
 type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
-type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Point };
+type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
 type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
 type Connector = { side: MockupSide; path: string; start: Point; end: Point };
 type ActiveArtworkStroke = {
@@ -50,6 +50,7 @@ function ArtworkOverlay({
   selectedMaskLayerId,
   maskBrushMode,
   transform,
+  layerOffsets,
   moveEnabled,
   onMoveStart,
   onMove,
@@ -59,6 +60,7 @@ function ArtworkOverlay({
   selectedMaskLayerId: string | null;
   maskBrushMode: MaskBrushMode;
   transform: Point;
+  layerOffsets: Record<string, Point>;
   moveEnabled: boolean;
   onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
   onMove: (event: React.PointerEvent<SVGSVGElement>) => void;
@@ -67,7 +69,7 @@ function ArtworkOverlay({
   return (
     <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={onMove} onPointerUp={onMoveEnd} onPointerCancel={onMoveEnd} onLostPointerCapture={onMoveEnd} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
       <g transform={`translate(${500 + transform.x} ${600 + transform.y}) translate(-500 -600)`}>
-        <EditorArtworkLayers layers={layers} selectedMaskLayerId={selectedMaskLayerId} maskBrushMode={maskBrushMode} />
+        <EditorArtworkLayers layers={layers} layerOffsets={layerOffsets} selectedMaskLayerId={selectedMaskLayerId} maskBrushMode={maskBrushMode} />
       </g>
       {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
     </svg>
@@ -91,7 +93,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
   const [redoStack, setRedoStack] = useState<EditorArtworkLayer[][]>([]);
-  const [canvasArtworkTransform, setCanvasArtworkTransform] = useState<Point>({ x: 0, y: 0 });
+  const [canvasLayerTransforms, setCanvasLayerTransforms] = useState<Record<string, Point>>({});
+  const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>(["layer-1"]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("layer-1");
@@ -383,19 +386,26 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (event.button !== 0 || !event.isPrimary || layers.every((layer) => layer.strokes.length === 0)) return;
     event.preventDefault();
     event.stopPropagation();
+    const movableIds = selectedLayerIds.filter((id) => {
+      const layer = layers.find((item) => item.id === id);
+      return !!layer && !layer.locked && layer.strokes.length > 0;
+    });
+    if (movableIds.length === 0) return;
     const start = toCanvasPoint(event.clientX, event.clientY);
     event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
-    canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin: canvasArtworkTransform };
+    const origin = Object.fromEntries(movableIds.map((id) => [id, canvasLayerTransforms[id] ?? { x: 0, y: 0 }]));
+    canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin };
   }
   function moveCanvasArtwork(event: React.PointerEvent<SVGSVGElement>) {
     const drag = canvasArtworkDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
     const point = toCanvasPoint(event.clientX, event.clientY);
-    setCanvasArtworkTransform({
-      x: Math.max(-420, Math.min(420, drag.origin.x + (point.x - drag.start.x) * 1000)),
-      y: Math.max(-520, Math.min(520, drag.origin.y + (point.y - drag.start.y) * 1200)),
-    });
+    const delta = { x: (point.x - drag.start.x) * 1000, y: (point.y - drag.start.y) * 1200 };
+    setCanvasLayerTransforms((current) => Object.fromEntries(Object.entries(drag.origin).map(([id, origin]) => [id, {
+      x: Math.max(-420, Math.min(420, origin.x + delta.x)),
+      y: Math.max(-520, Math.min(520, origin.y + delta.y)),
+    }])));
   }
   function endCanvasArtworkMove(event: React.PointerEvent<SVGSVGElement>) {
     if (canvasArtworkDragRef.current?.pointerId === event.pointerId) canvasArtworkDragRef.current = null;
@@ -554,11 +564,21 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setLargeArtworkTierOwner((current) => releaseLargeArtworkTier(current, side));
   }
 
+  function selectLayer(id: string, target: LayerEditTarget, multi = false) {
+    setSelectedLayerId(id);
+    setSelectedTarget(target);
+    setSelectedLayerIds((current) => {
+      if (!multi || target === "mask") return [id];
+      return current.includes(id) ? (current.length > 1 ? current.filter((item) => item !== id) : current) : [...current, id];
+    });
+  }
+
   function addLayer() {
     const id = `layer-${nextLayerIdRef.current++}`;
     const number = nextLayerIdRef.current - 1;
     setLayers((current) => [createEditorArtworkLayer(id, `Layer ${number}`), ...current]);
     setSelectedLayerId(id);
+    setSelectedLayerIds([id]);
     setSelectedTarget("artwork");
   }
 
@@ -575,6 +595,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function createLayerMask(id: string) {
     setLayers((current) => addLayerMask(current, id));
     setSelectedLayerId(id);
+    setSelectedLayerIds([id]);
     setSelectedTarget("mask");
     setMaskBrushMode("hide");
   }
@@ -588,6 +609,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const newId = `layer-${nextLayerIdRef.current++}`;
     setLayers((current) => duplicateEditorLayer(current, id, newId));
     setSelectedLayerId(newId);
+    setSelectedLayerIds([newId]);
     setSelectedTarget("artwork");
   }
 
@@ -711,7 +733,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   layers={layers}
                   selectedMaskLayerId={selectedTarget === "mask" ? selectedLayerId : null}
                   maskBrushMode={maskBrushMode}
-                  transform={canvasArtworkTransform}
+                  transform={{ x: 0, y: 0 }}
+                  layerOffsets={canvasLayerTransforms}
                   moveEnabled={activeTool === "move"}
                   onMoveStart={startCanvasArtworkMove}
                   onMove={moveCanvasArtwork}
@@ -848,12 +871,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onToggle={toggleLayersPanel}
           layers={layers}
           selectedLayerId={selectedLayerId}
+          selectedLayerIds={selectedLayerIds}
           selectedTarget={selectedTarget}
           maskBrushMode={maskBrushMode}
-          onSelectLayer={(id, target) => {
-            setSelectedLayerId(id);
-            setSelectedTarget(target);
-          }}
+          onSelectLayer={selectLayer}
           onAddLayer={addLayer}
           onToggleVisibility={toggleLayerVisibility}
           onToggleLock={toggleLayerLock}

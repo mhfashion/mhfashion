@@ -56,11 +56,13 @@ function StrokeShape({
 export default function EditorArtworkLayers({
   layers,
   transform = "translate(500 600) scale(1) translate(-500 -600)",
+  layerOffsets,
   selectedMaskLayerId = null,
   maskBrushMode = "hide",
 }: {
   layers: EditorArtworkLayer[];
   transform?: string;
+  layerOffsets?: Record<string, { x: number; y: number }>;
   selectedMaskLayerId?: string | null;
   maskBrushMode?: MaskBrushMode;
 }) {
@@ -71,8 +73,10 @@ export default function EditorArtworkLayers({
     <>
       {[...layers].reverse().filter((layer) => layer.visible).map((layer) => {
         const maskId = `${instanceId}-${layer.id.replace(/[^a-zA-Z0-9_-]/g, "")}-mask`;
+        const offset = layerOffsets?.[layer.id];
+        const layerTransform = offset ? `translate(${offset.x} ${offset.y})` : undefined;
         return (
-          <g key={layer.id} opacity={layer.opacity / 100} style={{ mixBlendMode: layer.blendMode }}>
+          <g key={layer.id} transform={layerTransform} opacity={layer.opacity / 100} style={{ mixBlendMode: layer.blendMode }}>
             {layer.mask !== null && (
               <defs>
                 <mask

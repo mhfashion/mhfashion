@@ -73,10 +73,10 @@ export default function EditorToolsBar({
       <section
         aria-label="Editor tools"
         data-testid="editor-tools-bar"
-        className="pointer-events-auto relative flex max-w-full items-center gap-1 rounded-2xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-lg backdrop-blur"
+        className="pointer-events-auto relative flex w-fit max-w-[calc(100vw-16px)] items-center gap-1 rounded-2xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-lg backdrop-blur"
       >
         {!collapsed && (
-          <div className="flex max-w-[calc(100vw-58px)] items-center gap-0.5 overflow-x-auto">
+          <div className="flex max-w-full flex-wrap items-center justify-center gap-0.5">
             {tools.map(({ id, label, Icon }) => (
               <button
                 key={id}

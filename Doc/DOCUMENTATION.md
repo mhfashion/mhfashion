@@ -17,6 +17,14 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
+
+- Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.
+- Move Tool now operates on the selected artwork layer(s), not the entire canvas artwork. A normal layer click selects one layer; Shift/Ctrl/Cmd-click toggles additional artwork layers. Dragging the canvas then moves only the selected, unlocked layers. Each layer keeps its own bounded in-memory canvas offset, and new strokes on a moved layer remain aligned with that layer.
+- Files: `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`.
+- Validation: no horizontal Tools Bar overflow assertion, canvas shell **13/13**, editor layers **6/6**, TypeScript, Next.js production build, and Phone/Desktop editor-touch suite passed across 390 × 844, 320 × 740, both landscape sizes, and 1280 × 900.
+- Limitations: multi-selection is currently an in-memory layer selection for the active Editor route; it is not yet serialized into a draft or export format.
+
 ### 2026-11-15 — Canva-style Edit rail, Photoshop color swap, and canvas Move tool
 
 - Reworked the Edit sidebar into a compact left icon rail like Canva. The rail remains narrow when idle; clicking a Design, Elements, Text, Brand, Uploads, Draw, Projects, or Apps icon opens the wider Edit box and highlights that category with a short honest status description. The existing circular expand/collapse control and Phone/Desktop overlap guard remain in place.
