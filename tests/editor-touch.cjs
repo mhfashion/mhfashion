@@ -368,10 +368,8 @@ async function main() {
       assert.equal(await evaluate(() => document.querySelectorAll('[aria-label="Layer list"] [role="listitem"]').length), 2);
       await tap('button[aria-label="Add mask to Layer 2"]');
       assert.equal(await evaluate(() => !!document.querySelector('[aria-label="Stop editing Layer 2 mask"]')), true, "Adding a mask selects it for editing");
-      assert.equal(await evaluate(() => document.querySelector('[aria-label="Layer mask painting controls"]')?.textContent.includes("Mask: black hides · white reveals")), true);
-      await tap('button[aria-label="Reveal artwork with mask"]');
-      assert.equal(await evaluate(() => document.querySelector('[aria-label="Reveal artwork with mask"]')?.getAttribute("aria-pressed")), "true");
-      await tap('button[aria-label="Hide artwork with mask"]');
+      assert.equal(await evaluate(() => document.querySelector('[aria-label="Layer mask painting controls"]') === null), true);
+      assert.equal(await evaluate(() => !!document.querySelector('[aria-label="Foreground Color"]')), true);
       await tap('button[aria-label="Select Layer 2"]');
       await tap('button[aria-label="Collapse Layers panel"]');
 
@@ -603,23 +601,13 @@ async function main() {
         title: panel.querySelector('[aria-label="Layers panel title"]').getBoundingClientRect().height,
         actions: panel.querySelector('[aria-label="Layer actions"]').getBoundingClientRect().height,
         layerRow: list.querySelector('[role="listitem"]').getBoundingClientRect().height,
-        maskButton: panel.querySelector('[aria-label="Hide artwork with mask"]').getBoundingClientRect().height,
         listHeight: list.getBoundingClientRect().height,
       };
     });
     assert.equal(shortLandscapeLayout.title, 32, "Short-landscape title chrome is compact");
     assert.equal(shortLandscapeLayout.actions, 32, "Short-landscape bottom actions are compact");
     assert.ok(shortLandscapeLayout.layerRow >= 44, "Layer rows keep usable touch height in short landscape");
-    assert.ok(shortLandscapeLayout.maskButton <= 32 && shortLandscapeLayout.maskButton >= 27, "Short-landscape mask button stays compact but tappable");
     assert.ok(shortLandscapeLayout.listHeight >= 60, "Short-landscape layer list leaves scrollable mask space");
-    await evaluate(() => document.querySelector('[aria-label="Layer mask painting controls"]').scrollIntoView({ block: "nearest" }));
-    const reachableMaskControls = await evaluate(() => {
-      const list = document.querySelector('[aria-label="Layer list"]');
-      const controls = document.querySelector('[aria-label="Layer mask painting controls"]').getBoundingClientRect();
-      const bounds = list.getBoundingClientRect();
-      return { top: controls.top >= bounds.top - 1, bottom: controls.bottom <= bounds.bottom + 1 };
-    });
-    assert.equal(reachableMaskControls.top && reachableMaskControls.bottom, true, "Layer-mask properties remain scroll-reachable in a short landscape viewport");
     await tap('button[aria-label="Collapse Layers panel"]');
     await tap('button[aria-label="Zoom out"]');
     assert.equal(await evaluate(() => document.querySelector('[aria-label="View zoom"]').textContent), "75%");

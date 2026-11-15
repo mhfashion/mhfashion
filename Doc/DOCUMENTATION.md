@@ -93,6 +93,13 @@ This log records completed website-related changes in the connected repository. 
 - Updated the stale editor touch-test Fill selector to the functional `#editor-layer-fill` input. Focused validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (existing project warnings remain).
 - Remaining follow-up: selection rectangles are still canvas-tier bounds rather than exact per-primitive bounds, and mockup lock/transform affordances need a dedicated browser interaction pass.
 
+### 2026-11-15 — Photoshop-style transform handles and mask color workflow
+
+- Replaced the single bottom-right canvas resize handle with eight Photoshop-style handles: four corners and four side/midpoint handles. All handles use the shared resize transaction so the selected layer set remains consistent while scaling.
+- Added selectable Group folder headers. Selecting the Group header selects every child layer, so canvas move/resize applies to the complete group. Selecting an individual child row keeps the transform selection limited to that child; the Layer box selection remains the source of truth.
+- Removed the redundant mask instruction panel and Hide/Reveal buttons from the Layers box. Mask painting now follows the existing Photoshop-style foreground/background color switch: black foreground hides and white foreground reveals. Selecting/creating a mask still switches to Brush automatically.
+- Updated canvas-shell and touch-test expectations for eight handles and color-switch mask painting. Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; editor-touch syntax passed; production build passed; lint reported **0 errors** (26 existing warnings remain).
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.

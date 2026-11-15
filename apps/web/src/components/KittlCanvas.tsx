@@ -123,6 +123,16 @@ function ArtworkOverlay({
 }) {
   const editingText = editingTextLayer?.text ?? null;
   const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
+  const resizeHandles = [
+    { key: "top-left", x: 120, y: 160 },
+    { key: "top-center", x: 500, y: 160 },
+    { key: "top-right", x: 880, y: 160 },
+    { key: "middle-left", x: 120, y: 600 },
+    { key: "middle-right", x: 880, y: 600 },
+    { key: "bottom-left", x: 120, y: 1040 },
+    { key: "bottom-center", x: 500, y: 1040 },
+    { key: "bottom-right", x: 880, y: 1040 },
+  ];
   return (
     <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={(event) => { onMove(event); onResize(event); }} onPointerUp={(event) => { onMoveEnd(event); onResizeEnd(event); }} onPointerCancel={(event) => { onMoveEnd(event); onResizeEnd(event); }} onLostPointerCapture={(event) => { onMoveEnd(event); onResizeEnd(event); }} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
       <g transform={`translate(${500 + transform.x} ${600 + transform.y}) translate(-500 -600)`}>
@@ -186,7 +196,9 @@ function ArtworkOverlay({
       {selectedLayerIds.length > 0 && !editingText && (
         <g pointerEvents="none" data-editor-transform-controls="true">
           <rect x="120" y="160" width="760" height="880" fill="none" stroke="#4c9d16" strokeDasharray="10 8" strokeWidth="4" />
-          <circle cx="880" cy="1040" r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" onPointerDown={onResizeStart} aria-label="Resize selected layer" />
+          {resizeHandles.map((handle) => (
+            <circle key={handle.key} cx={handle.x} cy={handle.y} r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} />
+          ))}
         </g>
       )}
     </svg>
@@ -607,12 +619,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       return;
     }
     const tool = activeTool === "brush" ? "brush" : "pen";
+    const effectiveMaskBrushMode: MaskBrushMode = selectedTarget === "mask" && foregroundColor.toLowerCase() === "#ffffff" ? "reveal" : "hide";
+    if (selectedTarget === "mask") setMaskBrushMode(effectiveMaskBrushMode);
     const activeStroke: ActiveArtworkStroke = {
       pointerId: event.pointerId,
       layerId: selectedLayer.id,
       target: selectedTarget,
       tool,
-      maskBrushMode,
+      maskBrushMode: selectedTarget === "mask" ? effectiveMaskBrushMode : maskBrushMode,
       points: [point],
       color: foregroundColor,
     };
@@ -908,6 +922,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function ungroupSelectedLayers() {
     setLayers((current) => ungroupEditorLayers(current, selectedLayerIds));
   }
+  function selectGroup(groupId: string) {
+    const ids = layers.filter((layer) => layer.groupId === groupId).map((layer) => layer.id);
+    if (!ids.length) return;
+    setSelectedLayerIds(ids);
+    setSelectedLayerId(ids[0]);
+    setSelectedTarget("artwork");
+    setEditingTextLayerId(null);
+  }
 
   function linkSelectedLayers() {
     if (selectedLayerIds.length < 2) return;
@@ -1186,7 +1208,6 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           selectedLayerId={selectedLayerId}
           selectedLayerIds={selectedLayerIds}
           selectedTarget={selectedTarget}
-          maskBrushMode={maskBrushMode}
           onSelectLayer={selectLayer}
           onAddLayer={addLayer}
           onToggleVisibility={toggleLayerVisibility}
@@ -1199,10 +1220,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onMoveLayer={moveLayer}
           onMoveLayerToIndex={moveLayerToIndex}
           onUpdateLayer={updateLayer}
-          onMaskBrushModeChange={setMaskBrushMode}
           onGroupSelected={groupSelectedLayers}
           onUngroupSelected={ungroupSelectedLayers}
           onLinkSelected={linkSelectedLayers}
+          onSelectGroup={selectGroup}
         />
       </div>
       <EditorToolsBar

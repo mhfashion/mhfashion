@@ -29,7 +29,6 @@ import type {
   EditorArtworkLayer,
   EditorLayerBlendMode,
   LayerEditTarget,
-  MaskBrushMode,
 } from "@/lib/editor-layers";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
@@ -85,7 +84,6 @@ export default function EditorLayersPanel({
   selectedLayerId,
   selectedLayerIds,
   selectedTarget,
-  maskBrushMode,
   onSelectLayer,
   onAddLayer,
   onToggleVisibility,
@@ -98,10 +96,10 @@ export default function EditorLayersPanel({
   onMoveLayer,
   onMoveLayerToIndex,
   onUpdateLayer,
-  onMaskBrushModeChange,
   onGroupSelected,
   onUngroupSelected,
   onLinkSelected,
+  onSelectGroup,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -109,7 +107,6 @@ export default function EditorLayersPanel({
   selectedLayerId: string | null;
   selectedLayerIds: string[];
   selectedTarget: LayerEditTarget;
-  maskBrushMode: MaskBrushMode;
   onSelectLayer: (id: string, target: LayerEditTarget, multi?: boolean) => void;
   onAddLayer: () => void;
   onToggleVisibility: (id: string) => void;
@@ -122,10 +119,10 @@ export default function EditorLayersPanel({
   onMoveLayer: (id: string, direction: -1 | 1) => void;
   onMoveLayerToIndex: (id: string, targetIndex: number) => void;
   onUpdateLayer: (id: string, update: LayerUpdate) => void;
-  onMaskBrushModeChange: (mode: MaskBrushMode) => void;
   onGroupSelected: () => void;
   onUngroupSelected: () => void;
   onLinkSelected: () => void;
+  onSelectGroup: (groupId: string) => void;
 }) {
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -227,7 +224,7 @@ export default function EditorLayersPanel({
               if (isGroupCollapsed) return isGroupHeader ? (
                 <div key={`group-${layer.groupId}`} role="listitem" className="flex min-h-8 items-center gap-1 border-b border-[#c9c9c9] bg-[#dedede] px-2 text-[10px] font-semibold dark:border-[#292929] dark:bg-[#2c2c2c] dark:text-white">
                   <button type="button" aria-label={`Expand group ${layer.groupId}`} onClick={() => setCollapsedGroups((current) => { const next = new Set(current); next.delete(layer.groupId!); return next; })} className={TINY_ICON}><ChevronRight size={13} /></button>
-                  <FolderPlus size={13} aria-hidden="true" /> Group
+                  <button type="button" aria-label={`Select group ${layer.groupId}`} onClick={() => onSelectGroup(layer.groupId!)} className="flex min-w-0 flex-1 items-center gap-1 truncate text-left"><FolderPlus size={13} aria-hidden="true" /> Group</button>
                 </div>
               ) : null;
               const isSelected = selectedLayerIds.includes(layer.id);
@@ -238,7 +235,7 @@ export default function EditorLayersPanel({
                   {isGroupHeader && (
                     <div className="flex h-7 items-center gap-1 border-b border-[#b7b7b7] bg-[#dedede] px-2 text-[10px] font-semibold dark:border-[#242424] dark:bg-[#2c2c2c] dark:text-white">
                       <button type="button" aria-label={`Collapse group ${layer.groupId}`} onClick={() => setCollapsedGroups((current) => new Set(current).add(layer.groupId!))} className={TINY_ICON}><ChevronLeft size={13} className="-rotate-90" /></button>
-                      <FolderPlus size={13} aria-hidden="true" /> Group
+                      <button type="button" aria-label={`Select group ${layer.groupId}`} onClick={() => onSelectGroup(layer.groupId!)} className="flex min-w-0 flex-1 items-center gap-1 truncate text-left"><FolderPlus size={13} aria-hidden="true" /> Group</button>
                     </div>
                   )}
                   <div role="listitem" data-layer-id={layer.id} className={rowClass} draggable onDragStart={() => setDraggedLayerId(layer.id)} onDragEnd={() => setDraggedLayerId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedLayerId && draggedLayerId !== layer.id) onMoveLayerToIndex(draggedLayerId, index); setDraggedLayerId(null); }}>
@@ -282,15 +279,6 @@ export default function EditorLayersPanel({
                 </div>
               );
             })}
-            {selectedLayer && selectedTarget === "mask" && selectedLayer.mask !== null && (
-              <div aria-label="Layer mask painting controls" className="border-t border-[#b7b7b7] bg-[#dedede] p-1.5 dark:border-[#242424] dark:bg-[#303030]">
-                <div className="mb-1 text-[10px] text-[#444] dark:text-[#c6c6c6]">Mask: black hides · white reveals</div>
-                <div className="flex gap-1">
-                  <button type="button" aria-label="Hide artwork with mask" aria-pressed={maskBrushMode === "hide"} onClick={() => onMaskBrushModeChange("hide")} className={`min-h-7 flex-1 border px-1 text-[10px] [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)_and_(max-height:500px)]:min-h-7 ${maskBrushMode === "hide" ? "border-[#79b7e6] bg-[#4e6374] text-white" : "border-[#999] text-[#333] dark:border-[#555] dark:text-[#ddd]"}`}>Hide (black)</button>
-                  <button type="button" aria-label="Reveal artwork with mask" aria-pressed={maskBrushMode === "reveal"} onClick={() => onMaskBrushModeChange("reveal")} className={`min-h-7 flex-1 border px-1 text-[10px] [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)_and_(max-height:500px)]:min-h-7 ${maskBrushMode === "reveal" ? "border-[#79b7e6] bg-[#4e6374] text-white" : "border-[#999] text-[#333] dark:border-[#555] dark:text-[#ddd]"}`}>Reveal (white)</button>
-                </div>
-              </div>
-            )}
           </div>
 
           {selectedLayer && (

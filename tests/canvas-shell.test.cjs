@@ -284,8 +284,11 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(layersPanel, /Expand group \$\{layer\.groupId\}/);
   assert.match(layersPanel, /Blend mode for \$\{selectedLayer\.name\}/);
   assert.match(layersPanel, /Opacity for \$\{selectedLayer\.name\}/);
-  assert.match(layersPanel, /Hide \(black\)/);
-  assert.match(layersPanel, /Reveal \(white\)/);
+  assert.doesNotMatch(layersPanel, /Mask: black hides|Hide \(black\)|Reveal \(white\)/);
+  assert.match(source, /foregroundColor\.toLowerCase\(\) === "#ffffff"/);
+  assert.match(source, /resizeHandles = \[/);
+  assert.match(source, /top-left/);
+  assert.match(source, /bottom-right/);
   assert.match(artworkLayers, /<mask[\s\S]*?maskUnits="userSpaceOnUse"/);
   assert.match(artworkLayers, /stroke\.mode === "hide" \? "black" : "white"/);
   assert.match(artworkLayers, /mask=\{layer\.mask !== null \? `url\(#\$\{maskId\}\)` : undefined\}/);
