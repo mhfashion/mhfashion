@@ -100,6 +100,13 @@ This log records completed website-related changes in the connected repository. 
 - Removed the redundant mask instruction panel and Hide/Reveal buttons from the Layers box. Mask painting now follows the existing Photoshop-style foreground/background color switch: black foreground hides and white foreground reveals. Selecting/creating a mask still switches to Brush automatically.
 - Updated canvas-shell and touch-test expectations for eight handles and color-switch mask painting. Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; editor-touch syntax passed; production build passed; lint reported **0 errors** (26 existing warnings remain).
 
+### 2026-11-15 — Functional Adjustment panel with Layers return arrow
+
+- The bottom `Adjustment` icon is now functional. Clicking it opens a dedicated right-side Adjustment panel for the selected layer and closes the Layers panel at the same time.
+- Text layers expose editable text content, font size, and color controls, plus shared Opacity and Fill controls. Non-text layers show their shared appearance controls and a clear message that text properties are not applicable.
+- While Adjustment is open, its round arrow occupies the same dock-toggle position. Clicking that arrow closes Adjustment and reopens the Layers box, preserving the current selection.
+- The Adjustment action is available on touch layouts as well as desktop layouts. Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (26 existing warnings remain).
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.

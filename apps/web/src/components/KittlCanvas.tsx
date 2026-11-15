@@ -7,6 +7,7 @@ import EditorArtworkLayers from "@/components/EditorArtworkLayers";
 import { EDITOR_TEXT_FONT_FAMILY } from "@/components/EditorLayerPreview";
 import EditorToolsBar, { type EditorTool } from "@/components/EditorToolsBar";
 import EditorEditSidebar from "@/components/EditorEditSidebar";
+import EditorAdjustmentsPanel from "@/components/EditorAdjustmentsPanel";
 import EditorLayersPanel from "@/components/EditorLayersPanel";
 import {
   claimLargeArtworkTier,
@@ -214,6 +215,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [touchPanEnabled, setTouchPanEnabled] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [adjustmentsOpen, setAdjustmentsOpen] = useState(false);
   const [editSidebarOpen, setEditSidebarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<EditorTool>("pen");
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
@@ -251,6 +253,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function toggleLayersPanel() {
     if (!layersOpen && window.matchMedia("(max-width: 767px)").matches) setEditSidebarOpen(false);
     setLayersOpen((open) => !open);
+  }
+  function openAdjustments() {
+    setLayersOpen(false);
+    setAdjustmentsOpen(true);
+  }
+  function closeAdjustments() {
+    setAdjustmentsOpen(false);
+    setLayersOpen(true);
   }
   function toggleEditSidebar() {
     if (!editSidebarOpen && window.matchMedia("(max-width: 767px)").matches) setLayersOpen(false);
@@ -846,6 +856,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (!editingTextLayerId) return;
     setLayers((current) => updateEditorLayerTextStyle(current, editingTextLayerId, update));
   }
+  function updateSelectedText(value: string) {
+    if (!selectedLayerId) return;
+    setLayers((current) => setEditorLayerText(current, selectedLayerId, value));
+  }
+  function updateSelectedTextStyle(update: Partial<Pick<EditorTextContent, "fontSize" | "color">>) {
+    if (!selectedLayerId) return;
+    setLayers((current) => updateEditorLayerTextStyle(current, selectedLayerId, update));
+  }
 
   function addLayer() {
     const id = `layer-${nextLayerIdRef.current++}`;
@@ -1201,7 +1219,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onAddText={addCanvasTextLayer}
           onUploadImage={addCanvasUpload}
         />
-        <EditorLayersPanel
+        {adjustmentsOpen && <EditorAdjustmentsPanel
+          open={adjustmentsOpen}
+          onToggle={closeAdjustments}
+          selectedLayer={layers.find((layer) => layer.id === selectedLayerId) ?? null}
+          onUpdateLayer={updateLayer}
+          onUpdateText={updateSelectedText}
+          onUpdateTextStyle={updateSelectedTextStyle}
+        />}
+        {!adjustmentsOpen && <EditorLayersPanel
           open={layersOpen}
           onToggle={toggleLayersPanel}
           layers={layers}
@@ -1224,7 +1250,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onUngroupSelected={ungroupSelectedLayers}
           onLinkSelected={linkSelectedLayers}
           onSelectGroup={selectGroup}
-        />
+          onOpenAdjustments={openAdjustments}
+        />}
       </div>
       <EditorToolsBar
         activeTool={activeTool}

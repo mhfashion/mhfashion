@@ -274,8 +274,10 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(layersPanel, /Ungroup selected layers/);
   assert.match(layersPanel, /aria-label="Link layers"/);
   assert.match(layersPanel, /onLinkSelected/);
-  assert.match(layersPanel, /aria-label="Create adjustment layer"/);
-  assert.match(layersPanel, /Create adjustment layer[\s\S]*?Link layers/);
+  assert.match(layersPanel, /aria-label="Open Adjustments panel"/);
+  assert.match(layersPanel, /onOpenAdjustments/);
+  assert.match(source, /function openAdjustments\(\)[\s\S]*?setLayersOpen\(false\)[\s\S]*?setAdjustmentsOpen\(true\)/);
+  assert.match(source, /function closeAdjustments\(\)[\s\S]*?setAdjustmentsOpen\(false\)[\s\S]*?setLayersOpen\(true\)/);
   assert.match(layersPanel, /aria-label="Layer list" role="list"/);
   assert.match(layersPanel, /draggable/);
   assert.match(layersPanel, /onMoveLayerToIndex/);
