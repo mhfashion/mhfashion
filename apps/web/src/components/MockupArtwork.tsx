@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
 import { LARGE_ARTWORK_EDGE_PX, SMALL_ARTWORK_EDGE_PX } from "@/lib/editor-artwork-tiers";
-import type { ArtworkStroke, EditorArtworkLayer, MaskBrushMode } from "@/lib/editor-layers";
+import type { EditorArtworkLayer, MaskBrushMode } from "@/lib/editor-layers";
 
 type MockupSide = "Front Mockup" | "Back Mockup";
 type Point = { x: number; y: number };
@@ -21,17 +21,42 @@ type Drag = {
 const BASE_ARTWORK_SCALE = 0.82;
 const PIXELS_PER_VIEWBOX_UNIT = 4.5;
 
-function getArtworkBounds(strokes: ArtworkStroke[]): Bounds {
+function getArtworkBounds(layers: EditorArtworkLayer[]): Bounds {
   let minX = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
+  const strokes = layers.flatMap((layer) => layer.strokes);
   for (const stroke of strokes) {
     for (const point of stroke.points) {
       minX = Math.min(minX, point.x * 1000);
       maxX = Math.max(maxX, point.x * 1000);
       minY = Math.min(minY, point.y * 1200);
       maxY = Math.max(maxY, point.y * 1200);
+    }
+  }
+  for (const layer of layers) {
+    if (layer.text) {
+      const width = Math.max(layer.text.fontSize, layer.text.value.length * layer.text.fontSize * 0.58);
+      minX = Math.min(minX, layer.text.x - width / 2);
+      maxX = Math.max(maxX, layer.text.x + width / 2);
+      minY = Math.min(minY, layer.text.y - layer.text.fontSize);
+      maxY = Math.max(maxY, layer.text.y + layer.text.fontSize * 0.25);
+    }
+    if (layer.image) {
+      minX = Math.min(minX, layer.image.x);
+      maxX = Math.max(maxX, layer.image.x + layer.image.width);
+      minY = Math.min(minY, layer.image.y);
+      maxY = Math.max(maxY, layer.image.y + layer.image.height);
+    }
+    for (const path of layer.shape?.paths ?? []) {
+      const values = path.d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+      for (let index = 0; index + 1 < values.length; index += 2) {
+        minX = Math.min(minX, values[index]);
+        maxX = Math.max(maxX, values[index]);
+        minY = Math.min(minY, values[index + 1]);
+        maxY = Math.max(maxY, values[index + 1]);
+      }
     }
   }
   if (!Number.isFinite(minX)) return { x: 300, y: 360, width: 400, height: 480 };
@@ -108,8 +133,10 @@ export default function MockupArtwork({
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
-  const strokes = useMemo(() => layers.filter((layer) => layer.visible).flatMap((layer) => layer.strokes), [layers]);
-  const bounds = useMemo(() => getArtworkBounds(strokes), [strokes]);
+  const renderableLayers = useMemo(() => layers.filter((layer) => layer.visible && (
+    layer.strokes.length > 0 || Boolean(layer.text?.value) || Boolean(layer.image) || Boolean(layer.shape?.paths.length)
+  )), [layers]);
+  const bounds = useMemo(() => getArtworkBounds(renderableLayers), [renderableLayers]);
   const maxArtworkScale = getMaxArtworkScale(bounds, maxArtworkEdgePx);
   const [transform, setTransform] = useState<Transform>(() => ({ x: 0, y: 0, scale: Math.min(1, maxArtworkScale) }));
   const [selected, setSelected] = useState(false);
@@ -118,12 +145,12 @@ export default function MockupArtwork({
   const frame = getDisplayedBounds(bounds, safeTransform);
   const displayedWidthPx = Math.round(frame.width * PIXELS_PER_VIEWBOX_UNIT);
   const displayedHeightPx = Math.round(frame.height * PIXELS_PER_VIEWBOX_UNIT);
-  const displayedLongestEdgePx = strokes.length === 0 ? 0 : Math.max(displayedWidthPx, displayedHeightPx);
+  const displayedLongestEdgePx = renderableLayers.length === 0 ? 0 : Math.max(displayedWidthPx, displayedHeightPx);
   const separateTouchHandle = Math.max(frame.width, frame.height) < touchHitRadius * 2;
   const touchResizePoint = separateTouchHandle
     ? { x: frame.x + frame.width / 2 + touchHitRadius * 2.4, y: frame.y + frame.height / 2 }
     : { x: frame.x + frame.width, y: frame.y + frame.height };
-  const hasArtwork = strokes.length > 0;
+  const hasArtwork = renderableLayers.length > 0;
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -225,7 +252,7 @@ export default function MockupArtwork({
     if (event.key === "ArrowDown" || event.key === "ArrowLeft") resizeByKeyboard(-0.1);
   };
 
-  if (strokes.length === 0) return null;
+  if (renderableLayers.length === 0) return null;
 
   return (
     <>

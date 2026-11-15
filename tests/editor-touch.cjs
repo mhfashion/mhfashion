@@ -333,8 +333,8 @@ async function main() {
         actionBarHeight: panel.querySelector('[aria-label="Layer actions"]').getBoundingClientRect().height,
         layerRowHeight: panel.querySelector('[aria-label="Layer list"] [role="listitem"]').getBoundingClientRect().height,
         noUnusedRows: !panel.querySelector('[aria-label="Layers panel menu"], [aria-label="Layer kind filters"]') && !/\b(?:Channels|Paths|Kind)\b/.test(panel.textContent),
-        fillDisabled: panel.querySelector('button[aria-label="Fill 100 percent"]').disabled,
-        fillOpacity: getComputedStyle(panel.querySelector('button[aria-label="Fill 100 percent"]')).opacity,
+        fillDisabled: panel.querySelector('#editor-layer-fill').disabled,
+        fillOpacity: getComputedStyle(panel.querySelector('#editor-layer-fill')).opacity,
         toggleWidth: buttonBox.width,
         toggleHeight: buttonBox.height,
         toggleRadius: getComputedStyle(button).borderRadius,
@@ -356,8 +356,8 @@ async function main() {
     assert.equal(openLayers.actionBarHeight, 44, "Portrait touch action bar stays 44px tall");
     assert.ok(openLayers.layerRowHeight >= 44, "Portrait touch layer rows preserve at least a 44px target");
     assert.equal(openLayers.noUnusedRows, true, "Unused Channels, Paths, Menu, and Kind rows are removed");
-    assert.equal(openLayers.fillDisabled, true, "Fill remains a nonfunctional disabled placeholder");
-    assert.ok(Number(openLayers.fillOpacity) < 1, "Fill is visibly dimmed");
+    assert.equal(openLayers.fillDisabled, false, "Fill is editable for the selected layer");
+    assert.equal(Number(openLayers.fillOpacity), 1, "Fill is not dimmed when editable");
     assert.equal(openLayers.toggleWidth, 44, "Mobile Layers toggle retains a 44px circular touch target");
     assert.equal(openLayers.toggleHeight, 44);
     assert.ok(Number.parseFloat(openLayers.toggleRadius) >= 20, "Layers toggle is circular");

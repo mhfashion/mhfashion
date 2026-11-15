@@ -189,8 +189,8 @@ export function updateEditorLayer(
   return layers.map((layer) => {
     if (layer.id !== layerId) return layer;
     const next = { ...layer, ...update, id: layer.id };
-    if (typeof update.opacity === "number") next.opacity = Math.max(0, Math.min(100, update.opacity));
-    if (typeof update.fillOpacity === "number") next.fillOpacity = Math.max(0, Math.min(100, update.fillOpacity));
+    if (typeof update.opacity === "number") next.opacity = Number.isFinite(update.opacity) ? Math.max(0, Math.min(100, update.opacity)) : layer.opacity;
+    if (typeof update.fillOpacity === "number") next.fillOpacity = Number.isFinite(update.fillOpacity) ? Math.max(0, Math.min(100, update.fillOpacity)) : layer.fillOpacity;
     if (typeof update.name === "string") next.name = update.name.trim() || layer.name;
     return next;
   });
@@ -216,10 +216,22 @@ export function moveEditorLayerToIndex(
 ): EditorArtworkLayer[] {
   const currentIndex = layers.findIndex((layer) => layer.id === layerId);
   if (currentIndex < 0) return layers;
-  const next = [...layers];
-  const [moved] = next.splice(currentIndex, 1);
-  const clampedIndex = Math.max(0, Math.min(next.length, targetIndex));
-  next.splice(clampedIndex, 0, moved);
+  const groupId = layers[currentIndex].groupId;
+  const block = groupId === null
+    ? [layers[currentIndex]]
+    : layers.filter((layer) => layer.groupId === groupId);
+  const blockIds = new Set(block.map((layer) => layer.id));
+  const remaining = layers.filter((layer) => !blockIds.has(layer.id));
+  const targetLayer = targetIndex >= layers.length ? undefined : layers[Math.max(0, targetIndex)];
+  const targetBlockId = targetLayer?.groupId;
+  const targetRemainingIndex = targetLayer === undefined
+    ? remaining.length
+    : targetBlockId === null || targetBlockId === undefined
+    ? remaining.findIndex((layer) => layer.id === targetLayer?.id)
+    : remaining.findIndex((layer) => layer.groupId === targetBlockId);
+  const clampedIndex = targetRemainingIndex < 0 ? remaining.length : targetRemainingIndex;
+  const next = [...remaining];
+  next.splice(clampedIndex, 0, ...block);
   return next;
 }
 
@@ -229,7 +241,12 @@ export function groupEditorLayers(
   groupId: string,
 ): EditorArtworkLayer[] {
   const ids = new Set(layerIds);
-  return layers.map((layer) => (ids.has(layer.id) ? { ...layer, groupId } : layer));
+  const selected = layers.filter((layer) => ids.has(layer.id));
+  const rest = layers.filter((layer) => !ids.has(layer.id));
+  const firstIndex = Math.min(...layerIds.map((id) => layers.findIndex((layer) => layer.id === id)).filter((index) => index >= 0));
+  const grouped = selected.map((layer) => ({ ...layer, groupId }));
+  rest.splice(Math.max(0, Math.min(rest.length, firstIndex < 0 ? rest.length : firstIndex)), 0, ...grouped);
+  return rest;
 }
 
 export function ungroupEditorLayers(

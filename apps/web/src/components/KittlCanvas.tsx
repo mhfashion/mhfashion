@@ -514,16 +514,20 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     }));
   }
 
+  function resolveLinkedLayerIds(ids: string[]) {
+    const resolved = new Set(ids);
+    ids.forEach((id) => {
+      const linkId = layers.find((layer) => layer.id === id)?.linkId;
+      if (linkId) layers.filter((layer) => layer.linkId === linkId).forEach((layer) => resolved.add(layer.id));
+    });
+    return [...resolved];
+  }
+
   function startCanvasArtworkMove(event: React.PointerEvent<SVGRectElement>) {
     if (event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
     event.stopPropagation();
-    const requestedIds = new Set(selectedLayerIds);
-    selectedLayerIds.forEach((id) => {
-      const linkId = layers.find((layer) => layer.id === id)?.linkId;
-      if (linkId) layers.filter((layer) => layer.linkId === linkId).forEach((layer) => requestedIds.add(layer.id));
-    });
-    const movableIds = [...requestedIds].filter((id) => {
+    const movableIds = resolveLinkedLayerIds(selectedLayerIds).filter((id) => {
       const layer = layers.find((item) => item.id === id);
       return !!layer && !layer.locked;
     });
@@ -552,7 +556,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (event.button !== 0 || !event.isPrimary || selectedLayerIds.length === 0) return;
     event.preventDefault();
     event.stopPropagation();
-    const ids = selectedLayerIds.filter((id) => !layers.find((layer) => layer.id === id)?.locked);
+    const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
     if (!ids.length) return;
     const start = toCanvasPoint(event.clientX, event.clientY);
     event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
@@ -874,9 +878,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const index = layers.findIndex((layer) => layer.id === id);
     const next = deleteEditorLayer(layers, id);
     setLayers(next);
+    const remainingSelectedIds = selectedLayerIds.filter((selectedId) => selectedId !== id && next.some((layer) => layer.id === selectedId));
+    setSelectedLayerIds(remainingSelectedIds);
     if (editingTextLayerId === id) setEditingTextLayerId(null);
     if (selectedLayerId === id) {
-      setSelectedLayerId(next[Math.min(index, next.length - 1)]?.id ?? null);
+      setSelectedLayerId(remainingSelectedIds[0] ?? next[Math.min(index, next.length - 1)]?.id ?? null);
       setSelectedTarget("artwork");
     }
   }
@@ -905,8 +911,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function linkSelectedLayers() {
     if (selectedLayerIds.length < 2) return;
-    const linked = selectedLayerIds.some((id) => layers.find((layer) => layer.id === id)?.linkId);
-    if (linked) setLayers((current) => unlinkEditorLayers(current, selectedLayerIds));
+    const selectedLinkIds = selectedLayerIds.map((id) => layers.find((layer) => layer.id === id)?.linkId ?? null);
+    const allLinkedToOneGroup = selectedLinkIds.every((linkId) => linkId !== null) && new Set(selectedLinkIds).size === 1;
+    const hasMixedMembership = selectedLinkIds.some((linkId) => linkId !== null) && !allLinkedToOneGroup;
+    if (hasMixedMembership) {
+      setToolNotice("Select only unlinked layers or all layers from one link group to change Link Layers.");
+      return;
+    }
+    if (allLinkedToOneGroup) setLayers((current) => unlinkEditorLayers(current, selectedLayerIds));
     else {
       const linkId = `link-${nextLinkId}`;
       setNextLinkId((value) => value + 1);

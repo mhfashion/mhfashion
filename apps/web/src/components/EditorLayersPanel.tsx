@@ -44,7 +44,7 @@ const BLEND_MODES: { value: EditorLayerBlendMode; label: string }[] = [
 type LayerUpdate = Partial<Pick<EditorArtworkLayer, "opacity" | "fillOpacity" | "blendMode">>;
 
 function strokePath(stroke: ArtworkStroke) {
-  return stroke.points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  return stroke.points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ");
 }
 
 function ArtworkThumbnail({ layer }: { layer: EditorArtworkLayer }) {
@@ -241,7 +241,7 @@ export default function EditorLayersPanel({
                       <FolderPlus size={13} aria-hidden="true" /> Group
                     </div>
                   )}
-                  <div role="listitem" data-layer-id={layer.id} draggable onDragStart={() => setDraggedLayerId(layer.id)} onDragEnd={() => setDraggedLayerId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedLayerId && draggedLayerId !== layer.id) onMoveLayerToIndex(draggedLayerId, index); setDraggedLayerId(null); }}>
+                  <div role="listitem" data-layer-id={layer.id} className={rowClass} draggable onDragStart={() => setDraggedLayerId(layer.id)} onDragEnd={() => setDraggedLayerId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedLayerId && draggedLayerId !== layer.id) onMoveLayerToIndex(draggedLayerId, index); setDraggedLayerId(null); }}>
                   <button type="button" aria-label={`${layer.visible ? "Hide" : "Show"} ${layer.name}`} aria-pressed={layer.visible} onClick={() => onToggleVisibility(layer.id)} className={`${TINY_ICON} h-7 w-7 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-8`}>
                     {layer.visible ? <Eye size={13} aria-hidden="true" /> : <EyeOff size={13} aria-hidden="true" />}
                   </button>

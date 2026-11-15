@@ -27,9 +27,9 @@ const {
   removeLayerMask,
   reorderEditorLayer,
   setEditorLayerText,
+  updateEditorLayer,
   ungroupEditorLayers,
   unlinkEditorLayers,
-  updateEditorLayer,
   updateLayerLastStroke,
 } = layerModel.exports;
 
@@ -173,4 +173,19 @@ test("layer rows can be dropped at an arbitrary stack index", () => {
   const layers = ["one", "two", "three"].map((id) => createEditorArtworkLayer(id, id));
   assert.deepEqual(moveEditorLayerToIndex(layers, "three", 0).map((layer) => layer.id), ["three", "one", "two"]);
   assert.deepEqual(moveEditorLayerToIndex(layers, "one", 3).map((layer) => layer.id), ["two", "three", "one"]);
+});
+
+test("grouping non-adjacent layers creates a contiguous Photoshop-style folder block", () => {
+  const layers = ["one", "two", "three", "four"].map((id) => createEditorArtworkLayer(id, id));
+  const grouped = groupEditorLayers(layers, ["one", "three"], "group-1");
+  assert.deepEqual(grouped.map((layer) => layer.id), ["one", "three", "two", "four"]);
+  assert.deepEqual(grouped.slice(0, 2).map((layer) => layer.groupId), ["group-1", "group-1"]);
+});
+
+test("invalid numeric appearance updates do not poison layer opacity", () => {
+  const layer = createEditorArtworkLayer("one", "One");
+  assert.equal(updateEditorLayer([layer], "one", { opacity: Number.NaN })[0].opacity, 100);
+  assert.equal(updateEditorLayer([layer], "one", { fillOpacity: Number.POSITIVE_INFINITY })[0].fillOpacity, 100);
+  assert.equal(updateEditorLayer([layer], "one", { opacity: 125, fillOpacity: -5 })[0].opacity, 100);
+  assert.equal(updateEditorLayer([layer], "one", { opacity: 125, fillOpacity: -5 })[0].fillOpacity, 0);
 });

@@ -84,6 +84,15 @@ This log records completed website-related changes in the connected repository. 
 - Child rows retain their normal height and controls, while collapse/expand only changes child visibility in the list. Layer data, order, masks, groups, Fill and Link behavior are preserved.
 - Validation: TypeScript passed; canvas-shell **14/14**; production build passed; `git diff --check` passed.
 
+### 2026-11-15 — Editor-wide Group and Layers audit
+
+- Normalized non-adjacent Group selections into contiguous folder blocks. Dragging a grouped layer now moves the complete folder block instead of splitting the group; dropping at the end of the stack has explicit append semantics. The group header remains collapsible while child layers retain individual selection/editing.
+- Linked layer membership is now resolved for both canvas move and resize. Mixed selections no longer silently destroy unrelated link memberships; only all-unlinked selections create a new link, and a selection sharing one link group can unlink it.
+- Deleting layers now filters stale multi-selection IDs and repairs the primary selection against the remaining stack. Fill/Opacity updates reject non-finite values and retain the previous value instead of allowing `NaN` into SVG styles.
+- Mockup bounds/empty-state now include visible text, image, shape, and stroke content instead of strokes only. Mask and artwork thumbnails now convert normalized stroke points into the `1000 × 1200` thumbnail viewBox correctly.
+- Updated the stale editor touch-test Fill selector to the functional `#editor-layer-fill` input. Focused validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (existing project warnings remain).
+- Remaining follow-up: selection rectangles are still canvas-tier bounds rather than exact per-primitive bounds, and mockup lock/transform affordances need a dedicated browser interaction pass.
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.
