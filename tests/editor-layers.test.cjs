@@ -38,7 +38,7 @@ test("new layers get editable defaults and drawing remains isolated to the selec
 
   assert.deepEqual(first, {
     id: "one", name: "Layer 1", kind: "artwork", visible: true, locked: false, opacity: 100,
-    blendMode: "normal", strokes: [], mask: null, text: null, shape: null, image: null,
+    fillOpacity: 100, blendMode: "normal", groupId: null, strokes: [], mask: null, text: null, shape: null, image: null,
   });
   assert.equal(original[1].strokes.length, 0, "Updates are immutable");
   assert.equal(drawn[0].strokes.length, 0);

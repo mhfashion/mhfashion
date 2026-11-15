@@ -23,9 +23,11 @@ import {
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
+  groupEditorLayers,
   removeLayerMask,
   reorderEditorLayer,
   setEditorLayerText,
+  ungroupEditorLayers,
   updateEditorLayerTextStyle,
   updateEditorLayer,
   updateLayerLastStroke,
@@ -213,6 +215,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("layer-1");
   const [selectedTarget, setSelectedTarget] = useState<LayerEditTarget>("artwork");
   const [maskBrushMode, setMaskBrushMode] = useState<MaskBrushMode>("hide");
+  const [nextGroupId, setNextGroupId] = useState(1);
   const nextLayerIdRef = useRef(2);
   const nextTextLayerLabelRef = useRef(1);
   // Set while a text layer is being typed directly on the print canvas.
@@ -722,9 +725,16 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setSelectedLayerId(id);
     setSelectedTarget(target);
     setEditingTextLayerId(null);
+    const selected = layers.find((layer) => layer.id === id);
+    const groupMembers = selected?.groupId
+      ? layers.filter((layer) => layer.groupId === selected.groupId).map((layer) => layer.id)
+      : [id];
     setSelectedLayerIds((current) => {
-      if (!multi || target === "mask") return [id];
-      return current.includes(id) ? (current.length > 1 ? current.filter((item) => item !== id) : current) : [...current, id];
+      if (!multi || target === "mask") return groupMembers;
+      const members = new Set(groupMembers);
+      return current.some((item) => members.has(item))
+        ? current.filter((item) => !members.has(item))
+        : [...current, ...groupMembers.filter((item) => !current.includes(item))];
     });
   }
 
@@ -873,6 +883,17 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function moveLayer(id: string, direction: -1 | 1) {
     setLayers((current) => reorderEditorLayer(current, id, direction));
+  }
+
+  function groupSelectedLayers() {
+    if (selectedLayerIds.length < 2) return;
+    const groupId = `group-${nextGroupId}`;
+    setNextGroupId((value) => value + 1);
+    setLayers((current) => groupEditorLayers(current, selectedLayerIds, groupId));
+  }
+
+  function ungroupSelectedLayers() {
+    setLayers((current) => ungroupEditorLayers(current, selectedLayerIds));
   }
 
   function updateLayer(id: string, update: EditorLayerAppearance) {
@@ -1148,6 +1169,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onMoveLayer={moveLayer}
           onUpdateLayer={updateLayer}
           onMaskBrushModeChange={setMaskBrushMode}
+          onGroupSelected={groupSelectedLayers}
+          onUngroupSelected={ungroupSelectedLayers}
         />
       </div>
       <EditorToolsBar

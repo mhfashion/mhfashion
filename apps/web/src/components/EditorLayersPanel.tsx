@@ -41,7 +41,7 @@ const BLEND_MODES: { value: EditorLayerBlendMode; label: string }[] = [
   { value: "overlay", label: "Overlay" },
 ];
 
-type LayerUpdate = Partial<Pick<EditorArtworkLayer, "opacity" | "blendMode">>;
+type LayerUpdate = Partial<Pick<EditorArtworkLayer, "opacity" | "fillOpacity" | "blendMode">>;
 
 function strokePath(stroke: ArtworkStroke) {
   return stroke.points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
@@ -98,6 +98,8 @@ export default function EditorLayersPanel({
   onMoveLayer,
   onUpdateLayer,
   onMaskBrushModeChange,
+  onGroupSelected,
+  onUngroupSelected,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -118,6 +120,8 @@ export default function EditorLayersPanel({
   onMoveLayer: (id: string, direction: -1 | 1) => void;
   onUpdateLayer: (id: string, update: LayerUpdate) => void;
   onMaskBrushModeChange: (mode: MaskBrushMode) => void;
+  onGroupSelected: () => void;
+  onUngroupSelected: () => void;
 }) {
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -200,8 +204,11 @@ export default function EditorLayersPanel({
             <button type="button" disabled aria-label="Lock transparent pixels" title="Pixel transparency lock is not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><Square size={13} aria-hidden="true" /></button>
             <button type="button" disabled aria-label="Lock image pixels" title="Pixel lock is not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><Blend size={13} aria-hidden="true" /></button>
             <button type="button" disabled aria-label="Lock layer position" title="Position lock is not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><Move size={13} aria-hidden="true" /></button>
-            <span className="ml-auto text-[10px] text-[#343434] dark:text-[#d0d0d0]">Fill:</span>
-            <button type="button" disabled aria-label="Fill 100 percent" title="Fill adjustment is not available yet" className="flex h-6 w-12 cursor-not-allowed items-center border border-[#a0a0a0] bg-[#f7f7f7] px-1 text-[10px] text-[#666] opacity-60 dark:border-[#1d1d1d] dark:bg-[#202020] dark:text-[#a0a0a0] [@media(pointer:coarse)]:h-9 [@media(pointer:coarse)_and_(max-height:500px)]:h-6">100% <ChevronRight size={10} aria-hidden="true" className="ml-auto rotate-90" /></button>
+            <label htmlFor="editor-layer-fill" className="ml-auto text-[10px] text-[#343434] dark:text-[#d0d0d0]">Fill:</label>
+            <div className="flex h-6 w-[4.5rem] shrink-0 items-center border border-[#a0a0a0] bg-[#f7f7f7] px-1 dark:border-[#1d1d1d] dark:bg-[#202020] [@media(pointer:coarse)]:h-9 [@media(pointer:coarse)_and_(max-height:500px)]:h-6">
+              <input id="editor-layer-fill" aria-label={selectedLayer ? `Fill for ${selectedLayer.name}` : "Fill"} type="number" min="0" max="100" value={selectedLayer?.fillOpacity ?? 100} disabled={!selectedLayer || selectedLayer.locked} onChange={(event) => selectedLayer && onUpdateLayer(selectedLayer.id, { fillOpacity: Number(event.target.value) })} className="min-w-0 w-full bg-transparent text-[11px] text-[#202020] outline-none disabled:opacity-60 dark:text-white" />
+              <span className="text-[10px] text-[#555] dark:text-[#bdbdbd]">%</span>
+            </div>
           </div>
 
           <div aria-label="Layer list" role="list" className="min-h-0 flex-1 overflow-y-auto bg-[#f1f1f1] dark:bg-[#333333]">
@@ -231,6 +238,7 @@ export default function EditorLayersPanel({
                     <input ref={renameInputRef} aria-label={`Rename ${layer.name}`} value={renameValue} onChange={(event) => setRenameValue(event.target.value)} onBlur={finishRename} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") setRenamingLayerId(null); }} className="min-w-0 flex-1 bg-[#232323] px-1 py-1 text-[11px] text-white outline-none" />
                   ) : (
                     <button type="button" aria-label={`Select ${layer.name} artwork`} aria-pressed={isSelected && selectedTarget === "artwork"} onClick={(event) => onSelectLayer(layer.id, "artwork", event.shiftKey || event.ctrlKey || event.metaKey)} onDoubleClick={() => beginRename(layer)} className="min-w-0 flex-1 truncate px-0.5 text-left text-[11px] text-[#202020] dark:text-[#eeeeee]">
+                      {layer.groupId && <span className="mr-1 text-[9px] text-[#438bc4]">Group</span>}
                       {layer.name}
                     </button>
                   )}
@@ -273,7 +281,8 @@ export default function EditorLayersPanel({
             <button type="button" disabled aria-label="Layer effects" title="Layer effects are not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><Sparkles size={13} aria-hidden="true" /></button>
             <button type="button" aria-label={selectedLayer ? (selectedLayer.mask === null ? `Add mask to ${selectedLayer.name}` : `Select ${selectedLayer.name} mask`) : "Add layer mask"} title="Add or select layer mask" disabled={!selectedLayer} onClick={addOrSelectMask} className={TINY_ICON}><SquareDashed size={13} aria-hidden="true" /></button>
             <button type="button" disabled aria-label="Create adjustment layer" title="Adjustment layers are not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><SlidersHorizontal size={13} aria-hidden="true" /></button>
-            <button type="button" disabled aria-label="New group" title="Layer groups are not available yet" className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><FolderPlus size={13} aria-hidden="true" /></button>
+            <button type="button" aria-label="Group selected layers" title="Group selected layers" disabled={selectedLayerIds.length < 2} onClick={onGroupSelected} className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><FolderPlus size={13} aria-hidden="true" /></button>
+            <button type="button" aria-label="Ungroup selected layers" title="Ungroup selected layers" disabled={!selectedLayerIds.some((id) => layers.find((layer) => layer.id === id)?.groupId)} onClick={onUngroupSelected} className={`${TINY_ICON} [@media(pointer:coarse)]:hidden`}><FolderPlus size={13} aria-hidden="true" className="rotate-180" /></button>
             <button type="button" aria-label="Add layer" title="Create new layer" onClick={onAddLayer} className={TINY_ICON}><Plus size={14} aria-hidden="true" /></button>
             <button type="button" aria-label="Delete selected layer" title="Delete selected layer" disabled={!selectedLayer} onClick={() => selectedLayer && onDeleteLayer(selectedLayer.id)} className={TINY_ICON}><Trash2 size={13} aria-hidden="true" /></button>
           </div>

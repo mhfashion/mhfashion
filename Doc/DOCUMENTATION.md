@@ -54,6 +54,15 @@ This log records completed website-related changes in the connected repository. 
 - Validation: TypeScript passed; canvas-shell **14/14**; editor-layers **7/7**; production build passed; `git diff --check` passed; lint **0 errors / 26 warnings** (existing repository warnings only).
 - Remaining limitation: the current text strip provides font size and color first; font family, weight, alignment, letter spacing, and rich text controls are a follow-up layer-design pass. R2/AI service integration remains separate from the local layer mechanics.
 
+### 2026-11-15 — Working Fill, layer grouping, ordering, and non-destructive masks
+
+- Enabled the Layers box `Fill` field. It now writes a clamped `fillOpacity` value to the selected layer and the renderer applies it to all layer pixels/content, including freehand strokes, text, vector elements, and uploaded images. `Opacity` remains the whole-layer opacity control.
+- Layer ordering is available through the existing per-layer Move Up / Move Down actions. Each action changes the actual shared array order used by the canvas and mockup renderers, so the visual stacking order follows the Layers box. Grouped layers are selected together and therefore move as one selection when using the canvas Move tool.
+- Added Group and Ungroup actions for multi-selected layers. Group membership is stored as a `groupId`, shown beside grouped layer names, and selecting one grouped member selects the full group. Ungroup removes that membership without flattening or duplicating content.
+- Kept and completed the non-destructive Photoshop-style mask flow: a mask is a separate thumbnail/target, black (`Hide`) strokes remove pixels through an SVG mask, white (`Reveal`) strokes restore them, and the source artwork remains unchanged. The mask can be selected independently in the Layers box and painted with the existing brush/mask target flow.
+- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `Plan/PLAN.md`.
+- Validation: TypeScript passed; editor-layers **7/7**; canvas-shell **14/14**; production build passed; `git diff --check` passed.
+
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.

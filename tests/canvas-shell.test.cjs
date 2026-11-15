@@ -259,7 +259,9 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(layersPanel, /Opacity:/);
   assert.match(layersPanel, /Lock:/);
   assert.match(layersPanel, /Fill:/);
-  assert.match(layersPanel, /disabled[^>]*aria-label="Fill 100 percent"/);
+  assert.match(layersPanel, /id="editor-layer-fill"/);
+  assert.match(layersPanel, /Fill for \$\{selectedLayer\.name\}/);
+  assert.match(layersPanel, /fillOpacity: Number\(event\.target\.value\)/);
   assert.match(layersPanel, /text-\[11px\]/);
   assert.match(layersPanel, /dark:bg-\[#303030\]/);
   assert.match(layersPanel, /aria-label=\{open \? "Collapse Layers panel" : "Expand Layers panel"\}/);
@@ -268,6 +270,8 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   for (const label of ["Add layer", "Rename", "Duplicate", "Delete", "Hide", "Show", "mask", "Move"]) {
     assert.match(layersPanel, new RegExp(label, "i"));
   }
+  assert.match(layersPanel, /Group selected layers/);
+  assert.match(layersPanel, /Ungroup selected layers/);
   assert.match(layersPanel, /aria-label="Layer list" role="list"/);
   assert.match(layersPanel, /Blend mode for \$\{selectedLayer\.name\}/);
   assert.match(layersPanel, /Opacity for \$\{selectedLayer\.name\}/);
@@ -279,6 +283,8 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(artworkLayers, /mixBlendMode: layer\.blendMode/);
   assert.match(layersPanel, /aria-label="Layer actions"/);
   assert.match(layerModelSource, /export function addLayerMask/);
+  assert.match(layerModelSource, /export function groupEditorLayers/);
+  assert.match(layerModelSource, /export function ungroupEditorLayers/);
   assert.match(layerModelSource, /export function deleteEditorLayer/);
 });
 

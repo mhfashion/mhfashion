@@ -112,7 +112,7 @@ export default function EditorArtworkLayers({
                 </mask>
               </defs>
             )}
-            <g transform={transform} mask={layer.mask !== null ? `url(#${maskId})` : undefined}>
+            <g transform={transform} mask={layer.mask !== null ? `url(#${maskId})` : undefined} opacity={layer.fillOpacity / 100}>
               {layer.strokes.map((stroke, index) => (
                 <StrokeShape key={index} stroke={stroke} color={stroke.color ?? "#202124"} width={24} isArtwork />
               ))}

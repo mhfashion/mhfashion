@@ -35,7 +35,9 @@ export type EditorArtworkLayer = {
   visible: boolean;
   locked: boolean;
   opacity: number;
+  fillOpacity: number;
   blendMode: EditorLayerBlendMode;
+  groupId: string | null;
   strokes: ArtworkStroke[];
   mask: LayerMaskStroke[] | null;
   text: EditorTextContent | null;
@@ -44,7 +46,7 @@ export type EditorArtworkLayer = {
 };
 
 export type EditorLayerAppearance = Partial<
-  Pick<EditorArtworkLayer, "visible" | "locked" | "opacity" | "blendMode">
+  Pick<EditorArtworkLayer, "visible" | "locked" | "opacity" | "fillOpacity" | "blendMode">
 >;
 
 export function createEditorArtworkLayer(id: string, name: string): EditorArtworkLayer {
@@ -55,7 +57,9 @@ export function createEditorArtworkLayer(id: string, name: string): EditorArtwor
     visible: true,
     locked: false,
     opacity: 100,
+    fillOpacity: 100,
     blendMode: "normal",
+    groupId: null,
     strokes: [],
     mask: null,
     text: null,
@@ -184,6 +188,7 @@ export function updateEditorLayer(
     if (layer.id !== layerId) return layer;
     const next = { ...layer, ...update, id: layer.id };
     if (typeof update.opacity === "number") next.opacity = Math.max(0, Math.min(100, update.opacity));
+    if (typeof update.fillOpacity === "number") next.fillOpacity = Math.max(0, Math.min(100, update.fillOpacity));
     if (typeof update.name === "string") next.name = update.name.trim() || layer.name;
     return next;
   });
@@ -200,6 +205,23 @@ export function reorderEditorLayer(
   const next = [...layers];
   [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
   return next;
+}
+
+export function groupEditorLayers(
+  layers: EditorArtworkLayer[],
+  layerIds: string[],
+  groupId: string,
+): EditorArtworkLayer[] {
+  const ids = new Set(layerIds);
+  return layers.map((layer) => (ids.has(layer.id) ? { ...layer, groupId } : layer));
+}
+
+export function ungroupEditorLayers(
+  layers: EditorArtworkLayer[],
+  layerIds: string[],
+): EditorArtworkLayer[] {
+  const ids = new Set(layerIds);
+  return layers.map((layer) => (ids.has(layer.id) ? { ...layer, groupId: null } : layer));
 }
 
 export function duplicateEditorLayer(
