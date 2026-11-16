@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useRef } from "react";
 
-export type EditorTool = "move" | "pen" | "hand" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
+export type EditorTool = "move" | "hand" | "pan" | "pen" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
 
 type Props = {
   activeTool: EditorTool;
@@ -39,13 +39,13 @@ type Props = {
 
 const tools = [
   { id: "move", label: "Move", Icon: Move },
-  { id: "pen", label: "Pen", Icon: Pen },
   { id: "hand", label: "Hand tool", Icon: Hand },
+  { id: "pan", label: "Pan tool", Icon: Hand },
+  { id: "pen", label: "Pen tool", Icon: Pen },
   { id: "brush", label: "Brush", Icon: Brush },
-  { id: "eraser", label: "Eraser", Icon: Eraser },
-  { id: "shape", label: "Shape", Icon: Square },
-  { id: "gradient", label: "Gradient", Icon: Blend },
-  { id: "remove-bg", label: "Remove BG", Icon: ImageMinus },
+  { id: "eraser", label: "Eraser tool", Icon: Eraser },
+  { id: "shape", label: "Shape tools", Icon: Square },
+  { id: "gradient", label: "Gradient tool", Icon: Blend },
 ] as const;
 
 export default function EditorToolsBar({
@@ -90,7 +90,7 @@ export default function EditorToolsBar({
                 <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
               </button>
             ))}
-            <div role="group" aria-label="Color swatches" className="relative h-9 w-11 shrink-0">
+            <div role="group" aria-label="Color switch tool" title="Color switch tool" className="relative h-9 w-11 shrink-0">
               <input
                 ref={foregroundInputRef}
                 type="color"

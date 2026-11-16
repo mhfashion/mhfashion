@@ -808,3 +808,7 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Files: `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`, `Plan/PLAN.md`.
 - Validation: all five relevant unit suites passed **39/39** (Guide 9, browser guards 1, canvas spec 1, canvas-shell 15, editor layers 13); TypeScript passed; Next.js production build and OpenNext Cloudflare Worker build passed; `git diff --check` passed. ESLint reported **0 errors / 26 existing repository warnings**.
 - Limitations: effect rendering is SVG-based and remains live/editable text, but the current transforms are visual presets rather than true per-character warps; gradient/texture fills, multi-color vector exports, and final production print export remain outside this implementation.
+
+### 2026-11-17 — Tools Bar structure reset before tool-by-tool implementation
+
+The unfinished Subpath/Node Editing, Fill/Stroke property panel, and Bézier-handle work was paused before commit. The visible Tools Bar order is now Move, Hand tool, Pan tool, Pen tool, Brush, Eraser tool, Shape tools, Gradient tool, Color switch tool, Undo, and Redo. Individual tool behavior will be implemented one at a time after the structure is accepted. The Layer Box remains unchanged, and the existing Photoshop/Kittl-inspired Pen foundation is retained.

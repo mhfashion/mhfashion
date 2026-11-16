@@ -126,11 +126,12 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(toolsBar, /hideOnMobile \? "max-md:hidden"/);
   assert.match(toolsBar, /rounded-2xl/);
   assert.match(toolsBar, /h-7 w-7/);
-  for (const label of ["Move", "Pen", "Hand tool", "Brush", "Eraser", "Shape", "Gradient", "Remove BG", "Undo", "Redo"]) {
+  for (const label of ["Move", "Hand tool", "Pan tool", "Pen tool", "Brush", "Eraser tool", "Shape tools", "Gradient tool", "Undo", "Redo"]) {
     assert.ok(toolsBar.includes(`label: "${label}"`) || toolsBar.includes(`aria-label="${label}"`), `missing ${label}`);
   }
   assert.doesNotMatch(toolsBar, /id: "text"|label: "Text"/);
-  assert.match(toolsBar, /Pan canvas — Hand tool/);
+  assert.match(toolsBar, /Pan canvas/);
+  assert.match(toolsBar, /id: "pan"/);
   assert.match(toolsBar, /shadow-\[0_2px_8px_rgba\(212,255,63,.35\)\]/);
   assert.match(source, /function finishPenPath\(close = false\)/);
   assert.match(source, /function addPenAnchor/);
@@ -150,7 +151,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /aria-label="Pen tool actions"/);
   assert.doesNotMatch(source, /activeTool === "text"/);
   assert.match(editSidebar, /Add Text/);
-  assert.match(toolsBar, /role="group" aria-label="Color swatches"/);
+  assert.match(toolsBar, /role="group" aria-label="Color switch tool"/);
   assert.match(toolsBar, /aria-label="Foreground Color"/);
   assert.match(toolsBar, /aria-label="Background Color"/);
   assert.equal((toolsBar.match(/type="color"/g) ?? []).length, 2);
@@ -168,7 +169,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /redoCanvasAction/);
   assert.match(toolsBar, /Expand editor tools/);
   assert.match(toolsBar, /Collapse editor tools/);
-  assert.match(source, /activeTool === "hand" && event\.button === 0/);
+  assert.match(source, /activeTool === "hand" \|\| activeTool === "pan"\) && event\.button === 0/);
   assert.match(source, /activeTool !== "move"/);
   assert.match(source, /function eraseArtworkAt\(/);
   assert.match(source, /function undoCanvasAction\(/);
@@ -256,9 +257,9 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(source, /onPointerDownCapture=\{startPan\}/);
   assert.match(source, /onPointerMoveCapture=\{movePan\}/);
   assert.match(source, /onLostPointerCapture=\{endPan\}/);
-  assert.match(source, /\(touchPanEnabled \|\| activeTool === "hand"\) \? "touch-none" : "touch-pan-y"/);
-  assert.match(source, /data-pan-mode=\{\(touchPanEnabled \|\| activeTool === "hand"\) \? "hand" : "scroll"\}/);
-  assert.match(source, /spaceHeld \|\| touchPanEnabled \|\| activeTool === "hand"\) \? "cursor-grab"/);
+  assert.match(source, /touchPanEnabled \|\| activeTool === "hand" \|\| activeTool === "pan"/);
+  assert.match(source, /data-pan-mode=\{\(touchPanEnabled \|\| activeTool === "hand" \|\| activeTool === "pan"\) \? "hand" : "scroll"\}/);
+  assert.match(source, /spaceHeld \|\| touchPanEnabled \|\| activeTool === "hand" \|\| activeTool === "pan"\) \? "cursor-grab"/);
   assert.match(createRoute, /100dvh-var\(--mobile-navigation-height,4rem\)/);
   assert.match(createRoute, /md:h-dvh/);
   assert.match(mobileNav, /setProperty\("--mobile-navigation-height"/);
