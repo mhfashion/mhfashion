@@ -101,7 +101,10 @@ async function main() {
         if (!element) throw new Error(`Missing ${sel}`);
         const viewport = document.querySelector('[aria-label="Editor viewport"]');
         const panel = document.querySelector('[aria-label="Layers panel"]');
-        if (panel?.contains(element)) {
+        const headerBar2 = element.closest('[aria-label="Header Bar 2"]');
+        if (headerBar2) {
+          element.scrollIntoView({ block: "nearest", inline: "nearest" });
+        } else if (panel?.contains(element)) {
           element.scrollIntoView({ block: "nearest", inline: "nearest" });
         } else if (viewport.contains(element)) {
           const r = element.getBoundingClientRect();
@@ -229,8 +232,16 @@ async function main() {
         bar2Top: bar2.top, bar2Bottom: bar2.bottom, editorTop: editor.top,
         bar2Height: bar2.height,
         bar2Labels: controls.map((control) => control.getAttribute("aria-label") || control.textContent.trim()),
-        bar2Disabled: [...toolbar.querySelectorAll("button")].every((button) => button.disabled),
+        saveBuyDisabled: ["Save", "Buy"].every((label) => toolbar.querySelector(`button[aria-label="${label}"]`)?.disabled),
         selectOptions: [...toolbar.querySelectorAll("select")].map((select) => [...select.options].map((option) => option.textContent)),
+        size: toolbar.querySelector('select[aria-label="Size"]')?.value,
+        visibleFieldLabels: [...toolbar.querySelectorAll("[data-editor-field-label]")].filter((label) => getComputedStyle(label).display !== "none").length,
+        priceVisible: getComputedStyle(toolbar.querySelector("[data-editor-price]")).display !== "none",
+        boxMetrics: [...toolbar.querySelectorAll("[data-editor-box]")].map((box) => ({
+          width: Math.round(box.getBoundingClientRect().width),
+          height: Math.round(box.getBoundingClientRect().height),
+        })),
+        colorSwatches: toolbar.querySelectorAll('[data-editor-box="Color"] button').length,
         selectedProduct: toolbar.querySelector('select[aria-label="Product"]').value,
         selectedGsm: toolbar.querySelector('select[aria-label="GSM"]').value,
         productBoxWidth: toolbar.querySelector('select[aria-label="Product"]').getBoundingClientRect().width,
@@ -242,19 +253,25 @@ async function main() {
     });
     assert.ok(initial.headerHeight > 0 && initial.mobileHeader !== "none" && initial.desktopHeader === "none", "Reuse the existing mobile Header Bar");
     assert.ok(initial.bar2Top >= initial.headerBottom - 1 && initial.editorTop >= initial.bar2Bottom - 1, "Bar 2 sits between Header Bar and Editor");
-    assert.deepEqual(initial.bar2Labels, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
+    assert.deepEqual(initial.bar2Labels, ["Product", "GSM", "Color Background", "Color Surface", "Color Accent", "Size", "Save", "Buy"]);
     assert.ok(initial.bar2Height <= 44, "Header Bar 2 is compact");
     assert.deepEqual(initial.selectOptions, [
       ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"],
       ["160 GSM", "180 GSM", "200 GSM", "240 GSM"],
+      ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
     ]);
     assert.ok(initial.selectOptions.flat().every((option) => option !== "Choose"), "Product and GSM selectors have no Choose option");
     assert.equal(initial.selectedProduct, "T-Shirt");
     assert.equal(initial.selectedGsm, "160 GSM", "The first GSM is selected by default");
-    assert.ok(initial.productBoxWidth <= 92, "Product selector stays compact");
+    assert.equal(initial.size, "XL", "Size defaults to XL");
+    assert.ok(initial.boxMetrics.every((box) => box.width === 80 && box.height === 44), "All mobile boxes share equal width and touch height");
+    assert.equal(initial.visibleFieldLabels, 0, "Mobile keeps only the field/action boxes, not separate field labels");
+    assert.equal(initial.priceVisible, false, "Mobile hides the separate price text");
+    assert.equal(initial.colorSwatches, 3, "Color is a box of theme swatches only");
+    assert.ok(initial.productBoxWidth <= 80, "Product selector stays compact");
     assert.equal(initial.productCanChange, true, "T-Shirt and Phone are selectable");
     assert.deepEqual(initial.futureProductsDisabled, ["Hoodie", "Cup", "Kids", "Bag"]);
-    assert.ok(initial.bar2Disabled, "Color, Size, Save and Buy remain placeholders");
+    assert.ok(initial.saveBuyDisabled, "Save and Buy remain placeholders while Color and Size are usable selectors");
     if (width === 390) assert.equal(await chooseSelect('select[aria-label="GSM"]', "200 GSM"), "200 GSM");
     assert.ok(initial.mainBottom <= initial.navTop + 1, "Editor stays above mobile navigation");
     assert.ok(initial.bodyHeight <= initial.viewportHeight + 1, "Editor and nav do not create document overflow");
@@ -499,9 +516,22 @@ async function main() {
     assert.equal(await chooseSelect('select[aria-label="Product"]', "Phone"), "Phone");
     const phoneState = await evaluate(() => {
       const toolbar = document.querySelector('[aria-label="Header Bar 2"]');
-      const controls = [...toolbar.querySelectorAll("select, button")];
+      const boxes = [...toolbar.querySelectorAll("[data-editor-box]")];
       return {
-        labels: controls.map((control) => control.getAttribute("aria-label") || control.textContent.trim()),
+        boxNames: boxes.map((box) => box.dataset.editorBox),
+        boxMetrics: boxes.map((box) => ({
+          width: Math.round(box.getBoundingClientRect().width),
+          height: Math.round(box.getBoundingClientRect().height),
+          radius: Number.parseFloat(getComputedStyle(box).borderTopLeftRadius),
+        })),
+        visibleFieldLabels: [...toolbar.querySelectorAll("[data-editor-field-label]")].filter((label) => getComputedStyle(label).display !== "none").length,
+        priceVisible: getComputedStyle(toolbar.querySelector("[data-editor-price]")).display !== "none",
+        colorSwatches: [...toolbar.querySelectorAll('[data-editor-box="Color"] button')].map((button) => ({
+          label: button.getAttribute("aria-label"),
+          selected: button.getAttribute("aria-pressed"),
+        })),
+        gsmExists: Boolean(toolbar.querySelector('select[aria-label="GSM"]')),
+        sizeExists: Boolean(toolbar.querySelector('select[aria-label="Size"]')),
         visibleMockups: [...document.querySelectorAll('section[aria-label$="Mockup"]')].filter((section) => getComputedStyle(section).display !== "none").length,
         backHidden: document.querySelector('section[aria-label="Back Mockup"]')?.hidden,
         frontVisible: getComputedStyle(document.querySelector('section[aria-label="Front Mockup"]')).display !== "none",
@@ -509,7 +539,13 @@ async function main() {
         pendingDisabled: ["Brand", "Model"].every((label) => toolbar.querySelector(`select[aria-label="${label}"]`)?.disabled),
       };
     });
-    assert.deepEqual(phoneState.labels, ["Product", "Brand", "Model", "Color", "Save", "Buy"]);
+    assert.deepEqual(phoneState.boxNames, ["Product", "Brand", "Model", "Color", "Save", "Buy"]);
+    assert.ok(phoneState.boxMetrics.every((box) => box.width === 80 && box.height === 44 && box.radius >= 16), "All mobile controls have matching pill geometry and 44px touch height");
+    assert.equal(phoneState.visibleFieldLabels, 0, "Phone viewport shows the selector boxes without their text labels");
+    assert.equal(phoneState.priceVisible, false, "Phone viewport keeps only boxes, hiding the separate price text");
+    assert.equal(phoneState.colorSwatches.length, 3, "Color box contains only the three theme-color swatches");
+    assert.equal(phoneState.gsmExists, false, "Phone product keeps GSM hidden");
+    assert.equal(phoneState.sizeExists, false, "Phone product keeps Size hidden");
     assert.equal(phoneState.visibleMockups, 1, "Phone shows one usable Mockup");
     assert.equal(phoneState.backHidden, true, "Phone hides the Back Mockup");
     assert.equal(phoneState.frontVisible, true);
@@ -517,15 +553,23 @@ async function main() {
     assert.deepEqual(await canvasMenuItems(), ["Show Grid", "Add Front Mockup"], "Phone offers only the Front Mockup entry");
     await closeCanvasMenu();
     assert.ok(phoneState.pendingDisabled, "Brand and Model remain placeholders");
+    await tap('button[aria-label="Color Surface"]');
+    assert.equal(await evaluate(() => document.querySelector('button[aria-label="Color Surface"]')?.getAttribute("aria-pressed")), "true", "Color swatches are selectable");
     assert.equal(await chooseSelect('select[aria-label="Product"]', "T-Shirt"), "T-Shirt");
     const apparelState = await evaluate(() => ({
       gsm: document.querySelector('select[aria-label="GSM"]')?.value,
-      size: [...document.querySelectorAll('[aria-label="Header Bar 2"] button')].some((button) => button.textContent.trim() === "Size"),
+      size: document.querySelector('select[aria-label="Size"]')?.value,
+      sizeOptions: [...document.querySelectorAll('select[aria-label="Size"] option')].map((option) => option.value),
+      color: Boolean(document.querySelector('[data-editor-box="Color"]')),
+      selectedColor: document.querySelector('button[aria-label="Color Surface"]')?.getAttribute("aria-pressed"),
       backVisible: getComputedStyle(document.querySelector('section[aria-label="Back Mockup"]')).display !== "none",
       addBackInMockupBox: document.querySelectorAll('section[aria-label="Front Mockup"] button[aria-label="Add Back Mockup"]').length,
     }));
     assert.equal(apparelState.gsm, width === 390 ? "200 GSM" : "160 GSM", "No GSM choice was cleared while switching products");
-    assert.equal(apparelState.size, true);
+    assert.equal(apparelState.size, "XL", "Size defaults to XL without a Choose option");
+    assert.ok(apparelState.sizeOptions.includes("2XL"), "Size offers standard extended sizes");
+    assert.equal(apparelState.color, true);
+    assert.equal(apparelState.selectedColor, "true", "Selected Color remains while switching product categories");
     assert.equal(apparelState.backVisible, true, "T-Shirt restores its Back Mockup");
     assert.equal(apparelState.addBackInMockupBox, 0, "Mockup boxes carry no add control");
     assert.deepEqual(await canvasMenuItems(), ["Show Grid", "Add Front Mockup", "Add Back Mockup"], "Apparel exposes both mockup sides");
@@ -628,6 +672,26 @@ async function main() {
     });
     assert.ok(desktopHeader.height > 0 && desktopHeader.mobile === "none" && desktopHeader.desktop !== "none", "Reuse the existing desktop Header Bar");
     assert.ok(desktopHeader.bar2Top >= desktopHeader.headerBottom - 1 && desktopHeader.editorTop >= desktopHeader.bar2Bottom - 1, "Desktop Bar 2 stays below Header and above editor");
+    const bar2DesktopBoxes = await evaluate(() => {
+      const toolbar = document.querySelector('[aria-label="Header Bar 2"]');
+      const boxes = [...toolbar.querySelectorAll("[data-editor-box]")];
+      return {
+        names: boxes.map((box) => box.dataset.editorBox),
+        metrics: boxes.map((box) => ({
+          width: Math.round(box.getBoundingClientRect().width),
+          height: Math.round(box.getBoundingClientRect().height),
+          radius: Number.parseFloat(getComputedStyle(box).borderTopLeftRadius),
+        })),
+        labelsVisible: [...toolbar.querySelectorAll("[data-editor-field-label]")].every((label) => getComputedStyle(label).display !== "none"),
+        priceVisible: getComputedStyle(toolbar.querySelector("[data-editor-price]")).display !== "none",
+        priceText: toolbar.querySelector("[data-editor-price]").textContent.trim(),
+      };
+    });
+    assert.deepEqual(bar2DesktopBoxes.names, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
+    assert.ok(bar2DesktopBoxes.metrics.every((box) => box.width === 80 && box.height === 32 && box.radius >= 16), "Every desktop Bar 2 box shares the same compact pill geometry");
+    assert.equal(bar2DesktopBoxes.labelsVisible, true, "Desktop shows Product/GSM/Color/Size labels");
+    assert.equal(bar2DesktopBoxes.priceVisible, true, "Desktop shows the Save-adjacent price field");
+    assert.equal(bar2DesktopBoxes.priceText, "Price —", "Price stays an explicit placeholder until product pricing is connected");
     await clickMouse('button[aria-label="Expand Layers panel"]');
     await clickMouse('button[aria-label="Expand Edit sidebar"]');
     const desktopDocks = await evaluate(() => {
@@ -664,6 +728,7 @@ async function main() {
         shell: getComputedStyle(document.querySelector("main")).backgroundColor,
         bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
         productBox: getComputedStyle(document.querySelector('select[aria-label="Product"]')).backgroundColor,
+        colorAccentSwatch: getComputedStyle(document.querySelector('button[aria-label="Color Accent"] span')).backgroundColor,
         layersPanel: getComputedStyle(document.querySelector('aside[aria-label="Layers panel"]')).backgroundColor,
         layersToggle: getComputedStyle(document.querySelector('button[aria-label="Collapse Layers panel"]')).backgroundColor,
         accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
@@ -686,6 +751,7 @@ async function main() {
       shell: getComputedStyle(document.querySelector("main")).backgroundColor,
       bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
       productBox: getComputedStyle(document.querySelector('select[aria-label="Product"]')).backgroundColor,
+      colorAccentSwatch: getComputedStyle(document.querySelector('button[aria-label="Color Accent"] span')).backgroundColor,
       layersPanel: getComputedStyle(document.querySelector('aside[aria-label="Layers panel"]')).backgroundColor,
       layersToggle: getComputedStyle(document.querySelector('button[aria-label="Collapse Layers panel"]')).backgroundColor,
       accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
@@ -694,6 +760,9 @@ async function main() {
     assert.notEqual(themeAfter.shell, themeBefore.shell, "Editor workspace responds to Header theme toggle");
     assert.notEqual(themeAfter.bar, themeBefore.bar, "Header Bar 2 responds to Header theme toggle");
     assert.notEqual(themeAfter.productBox, themeBefore.productBox, "Product box responds to Header theme toggle");
+    assert.notEqual(themeAfter.colorAccentSwatch, themeBefore.colorAccentSwatch, "Color swatches respond to Header theme toggle");
+    assert.equal(themeBefore.colorAccentSwatch, `rgb(${themeBefore.accent})`, "Color Accent swatch uses the active app theme token");
+    assert.equal(themeAfter.colorAccentSwatch, `rgb(${themeAfter.accent})`, "Color Accent swatch follows the toggled app theme token");
     assert.notEqual(themeAfter.layersPanel, themeBefore.layersPanel, "Photoshop-style Layers dock responds to Header theme toggle");
     assert.notEqual(themeAfter.layersToggle, themeBefore.layersToggle, "Round Layers toggle follows the app accent theme color");
     assert.equal(themeAfter.layersToggle, `rgb(${themeAfter.accent})`, "Toggled button color matches the active theme accent token");

@@ -448,7 +448,7 @@ test("editor reuses the existing web-app Header Bar above its full-height worksp
   assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
 });
 
-test("Editor Header Bar 2 selects products without Choose and defaults Product/GSM", () => {
+test("Editor Header Bar 2 uses equal rounded boxes, theme swatches, price, and mobile box-only mode", () => {
   assert.match(createRoute, /import EditorHeaderBar2 from "@\/components\/EditorHeaderBar2"/);
   assert.match(createRoute, /useState<EditorProduct>\(DEFAULT_EDITOR_PRODUCT\)/);
   assert.match(createRoute, /useState\(DEFAULT_EDITOR_GSM\)/);
@@ -460,24 +460,32 @@ test("Editor Header Bar 2 selects products without Choose and defaults Product/G
   assert.match(headerBar2, /const PRODUCT_OPTIONS = \["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"\]/);
   assert.match(headerBar2, /const FUTURE_PRODUCTS = \["Hoodie", "Cup", "Kids", "Bag"\]/);
   assert.match(headerBar2, /label="Product"[\s\S]*?disabledOptions=\{FUTURE_PRODUCTS\}/);
-  assert.match(headerBar2, /w-\[5\.75rem\]/);
   assert.match(headerBar2, /const GSM_OPTIONS = \[DEFAULT_EDITOR_GSM, "180 GSM", "200 GSM", "240 GSM"\]/);
+  assert.match(headerBar2, /const SIZE_OPTIONS = \["XS", "S", "M", "L", "XL", "2XL", "3XL"\]/);
+  assert.match(headerBar2, /const COLOR_OPTIONS = \[[\s\S]*?bg-bg[\s\S]*?bg-bg-surface[\s\S]*?bg-accent/);
+  assert.match(headerBar2, /const FIELD_BOX =[\s\S]*?w-20 rounded-full/);
+  assert.match(headerBar2, /const ACTION_BOX =[\s\S]*?w-20[\s\S]*?rounded-full/);
+  assert.match(headerBar2, /pointer:coarse/);
   assert.doesNotMatch(productGsmSelect, /Choose|option value=""/);
-  assert.match(headerBar2, /<option value="">—<\/option>/);
+  assert.match(headerBar2, /function PendingSelect\([\s\S]*?value="—"[\s\S]*?options=\{\["—"\]\}/);
   assert.match(headerBar2, /product === "T-Shirt" \? \([\s\S]*?label="GSM"/);
   assert.match(headerBar2, /<PendingSelect label="Brand" \/>/);
   assert.match(headerBar2, /<PendingSelect label="Model" \/>/);
-  assert.match(headerBar2, /product === "T-Shirt" && \([\s\S]*?>\s*Size\s*</);
-  assert.match(headerBar2, /aria-label=\{label\}/);
-  assert.match(headerBar2, />\s*Color\s*</);
-  assert.match(headerBar2, />\s*Size\s*</);
-  assert.match(headerBar2, />\s*Save\s*</);
-  assert.match(headerBar2, />\s*Buy\s*</);
-  assert.equal((headerBar2.match(/^\s+disabled$/gm) || []).length, 5, "future Product options, Brand/Model, Color, Size, Save and Buy remain inactive placeholders");
-  assert.match(headerBar2, /bg-bg-surface/);
+  assert.match(headerBar2, /<ColorField value=\{selectedColor\} onChange=\{setSelectedColor\} \/>/);
+  assert.match(headerBar2, /label="Size"[\s\S]*?options=\{SIZE_OPTIONS\}/);
+  assert.match(headerBar2, /aria-label="Color"[\s\S]*?data-editor-box="Color"/);
+  assert.match(headerBar2, /aria-pressed=\{value === color\.value\}/);
+  assert.match(headerBar2, /data-editor-box=\{label\}/);
+  assert.match(headerBar2, /hidden shrink-0 text-xs font-medium text-text-secondary sm:inline/);
+  assert.match(headerBar2, /aria-label="Save" data-editor-box="Save" disabled/);
+  assert.match(headerBar2, /aria-label="Buy"[\s\S]*?data-editor-box="Buy"[\s\S]*?disabled/);
+  assert.match(headerBar2, /data-editor-price/);
+  assert.match(headerBar2, /Price —/);
+  assert.match(headerBar2, /className="hidden shrink-0 whitespace-nowrap[\s\S]*?sm:inline"/);
   assert.match(headerBar2, /text-text-secondary/);
   assert.match(headerBar2, /overflow-x-auto/);
   assert.match(source, /bg-bg text-text-primary/);
   assert.match(source, /border-border bg-bg px-2/);
+  assert.match(headerBar2, /import \{ useState \} from "react"/);
   assert.match(headerBar2, /import \{ DEFAULT_EDITOR_GSM, type EditorProduct \} from "@\/lib\/editor-product"/);
 });

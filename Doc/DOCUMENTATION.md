@@ -17,6 +17,15 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-16 — Owner-directed Header Bar 2 pill selector redesign
+
+- Rebuilt Header Bar 2 controls as consistent fully rounded boxes: 80×32px on desktop and 80×44px for coarse-pointer/touch layouts. Product defaults to `T-Shirt` with no `Choose` option; GSM defaults to `160 GSM` with no `Choose` option; Size defaults to `XL` with `XS` through `3XL` choices.
+- Color is a three-swatch selector using the app theme's `Background`, `Surface`, and `Accent` tokens. Desktop retains the Product/GSM/Color/Size labels and shows `Price —` beside Save. Phone layouts hide the field labels and separate price text, leaving the horizontally scrollable control boxes.
+- Save and Buy remain disabled placeholders; `/create` has no connected product-price source or order-save/checkout handler. Color and Size selections remain local UI state.
+- Files: `apps/web/src/components/EditorHeaderBar2.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-touch.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Validation: `npm run build` passed (including TypeScript); `npm run lint` completed with 0 errors and 26 warnings; `node --test tests/*.test.cjs` passed **44/44** with the local production app available. A focused CDP check passed at 1280×900 desktop and 390×844 phone sizes, including pill dimensions, defaults, swatch-token color, and the shared Header Dark/Light toggle.
+- Scope note: the broader legacy `tests/editor-touch.cjs` run still contains pre-upstream Edit sidebar expectations and stops in that unrelated section; those assertions were left untouched. Header Bar 2 was verified independently rather than expanding this task into Sidebar work.
+
 ### 2026-11-15 — Owner-directed Canva-style Editor Sidebar first slice
 
 - Replaced the temporary left Edit sidebar categories with the owner-requested five-category flow: `Designs`, `Elements`, `Text`, `Upload`, and `Image Create`.
