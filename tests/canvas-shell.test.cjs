@@ -18,6 +18,7 @@ const layersPanel = readFileSync(path.join(__dirname, "../apps/web/src/component
 const adjustmentsPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
 const editSidebar = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorEditSidebar.tsx"), "utf8");
 const artworkLayers = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorArtworkLayers.tsx"), "utf8");
+const transformMath = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-transform.ts"), "utf8");
 const layerPreview = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
 const layerModelSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-layers.ts"), "utf8");
 function loadArtworkTiers() {
@@ -356,6 +357,12 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(source, /r="22" fill="transparent" pointerEvents="auto"/);
   assert.match(source, /function startCanvasLayerRotate/);
   assert.match(source, /layerRotations/);
+  assert.match(source, /freeScale:\s*event\.shiftKey/);
+  assert.match(source, /centered:\s*event\.altKey/);
+  assert.match(source, /snapEditorRotationDelta\(delta, event\.shiftKey, 15\)/);
+  assert.match(source, /const canvasLayerOrigins = useMemo/);
+  assert.match(artworkLayers, /scale\(\$\{scale\.x\} \$\{scale\.y\}\)/);
+  assert.match(transformMath, /export function getFreeTransformResizeFactors/);
   assert.match(artworkLayers, /<mask[\s\S]*?maskUnits="userSpaceOnUse"/);
   assert.match(artworkLayers, /stroke\.mode === "hide" \? "black" : "white"/);
   assert.match(artworkLayers, /mask=\{layer\.mask !== null \? `url\(#\$\{maskId\}\)` : undefined\}/);

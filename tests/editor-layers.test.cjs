@@ -12,6 +12,14 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const layerModel = { exports: {} };
 new Function("module", "exports", compiled)(layerModel, layerModel.exports);
+const transformSourcePath = path.join(__dirname, "../apps/web/src/lib/editor-transform.ts");
+const transformCompiled = ts.transpileModule(readFileSync(transformSourcePath, "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  fileName: transformSourcePath,
+}).outputText;
+const transformModule = { exports: {} };
+new Function("module", "exports", transformCompiled)(transformModule, transformModule.exports);
+const { getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } = transformModule.exports;
 const {
   addLayerMask,
   applyEditorShapeBuilderOperation,
@@ -270,4 +278,45 @@ test("text effects stack immutably and remain independent when a text layer is d
   assert.notStrictEqual(updated[0].text.effects, effects);
   assert.notStrictEqual(duplicate.text.effects, updated[0].text.effects);
   assert.notStrictEqual(duplicate.text.effects[0], updated[0].text.effects[0]);
+});
+
+test("Free Transform preserves aspect ratio by default and toggles independent corner scaling with Shift", () => {
+  const bounds = { x: 0, y: 0, width: 200, height: 100 };
+  const proportional = getFreeTransformResizeFactors({
+    bounds, handle: "bottom-right", rotation: 0,
+    pointerStart: { x: 200, y: 100 }, pointerCurrent: { x: 400, y: 100 },
+    centered: false, freeScale: false,
+  });
+  assert.equal(proportional.x, proportional.y);
+  assert.ok(proportional.x > 1);
+
+  const distorted = getFreeTransformResizeFactors({
+    bounds, handle: "bottom-right", rotation: 0,
+    pointerStart: { x: 200, y: 100 }, pointerCurrent: { x: 300, y: 100 },
+    centered: false, freeScale: true,
+  });
+  assert.equal(distorted.x, 1.5);
+  assert.equal(distorted.y, 1);
+});
+
+test("Free Transform Alt/Option scales from center and rotated edge handles follow the object's local axes", () => {
+  const bounds = { x: 0, y: 0, width: 200, height: 100 };
+  const centeredAnchor = getFreeTransformResizeAnchor({ bounds, handle: "bottom-right", rotation: 0, centered: true });
+  assert.deepEqual(centeredAnchor, { x: 100, y: 50 });
+
+  const start = rotateTransformPoint({ x: 200, y: 50 }, { x: 100, y: 50 }, 90);
+  const current = { x: start.x, y: start.y + 50 };
+  const sideScale = getFreeTransformResizeFactors({
+    bounds, handle: "middle-right", rotation: 90,
+    pointerStart: start, pointerCurrent: current,
+    centered: false, freeScale: false,
+  });
+  assert.equal(sideScale.x, 1.25);
+  assert.equal(sideScale.y, 1);
+});
+
+test("Free Transform snaps rotation to 15-degree steps only while Shift is held", () => {
+  assert.equal(snapEditorRotationDelta(13, true), 15);
+  assert.equal(snapEditorRotationDelta(7, true), 0);
+  assert.equal(snapEditorRotationDelta(13, false), 13);
 });

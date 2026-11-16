@@ -16,6 +16,8 @@ import {
   releaseLargeArtworkTier,
 } from "@/lib/editor-artwork-tiers";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
+import { getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } from "@/lib/editor-transform";
+import type { TransformHandle } from "@/lib/editor-transform";
 import {
   addLayerMask,
   appendLayerStroke,
@@ -104,8 +106,9 @@ type PenAnchorDrag = { pointerId: number; index: number; point: Point };
 type PenEditDrag = { pointerId: number; layerId: string; index: number; kind: "anchor" | "handle-in" | "handle-out"; start: Point; origin: EditorPenAnchor };
 type CanvasBounds = { x: number; y: number; width: number; height: number };
 type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
-type CanvasLayerResizeDrag = { pointerId: number; start: Point; origin: Record<string, number>; handle: string };
-type CanvasLayerRotateDrag = { pointerId: number; center: Point; startAngle: number; origin: Record<string, number> };
+type CanvasLayerTransformSnapshot = { scale: Point; offset: Point; rotation: number; pivot: Point };
+type CanvasLayerResizeDrag = { pointerId: number; pointerStart: Point; bounds: CanvasBounds; rotation: number; origin: Record<string, CanvasLayerTransformSnapshot>; handle: TransformHandle };
+type CanvasLayerRotateDrag = { pointerId: number; center: Point; startAngle: number; origin: Record<string, CanvasLayerTransformSnapshot> };
 type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
 type Connector = { side: MockupSide; path: string; start: Point; end: Point };
 type ActiveArtworkStroke = {
@@ -159,6 +162,7 @@ function ArtworkOverlay({
   selectedLayerIds,
   selectionBounds,
   layerScales,
+  layerOrigins,
   onMoveStart,
   onMove,
   onMoveEnd,
@@ -182,7 +186,8 @@ function ArtworkOverlay({
   editingTextLayer?: EditorArtworkLayer | null;
   selectedLayerIds: string[];
   selectionBounds: CanvasBounds | null;
-  layerScales: Record<string, number>;
+  layerScales: Record<string, Point>;
+  layerOrigins: Record<string, Point>;
   onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
   onMove: (event: React.PointerEvent<SVGSVGElement>) => void;
   onMoveEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
@@ -221,6 +226,7 @@ function ArtworkOverlay({
           maskBrushMode={maskBrushMode}
           hiddenTextLayerId={editingTextLayerId}
           layerScales={layerScales}
+          layerOrigins={layerOrigins}
           layerRotations={layerRotations}
         />
         {editingText && (
@@ -281,11 +287,11 @@ function ArtworkOverlay({
           <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
           {resizeHandles.map((handle) => (
             <g key={handle.key} data-resize-handle={handle.key}>
-              <circle cx={handle.x} cy={handle.y} r="22" fill="transparent" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} />
+              <circle cx={handle.x} cy={handle.y} r="22" fill="transparent" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} aria-description="Drag to resize. Hold Shift to stretch freely; hold Alt or Option to scale from the center." />
               <rect x={handle.x - 4} y={handle.y - 4} width="8" height="8" rx="1" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" pointerEvents="none" />
             </g>
           ))}
-          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="24" fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" />
+          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="24" fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" aria-description="Drag to rotate. Hold Shift to snap to 15-degree increments." />
           <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height + 58})`} pointerEvents="none" data-rotate-handle="true">
             <circle r="8" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
             <path d="M2-5a5 5 0 1 0 3 7M2-5v3m0-3h3" fill="none" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" data-rotate-glyph="true" />
@@ -326,7 +332,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
   const [redoStack, setRedoStack] = useState<EditorArtworkLayer[][]>([]);
   const [canvasLayerTransforms, setCanvasLayerTransforms] = useState<Record<string, Point>>({});
-  const [canvasLayerScales, setCanvasLayerScales] = useState<Record<string, number>>({});
+  const [canvasLayerScales, setCanvasLayerScales] = useState<Record<string, Point>>({});
   const [canvasLayerRotations, setCanvasLayerRotations] = useState<Record<string, number>>({});
   const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>(["layer-1"]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
@@ -352,22 +358,39 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     () => product === "Phone" ? mockups.filter((side) => side === "Front Mockup") : mockups,
     [mockups, product],
   );
+  const canvasLayerOrigins = useMemo(() => Object.fromEntries(layers.flatMap((layer) => {
+    const bounds = layerCanvasBounds(layer);
+    return bounds ? [[layer.id, { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }]] : [];
+  })), [layers]);
   const selectionBounds = useMemo(() => {
     const bounds = selectedLayerIds.flatMap((id) => {
       const layer = layers.find((item) => item.id === id);
       const base = layer ? layerCanvasBounds(layer) : null;
       if (!base) return [];
-      const scale = canvasLayerScales[id] ?? 1;
+      const scale = canvasLayerScales[id] ?? { x: 1, y: 1 };
       const offset = canvasLayerTransforms[id] ?? { x: 0, y: 0 };
+      const pivot = canvasLayerOrigins[id] ?? { x: 500, y: 600 };
+      const rotation = canvasLayerRotations[id] ?? 0;
+      const points = [
+        { x: base.x, y: base.y },
+        { x: base.x + base.width, y: base.y },
+        { x: base.x + base.width, y: base.y + base.height },
+        { x: base.x, y: base.y + base.height },
+      ].map((point) => {
+        const scaled = { x: pivot.x + (point.x - pivot.x) * scale.x + offset.x, y: pivot.y + (point.y - pivot.y) * scale.y + offset.y };
+        return selectedLayerIds.length === 1 ? scaled : rotateTransformPoint(scaled, { x: pivot.x + offset.x, y: pivot.y + offset.y }, rotation);
+      });
+      const xs = points.map((point) => point.x);
+      const ys = points.map((point) => point.y);
       return [{
-        x: 500 + offset.x + (base.x - 500) * scale,
-        y: 600 + offset.y + (base.y - 600) * scale,
-        width: base.width * scale,
-        height: base.height * scale,
+        x: Math.min(...xs),
+        y: Math.min(...ys),
+        width: Math.max(...xs) - Math.min(...xs),
+        height: Math.max(...ys) - Math.min(...ys),
       }];
     });
     return unionCanvasBounds(bounds);
-  }, [canvasLayerScales, canvasLayerTransforms, layers, selectedLayerIds]);
+  }, [canvasLayerRotations, canvasLayerScales, canvasLayerTransforms, canvasLayerOrigins, layers, selectedLayerIds]);
   function toggleLayersPanel() {
     if (!layersOpen && window.matchMedia("(max-width: 767px)").matches) setEditSidebarOpen(false);
     setLayersOpen((open) => !open);
@@ -687,10 +710,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     event.preventDefault();
     const point = toCanvasPoint(event.clientX, event.clientY);
     const delta = { x: (point.x - drag.start.x) * 1000, y: (point.y - drag.start.y) * 1200 };
-    setCanvasLayerTransforms(() => Object.fromEntries(Object.entries(drag.origin).map(([id, origin]) => [id, {
+    setCanvasLayerTransforms((current) => ({ ...current, ...Object.fromEntries(Object.entries(drag.origin).map(([id, origin]) => [id, {
       x: Math.max(-420, Math.min(420, origin.x + delta.x)),
       y: Math.max(-520, Math.min(520, origin.y + delta.y)),
-    }])));
+    }])) }));
   }
   function endCanvasArtworkMove(event: React.PointerEvent<SVGSVGElement>) {
     if (canvasArtworkDragRef.current?.pointerId === event.pointerId) canvasArtworkDragRef.current = null;
@@ -701,14 +724,25 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     event.preventDefault();
     event.stopPropagation();
     const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
-    if (!ids.length) return;
-    const start = toCanvasPoint(event.clientX, event.clientY);
+    if (!ids.length || !selectionBounds) return;
+    const startNormalized = toCanvasPoint(event.clientX, event.clientY);
+    const pointerStart = { x: startNormalized.x * 1000, y: startNormalized.y * 1200 };
+    const rawHandle = event.currentTarget.parentElement?.getAttribute("data-resize-handle") ?? "bottom-right";
+    const handle = rawHandle as TransformHandle;
+    const rotation = selectedLayerIds.length === 1 ? canvasLayerRotations[selectedLayerIds[0]] ?? 0 : 0;
     event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
     canvasLayerResizeRef.current = {
       pointerId: event.pointerId,
-      start,
-      origin: Object.fromEntries(ids.map((id) => [id, canvasLayerScales[id] ?? 1])),
-      handle: event.currentTarget.getAttribute("data-resize-handle") ?? "bottom-right",
+      pointerStart,
+      bounds: selectionBounds,
+      rotation,
+      origin: Object.fromEntries(ids.map((id) => [id, {
+        scale: canvasLayerScales[id] ?? { x: 1, y: 1 },
+        offset: canvasLayerTransforms[id] ?? { x: 0, y: 0 },
+        rotation: canvasLayerRotations[id] ?? 0,
+        pivot: canvasLayerOrigins[id] ?? { x: 500, y: 600 },
+      }])),
+      handle,
     };
   }
 
@@ -716,14 +750,35 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasLayerResizeRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const point = toCanvasPoint(event.clientX, event.clientY);
-    const horizontalDelta = point.x - drag.start.x;
-    const verticalDelta = point.y - drag.start.y;
-    const axisDelta = drag.handle.includes("left") || drag.handle.includes("right") ? horizontalDelta : verticalDelta;
-    const direction = drag.handle.includes("left") || drag.handle.includes("top") ? -1 : 1;
-    const delta = axisDelta * direction * 1000;
-    const factor = Math.max(0.25, Math.min(3, 1 + delta / 500));
-    setCanvasLayerScales(Object.fromEntries(Object.entries(drag.origin).map(([id, scale]) => [id, Math.max(0.25, Math.min(3, scale * factor))])));
+    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const pointerCurrent = { x: normalized.x * 1000, y: normalized.y * 1200 };
+    const factors = getFreeTransformResizeFactors({
+      bounds: drag.bounds,
+      handle: drag.handle,
+      rotation: drag.rotation,
+      pointerStart: drag.pointerStart,
+      pointerCurrent,
+      centered: event.altKey,
+      freeScale: event.shiftKey,
+    });
+    const anchor = getFreeTransformResizeAnchor({ bounds: drag.bounds, handle: drag.handle, rotation: drag.rotation, centered: event.altKey });
+    const centerOfSelection = { x: drag.bounds.x + drag.bounds.width / 2, y: drag.bounds.y + drag.bounds.height / 2 };
+    const nextScales: Record<string, Point> = {};
+    const nextOffsets: Record<string, Point> = {};
+    Object.entries(drag.origin).forEach(([id, origin]) => {
+      const currentCenter = { x: origin.pivot.x + origin.offset.x, y: origin.pivot.y + origin.offset.y };
+      const localCenter = rotateTransformPoint(currentCenter, centerOfSelection, -drag.rotation);
+      const localAnchor = rotateTransformPoint(anchor, centerOfSelection, -drag.rotation);
+      const scaledCenter = {
+        x: localAnchor.x + (localCenter.x - localAnchor.x) * factors.x,
+        y: localAnchor.y + (localCenter.y - localAnchor.y) * factors.y,
+      };
+      const nextCenter = rotateTransformPoint(scaledCenter, centerOfSelection, drag.rotation);
+      nextScales[id] = { x: origin.scale.x * factors.x, y: origin.scale.y * factors.y };
+      nextOffsets[id] = { x: nextCenter.x - origin.pivot.x, y: nextCenter.y - origin.pivot.y };
+    });
+    setCanvasLayerScales((current) => ({ ...current, ...nextScales }));
+    setCanvasLayerTransforms((current) => ({ ...current, ...nextOffsets }));
   }
 
   function endCanvasLayerResize(event: React.PointerEvent<SVGSVGElement>) {
@@ -737,13 +792,19 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
     if (!ids.length) return;
     const center = { x: selectionBounds.x + selectionBounds.width / 2, y: selectionBounds.y + selectionBounds.height / 2 };
-    const start = toCanvasPoint(event.clientX, event.clientY);
+    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const start = { x: normalized.x * 1000, y: normalized.y * 1200 };
     event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
     canvasLayerRotateRef.current = {
       pointerId: event.pointerId,
       center,
-      startAngle: Math.atan2(start.y * 1200 - center.y, start.x * 1000 - center.x) * (180 / Math.PI),
-      origin: Object.fromEntries(ids.map((id) => [id, canvasLayerRotations[id] ?? 0])),
+      startAngle: Math.atan2(start.y - center.y, start.x - center.x) * (180 / Math.PI),
+      origin: Object.fromEntries(ids.map((id) => [id, {
+        scale: canvasLayerScales[id] ?? { x: 1, y: 1 },
+        offset: canvasLayerTransforms[id] ?? { x: 0, y: 0 },
+        rotation: canvasLayerRotations[id] ?? 0,
+        pivot: canvasLayerOrigins[id] ?? { x: 500, y: 600 },
+      }])),
     };
   }
 
@@ -751,10 +812,23 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasLayerRotateRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const point = toCanvasPoint(event.clientX, event.clientY);
-    const angle = Math.atan2(point.y * 1200 - drag.center.y, point.x * 1000 - drag.center.x) * (180 / Math.PI);
-    const delta = angle - drag.startAngle;
-    setCanvasLayerRotations(Object.fromEntries(Object.entries(drag.origin).map(([id, rotation]) => [id, rotation + delta])));
+    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const point = { x: normalized.x * 1000, y: normalized.y * 1200 };
+    const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x) * (180 / Math.PI);
+    let delta = angle - drag.startAngle;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    delta = snapEditorRotationDelta(delta, event.shiftKey, 15);
+    const nextRotations: Record<string, number> = {};
+    const nextOffsets: Record<string, Point> = {};
+    Object.entries(drag.origin).forEach(([id, origin]) => {
+      const currentCenter = { x: origin.pivot.x + origin.offset.x, y: origin.pivot.y + origin.offset.y };
+      const rotatedCenter = rotateTransformPoint(currentCenter, drag.center, delta);
+      nextRotations[id] = origin.rotation + delta;
+      nextOffsets[id] = { x: rotatedCenter.x - origin.pivot.x, y: rotatedCenter.y - origin.pivot.y };
+    });
+    setCanvasLayerRotations((current) => ({ ...current, ...nextRotations }));
+    setCanvasLayerTransforms((current) => ({ ...current, ...nextOffsets }));
   }
 
   function endCanvasLayerRotate(event: React.PointerEvent<SVGSVGElement>) {
@@ -835,9 +909,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function penLayerTransform(layerId: string) {
     const offset = canvasLayerTransforms[layerId] ?? { x: 0, y: 0 };
-    const scale = canvasLayerScales[layerId] ?? 1;
+    const scale = canvasLayerScales[layerId] ?? { x: 1, y: 1 };
+    const pivot = canvasLayerOrigins[layerId] ?? { x: 500, y: 600 };
     const rotation = canvasLayerRotations[layerId] ?? 0;
-    return `translate(${offset.x} ${offset.y}) translate(500 600) rotate(${rotation}) scale(${scale}) translate(-500 -600)`;
+    return `translate(${offset.x} ${offset.y}) translate(${pivot.x} ${pivot.y}) rotate(${rotation}) scale(${scale.x} ${scale.y}) translate(${-pivot.x} ${-pivot.y})`;
   }
 
   function toPenLayerPoint(clientX: number, clientY: number, layerId: string): Point {
@@ -845,13 +920,16 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const canvasX = point.x * 1000;
     const canvasY = point.y * 1200;
     const offset = canvasLayerTransforms[layerId] ?? { x: 0, y: 0 };
-    const scale = Math.max(0.001, canvasLayerScales[layerId] ?? 1);
+    const scale = canvasLayerScales[layerId] ?? { x: 1, y: 1 };
+    const pivot = canvasLayerOrigins[layerId] ?? { x: 500, y: 600 };
     const rotation = (canvasLayerRotations[layerId] ?? 0) * Math.PI / 180;
-    const translatedX = (canvasX - offset.x - 500) / scale;
-    const translatedY = (canvasY - offset.y - 600) / scale;
+    const rotatedX = canvasX - offset.x - pivot.x;
+    const rotatedY = canvasY - offset.y - pivot.y;
+    const translatedX = (rotatedX * Math.cos(rotation) + rotatedY * Math.sin(rotation)) / Math.max(0.001, scale.x);
+    const translatedY = (-rotatedX * Math.sin(rotation) + rotatedY * Math.cos(rotation)) / Math.max(0.001, scale.y);
     return {
-      x: (500 + translatedX * Math.cos(rotation) + translatedY * Math.sin(rotation)) / 1000,
-      y: (600 - translatedX * Math.sin(rotation) + translatedY * Math.cos(rotation)) / 1200,
+      x: (pivot.x + translatedX) / 1000,
+      y: (pivot.y + translatedY) / 1200,
     };
   }
 
@@ -1517,6 +1595,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   selectedLayerIds={selectedLayerIds}
                   selectionBounds={selectionBounds}
                   layerScales={canvasLayerScales}
+                  layerOrigins={canvasLayerOrigins}
                   layerRotations={canvasLayerRotations}
                   onMoveStart={startCanvasArtworkMove}
                   onMove={moveCanvasArtwork}
