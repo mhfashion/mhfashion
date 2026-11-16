@@ -12,6 +12,14 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 const layerModel = { exports: {} };
 new Function("module", "exports", compiled)(layerModel, layerModel.exports);
+const transformSourcePath = path.join(__dirname, "../apps/web/src/lib/editor-transform.ts");
+const transformCompiled = ts.transpileModule(readFileSync(transformSourcePath, "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  fileName: transformSourcePath,
+}).outputText;
+const transformModule = { exports: {} };
+new Function("module", "exports", transformCompiled)(transformModule, transformModule.exports);
+const { getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } = transformModule.exports;
 const {
   addLayerMask,
   applyEditorShapeBuilderOperation,
@@ -22,6 +30,8 @@ const {
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
+  EDITOR_SHAPE_PRESETS,
+  createEditorShapePaths,
   groupEditorLayers,
   linkEditorLayers,
   moveEditorLayerToIndex,
@@ -32,6 +42,7 @@ const {
   updateEditorLayerTextStyle,
   ungroupEditorLayers,
   unlinkEditorLayers,
+  updateEditorPenPath,
   updateLayerLastStroke,
 } = layerModel.exports;
 
@@ -156,6 +167,26 @@ test("Add Text, element and upload layers keep their own content and stay in the
   assert.notStrictEqual(duplicatedText.text, typed[0].text);
 });
 
+test("Pen paths retain editable Bézier nodes, update their SVG data, and duplicate independently", () => {
+  const penPath = { closed: false, anchors: [
+    { x: 0.1, y: 0.5, handleOut: { x: 0.2, y: -0.1 } },
+    { x: 0.9, y: 0.5, handleIn: { x: -0.2, y: -0.1 } },
+  ] };
+  const layer = createEditorShapeLayer("pen-1", "Pen path 1", {
+    paths: [{ d: "M 100 600 C 300 480 700 480 900 600", fill: "none", stroke: "#111111", penPath }],
+  });
+  const nextPenPath = { ...penPath, anchors: [{ ...penPath.anchors[0], x: 0.12 }, penPath.anchors[1]] };
+  const updated = updateEditorPenPath([layer], layer.id, nextPenPath, "M 120 600 C 320 480 700 480 900 600");
+  const duplicate = duplicateEditorLayer(updated, layer.id, "pen-copy")[0];
+
+  assert.equal(updated[0].shape.paths[0].d, "M 120 600 C 320 480 700 480 900 600");
+  assert.deepEqual(updated[0].shape.paths[0].penPath, nextPenPath);
+  assert.notStrictEqual(updated[0].shape.paths[0].penPath, penPath);
+  assert.notStrictEqual(updated[0].shape.paths[0].penPath.anchors, penPath.anchors);
+  assert.notStrictEqual(duplicate.shape.paths[0].penPath.anchors, updated[0].shape.paths[0].penPath.anchors);
+  assert.notStrictEqual(duplicate.shape.paths[0].penPath.anchors[0].handleOut, updated[0].shape.paths[0].penPath.anchors[0].handleOut);
+});
+
 test("groups preserve independent layers while links provide an explicit shared transform membership", () => {
   const layers = [createEditorArtworkLayer("one", "One"), createEditorArtworkLayer("two", "Two")];
   const grouped = groupEditorLayers(layers, ["one", "two"], "group-1");
@@ -213,6 +244,25 @@ test("shape builder performs deterministic rectangle merge, subtract, and inters
   assert.equal(intersected.shape.paths[0].d, "M 300 300 H 500 V 500 H 300 Z");
 });
 
+test("shape preset geometry covers reversed drags and returns renderable vector paths", () => {
+  const rectangle = createEditorShapePaths("rectangle", { x: 400, y: 500 }, { x: 100, y: 200 }, "#d4ff3f");
+  assert.equal(rectangle[0].d, "M 100 200 L 400 200 L 400 500 L 100 500 Z");
+  assert.equal(rectangle[0].fill, "#d4ff3f");
+
+  for (const preset of EDITOR_SHAPE_PRESETS) {
+    const paths = createEditorShapePaths(preset, { x: 100, y: 120 }, { x: 580, y: 720 }, "#202124");
+    assert.ok(paths.length > 0, `${preset} should return at least one path`);
+    for (const path of paths) {
+      assert.match(path.d, /^M -?[\d.]+ -?[\d.]+/);
+      assert.ok(path.fill || path.stroke, `${preset} should render with a fill or stroke`);
+      assert.ok(!/NaN|Infinity/.test(path.d), `${preset} should use finite coordinates`);
+    }
+  }
+  assert.equal(createEditorShapePaths("arrow", { x: 10, y: 10 }, { x: 100, y: 100 }, "#000").length, 3);
+  assert.equal(createEditorShapePaths("line", { x: 10, y: 10 }, { x: 100, y: 100 }, "#000")[0].fill, "none");
+  assert.ok(createEditorShapePaths("ellipse", { x: 10, y: 10 }, { x: 100, y: 100 }, "#000")[0].d.split("L ").length > 40);
+});
+
 test("text effects stack immutably and remain independent when a text layer is duplicated", () => {
   const initial = createEditorTextLayer("text-1", "Text", {
     value: "MH", x: 500, y: 600, fontSize: 110, color: "#202124",
@@ -228,4 +278,45 @@ test("text effects stack immutably and remain independent when a text layer is d
   assert.notStrictEqual(updated[0].text.effects, effects);
   assert.notStrictEqual(duplicate.text.effects, updated[0].text.effects);
   assert.notStrictEqual(duplicate.text.effects[0], updated[0].text.effects[0]);
+});
+
+test("Free Transform preserves aspect ratio by default and toggles independent corner scaling with Shift", () => {
+  const bounds = { x: 0, y: 0, width: 200, height: 100 };
+  const proportional = getFreeTransformResizeFactors({
+    bounds, handle: "bottom-right", rotation: 0,
+    pointerStart: { x: 200, y: 100 }, pointerCurrent: { x: 400, y: 100 },
+    centered: false, freeScale: false,
+  });
+  assert.equal(proportional.x, proportional.y);
+  assert.ok(proportional.x > 1);
+
+  const distorted = getFreeTransformResizeFactors({
+    bounds, handle: "bottom-right", rotation: 0,
+    pointerStart: { x: 200, y: 100 }, pointerCurrent: { x: 300, y: 100 },
+    centered: false, freeScale: true,
+  });
+  assert.equal(distorted.x, 1.5);
+  assert.equal(distorted.y, 1);
+});
+
+test("Free Transform Alt/Option scales from center and rotated edge handles follow the object's local axes", () => {
+  const bounds = { x: 0, y: 0, width: 200, height: 100 };
+  const centeredAnchor = getFreeTransformResizeAnchor({ bounds, handle: "bottom-right", rotation: 0, centered: true });
+  assert.deepEqual(centeredAnchor, { x: 100, y: 50 });
+
+  const start = rotateTransformPoint({ x: 200, y: 50 }, { x: 100, y: 50 }, 90);
+  const current = { x: start.x, y: start.y + 50 };
+  const sideScale = getFreeTransformResizeFactors({
+    bounds, handle: "middle-right", rotation: 90,
+    pointerStart: start, pointerCurrent: current,
+    centered: false, freeScale: false,
+  });
+  assert.equal(sideScale.x, 1.25);
+  assert.equal(sideScale.y, 1);
+});
+
+test("Free Transform snaps rotation to 15-degree steps only while Shift is held", () => {
+  assert.equal(snapEditorRotationDelta(13, true), 15);
+  assert.equal(snapEditorRotationDelta(7, true), 0);
+  assert.equal(snapEditorRotationDelta(13, false), 13);
 });

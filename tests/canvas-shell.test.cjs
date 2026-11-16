@@ -18,6 +18,7 @@ const layersPanel = readFileSync(path.join(__dirname, "../apps/web/src/component
 const adjustmentsPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
 const editSidebar = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorEditSidebar.tsx"), "utf8");
 const artworkLayers = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorArtworkLayers.tsx"), "utf8");
+const transformMath = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-transform.ts"), "utf8");
 const layerPreview = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
 const layerModelSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-layers.ts"), "utf8");
 function loadArtworkTiers() {
@@ -126,20 +127,42 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(toolsBar, /hideOnMobile \? "max-md:hidden"/);
   assert.match(toolsBar, /rounded-2xl/);
   assert.match(toolsBar, /h-7 w-7/);
-  for (const label of ["Move", "Pen", "Hand tool", "Brush", "Eraser", "Shape", "Gradient", "Remove BG", "Undo", "Redo"]) {
+  for (const label of ["Move", "Hand tool", "Pencil tool", "Pen tool", "Text tool", "Brush", "Eraser tool", "Shape tools", "Gradient tool", "Undo", "Redo"]) {
     assert.ok(toolsBar.includes(`label: "${label}"`) || toolsBar.includes(`aria-label="${label}"`), `missing ${label}`);
   }
-  assert.doesNotMatch(toolsBar, /id: "text"|label: "Text"/);
-  assert.match(toolsBar, /Pan canvas — Hand tool/);
+  assert.match(toolsBar, /id: "text"/);
+  assert.match(toolsBar, /Pencil tool/);
+  assert.match(toolsBar, /id: "pencil"/);
+  assert.match(toolsBar, /Pencil/);
+  assert.match(toolsBar, /id: "text"/);
+  assert.match(toolsBar, /PenTool/);
   assert.match(toolsBar, /shadow-\[0_2px_8px_rgba\(212,255,63,.35\)\]/);
   assert.match(source, /function finishPenPath\(close = false\)/);
   assert.match(source, /function addPenAnchor/);
   assert.match(source, /onDoubleClick=\{\(\) => activeTool === "pen" && finishPenPath\(false\)\}/);
   assert.match(source, /aria-label="Pen path preview"/);
   assert.match(source, /createEditorShapeLayer\(id, `Pen path/);
-  assert.doesNotMatch(source, /activeTool === "text"/);
+  assert.match(source, /const activeToolCursor = activeTool === "pen" \? "cursor-crosshair"/);
+  assert.match(source, /activeToolCursor\}`/);
+  assert.match(source, /function editorToolCursor\(tool: EditorTool\)/);
+  assert.match(source, /pen: '<path/);
+  assert.match(source, /pencil: '<path/);
+  assert.match(source, /activeToolCursorStyle/);
+  assert.match(source, /draggedEditorPenAnchor/);
+  assert.match(source, /snapEditorPenPoint/);
+  assert.match(source, /isNearPenStart/);
+  assert.match(source, /data-pen-close-target/);
+  assert.match(source, /aria-label="Pen path point controls"/);
+  assert.match(source, /r="38" fill="transparent" stroke="transparent" pointerEvents="all"/);
+  assert.match(source, /event\.key === "Delete" \|\| event\.key === "Backspace"/);
+  assert.match(source, /touchAction: "none"/);
+  assert.match(source, /addPenNodeOnPath/);
+  assert.match(source, /Alt-click point to remove/);
+  assert.match(source, /aria-label="Pen tool actions"/);
+  assert.match(source, /activeTool === "text"/);
+  assert.match(source, /addCanvasTextLayer\(undefined, \{ x: point\.x \* 1000, y: point\.y \* 1200 \}\)/);
   assert.match(editSidebar, /Add Text/);
-  assert.match(toolsBar, /role="group" aria-label="Color swatches"/);
+  assert.match(toolsBar, /role="group" aria-label="Color switch tool"/);
   assert.match(toolsBar, /aria-label="Foreground Color"/);
   assert.match(toolsBar, /aria-label="Background Color"/);
   assert.equal((toolsBar.match(/type="color"/g) ?? []).length, 2);
@@ -166,6 +189,22 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(layerModelSource, /return \{ \.\.\.stroke, points:/);
   assert.match(artworkLayers, /stroke\.tool === "brush" \? 52 : width/);
   assert.match(mockupArtwork, /strokes\.some\(\(stroke\) => stroke\.tool === "brush"\) \? 32 : 18/);
+});
+
+test("Shape tool exposes selectable presets and creates live vector previews on drag", () => {
+  assert.match(toolsBar, /data-testid="editor-shape-picker"/);
+  assert.match(toolsBar, /role="group" aria-label="Shape options"/);
+  assert.match(toolsBar, /Choose a shape, then drag on the canvas/);
+  assert.match(toolsBar, /min-h-11/);
+  for (const label of ["Rectangle", "Rounded rectangle", "Ellipse", "Triangle", "Diamond", "Line", "Arrow", "Star", "Hexagon"]) {
+    assert.ok(layerModelSource.includes(label), `missing shape choice ${label}`);
+  }
+  assert.match(source, /function startShapeDrawing/);
+  assert.match(source, /activeShapeDragRef/);
+  assert.match(source, /data-editor-shape-preview/);
+  assert.match(source, /createEditorShapePaths\(shapeDrag\.preset/);
+  assert.match(source, /createEditorShapeLayer\(id, `\$\{label\}/);
+  assert.doesNotMatch(source, /Shape Tool is ready for the upcoming vector-shape pipeline/);
 });
 
 test("artwork on each Mockup can be moved and resized as one object", () => {
@@ -245,7 +284,7 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(source, /onPointerDownCapture=\{startPan\}/);
   assert.match(source, /onPointerMoveCapture=\{movePan\}/);
   assert.match(source, /onLostPointerCapture=\{endPan\}/);
-  assert.match(source, /\(touchPanEnabled \|\| activeTool === "hand"\) \? "touch-none" : "touch-pan-y"/);
+  assert.match(source, /touchPanEnabled \|\| activeTool === "hand"/);
   assert.match(source, /data-pan-mode=\{\(touchPanEnabled \|\| activeTool === "hand"\) \? "hand" : "scroll"\}/);
   assert.match(source, /spaceHeld \|\| touchPanEnabled \|\| activeTool === "hand"\) \? "cursor-grab"/);
   assert.match(createRoute, /100dvh-var\(--mobile-navigation-height,4rem\)/);
@@ -308,8 +347,22 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(source, /selectionBounds=\{selectionBounds\}/);
   assert.match(source, /x=\{selectionBounds\.x\}/);
   assert.match(source, /aria-label="Rotate selected layer"/);
+  assert.match(source, /transform=\{`rotate\(\$\{transformRotation\}/);
+  assert.match(source, /stroke="#4c9dff" strokeWidth="1\.25" vectorEffect="non-scaling-stroke" data-transform-outline/);
+  assert.match(source, /data-rotate-handle="true"/);
+  assert.match(source, /data-rotate-glyph="true"/);
+  assert.doesNotMatch(source, /<line x1=\{\(selectionBounds\.x \+ selectionBounds\.width \/ 2\)\}/);
+  assert.match(source, /data-rotation-angle="true"/);
+  assert.match(source, /\{displayRotation\}°/);
+  assert.match(source, /r="22" fill="transparent" pointerEvents="auto"/);
   assert.match(source, /function startCanvasLayerRotate/);
   assert.match(source, /layerRotations/);
+  assert.match(source, /freeScale:\s*event\.shiftKey/);
+  assert.match(source, /centered:\s*event\.altKey/);
+  assert.match(source, /snapEditorRotationDelta\(delta, event\.shiftKey, 15\)/);
+  assert.match(source, /const canvasLayerOrigins = useMemo/);
+  assert.match(artworkLayers, /scale\(\$\{scale\.x\} \$\{scale\.y\}\)/);
+  assert.match(transformMath, /export function getFreeTransformResizeFactors/);
   assert.match(artworkLayers, /<mask[\s\S]*?maskUnits="userSpaceOnUse"/);
   assert.match(artworkLayers, /stroke\.mode === "hide" \? "black" : "white"/);
   assert.match(artworkLayers, /mask=\{layer\.mask !== null \? `url\(#\$\{maskId\}\)` : undefined\}/);
@@ -409,7 +462,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /editingTextLayer=\{editingTextLayer\}/);
   // Every sidebar addition must be reachable in the Layers stack.
   assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
-  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 5, "Text, element, design, upload and Pen path reveal the Layers stack");
+  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 6, "Text, element, design, upload, Pen path and Shape reveal the Layers stack");
   assert.match(layersPanel, /EditorLayerPreview paths=\{layer\.shape\?\.paths\} text=\{layer\.text\} image=\{layer\.image\}/);
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
   assert.match(source, /canvasLayerTransforms/);

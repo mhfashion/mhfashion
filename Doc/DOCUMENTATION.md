@@ -22,8 +22,16 @@ This log records completed website-related changes in the connected repository. 
 - Applied the owner's correction to Header Bar 2: `Price —` now appears immediately to the left of Save; every Product/GSM/Color/Size/Save/Buy box uses the app's green accent fill while keeping the same fully rounded 80×32px desktop / 80×44px touch dimensions.
 - Replaced the always-visible Color dots with a box containing the selected theme swatch and a down-chevron. The chevron opens a fully rounded green dropdown with Background, Surface, and Accent options. The portal-mounted menu is not clipped by the horizontally scrollable bar, and it closes on selection, outside click, or Escape.
 - Files: `apps/web/src/components/EditorHeaderBar2.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-touch.cjs`, `TODO.md`, `Plan/PLAN.md`.
-- Validation: production build passed; lint completed with 0 errors / 26 warnings; all repository Node tests passed **44/44** and canvas-shell passed **15/15**. Focused CDP verification passed at 1280×900 desktop and 390×844 phone sizes for green box fills, Price-before-Save, rounded menu geometry, Color selection by touch, and mobile hiding of labels/price.
+- Validation on merged `main`: production build passed; lint completed with 0 errors / 25 warnings; all repository Node tests passed **55/55** and canvas-shell passed **16/16**. Focused post-merge CDP verification passed at 1280×900 desktop and 390×844 phone sizes for green box fills, Price-before-Save, rounded menu geometry, Color selection by touch, and mobile hiding of labels/price.
 - Scope note: the broader `tests/editor-touch.cjs` run completed its Header Bar 2 checks, then stopped at the existing Edit sidebar selector on line 330 (`aside[aria-label="Edit sidebar"]`); that unrelated Sidebar test was left untouched.
+
+### 2026-11-16 — Owner-directed Kittl-inspired Pen curves and node editing
+
+- Replaced the straight-anchor-only Pen interaction with click-to-place corners, click-drag smooth Bézier handles, Shift snapping to horizontal/vertical/45-degree segments, a highlighted close target, and touch-visible Finish/Close/Cancel actions. Closed paths use the active foreground as fill; open paths remain stroke-only.
+- Pen geometry is retained as editable anchor/handle/closed-state data alongside SVG path data. Double-clicking a selected Pen path enters node-edit mode; dragging points/handles edits the vector, clicking a segment inserts a node with cubic subdivision, and Alt-click, focused-point Delete/Backspace, or Delete point removes a node subject to open/closed minimums. Touch-sized invisible hit areas support Phone/Mobile pointer work. Ordinary handle drag mirrors the opposite handle; Alt-drag breaks the tangent. Changes are recorded through the existing layer undo history.
+- Files: `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-pen-path.ts`, `apps/web/src/lib/editor-layers.ts`, `tests/editor-pen-path.test.cjs`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`, `package.json`, `Plan/PLAN.md`.
+- Validation: `npm run build` passed with TypeScript; `npm run test:editor-pen-path` passed **5/5**, `npm run test:editor-layers` passed **14/14**, and `npm run test:canvas-shell` passed **15/15**. Focused ESLint on the edited app files and `git diff --check` passed with no warnings/errors.
+- Limitations: snapping to unrelated objects/nodes and the full path appearance property set are not implemented in this pass. Pen paths currently create separate Shape layers and remain in the app's existing in-memory editor state; Save/persistent draft support is still unavailable.
 
 ### 2026-11-16 — Owner-directed Header Bar 2 pill selector redesign
 
@@ -808,3 +816,62 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Files: `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`, `Plan/PLAN.md`.
 - Validation: all five relevant unit suites passed **39/39** (Guide 9, browser guards 1, canvas spec 1, canvas-shell 15, editor layers 13); TypeScript passed; Next.js production build and OpenNext Cloudflare Worker build passed; `git diff --check` passed. ESLint reported **0 errors / 26 existing repository warnings**.
 - Limitations: effect rendering is SVG-based and remains live/editable text, but the current transforms are visual presets rather than true per-character warps; gradient/texture fills, multi-color vector exports, and final production print export remain outside this implementation.
+
+### 2026-11-17 — Tools Bar structure reset before tool-by-tool implementation
+
+The unfinished Subpath/Node Editing, Fill/Stroke property panel, and Bézier-handle work was paused before commit. The visible Tools Bar order is now Move, Hand tool, Pan tool, Pen tool, Brush, Eraser tool, Shape tools, Gradient tool, Color switch tool, Undo, and Redo. Individual tool behavior will be implemented one at a time after the structure is accepted. The Layer Box remains unchanged, and the existing Photoshop/Kittl-inspired Pen foundation is retained.
+
+### 2026-11-17 — Kittl-style Free Transform visual pass
+
+The existing Free Transform behavior was kept intact: all eight resize handles, move behavior, and rotation remain functional. Its appearance now uses the MH Fashion theme accent instead of Kittl blue: a thin 2px accent outline, compact square resize controls, a thin rotation stem, and a small rotation dot. Each visible control has a separate transparent touch hit area so Phone/Mobile editing remains finger-friendly without making the visual controls oversized.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-17 — Pen nib icon and persistent selected-tool cursor
+
+The Pen tool now uses the Lucide PenTool nib silhouette to match the supplied pen-nib reference more closely. The Canvas cursor no longer falls back to the large hand/grab appearance when another tool is selected: Pen and Brush use crosshair, Eraser uses cell, Shape and Gradient use crosshair, Move uses move, and Hand/Pan use grab only when those tools are actually active. The print-canvas wrapper now follows the same selected-tool cursor state.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-17 — Separate Pencil and Pen tools; add Text tool
+
+Corrected the tool naming based on the owner's clarification: the former `Pan` toolbar item is now a distinct `Pencil tool`, with its own Pencil icon and drawing/cursor state. `Pen tool` remains the nib-based vector path tool. The Hand tool is the only toolbar tool that uses the Hand/viewport-pan behavior. A new `Text tool` is now visible in the Tools Bar; clicking the canvas creates a Text layer at that point and opens the existing direct canvas typing workflow. Selected-tool cursor state now covers Pencil, Pen, Text, Brush, Eraser, Shape, Gradient, Move, and Hand.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-17 — Kittl blue rotating Free Transform and live angle label
+
+Free Transform now uses a thinner Kittl-style blue outline (`#4c9dff`) and compact blue/white resize and rotation controls. The complete transform-control group rotates around the selection center together with the selected layer, including the resize handles, rotation stem, rotation dot, and angle badge. While rotating, a small live degree label is displayed near the rotation control; the displayed value is normalized to 0–359 degrees. Existing move, resize, rotation, and mobile touch hit areas remain intact.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-17 — Tool-shaped Canvas cursors
+
+Replaced the generic plus/crosshair cursor treatment with custom SVG data cursors tied to the selected tool. Pen now shows a pen nib, Pencil shows a pencil, Brush shows a brush, Eraser shows an eraser, Move shows four-way arrows, Hand shows an open hand, Text shows an I-beam, Shape shows a shape/crosshair, and Gradient shows a gradient swatch. The cursor is applied to both the main editor viewport and the print-canvas surface; pointer/touch interactions remain unchanged and mobile falls back safely to touch behavior.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-17 — Circular rotate-arrow handle refinement
+
+Refined the Free Transform rotation control to match the supplied reference: removed the protruding connector stem and replaced the plain dot with a small white circular control containing a dark circular rotate-arrow glyph and a thin Kittl-blue outline. The larger transparent hit area remains for reliable pointer/touch rotation, and the live degree badge remains nearby.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+
+### 2026-11-16 — Functional Kittl-inspired Shape tool
+
+- Replaced the Shape tool's placeholder notice with a compact, touch-friendly preset picker: Rectangle, Rounded rectangle, Ellipse, Triangle, Diamond, Line, Arrow, Star, and Hexagon. The selected preset remains active while drawing; the foreground color styles new geometry.
+- Dragging on the print canvas renders a live SVG preview; releasing creates a native editable `shape` layer, selects it, reveals the Layers stack on desktop, and makes it available to the shared mockup renderer. Pointer cancel/lost capture clears an unfinished shape rather than committing it. Existing layer transform handles apply to these vector layers.
+- Added a pure geometry helper for the nine presets and regression coverage for all preset paths, reversed drag bounds, fill/stroke behavior, and arrow/ellipse details. The picker includes labels and accessible pressed state, and does not depend on hover.
+- Validation after rebasing onto the concurrent main updates: all six relevant unit suites passed **47/47** (Guide 9, browser guards 1, canvas spec 1, canvas-shell 16, editor layers 15, Pen paths 5); TypeScript passed; Next.js production build and OpenNext Cloudflare Worker build passed; `git diff --check` passed. ESLint reported **0 errors / 25 warnings**.
+- Current scope: shape choices are geometric vector paths and draw with a drag gesture. Custom path editing, independent fill/stroke styling controls, and more advanced shape adjustment handles are not part of this increment.
+
+
+### 2026-11-17 — Photoshop-style Free Transform mechanics
+
+- Kept the owner-approved Kittl-inspired control visuals: thin blue selection outline, eight compact resize points, white circular rotate-arrow control without a stem, live degree badge, and larger transparent pointer targets. The owner clarified that Photoshop-like interaction is acceptable when the tool works reliably.
+- Corrected transform scaling and rotation to use each layer's actual bounds center rather than the artwork canvas center. The active selection's rotation is reflected by the bounding controls; rotated resize drags are interpreted in the selected object's local coordinates. The actual resize-handle key is read from its parent handle group, fixing the prior fallback that treated every handle as bottom-right.
+- Corner handles preserve proportions by default. Holding Shift permits independent X/Y scaling; Alt/Option scales from the selection center. Holding Shift while rotating snaps to 15-degree increments. Scaling/rotation now keep the opposite anchor or group center stable and merge updates into selected layers without clearing transforms on unselected layers. Pen node editing uses the same per-axis scaling and local pivot transforms. Modifier help is exposed on touch-size controls through accessible descriptions.
+- Added deterministic math regression coverage for proportional and free scaling, center anchoring, rotated side handles, and rotation snapping. Validation passed: six relevant suites **50/50**; TypeScript passed; Next.js production and OpenNext Cloudflare builds passed; `git diff --check` passed. ESLint returned **0 errors / 25 warnings**.
+- Scope limitation: this increment covers move, proportional/free scale, center scaling, and snapped/free rotation. Photoshop's skew, perspective, distortion, warp, numeric transform fields, persistence to serialized layer data, and synchronization of canvas transform maps into separate mockup previews are not implemented here.
+- Behavior reference: [Adobe Photoshop — Transform images, shapes, and paths](https://helpx.adobe.com/photoshop/desktop/crop-resize-transform/resize-adjust-resolution/transform-images-and-shapes-and-paths.html) and [Kittl — Canvas essentials](https://help.kittl.com/editing-and-design/basic-handling).

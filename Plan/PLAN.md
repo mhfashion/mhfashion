@@ -1265,18 +1265,11 @@ The selected product may impose a print-area boundary, maximum scale, minimum le
 
 ### 7.1 Pen tool
 
-The Pen tool creates editable vector paths, not raster marks:
+The Pen tool creates editable vector paths, not raster marks. Following the owner's direct request, its current interaction model is Kittl-inspired: click places a corner point; click-drag creates a smooth Bézier point; Shift snaps the new segment to horizontal, vertical, or 45-degree directions; and hovering over the first point highlights the close target. A path is closed by clicking that target or using **Close path**; an open path can be finished with double-click or **Finish**, and an unfinished path can be discarded with **Cancel**. [23]
 
-- click creates corner anchors;
-- click-drag creates smooth anchors with direction handles;
-- click an existing endpoint closes a path;
-- `Alt/Option` temporarily changes the active handle behavior;
-- `Esc` commits an open path;
-- path properties include fill, stroke, stroke width, cap, join, dash, opacity, and blend mode;
-- every path is stored as a path object with anchors, handles, closed/open state, fill, and stroke;
-- a first Pen object can reuse an eligible blank layer under the current layer rules.
+Finished Pen paths store both their SVG path data and editable anchor/handle/closed-state metadata. Double-clicking a selected Pen path enters node editing; dragging an anchor moves it, dragging a handle adjusts its curve, clicking a segment inserts a node while preserving cubic geometry, and Alt-click, focused-point Delete/Backspace, or **Delete point** removes a selected node subject to the minimum point count. Touch-sized invisible hit targets make node/handle dragging usable on phone screens. Alt-dragging a handle breaks the mirrored tangent; ordinary handle dragging keeps the opposite handle mirrored. Drawing and node edits use the existing canvas undo/redo snapshot history.
 
-Illustrator's Pen documentation treats paths as editable anchor-and-handle geometry, and its tool family includes Add Anchor Point, Delete Anchor Point, Anchor Point, and Curvature tools. MH Fashion should adopt that model for production vector artwork. [9]
+Current scope limits: snapping to nearby unrelated objects or nodes is not implemented; each finished Pen path currently creates its own Shape layer rather than reusing a blank layer; and the broader shape property set (dash, opacity, blend controls and advanced cap/join settings) is not part of this Pen interaction pass. Kittl's current documentation describes the reference behavior as straight/curved path creation, Shift snapping, close-path feedback, node insertion/removal, and later node/handle editing. [23] [24]
 
 ### 7.2 Path Select and anchor editing
 
@@ -1788,6 +1781,8 @@ The editor is production-ready only when all of the following are true:
 [20]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/smart-objects/create-embedded-smart-objects.html "Photoshop Create embedded Smart Objects"
 [21]: https://www.canva.com/help/finding-and-arranging-layers/ "Canva Finding and arranging layers"
 [22]: https://www.canva.com/help/brand-kit/ "Canva Set up Brand Kits"
+[23]: https://help.kittl.com/editing-and-design/pen-tool "Kittl Use Pen tool"
+[24]: https://help.kittl.com/editing-and-design "Kittl Editing and design"
 
 
 ## Appendix A — Fabric.js implementation logic
@@ -2532,4 +2527,40 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 
 - 2026-11-16: Following the owner's direct request, expanded Text Adjustments to a configurable, reorderable SVG effect stack (Shadow, Outline, Glow, Offset, Echo, Extrude, Stripe) with live shared canvas/mockup rendering, while preserving existing legacy Shadow/Outline text data. Removed the Text button and direct canvas-click insertion route from the bottom Tools bar; Edit sidebar `Add Text` remains the insertion path. Added Phone/Mobile-safe controls and regression checks. This current implementation supersedes the historical 2026-11-15 instruction that the bottom Text tool should insert at the clicked canvas position. See `Doc/DOCUMENTATION.md#work-log`.
 - 2026-11-16: Following the owner's direct Header Bar 2 request, made Product/GSM/Color/Size/Save/Buy controls consistent fully rounded 80×32px desktop and 80×44px touch boxes; retained T-Shirt and 160 GSM defaults, set Size to XL, added theme-token color swatches, hid field labels and the price text on phone layouts, and added the desktop `Price —` placeholder beside Save. Save/Buy remain disabled until their services exist. Build, 44 Node tests, lint, and focused Header Bar 2 desktop/phone CDP checks passed; broader old Editor browser assertions remain untouched because they target the unrelated Sidebar. See `Doc/DOCUMENTATION.md#work-log`.
-- 2026-11-17: Applied the owner's Header Bar 2 correction: `Price —` is immediately left of Save; all six Product/GSM/Color/Size/Save/Buy boxes have the same fully rounded green `bg-accent` fill and desktop/touch dimensions; Color is a selected-swatch/down-chevron trigger with a fully rounded green Background/Surface/Accent dropdown. Build, lint (0 errors), 44 Node tests, 15 canvas-shell contracts, and focused desktop/phone CDP checks passed. The broader legacy Editor CDP run stops after the H2 checks at its unrelated Edit sidebar selector, which was left untouched. See `Doc/DOCUMENTATION.md#work-log`.
+- 2026-11-17: Applied the owner's Header Bar 2 correction: `Price —` is immediately left of Save; all six Product/GSM/Color/Size/Save/Buy boxes have the same fully rounded green `bg-accent` fill and desktop/touch dimensions; Color is a selected-swatch/down-chevron trigger with a fully rounded green Background/Surface/Accent dropdown. On merged `main`, build passed; lint had 0 errors / 25 warnings; 55 Node tests and 16 canvas-shell contracts passed, along with focused post-merge desktop/phone CDP checks. The broader legacy Editor CDP run stops after the H2 checks at its unrelated Edit sidebar selector, which was left untouched. See `Doc/DOCUMENTATION.md#work-log`.
+
+- 2026-11-16: Following the owner's direct request, expanded the Pen tool into a Kittl-inspired Bézier workflow: click/drag nodes, Shift snapping, close/finish/cancel controls, persisted editable anchor metadata, double-click node editing, segment insertion, handle dragging, and node deletion. Updated the Pen behavior section to distinguish shipped behavior from remaining snapping/style scope. Added geometry/model/UI regression tests; production build and focused tests passed. See `Doc/DOCUMENTATION.md#work-log`.
+
+## 2026-11-17 Directive Update — Tools Bar first
+
+Pause unfinished Subpath/Node Editing, Fill/Stroke properties, and Bézier-handle work. Finalize the visible Tools Bar structure first: Move, Hand tool, Pan tool, Pen tool, Brush, Eraser tool, Shape tools, Gradient tool, Color switch tool, Undo, and Redo. Implement each tool one at a time only after this structure is accepted. Keep the Pen direction Photoshop/Kittl-inspired and do not modify the Layer Box.
+
+## 2026-11-17 Directive Update — Free Transform visual language
+
+Keep the existing Free Transform behavior, but make its visual treatment Kittl-inspired: a thin selection line, compact resize handles, and a small rotation control using MH Fashion theme colors instead of blue. Preserve all eight resize points, rotation, move behavior, and separate touch hit areas for Phone/Mobile.
+
+## 2026-11-17 Directive Update — Pen icon and selected-tool cursor
+
+Use a Photoshop/Kittl-style pen-nib icon for Pen, based on the owner's reference. When a tool is selected, keep the Canvas cursor in that tool's own form instead of always showing a Hand/grab cursor: Pen/Brush crosshair, Eraser cell, Shape/Gradient crosshair, Move move-cursor, and Hand/Pan grab-cursor.
+
+## 2026-11-17 Directive Update — Pencil/ Pen distinction and Text tool
+
+The former `Pan` label was incorrect. It means **Pencil tool**, which must remain separate from the vector **Pen tool**. Give Pencil its own Pencil icon, label, cursor, and freehand drawing behavior; keep Pen as the nib/path tool. Add a visible Text tool to the Tools Bar. Selecting Text and clicking the canvas must create a text layer and enter the direct typing workflow. Hand alone owns viewport-pan behavior.
+
+## 2026-11-17 Directive Update — Kittl blue rotating Free Transform
+
+Make Free Transform thinner and Kittl-like with a blue outline and rotation control. When the selected layer rotates, the entire Free Transform control group must rotate with it. Display the current rotation degree in a small live label near the rotation handle. Preserve all resize, move, rotate, and responsive touch behavior.
+
+## 2026-11-17 Directive Update — Tool-shaped cursors
+
+Do not show one generic plus/crosshair cursor for every tool. The Canvas cursor must visually match the selected tool: Pen nib, Pencil, Brush, Eraser, Move arrows, Hand, Text I-beam, Shape, and Gradient. Keep the same cursor state on the viewport and print canvas while preserving touch behavior on Phone/Mobile.
+
+## 2026-11-17 Directive Update — Circular rotation handle
+
+The Free Transform rotation control should be a small white circular button with a circular rotate-arrow icon, matching the supplied reference. Remove the protruding connector stem entirely. Keep the larger invisible hit area and the small live degree label.
+
+- 2026-11-16: Following the owner's direct request to make Shape tools functional like Kittl Rectangle with selectable options, replaced the Shape placeholder with nine presets and drag-to-draw SVG preview/creation (Rectangle, Rounded rectangle, Ellipse, Triangle, Diamond, Line, Arrow, Star, Hexagon). Created geometry is stored as an editable shape layer, selected on the canvas, and shared with the mockup renderer. Added regression coverage; custom path editing and independent fill/stroke controls remain future scope. See `Doc/DOCUMENTATION.md#work-log`.
+
+
+## 2026-11-17 Directive Update — Photoshop-like Free Transform mechanics
+The owner accepts Photoshop-style behavior in place of exact Kittl replication; reliable, intuitive transform behavior is the priority. Keep the previously approved thin blue selection outline, eight resize points, compact circular rotate-arrow handle, live degree badge, and mobile hit areas. Corner drags scale proportionally by default; Shift permits independent X/Y scaling; Alt/Option scales from the center; Shift snaps rotation to 15-degree increments. Resize math must follow the selected object's rotated local axes and pivot; group rotation/scaling must move the selected artwork together without altering unselected layers. Keep the Plan as the source of editor requirements; this direct owner instruction supersedes pixel-identical Kittl-only expectations.

@@ -16,12 +16,16 @@ import {
   releaseLargeArtworkTier,
 } from "@/lib/editor-artwork-tiers";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
+import { getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } from "@/lib/editor-transform";
+import type { TransformHandle } from "@/lib/editor-transform";
 import {
   addLayerMask,
   appendLayerStroke,
   createEditorArtworkLayer,
   createEditorImageLayer,
   createEditorShapeLayer,
+  createEditorShapePaths,
+  EDITOR_SHAPE_LABELS,
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
@@ -34,14 +38,24 @@ import {
   ungroupEditorLayers,
   unlinkEditorLayers,
   updateEditorLayerTextStyle,
+  updateEditorPenPath,
   updateEditorShapeBuilderMode,
   applyEditorShapeBuilderOperation,
   updateEditorLayer,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
+import {
+  draggedEditorPenAnchor,
+  editorPenPathData,
+  insertEditorPenAnchor,
+  removeEditorPenAnchor,
+  snapEditorPenPoint,
+} from "@/lib/editor-pen-path";
+import type { EditorPenAnchor, EditorPenPath } from "@/lib/editor-pen-path";
 import type {
   EditorArtworkLayer,
   EditorLayerAppearance,
+  EditorShapePreset,
   EditorTextContent,
   LayerEditTarget,
   MaskBrushMode,
@@ -68,15 +82,33 @@ const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
 const DEFAULT_TEXT_FONT_SIZE = 110;
 const TEXT_EDIT_BOX_WIDTH = 900;
 
+function editorToolCursor(tool: EditorTool) {
+  const drawings: Record<string, string> = {
+    pen: '<path d="M5 19 7 8l5-5 5 5 2 11-4 2H9zM12 3v10" fill="white" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="14" r="1.5" fill="#4c9dff"/>',
+    pencil: '<path d="m4 17 1-4L15 3l4 4L9 17zM4 17l4-1-3-3z" fill="#d4ff3f" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><path d="m14 4 4 4" stroke="#202124" stroke-width="1.7"/>',
+    brush: '<path d="m5 18 4-4 8-8 3 3-8 8-4 1z" fill="#d4ff3f" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><path d="m14 6 3 3" stroke="#202124" stroke-width="1.7"/>',
+    eraser: '<path d="m4 15 9-10 6 6-9 9H6z" fill="white" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><path d="m12 7 6 6" stroke="#4c9dff" stroke-width="1.7"/>',
+    move: '<path d="M12 2v20M2 12h20M12 2l-3 3m3-3 3 3M22 12l-3-3m3 3-3 3M12 22l-3-3m3 3 3-3M2 12l3-3m-3 3 3 3" fill="none" stroke="#202124" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+    hand: '<path d="M7 11V6a1.5 1.5 0 0 1 3 0v4-6a1.5 1.5 0 0 1 3 0v6-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v5c0 5-3 7-6 7h-2c-3 0-4-2-4-4z" fill="white" stroke="#202124" stroke-width="1.5" stroke-linejoin="round"/>',
+    text: '<path d="M5 4h14M12 4v16M8 20h8" fill="none" stroke="#202124" stroke-width="1.8" stroke-linecap="round"/>',
+    shape: '<path d="M5 5h14v14H5z" fill="white" stroke="#202124" stroke-width="1.7"/><path d="M12 2v20M2 12h20" stroke="#4c9dff" stroke-width="1.2"/>',
+    gradient: '<circle cx="12" cy="12" r="8" fill="url(%23g)" stroke="#202124" stroke-width="1.7"/><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#d4ff3f"/><stop offset="1" stop-color="#4c9dff"/></linearGradient></defs>',
+  };
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">${drawings[tool] ?? drawings.move}</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 2 2, auto`;
+}
+
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
-type PenAnchor = Point;
+type PenAnchorDrag = { pointerId: number; index: number; point: Point };
+type PenEditDrag = { pointerId: number; layerId: string; index: number; kind: "anchor" | "handle-in" | "handle-out"; start: Point; origin: EditorPenAnchor };
 type CanvasBounds = { x: number; y: number; width: number; height: number };
 type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
-type CanvasLayerResizeDrag = { pointerId: number; start: Point; origin: Record<string, number>; handle: string };
-type CanvasLayerRotateDrag = { pointerId: number; center: Point; startAngle: number; origin: Record<string, number> };
+type CanvasLayerTransformSnapshot = { scale: Point; offset: Point; rotation: number; pivot: Point };
+type CanvasLayerResizeDrag = { pointerId: number; pointerStart: Point; bounds: CanvasBounds; rotation: number; origin: Record<string, CanvasLayerTransformSnapshot>; handle: TransformHandle };
+type CanvasLayerRotateDrag = { pointerId: number; center: Point; startAngle: number; origin: Record<string, CanvasLayerTransformSnapshot> };
 type ActiveNodeDrag = { node: WorkspaceNode; pointerId: number; startX: number; startY: number; origin: Point };
 type Connector = { side: MockupSide; path: string; start: Point; end: Point };
 type ActiveArtworkStroke = {
@@ -88,6 +120,7 @@ type ActiveArtworkStroke = {
   points: Point[];
   color: string;
 };
+type ActiveShapeDrag = { pointerId: number; preset: EditorShapePreset; start: Point; current: Point; color: string };
 
 function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   const points = [
@@ -129,6 +162,7 @@ function ArtworkOverlay({
   selectedLayerIds,
   selectionBounds,
   layerScales,
+  layerOrigins,
   onMoveStart,
   onMove,
   onMoveEnd,
@@ -152,7 +186,8 @@ function ArtworkOverlay({
   editingTextLayer?: EditorArtworkLayer | null;
   selectedLayerIds: string[];
   selectionBounds: CanvasBounds | null;
-  layerScales: Record<string, number>;
+  layerScales: Record<string, Point>;
+  layerOrigins: Record<string, Point>;
   onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
   onMove: (event: React.PointerEvent<SVGSVGElement>) => void;
   onMoveEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
@@ -169,6 +204,8 @@ function ArtworkOverlay({
 }) {
   const editingText = editingTextLayer?.text ?? null;
   const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
+  const transformRotation = selectedLayerIds.length === 1 ? layerRotations[selectedLayerIds[0]] ?? 0 : 0;
+  const displayRotation = Math.round(((transformRotation % 360) + 360) % 360);
   const resizeHandles = [
     { key: "top-left", x: selectionBounds?.x ?? 0, y: selectionBounds?.y ?? 0 },
     { key: "top-center", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0) / 2, y: selectionBounds?.y ?? 0 },
@@ -189,6 +226,7 @@ function ArtworkOverlay({
           maskBrushMode={maskBrushMode}
           hiddenTextLayerId={editingTextLayerId}
           layerScales={layerScales}
+          layerOrigins={layerOrigins}
           layerRotations={layerRotations}
         />
         {editingText && (
@@ -245,13 +283,23 @@ function ArtworkOverlay({
       </g>
       {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
       {selectedLayerIds.length > 0 && selectionBounds && !editingText && (
-        <g pointerEvents="none" data-editor-transform-controls="true">
-          <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9d16" strokeDasharray="10 8" strokeWidth="4" />
+        <g pointerEvents="none" data-editor-transform-controls="true" transform={`rotate(${transformRotation} ${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height / 2})`}>
+          <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
           {resizeHandles.map((handle) => (
-            <circle key={handle.key} cx={handle.x} cy={handle.y} r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" data-resize-handle={handle.key} onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} />
+            <g key={handle.key} data-resize-handle={handle.key}>
+              <circle cx={handle.x} cy={handle.y} r="22" fill="transparent" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} aria-description="Drag to resize. Hold Shift to stretch freely; hold Alt or Option to scale from the center." />
+              <rect x={handle.x - 4} y={handle.y - 4} width="8" height="8" rx="1" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" pointerEvents="none" />
+            </g>
           ))}
-          <line x1={(selectionBounds.x + selectionBounds.width / 2)} y1={selectionBounds.y + selectionBounds.height} x2={(selectionBounds.x + selectionBounds.width / 2)} y2={selectionBounds.y + selectionBounds.height + 48} stroke="#4c9d16" strokeWidth="4" />
-          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 70} r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" />
+          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="24" fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" aria-description="Drag to rotate. Hold Shift to snap to 15-degree increments." />
+          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height + 58})`} pointerEvents="none" data-rotate-handle="true">
+            <circle r="8" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+            <path d="M2-5a5 5 0 1 0 3 7M2-5v3m0-3h3" fill="none" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" data-rotate-glyph="true" />
+          </g>
+          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2 - 22} ${selectionBounds.y + selectionBounds.height + 78})`} data-rotation-angle="true">
+            <rect width="44" height="18" rx="9" fill="#ffffff" fillOpacity="0.94" stroke="#4c9dff" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            <text x="22" y="12" textAnchor="middle" fontSize="10" fontFamily="ui-sans-serif, system-ui" fill="#202124">{displayRotation}°</text>
+          </g>
         </g>
       )}
     </svg>
@@ -272,14 +320,19 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [activeTool, setActiveTool] = useState<EditorTool>("pen");
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const [toolNotice, setToolNotice] = useState("");
+  const [selectedShape, setSelectedShape] = useState<EditorShapePreset>("rectangle");
+  const [shapeDrawing, setShapeDrawing] = useState<ActiveShapeDrag | null>(null);
   const [foregroundColor, setForegroundColor] = useState("#202124");
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
-  const [penAnchors, setPenAnchors] = useState<PenAnchor[]>([]);
+  const [penAnchors, setPenAnchors] = useState<EditorPenAnchor[]>([]);
   const [penHoverPoint, setPenHoverPoint] = useState<Point | null>(null);
+  const [penHoverCloseTarget, setPenHoverCloseTarget] = useState(false);
+  const [editingPenPathLayerId, setEditingPenPathLayerId] = useState<string | null>(null);
+  const [selectedPenAnchorIndex, setSelectedPenAnchorIndex] = useState<number | null>(null);
   const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
   const [redoStack, setRedoStack] = useState<EditorArtworkLayer[][]>([]);
   const [canvasLayerTransforms, setCanvasLayerTransforms] = useState<Record<string, Point>>({});
-  const [canvasLayerScales, setCanvasLayerScales] = useState<Record<string, number>>({});
+  const [canvasLayerScales, setCanvasLayerScales] = useState<Record<string, Point>>({});
   const [canvasLayerRotations, setCanvasLayerRotations] = useState<Record<string, number>>({});
   const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>(["layer-1"]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
@@ -305,22 +358,39 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     () => product === "Phone" ? mockups.filter((side) => side === "Front Mockup") : mockups,
     [mockups, product],
   );
+  const canvasLayerOrigins = useMemo(() => Object.fromEntries(layers.flatMap((layer) => {
+    const bounds = layerCanvasBounds(layer);
+    return bounds ? [[layer.id, { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }]] : [];
+  })), [layers]);
   const selectionBounds = useMemo(() => {
     const bounds = selectedLayerIds.flatMap((id) => {
       const layer = layers.find((item) => item.id === id);
       const base = layer ? layerCanvasBounds(layer) : null;
       if (!base) return [];
-      const scale = canvasLayerScales[id] ?? 1;
+      const scale = canvasLayerScales[id] ?? { x: 1, y: 1 };
       const offset = canvasLayerTransforms[id] ?? { x: 0, y: 0 };
+      const pivot = canvasLayerOrigins[id] ?? { x: 500, y: 600 };
+      const rotation = canvasLayerRotations[id] ?? 0;
+      const points = [
+        { x: base.x, y: base.y },
+        { x: base.x + base.width, y: base.y },
+        { x: base.x + base.width, y: base.y + base.height },
+        { x: base.x, y: base.y + base.height },
+      ].map((point) => {
+        const scaled = { x: pivot.x + (point.x - pivot.x) * scale.x + offset.x, y: pivot.y + (point.y - pivot.y) * scale.y + offset.y };
+        return selectedLayerIds.length === 1 ? scaled : rotateTransformPoint(scaled, { x: pivot.x + offset.x, y: pivot.y + offset.y }, rotation);
+      });
+      const xs = points.map((point) => point.x);
+      const ys = points.map((point) => point.y);
       return [{
-        x: 500 + offset.x + (base.x - 500) * scale,
-        y: 600 + offset.y + (base.y - 600) * scale,
-        width: base.width * scale,
-        height: base.height * scale,
+        x: Math.min(...xs),
+        y: Math.min(...ys),
+        width: Math.max(...xs) - Math.min(...xs),
+        height: Math.max(...ys) - Math.min(...ys),
       }];
     });
     return unionCanvasBounds(bounds);
-  }, [canvasLayerScales, canvasLayerTransforms, layers, selectedLayerIds]);
+  }, [canvasLayerRotations, canvasLayerScales, canvasLayerTransforms, canvasLayerOrigins, layers, selectedLayerIds]);
   function toggleLayersPanel() {
     if (!layersOpen && window.matchMedia("(max-width: 767px)").matches) setEditSidebarOpen(false);
     setLayersOpen((open) => !open);
@@ -356,6 +426,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const panGestureRef = useRef(false);
   const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
   const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
+  const activeShapeDragRef = useRef<ActiveShapeDrag | null>(null);
+  const penAnchorDragRef = useRef<PenAnchorDrag | null>(null);
+  const penEditDragRef = useRef<PenEditDrag | null>(null);
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget } | null>(null);
   const canvasArtworkDragRef = useRef<CanvasArtworkDrag | null>(null);
   const canvasLayerResizeRef = useRef<CanvasLayerResizeDrag | null>(null);
@@ -617,7 +690,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     return [...resolved];
   }
 
-  function startCanvasArtworkMove(event: React.PointerEvent<SVGRectElement>) {
+  function startCanvasArtworkMove(event: React.PointerEvent<SVGElement>) {
     if (event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
     event.stopPropagation();
@@ -627,7 +700,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     });
     if (movableIds.length === 0) return;
     const start = toCanvasPoint(event.clientX, event.clientY);
-    event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
+    (event.currentTarget.ownerSVGElement ?? event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
     const origin = Object.fromEntries(movableIds.map((id) => [id, canvasLayerTransforms[id] ?? { x: 0, y: 0 }]));
     canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin };
   }
@@ -637,10 +710,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     event.preventDefault();
     const point = toCanvasPoint(event.clientX, event.clientY);
     const delta = { x: (point.x - drag.start.x) * 1000, y: (point.y - drag.start.y) * 1200 };
-    setCanvasLayerTransforms((current) => Object.fromEntries(Object.entries(drag.origin).map(([id, origin]) => [id, {
+    setCanvasLayerTransforms((current) => ({ ...current, ...Object.fromEntries(Object.entries(drag.origin).map(([id, origin]) => [id, {
       x: Math.max(-420, Math.min(420, origin.x + delta.x)),
       y: Math.max(-520, Math.min(520, origin.y + delta.y)),
-    }])));
+    }])) }));
   }
   function endCanvasArtworkMove(event: React.PointerEvent<SVGSVGElement>) {
     if (canvasArtworkDragRef.current?.pointerId === event.pointerId) canvasArtworkDragRef.current = null;
@@ -651,14 +724,25 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     event.preventDefault();
     event.stopPropagation();
     const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
-    if (!ids.length) return;
-    const start = toCanvasPoint(event.clientX, event.clientY);
+    if (!ids.length || !selectionBounds) return;
+    const startNormalized = toCanvasPoint(event.clientX, event.clientY);
+    const pointerStart = { x: startNormalized.x * 1000, y: startNormalized.y * 1200 };
+    const rawHandle = event.currentTarget.parentElement?.getAttribute("data-resize-handle") ?? "bottom-right";
+    const handle = rawHandle as TransformHandle;
+    const rotation = selectedLayerIds.length === 1 ? canvasLayerRotations[selectedLayerIds[0]] ?? 0 : 0;
     event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
     canvasLayerResizeRef.current = {
       pointerId: event.pointerId,
-      start,
-      origin: Object.fromEntries(ids.map((id) => [id, canvasLayerScales[id] ?? 1])),
-      handle: event.currentTarget.getAttribute("data-resize-handle") ?? "bottom-right",
+      pointerStart,
+      bounds: selectionBounds,
+      rotation,
+      origin: Object.fromEntries(ids.map((id) => [id, {
+        scale: canvasLayerScales[id] ?? { x: 1, y: 1 },
+        offset: canvasLayerTransforms[id] ?? { x: 0, y: 0 },
+        rotation: canvasLayerRotations[id] ?? 0,
+        pivot: canvasLayerOrigins[id] ?? { x: 500, y: 600 },
+      }])),
+      handle,
     };
   }
 
@@ -666,14 +750,35 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasLayerResizeRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const point = toCanvasPoint(event.clientX, event.clientY);
-    const horizontalDelta = point.x - drag.start.x;
-    const verticalDelta = point.y - drag.start.y;
-    const axisDelta = drag.handle.includes("left") || drag.handle.includes("right") ? horizontalDelta : verticalDelta;
-    const direction = drag.handle.includes("left") || drag.handle.includes("top") ? -1 : 1;
-    const delta = axisDelta * direction * 1000;
-    const factor = Math.max(0.25, Math.min(3, 1 + delta / 500));
-    setCanvasLayerScales(Object.fromEntries(Object.entries(drag.origin).map(([id, scale]) => [id, Math.max(0.25, Math.min(3, scale * factor))])));
+    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const pointerCurrent = { x: normalized.x * 1000, y: normalized.y * 1200 };
+    const factors = getFreeTransformResizeFactors({
+      bounds: drag.bounds,
+      handle: drag.handle,
+      rotation: drag.rotation,
+      pointerStart: drag.pointerStart,
+      pointerCurrent,
+      centered: event.altKey,
+      freeScale: event.shiftKey,
+    });
+    const anchor = getFreeTransformResizeAnchor({ bounds: drag.bounds, handle: drag.handle, rotation: drag.rotation, centered: event.altKey });
+    const centerOfSelection = { x: drag.bounds.x + drag.bounds.width / 2, y: drag.bounds.y + drag.bounds.height / 2 };
+    const nextScales: Record<string, Point> = {};
+    const nextOffsets: Record<string, Point> = {};
+    Object.entries(drag.origin).forEach(([id, origin]) => {
+      const currentCenter = { x: origin.pivot.x + origin.offset.x, y: origin.pivot.y + origin.offset.y };
+      const localCenter = rotateTransformPoint(currentCenter, centerOfSelection, -drag.rotation);
+      const localAnchor = rotateTransformPoint(anchor, centerOfSelection, -drag.rotation);
+      const scaledCenter = {
+        x: localAnchor.x + (localCenter.x - localAnchor.x) * factors.x,
+        y: localAnchor.y + (localCenter.y - localAnchor.y) * factors.y,
+      };
+      const nextCenter = rotateTransformPoint(scaledCenter, centerOfSelection, drag.rotation);
+      nextScales[id] = { x: origin.scale.x * factors.x, y: origin.scale.y * factors.y };
+      nextOffsets[id] = { x: nextCenter.x - origin.pivot.x, y: nextCenter.y - origin.pivot.y };
+    });
+    setCanvasLayerScales((current) => ({ ...current, ...nextScales }));
+    setCanvasLayerTransforms((current) => ({ ...current, ...nextOffsets }));
   }
 
   function endCanvasLayerResize(event: React.PointerEvent<SVGSVGElement>) {
@@ -687,13 +792,19 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
     if (!ids.length) return;
     const center = { x: selectionBounds.x + selectionBounds.width / 2, y: selectionBounds.y + selectionBounds.height / 2 };
-    const start = toCanvasPoint(event.clientX, event.clientY);
+    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const start = { x: normalized.x * 1000, y: normalized.y * 1200 };
     event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
     canvasLayerRotateRef.current = {
       pointerId: event.pointerId,
       center,
-      startAngle: Math.atan2(start.y * 1200 - center.y, start.x * 1000 - center.x) * (180 / Math.PI),
-      origin: Object.fromEntries(ids.map((id) => [id, canvasLayerRotations[id] ?? 0])),
+      startAngle: Math.atan2(start.y - center.y, start.x - center.x) * (180 / Math.PI),
+      origin: Object.fromEntries(ids.map((id) => [id, {
+        scale: canvasLayerScales[id] ?? { x: 1, y: 1 },
+        offset: canvasLayerTransforms[id] ?? { x: 0, y: 0 },
+        rotation: canvasLayerRotations[id] ?? 0,
+        pivot: canvasLayerOrigins[id] ?? { x: 500, y: 600 },
+      }])),
     };
   }
 
@@ -701,27 +812,51 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasLayerRotateRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const point = toCanvasPoint(event.clientX, event.clientY);
-    const angle = Math.atan2(point.y * 1200 - drag.center.y, point.x * 1000 - drag.center.x) * (180 / Math.PI);
-    const delta = angle - drag.startAngle;
-    setCanvasLayerRotations(Object.fromEntries(Object.entries(drag.origin).map(([id, rotation]) => [id, rotation + delta])));
+    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const point = { x: normalized.x * 1000, y: normalized.y * 1200 };
+    const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x) * (180 / Math.PI);
+    let delta = angle - drag.startAngle;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    delta = snapEditorRotationDelta(delta, event.shiftKey, 15);
+    const nextRotations: Record<string, number> = {};
+    const nextOffsets: Record<string, Point> = {};
+    Object.entries(drag.origin).forEach(([id, origin]) => {
+      const currentCenter = { x: origin.pivot.x + origin.offset.x, y: origin.pivot.y + origin.offset.y };
+      const rotatedCenter = rotateTransformPoint(currentCenter, drag.center, delta);
+      nextRotations[id] = origin.rotation + delta;
+      nextOffsets[id] = { x: rotatedCenter.x - origin.pivot.x, y: rotatedCenter.y - origin.pivot.y };
+    });
+    setCanvasLayerRotations((current) => ({ ...current, ...nextRotations }));
+    setCanvasLayerTransforms((current) => ({ ...current, ...nextOffsets }));
   }
 
   function endCanvasLayerRotate(event: React.PointerEvent<SVGSVGElement>) {
     if (canvasLayerRotateRef.current?.pointerId === event.pointerId) canvasLayerRotateRef.current = null;
   }
 
+  function isNearPenStart(clientX: number, clientY: number) {
+    const first = penAnchors[0];
+    const rect = canvasNodeRef.current?.getBoundingClientRect();
+    if (!first || !rect) return false;
+    const startX = rect.left + first.x * rect.width;
+    const startY = rect.top + first.y * rect.height;
+    return Math.hypot(clientX - startX, clientY - startY) <= 16;
+  }
+
   function finishPenPath(close = false) {
     if (penAnchors.length < 2) {
       setPenAnchors([]);
       setPenHoverPoint(null);
+      setPenHoverCloseTarget(false);
       return;
     }
-    const pathData = penAnchors.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ") + (close ? " Z" : "");
+    const penPath: EditorPenPath = { anchors: penAnchors, closed: close };
+    const pathData = editorPenPathData(penPath);
     const id = claimLayerId();
     rememberLayerSnapshot();
     const shapeLayer = createEditorShapeLayer(id, `Pen path ${nextLayerIdRef.current - 1}`, {
-      paths: [{ d: pathData, fill: close ? `${foregroundColor}22` : "none", stroke: foregroundColor, strokeWidth: 18 }],
+      paths: [{ d: pathData, fill: close ? foregroundColor : "none", stroke: foregroundColor, strokeWidth: 18, penPath }],
     });
     setLayers((current) => [shapeLayer, ...current]);
     setSelectedLayerId(id);
@@ -729,8 +864,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setSelectedTarget("artwork");
     setPenAnchors([]);
     setPenHoverPoint(null);
+    setPenHoverCloseTarget(false);
     setActiveTool("move");
-    setToolNotice("Pen path added to Layers.");
+    setToolNotice("Pen path added. Double-click it to edit points.");
     revealLayersStack();
   }
 
@@ -738,14 +874,161 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     event.preventDefault();
     event.stopPropagation();
-    const point = toCanvasPoint(event.clientX, event.clientY);
-    const first = penAnchors[0];
-    if (first && penAnchors.length >= 3 && Math.hypot(point.x - first.x, point.y - first.y) < 0.035) {
+    const rawPoint = toCanvasPoint(event.clientX, event.clientY);
+    if (penAnchors.length >= 3 && isNearPenStart(event.clientX, event.clientY)) {
       finishPenPath(true);
       return;
     }
+    const previous = penAnchors[penAnchors.length - 1];
+    const point = event.shiftKey && previous ? snapEditorPenPoint(rawPoint, previous) : rawPoint;
+    const index = penAnchors.length;
     setPenAnchors((current) => [...current, point]);
     setPenHoverPoint(point);
+    setPenHoverCloseTarget(false);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    penAnchorDragRef.current = { pointerId: event.pointerId, index, point };
+  }
+
+  function startShapeDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (activeShapeDragRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    const canvasPoint = { x: point.x * 1000, y: point.y * 1200 };
+    const drag: ActiveShapeDrag = { pointerId: event.pointerId, preset: selectedShape, start: canvasPoint, current: canvasPoint, color: foregroundColor };
+    activeShapeDragRef.current = drag;
+    setShapeDrawing(drag);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setToolNotice("");
+  }
+
+  function penPathForLayer(layerId: string): EditorPenPath | null {
+    const layer = layers.find((item) => item.id === layerId);
+    return layer?.shape?.paths[0]?.penPath ?? null;
+  }
+
+  function penLayerTransform(layerId: string) {
+    const offset = canvasLayerTransforms[layerId] ?? { x: 0, y: 0 };
+    const scale = canvasLayerScales[layerId] ?? { x: 1, y: 1 };
+    const pivot = canvasLayerOrigins[layerId] ?? { x: 500, y: 600 };
+    const rotation = canvasLayerRotations[layerId] ?? 0;
+    return `translate(${offset.x} ${offset.y}) translate(${pivot.x} ${pivot.y}) rotate(${rotation}) scale(${scale.x} ${scale.y}) translate(${-pivot.x} ${-pivot.y})`;
+  }
+
+  function toPenLayerPoint(clientX: number, clientY: number, layerId: string): Point {
+    const point = toCanvasPoint(clientX, clientY);
+    const canvasX = point.x * 1000;
+    const canvasY = point.y * 1200;
+    const offset = canvasLayerTransforms[layerId] ?? { x: 0, y: 0 };
+    const scale = canvasLayerScales[layerId] ?? { x: 1, y: 1 };
+    const pivot = canvasLayerOrigins[layerId] ?? { x: 500, y: 600 };
+    const rotation = (canvasLayerRotations[layerId] ?? 0) * Math.PI / 180;
+    const rotatedX = canvasX - offset.x - pivot.x;
+    const rotatedY = canvasY - offset.y - pivot.y;
+    const translatedX = (rotatedX * Math.cos(rotation) + rotatedY * Math.sin(rotation)) / Math.max(0.001, scale.x);
+    const translatedY = (-rotatedX * Math.sin(rotation) + rotatedY * Math.cos(rotation)) / Math.max(0.001, scale.y);
+    return {
+      x: (pivot.x + translatedX) / 1000,
+      y: (pivot.y + translatedY) / 1200,
+    };
+  }
+
+  function updatePenLayer(layerId: string, penPath: EditorPenPath) {
+    setLayers((current) => updateEditorPenPath(current, layerId, penPath, editorPenPathData(penPath)));
+  }
+
+  function startPenEditDrag(
+    layerId: string,
+    index: number,
+    kind: PenEditDrag["kind"],
+    event: React.PointerEvent<SVGCircleElement>,
+  ) {
+    if (event.button !== 0 || !event.isPrimary) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const path = penPathForLayer(layerId);
+    const origin = path?.anchors[index];
+    if (!path || !origin) return;
+    if (kind === "anchor" && event.altKey) {
+      const next = removeEditorPenAnchor(path, index);
+      if (next) {
+        rememberLayerSnapshot();
+        updatePenLayer(layerId, next);
+        setSelectedPenAnchorIndex(null);
+      } else {
+        setToolNotice(path.closed ? "A closed path needs at least three points." : "An open path needs at least two points.");
+      }
+      return;
+    }
+    rememberLayerSnapshot();
+    setSelectedPenAnchorIndex(index);
+    penEditDragRef.current = {
+      pointerId: event.pointerId,
+      layerId,
+      index,
+      kind,
+      start: toPenLayerPoint(event.clientX, event.clientY, layerId),
+      origin: { ...origin },
+    };
+    event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
+  }
+
+  function movePenEditNode(event: React.PointerEvent<SVGSVGElement>) {
+    const drag = penEditDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const path = penPathForLayer(drag.layerId);
+    const currentAnchor = path?.anchors[drag.index];
+    if (!path || !currentAnchor) return;
+    const point = toPenLayerPoint(event.clientX, event.clientY, drag.layerId);
+    const delta = { x: point.x - drag.start.x, y: point.y - drag.start.y };
+    const anchors = path.anchors.map((anchor, index) => {
+      if (index !== drag.index) return anchor;
+      if (drag.kind === "anchor") {
+        return { ...drag.origin, x: drag.origin.x + delta.x, y: drag.origin.y + delta.y };
+      }
+      const handle = { x: point.x - drag.origin.x, y: point.y - drag.origin.y };
+      if (drag.kind === "handle-in") {
+        return { ...anchor, handleIn: handle, handleOut: event.altKey ? anchor.handleOut : { x: -handle.x, y: -handle.y } };
+      }
+      return { ...anchor, handleOut: handle, handleIn: event.altKey ? anchor.handleIn : { x: -handle.x, y: -handle.y } };
+    });
+    updatePenLayer(drag.layerId, { ...path, anchors });
+  }
+
+  function endPenEditDrag(event: React.PointerEvent<SVGSVGElement>) {
+    if (penEditDragRef.current?.pointerId === event.pointerId) penEditDragRef.current = null;
+  }
+
+  function addPenNodeOnPath(layerId: string, event: React.PointerEvent<SVGPathElement>) {
+    if (event.button !== 0 || !event.isPrimary) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const path = penPathForLayer(layerId);
+    if (!path) return;
+    const point = toPenLayerPoint(event.clientX, event.clientY, layerId);
+    const next = insertEditorPenAnchor(path, point);
+    if (!next) return;
+    rememberLayerSnapshot();
+    updatePenLayer(layerId, next);
+    setSelectedPenAnchorIndex(null);
+  }
+
+  function removePenNode(layerId: string, index: number) {
+    const path = penPathForLayer(layerId);
+    const next = path ? removeEditorPenAnchor(path, index) : null;
+    if (!next) {
+      setToolNotice(path?.closed ? "A closed path needs at least three points." : "An open path needs at least two points.");
+      return;
+    }
+    rememberLayerSnapshot();
+    updatePenLayer(layerId, next);
+    setSelectedPenAnchorIndex(null);
+  }
+
+  function removeSelectedPenNode() {
+    if (!editingPenPathLayerId || selectedPenAnchorIndex === null) return;
+    removePenNode(editingPenPathLayerId, selectedPenAnchorIndex);
   }
 
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -755,17 +1038,25 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       addPenAnchor(event);
       return;
     }
+    if (activeTool === "shape") {
+      startShapeDrawing(event);
+      return;
+    }
     if (["remove-bg", "shape", "gradient"].includes(activeTool)) {
       event.preventDefault();
       event.stopPropagation();
-      setToolNotice(activeTool === "shape"
-        ? "Shape Tool is ready for the upcoming vector-shape pipeline."
-        : activeTool === "gradient"
+      setToolNotice(activeTool === "gradient"
           ? "Gradient Tool is ready for the upcoming gradient-fill pipeline."
           : "Remove BG needs an uploaded image; background removal is not connected yet.");
       return;
     }
     const point = toCanvasPoint(event.clientX, event.clientY);
+    if (activeTool === "text") {
+      event.preventDefault();
+      event.stopPropagation();
+      addCanvasTextLayer(undefined, { x: point.x * 1000, y: point.y * 1200 });
+      return;
+    }
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
     if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) return;
     event.preventDefault();
@@ -801,8 +1092,32 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    const shapeDrag = activeShapeDragRef.current;
+    if (shapeDrag?.pointerId === event.pointerId) {
+      event.preventDefault();
+      const point = toCanvasPoint(event.clientX, event.clientY);
+      const updated = { ...shapeDrag, current: { x: point.x * 1000, y: point.y * 1200 } };
+      activeShapeDragRef.current = updated;
+      setShapeDrawing(updated);
+      return;
+    }
     if (activeTool === "pen") {
-      setPenHoverPoint(toCanvasPoint(event.clientX, event.clientY));
+      const rawPoint = toCanvasPoint(event.clientX, event.clientY);
+      const drag = penAnchorDragRef.current;
+      const closeTarget = !drag && penAnchors.length >= 3 && isNearPenStart(event.clientX, event.clientY);
+      const previous = penAnchors[penAnchors.length - 1];
+      const point = closeTarget ? penAnchors[0] : !drag && event.shiftKey && previous ? snapEditorPenPoint(rawPoint, previous) : rawPoint;
+      if (drag?.pointerId === event.pointerId) {
+        const rect = canvasNodeRef.current?.getBoundingClientRect();
+        const moved = rect ? Math.hypot((point.x - drag.point.x) * rect.width, (point.y - drag.point.y) * rect.height) > 3 : false;
+        if (moved) {
+          setPenAnchors((current) => current.map((anchor, index) => index === drag.index
+            ? draggedEditorPenAnchor(drag.point, point)
+            : anchor));
+        }
+      }
+      setPenHoverPoint(point);
+      setPenHoverCloseTarget(closeTarget);
       return;
     }
     const eraser = activeEraserRef.current;
@@ -825,6 +1140,30 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function endArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    const shapeDrag = activeShapeDragRef.current;
+    if (shapeDrag?.pointerId === event.pointerId) {
+      activeShapeDragRef.current = null;
+      setShapeDrawing(null);
+      if (event.type !== "pointerup") return;
+      const point = toCanvasPoint(event.clientX, event.clientY);
+      const end = { x: point.x * 1000, y: point.y * 1200 };
+      if (Math.hypot(end.x - shapeDrag.start.x, end.y - shapeDrag.start.y) < 8) return;
+      const id = claimLayerId();
+      const label = EDITOR_SHAPE_LABELS[shapeDrag.preset];
+      const shape = createEditorShapeLayer(id, `${label} ${nextLayerIdRef.current - 1}`, {
+        paths: createEditorShapePaths(shapeDrag.preset, shapeDrag.start, end, shapeDrag.color),
+      });
+      rememberLayerSnapshot();
+      setLayers((current) => [shape, ...current]);
+      setSelectedLayerId(id);
+      setSelectedLayerIds([id]);
+      setSelectedTarget("artwork");
+      setEditingTextLayerId(null);
+      setToolNotice(`${label} added to Layers.`);
+      revealLayersStack();
+      return;
+    }
+    if (penAnchorDragRef.current?.pointerId === event.pointerId) penAnchorDragRef.current = null;
     if (activeEraserRef.current?.pointerId === event.pointerId) activeEraserRef.current = null;
     if (activeArtworkStrokeRef.current?.pointerId !== event.pointerId) return;
     activeArtworkStrokeRef.current = null;
@@ -847,16 +1186,20 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function chooseTool(tool: EditorTool) {
+    if (editingPenPathLayerId) {
+      setEditingPenPathLayerId(null);
+      setSelectedPenAnchorIndex(null);
+      if (tool === "move") return;
+    }
     if (tool !== "pen" && penAnchors.length > 0) {
       setPenAnchors([]);
       setPenHoverPoint(null);
+      setPenHoverCloseTarget(false);
     }
     setActiveTool(tool);
     setToolNotice(tool === "remove-bg"
       ? "Remove BG needs an uploaded image; background removal is not connected yet."
-      : tool === "shape"
-        ? "Shape Tool is ready for the upcoming vector-shape pipeline."
-        : tool === "gradient"
+      : tool === "gradient"
           ? "Gradient Tool is ready for the upcoming gradient-fill pipeline."
           : "");
   }
@@ -1142,6 +1485,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     viewportRef.current?.scrollTo({ top: 0, left: 0 });
   }
 
+  const selectedPenLayer = layers.find((layer) => layer.id === selectedLayerId && !layer.locked && layer.shape?.paths[0]?.penPath);
+  const selectedPenPath = selectedPenLayer?.shape?.paths[0]?.penPath ?? null;
+  const editingPenLayer = layers.find((layer) => layer.id === editingPenPathLayerId && !layer.locked && layer.shape?.paths[0]?.penPath);
+  const editingPenPath = editingPenLayer?.shape?.paths[0]?.penPath ?? null;
+  const activeToolCursor = activeTool === "pen" ? "cursor-crosshair" : activeTool === "pencil" ? "cursor-crosshair" : activeTool === "brush" ? "cursor-crosshair" : activeTool === "eraser" ? "cursor-cell" : activeTool === "shape" || activeTool === "gradient" ? "cursor-crosshair" : activeTool === "text" ? "cursor-text" : activeTool === "move" ? "cursor-move" : activeTool === "hand" ? "cursor-grab" : "cursor-default";
+  const activeToolCursorStyle = editorToolCursor(activeTool);
+
   return (
     <main className="relative flex h-full min-h-0 flex-col overflow-hidden bg-bg text-text-primary">
       <div role="toolbar" aria-label="Touch view controls" className="z-40 hidden shrink-0 items-center justify-center gap-1 border-b border-border bg-bg px-2 py-1 [@media(pointer:coarse)]:flex">
@@ -1167,7 +1517,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
             if (event.button === 1) event.preventDefault();
           }}
           data-pan-mode={(touchPanEnabled || activeTool === "hand") ? "hand" : "scroll"}
-          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : "cursor-default"}`}
+          data-active-tool={activeTool}
+          style={{ cursor: isPanning ? "grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "grab" : activeToolCursorStyle }}
+          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : activeToolCursor}`}
         >
           <div
             ref={workspaceRef}
@@ -1193,8 +1545,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
               onPointerUp={endNodeDrag}
               onPointerCancel={endNodeDrag}
               onLostPointerCapture={endNodeDrag}
-              className={`relative ${menuOpen ? "z-30" : "z-10"} w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : "cursor-grab"}`}
-              style={{ transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
+              className={`relative ${menuOpen ? "z-30" : "z-10"} w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : activeToolCursor}`}
+              style={{ cursor: draggingNode === "Print canvas" ? "grabbing" : activeToolCursorStyle, transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
             >
               <div className="relative">
                 <canvas
@@ -1214,7 +1566,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   onPointerCancel={endArtworkStroke}
                   onLostPointerCapture={endArtworkStroke}
                   onDoubleClick={() => activeTool === "pen" && finishPenPath(false)}
-                  className="block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
+                  className={`block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)] ${activeTool === "shape" ? "cursor-crosshair" : ""}`}
                   style={{
                     backgroundColor: "#ffffff",
                     backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
@@ -1243,6 +1595,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   selectedLayerIds={selectedLayerIds}
                   selectionBounds={selectionBounds}
                   layerScales={canvasLayerScales}
+                  layerOrigins={canvasLayerOrigins}
                   layerRotations={canvasLayerRotations}
                   onMoveStart={startCanvasArtworkMove}
                   onMove={moveCanvasArtwork}
@@ -1257,12 +1610,94 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   onRotate={rotateCanvasLayer}
                   onRotateEnd={endCanvasLayerRotate}
                 />
+                {selectedPenLayer && selectedPenPath && activeTool === "move" && !editingPenPath && (
+                  <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-label="Selected Pen path" className="pointer-events-none absolute inset-0 z-30 h-full w-full" style={{ touchAction: "none" }} onPointerMove={moveCanvasArtwork} onPointerUp={endCanvasArtworkMove} onPointerCancel={endCanvasArtworkMove} onLostPointerCapture={endCanvasArtworkMove}>
+                    <g transform={penLayerTransform(selectedPenLayer.id)}>
+                      <path
+                        d={editorPenPathData(selectedPenPath)}
+                        fill={selectedPenPath.closed ? "#000000" : "none"}
+                        fillOpacity="0.001"
+                        stroke="#000000"
+                        strokeOpacity="0.001"
+                        strokeWidth="36"
+                        pointerEvents="painted"
+                        className="cursor-move"
+                        onPointerDown={startCanvasArtworkMove}
+                        onDoubleClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setEditingPenPathLayerId(selectedPenLayer.id);
+                          setSelectedPenAnchorIndex(null);
+                        }}
+                      />
+                    </g>
+                  </svg>
+                )}
+                {editingPenLayer && editingPenPath && (
+                  <>
+                    <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-label="Pen path point controls" className="pointer-events-none absolute inset-0 z-30 h-full w-full" style={{ touchAction: "none" }} onPointerMove={movePenEditNode} onPointerUp={endPenEditDrag} onPointerCancel={endPenEditDrag} onLostPointerCapture={endPenEditDrag}>
+                      <g transform={penLayerTransform(editingPenLayer.id)}>
+                        <path d={editorPenPathData(editingPenPath)} fill="none" stroke="#000000" strokeOpacity="0.001" strokeWidth="34" pointerEvents="stroke" onPointerDown={(event) => addPenNodeOnPath(editingPenLayer.id, event)} className="cursor-crosshair" />
+                        {editingPenPath.anchors.map((anchor, index) => {
+                          const x = anchor.x * 1000;
+                          const y = anchor.y * 1200;
+                          const selected = selectedPenAnchorIndex === index;
+                          return (
+                            <g key={`pen-anchor-${index}`}>
+                              {anchor.handleIn && <>
+                                <line x1={x} y1={y} x2={x + anchor.handleIn.x * 1000} y2={y + anchor.handleIn.y * 1200} stroke="#557c31" strokeWidth="3" />
+                                <circle cx={x + anchor.handleIn.x * 1000} cy={y + anchor.handleIn.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className="cursor-crosshair" aria-label={`Point ${index + 1} incoming curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "handle-in", event)} />
+                                <circle cx={x + anchor.handleIn.x * 1000} cy={y + anchor.handleIn.y * 1200} r="9" fill="white" stroke="#557c31" strokeWidth="4" pointerEvents="none" aria-hidden="true" />
+                              </>}
+                              {anchor.handleOut && <>
+                                <line x1={x} y1={y} x2={x + anchor.handleOut.x * 1000} y2={y + anchor.handleOut.y * 1200} stroke="#557c31" strokeWidth="3" />
+                                <circle cx={x + anchor.handleOut.x * 1000} cy={y + anchor.handleOut.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className="cursor-crosshair" aria-label={`Point ${index + 1} outgoing curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "handle-out", event)} />
+                                <circle cx={x + anchor.handleOut.x * 1000} cy={y + anchor.handleOut.y * 1200} r="9" fill="white" stroke="#557c31" strokeWidth="4" pointerEvents="none" aria-hidden="true" />
+                              </>}
+                              <circle cx={x} cy={y} r="38" fill="transparent" stroke="transparent" pointerEvents="all" className="cursor-move" role="button" tabIndex={0} aria-label={`Pen point ${index + 1}; Alt-click or press Delete to remove`} onFocus={() => setSelectedPenAnchorIndex(index)} onKeyDown={(event) => {
+                                if (event.key === "Delete" || event.key === "Backspace") {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  removePenNode(editingPenLayer.id, index);
+                                }
+                              }} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "anchor", event)} />
+                              <circle cx={x} cy={y} r={selected ? "15" : "12"} fill={selected ? "#d4ff3f" : "white"} stroke="#557c31" strokeWidth="5" pointerEvents="none" aria-hidden="true" />
+                            </g>
+                          );
+                        })}
+                      </g>
+                    </svg>
+                    <div aria-label="Pen path editing controls" className="absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-16px)] -translate-x-1/2 items-center gap-2 rounded-xl border border-border bg-bg-surface/95 px-2 py-1 text-[10px] text-text-primary shadow-lg">
+                      <span className="hidden sm:inline">Drag points/handles · click path to add · Alt-click point to remove</span>
+                      <button type="button" onClick={removeSelectedPenNode} disabled={selectedPenAnchorIndex === null} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Delete point</button>
+                      <button type="button" onClick={() => { setEditingPenPathLayerId(null); setSelectedPenAnchorIndex(null); }} className="rounded-lg bg-accent px-2 py-1 text-accent-foreground">Done</button>
+                    </div>
+                  </>
+                )}
                 {activeTool === "pen" && penAnchors.length > 0 && (
                   <svg aria-label="Pen path preview" viewBox="0 0 1000 1200" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
-                    <path d={penAnchors.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`).join(" ")} fill="none" stroke={foregroundColor} strokeWidth="10" strokeDasharray="16 10" vectorEffect="non-scaling-stroke" />
-                    {penHoverPoint && <line x1={penAnchors[penAnchors.length - 1].x * 1000} y1={penAnchors[penAnchors.length - 1].y * 1200} x2={penHoverPoint.x * 1000} y2={penHoverPoint.y * 1200} stroke={foregroundColor} strokeWidth="8" strokeDasharray="10 10" vectorEffect="non-scaling-stroke" />}
-                    {penAnchors.map((point, index) => <circle key={`${point.x}-${point.y}-${index}`} cx={point.x * 1000} cy={point.y * 1200} r={index === 0 ? 13 : 10} fill={index === 0 ? "#ffffff" : foregroundColor} stroke={foregroundColor} strokeWidth="6" vectorEffect="non-scaling-stroke" />)}
+                    <path d={editorPenPathData({ anchors: penAnchors, closed: false }, penHoverPoint)} fill="none" stroke={foregroundColor} strokeWidth="10" strokeDasharray="16 10" vectorEffect="non-scaling-stroke" />
+                    {penAnchors.map((point, index) => <g key={`${point.x}-${point.y}-${index}`}>
+                      {point.handleIn && <line x1={point.x * 1000} y1={point.y * 1200} x2={(point.x + point.handleIn.x) * 1000} y2={(point.y + point.handleIn.y) * 1200} stroke={foregroundColor} strokeWidth="5" vectorEffect="non-scaling-stroke" />}
+                      {point.handleOut && <line x1={point.x * 1000} y1={point.y * 1200} x2={(point.x + point.handleOut.x) * 1000} y2={(point.y + point.handleOut.y) * 1200} stroke={foregroundColor} strokeWidth="5" vectorEffect="non-scaling-stroke" />}
+                      <circle cx={point.x * 1000} cy={point.y * 1200} r={index === 0 ? (penHoverCloseTarget ? 16 : 13) : 10} fill={index === 0 ? (penHoverCloseTarget ? "#d4ff3f" : "#ffffff") : foregroundColor} stroke={foregroundColor} strokeWidth="6" vectorEffect="non-scaling-stroke" data-pen-close-target={index === 0 && penHoverCloseTarget ? "true" : undefined} />
+                    </g>)}
                   </svg>
+                )}
+                {shapeDrawing && (
+                  <svg aria-label="Shape preview" data-editor-shape-preview={shapeDrawing.preset} viewBox="0 0 1000 1200" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
+                    {createEditorShapePaths(shapeDrawing.preset, shapeDrawing.start, shapeDrawing.current, shapeDrawing.color).map((path, index) => <path key={index} d={path.d} fill={path.fill ?? "none"} stroke={path.stroke ?? "none"} strokeWidth={path.strokeWidth ?? 0} strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />)}
+                  </svg>
+                )}
+                {activeTool === "pen" && (
+                  <div aria-label="Pen tool actions" className="absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-16px)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-xl border border-border bg-bg-surface/95 px-2 py-1 text-[10px] text-text-primary shadow-lg">
+                    <span className="hidden sm:inline">Click: corner · drag: curve · Shift: snap · click start: close</span>
+                    {penAnchors.length > 0 && <>
+                      <button type="button" onClick={() => finishPenPath(false)} disabled={penAnchors.length < 2} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Finish</button>
+                      <button type="button" onClick={() => finishPenPath(true)} disabled={penAnchors.length < 3} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Close path</button>
+                      <button type="button" onClick={() => { setPenAnchors([]); setPenHoverPoint(null); setPenHoverCloseTarget(false); penAnchorDragRef.current = null; }} className="rounded-lg border border-border px-2 py-1">Cancel</button>
+                    </>}
+                  </div>
                 )}
                 <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
                   <button
@@ -1442,7 +1877,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         notice={toolNotice}
         foregroundColor={foregroundColor}
         backgroundColor={backgroundColor}
+        selectedShape={selectedShape}
         onSelect={chooseTool}
+        onSelectShape={setSelectedShape}
         onForegroundColorChange={setForegroundColor}
         onBackgroundColorChange={setBackgroundColor}
         onUndo={undoCanvasAction}

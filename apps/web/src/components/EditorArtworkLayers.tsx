@@ -59,6 +59,7 @@ export default function EditorArtworkLayers({
   transform = "translate(500 600) scale(1) translate(-500 -600)",
   layerOffsets,
   layerScales,
+  layerOrigins,
   layerRotations,
   selectedMaskLayerId = null,
   maskBrushMode = "hide",
@@ -67,7 +68,8 @@ export default function EditorArtworkLayers({
   layers: EditorArtworkLayer[];
   transform?: string;
   layerOffsets?: Record<string, { x: number; y: number }>;
-  layerScales?: Record<string, number>;
+  layerScales?: Record<string, { x: number; y: number }>;
+  layerOrigins?: Record<string, { x: number; y: number }>;
   layerRotations?: Record<string, number>;
   selectedMaskLayerId?: string | null;
   maskBrushMode?: MaskBrushMode;
@@ -85,10 +87,11 @@ export default function EditorArtworkLayers({
         .map((layer) => {
         const maskId = `${instanceId}-${layer.id.replace(/[^a-zA-Z0-9_-]/g, "")}-mask`;
         const offset = layerOffsets?.[layer.id];
-        const scale = layerScales?.[layer.id] ?? 1;
+        const scale = layerScales?.[layer.id] ?? { x: 1, y: 1 };
+        const origin = layerOrigins?.[layer.id] ?? { x: 500, y: 600 };
         const rotation = layerRotations?.[layer.id] ?? 0;
-        const layerTransform = offset || scale !== 1 || rotation !== 0
-          ? `translate(${offset?.x ?? 0} ${offset?.y ?? 0}) translate(500 600) rotate(${rotation}) scale(${scale}) translate(-500 -600)`
+        const layerTransform = offset || scale.x !== 1 || scale.y !== 1 || rotation !== 0
+          ? `translate(${offset?.x ?? 0} ${offset?.y ?? 0}) translate(${origin.x} ${origin.y}) rotate(${rotation}) scale(${scale.x} ${scale.y}) translate(${-origin.x} ${-origin.y})`
           : undefined;
         return (
           <g key={layer.id} transform={layerTransform} opacity={layer.opacity / 100} style={{ mixBlendMode: layer.blendMode }}>
