@@ -546,8 +546,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function startPan(event: React.PointerEvent<HTMLDivElement>) {
     if (panStartRef.current || (event.pointerType === "touch" && !event.isPrimary)) return;
     const middleButtonPan = event.button === 1;
-    const handToolPan = (activeTool === "hand" || activeTool === "pan") && event.button === 0;
-    const touchPan = (touchPanEnabled || activeTool === "hand" || activeTool === "pan") && event.pointerType === "touch" && event.isPrimary;
+    const handToolPan = activeTool === "hand" && event.button === 0;
+    const touchPan = (touchPanEnabled || activeTool === "hand") && event.pointerType === "touch" && event.isPrimary;
     if (!middleButtonPan && !handToolPan && !touchPan && (!spaceHeld || event.button !== 0)) return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
     event.preventDefault();
@@ -911,7 +911,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
-    if (activeTool === "move" || activeTool === "hand" || activeTool === "pan") return;
+    if (activeTool === "move" || activeTool === "hand") return;
     if (activeTool === "pen") {
       addPenAnchor(event);
       return;
@@ -927,6 +927,12 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       return;
     }
     const point = toCanvasPoint(event.clientX, event.clientY);
+    if (activeTool === "text") {
+      event.preventDefault();
+      event.stopPropagation();
+      addCanvasTextLayer(undefined, { x: point.x * 1000, y: point.y * 1200 });
+      return;
+    }
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
     if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) return;
     event.preventDefault();
@@ -1046,7 +1052,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function startNodeDrag(node: WorkspaceNode, event: React.PointerEvent<HTMLElement>) {
     if (activeNodeDragRef.current || event.button !== 0 || !event.isPrimary) return;
-    if (activeTool === "hand" || activeTool === "pan") return;
+    if (activeTool === "hand") return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
     if (node === "Print canvas" && event.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture(event.clientX, event.clientY) && activeTool !== "move") return;
     // A blank mockup swipe scrolls on phones; its header remains the explicit drag surface.
@@ -1329,7 +1335,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const selectedPenPath = selectedPenLayer?.shape?.paths[0]?.penPath ?? null;
   const editingPenLayer = layers.find((layer) => layer.id === editingPenPathLayerId && !layer.locked && layer.shape?.paths[0]?.penPath);
   const editingPenPath = editingPenLayer?.shape?.paths[0]?.penPath ?? null;
-  const activeToolCursor = activeTool === "pen" ? "cursor-crosshair" : activeTool === "brush" ? "cursor-crosshair" : activeTool === "eraser" ? "cursor-cell" : activeTool === "shape" || activeTool === "gradient" ? "cursor-crosshair" : activeTool === "move" ? "cursor-move" : activeTool === "hand" || activeTool === "pan" ? "cursor-grab" : "cursor-default";
+  const activeToolCursor = activeTool === "pen" ? "cursor-crosshair" : activeTool === "pencil" ? "cursor-crosshair" : activeTool === "brush" ? "cursor-crosshair" : activeTool === "eraser" ? "cursor-cell" : activeTool === "shape" || activeTool === "gradient" ? "cursor-crosshair" : activeTool === "text" ? "cursor-text" : activeTool === "move" ? "cursor-move" : activeTool === "hand" ? "cursor-grab" : "cursor-default";
 
   return (
     <main className="relative flex h-full min-h-0 flex-col overflow-hidden bg-bg text-text-primary">
@@ -1355,8 +1361,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onAuxClick={(event) => {
             if (event.button === 1) event.preventDefault();
           }}
-          data-pan-mode={(touchPanEnabled || activeTool === "hand" || activeTool === "pan") ? "hand" : "scroll"}
-          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand" || activeTool === "pan") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand" || activeTool === "pan") ? "cursor-grab" : activeToolCursor}`}
+          data-pan-mode={(touchPanEnabled || activeTool === "hand") ? "hand" : "scroll"}
+          data-active-tool={activeTool}
+          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : activeToolCursor}`}
         >
           <div
             ref={workspaceRef}

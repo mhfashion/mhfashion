@@ -2541,3 +2541,7 @@ Keep the existing Free Transform behavior, but make its visual treatment Kittl-i
 ## 2026-11-17 Directive Update — Pen icon and selected-tool cursor
 
 Use a Photoshop/Kittl-style pen-nib icon for Pen, based on the owner's reference. When a tool is selected, keep the Canvas cursor in that tool's own form instead of always showing a Hand/grab cursor: Pen/Brush crosshair, Eraser cell, Shape/Gradient crosshair, Move move-cursor, and Hand/Pan grab-cursor.
+
+## 2026-11-17 Directive Update — Pencil/ Pen distinction and Text tool
+
+The former `Pan` label was incorrect. It means **Pencil tool**, which must remain separate from the vector **Pen tool**. Give Pencil its own Pencil icon, label, cursor, and freehand drawing behavior; keep Pen as the nib/path tool. Add a visible Text tool to the Tools Bar. Selecting Text and clicking the canvas must create a text layer and enter the direct typing workflow. Hand alone owns viewport-pan behavior.

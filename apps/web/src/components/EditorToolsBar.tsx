@@ -8,15 +8,17 @@ import {
   Eraser,
   Hand,
   Move,
+  Pencil,
   PenTool,
   Redo2,
   RefreshCw,
   Square,
+  Type,
   Undo2,
 } from "lucide-react";
 import { useRef } from "react";
 
-export type EditorTool = "move" | "hand" | "pan" | "pen" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
+export type EditorTool = "move" | "hand" | "pencil" | "pen" | "text" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
 
 type Props = {
   activeTool: EditorTool;
@@ -39,8 +41,9 @@ type Props = {
 const tools = [
   { id: "move", label: "Move", Icon: Move },
   { id: "hand", label: "Hand tool", Icon: Hand },
-  { id: "pan", label: "Pan tool", Icon: Hand },
+  { id: "pencil", label: "Pencil tool", Icon: Pencil },
   { id: "pen", label: "Pen tool", Icon: PenTool },
+  { id: "text", label: "Text tool", Icon: Type },
   { id: "brush", label: "Brush", Icon: Brush },
   { id: "eraser", label: "Eraser tool", Icon: Eraser },
   { id: "shape", label: "Shape tools", Icon: Square },
@@ -82,7 +85,7 @@ export default function EditorToolsBar({
                 type="button"
                 aria-label={label}
                 aria-pressed={activeTool === id}
-                title={id === "hand" ? "Pan canvas — Hand tool" : label}
+                title={id === "hand" ? "Hand tool" : label}
                 onClick={() => onSelect(id)}
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
               >

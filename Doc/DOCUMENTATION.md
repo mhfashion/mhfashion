@@ -824,3 +824,9 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 The Pen tool now uses the Lucide PenTool nib silhouette to match the supplied pen-nib reference more closely. The Canvas cursor no longer falls back to the large hand/grab appearance when another tool is selected: Pen and Brush use crosshair, Eraser uses cell, Shape and Gradient use crosshair, Move uses move, and Hand/Pan use grab only when those tools are actually active. The print-canvas wrapper now follows the same selected-tool cursor state.
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-17 — Separate Pencil and Pen tools; add Text tool
+
+Corrected the tool naming based on the owner's clarification: the former `Pan` toolbar item is now a distinct `Pencil tool`, with its own Pencil icon and drawing/cursor state. `Pen tool` remains the nib-based vector path tool. The Hand tool is the only toolbar tool that uses the Hand/viewport-pan behavior. A new `Text tool` is now visible in the Tools Bar; clicking the canvas creates a Text layer at that point and opens the existing direct canvas typing workflow. Selected-tool cursor state now covers Pencil, Pen, Text, Brush, Eraser, Shape, Gradient, Move, and Hand.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
