@@ -830,3 +830,9 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 Corrected the tool naming based on the owner's clarification: the former `Pan` toolbar item is now a distinct `Pencil tool`, with its own Pencil icon and drawing/cursor state. `Pen tool` remains the nib-based vector path tool. The Hand tool is the only toolbar tool that uses the Hand/viewport-pan behavior. A new `Text tool` is now visible in the Tools Bar; clicking the canvas creates a Text layer at that point and opens the existing direct canvas typing workflow. Selected-tool cursor state now covers Pencil, Pen, Text, Brush, Eraser, Shape, Gradient, Move, and Hand.
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-17 — Kittl blue rotating Free Transform and live angle label
+
+Free Transform now uses a thinner Kittl-style blue outline (`#4c9dff`) and compact blue/white resize and rotation controls. The complete transform-control group rotates around the selection center together with the selected layer, including the resize handles, rotation stem, rotation dot, and angle badge. While rotating, a small live degree label is displayed near the rotation control; the displayed value is normalized to 0–359 degrees. Existing move, resize, rotation, and mobile touch hit areas remain intact.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.

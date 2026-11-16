@@ -179,6 +179,8 @@ function ArtworkOverlay({
 }) {
   const editingText = editingTextLayer?.text ?? null;
   const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
+  const transformRotation = selectedLayerIds.length === 1 ? layerRotations[selectedLayerIds[0]] ?? 0 : 0;
+  const displayRotation = Math.round(((transformRotation % 360) + 360) % 360);
   const resizeHandles = [
     { key: "top-left", x: selectionBounds?.x ?? 0, y: selectionBounds?.y ?? 0 },
     { key: "top-center", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0) / 2, y: selectionBounds?.y ?? 0 },
@@ -255,17 +257,21 @@ function ArtworkOverlay({
       </g>
       {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
       {selectedLayerIds.length > 0 && selectionBounds && !editingText && (
-        <g pointerEvents="none" data-editor-transform-controls="true">
-          <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#d4ff3f" strokeWidth="2" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
+        <g pointerEvents="none" data-editor-transform-controls="true" transform={`rotate(${transformRotation} ${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height / 2})`}>
+          <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
           {resizeHandles.map((handle) => (
             <g key={handle.key} data-resize-handle={handle.key}>
               <circle cx={handle.x} cy={handle.y} r="22" fill="transparent" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} />
-              <rect x={handle.x - 5} y={handle.y - 5} width="10" height="10" rx="1.5" fill="#202124" stroke="#d4ff3f" strokeWidth="2" vectorEffect="non-scaling-stroke" pointerEvents="none" />
+              <rect x={handle.x - 4} y={handle.y - 4} width="8" height="8" rx="1" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" pointerEvents="none" />
             </g>
           ))}
-          <line x1={(selectionBounds.x + selectionBounds.width / 2)} y1={selectionBounds.y + selectionBounds.height} x2={selectionBounds.x + selectionBounds.width / 2} y2={selectionBounds.y + selectionBounds.height + 40} stroke="#d4ff3f" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          <line x1={(selectionBounds.x + selectionBounds.width / 2)} y1={selectionBounds.y + selectionBounds.height} x2={selectionBounds.x + selectionBounds.width / 2} y2={selectionBounds.y + selectionBounds.height + 40} stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
           <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="24" fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" />
-          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="6" fill="#202124" stroke="#d4ff3f" strokeWidth="2" vectorEffect="non-scaling-stroke" pointerEvents="none" data-rotate-handle="true" />
+          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="5" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" pointerEvents="none" data-rotate-handle="true" />
+          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2 - 22} ${selectionBounds.y + selectionBounds.height + 78})`} data-rotation-angle="true">
+            <rect width="44" height="18" rx="9" fill="#ffffff" fillOpacity="0.94" stroke="#4c9dff" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            <text x="22" y="12" textAnchor="middle" fontSize="10" fontFamily="ui-sans-serif, system-ui" fill="#202124">{displayRotation}°</text>
+          </g>
         </g>
       )}
     </svg>

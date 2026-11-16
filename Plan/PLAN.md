@@ -2545,3 +2545,7 @@ Use a Photoshop/Kittl-style pen-nib icon for Pen, based on the owner's reference
 ## 2026-11-17 Directive Update — Pencil/ Pen distinction and Text tool
 
 The former `Pan` label was incorrect. It means **Pencil tool**, which must remain separate from the vector **Pen tool**. Give Pencil its own Pencil icon, label, cursor, and freehand drawing behavior; keep Pen as the nib/path tool. Add a visible Text tool to the Tools Bar. Selecting Text and clicking the canvas must create a text layer and enter the direct typing workflow. Hand alone owns viewport-pan behavior.
+
+## 2026-11-17 Directive Update — Kittl blue rotating Free Transform
+
+Make Free Transform thinner and Kittl-like with a blue outline and rotation control. When the selected layer rotates, the entire Free Transform control group must rotate with it. Display the current rotation degree in a small live label near the rotation handle. Preserve all resize, move, rotate, and responsive touch behavior.
