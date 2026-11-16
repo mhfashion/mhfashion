@@ -281,9 +281,11 @@ function ArtworkOverlay({
               <rect x={handle.x - 4} y={handle.y - 4} width="8" height="8" rx="1" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" pointerEvents="none" />
             </g>
           ))}
-          <line x1={(selectionBounds.x + selectionBounds.width / 2)} y1={selectionBounds.y + selectionBounds.height} x2={selectionBounds.x + selectionBounds.width / 2} y2={selectionBounds.y + selectionBounds.height + 40} stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
           <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="24" fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" />
-          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="5" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" pointerEvents="none" data-rotate-handle="true" />
+          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height + 58})`} pointerEvents="none" data-rotate-handle="true">
+            <circle r="8" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+            <path d="M2-5a5 5 0 1 0 3 7M2-5v3m0-3h3" fill="none" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" data-rotate-glyph="true" />
+          </g>
           <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2 - 22} ${selectionBounds.y + selectionBounds.height + 78})`} data-rotation-angle="true">
             <rect width="44" height="18" rx="9" fill="#ffffff" fillOpacity="0.94" stroke="#4c9dff" strokeWidth="1" vectorEffect="non-scaling-stroke" />
             <text x="22" y="12" textAnchor="middle" fontSize="10" fontFamily="ui-sans-serif, system-ui" fill="#202124">{displayRotation}°</text>

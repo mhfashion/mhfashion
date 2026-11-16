@@ -2553,3 +2553,7 @@ Make Free Transform thinner and Kittl-like with a blue outline and rotation cont
 ## 2026-11-17 Directive Update — Tool-shaped cursors
 
 Do not show one generic plus/crosshair cursor for every tool. The Canvas cursor must visually match the selected tool: Pen nib, Pencil, Brush, Eraser, Move arrows, Hand, Text I-beam, Shape, and Gradient. Keep the same cursor state on the viewport and print canvas while preserving touch behavior on Phone/Mobile.
+
+## 2026-11-17 Directive Update — Circular rotation handle
+
+The Free Transform rotation control should be a small white circular button with a circular rotate-arrow icon, matching the supplied reference. Remove the protruding connector stem entirely. Keep the larger invisible hit area and the small live degree label.

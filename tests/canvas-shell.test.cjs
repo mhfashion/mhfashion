@@ -333,6 +333,8 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(source, /transform=\{`rotate\(\$\{transformRotation\}/);
   assert.match(source, /stroke="#4c9dff" strokeWidth="1\.25" vectorEffect="non-scaling-stroke" data-transform-outline/);
   assert.match(source, /data-rotate-handle="true"/);
+  assert.match(source, /data-rotate-glyph="true"/);
+  assert.doesNotMatch(source, /<line x1=\{\(selectionBounds\.x \+ selectionBounds\.width \/ 2\)\}/);
   assert.match(source, /data-rotation-angle="true"/);
   assert.match(source, /\{displayRotation\}°/);
   assert.match(source, /r="22" fill="transparent" pointerEvents="auto"/);

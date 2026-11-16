@@ -842,3 +842,9 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 Replaced the generic plus/crosshair cursor treatment with custom SVG data cursors tied to the selected tool. Pen now shows a pen nib, Pencil shows a pencil, Brush shows a brush, Eraser shows an eraser, Move shows four-way arrows, Hand shows an open hand, Text shows an I-beam, Shape shows a shape/crosshair, and Gradient shows a gradient swatch. The cursor is applied to both the main editor viewport and the print-canvas surface; pointer/touch interactions remain unchanged and mobile falls back safely to touch behavior.
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-17 — Circular rotate-arrow handle refinement
+
+Refined the Free Transform rotation control to match the supplied reference: removed the protruding connector stem and replaced the plain dot with a small white circular control containing a dark circular rotate-arrow glyph and a thin Kittl-blue outline. The larger transparent hit area remains for reliable pointer/touch rotation, and the live degree badge remains nearby.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
