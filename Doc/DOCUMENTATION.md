@@ -25,6 +25,13 @@ This log records completed website-related changes in the connected repository. 
 - Validation on merged `main`: production build passed; lint completed with 0 errors / 25 warnings; all repository Node tests passed **55/55** and canvas-shell passed **16/16**. Focused post-merge CDP verification passed at 1280×900 desktop and 390×844 phone sizes for green box fills, Price-before-Save, rounded menu geometry, Color selection by touch, and mobile hiding of labels/price.
 - Scope note: the broader `tests/editor-touch.cjs` run completed its Header Bar 2 checks, then stopped at the existing Edit sidebar selector on line 330 (`aside[aria-label="Edit sidebar"]`); that unrelated Sidebar test was left untouched.
 
+### 2026-11-17 — Photoshop-like Pen cursor and path continuity
+
+- Kept the existing vector Pen workflow (corner anchors, dragged Bézier points, Shift snapping, close/finish/cancel, and editable points/handles) and applied the owner's Photoshop-like continuity correction. The same Pen-nib cursor remains on the viewport and print canvas while Pen is selected, throughout drawing and after committing a path. The cursor hotspot is aligned to the nib point (`12 14`) with crosshair fallback; existing Move-based node editing remains unchanged.
+- Finish/Close no longer switches the active tool to Move. Pen stays selected and ready to start another path. Other tools and their cursor behavior are unchanged; no unrequested Pen modes were added.
+- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Validation: Next.js production build passed; all repository Node tests passed **55/55**, including canvas-shell **16/16**; lint completed with **0 errors / 25 warnings**; and `git diff --check` passed. Focused production-mode Chromium verified the same cursor before the first anchor, after each anchor, and after both Finish and Close path; Pen remained selected and a new path could start immediately after either completion.
+
 ### 2026-11-16 — Owner-directed Kittl-inspired Pen curves and node editing
 
 - Replaced the straight-anchor-only Pen interaction with click-to-place corners, click-drag smooth Bézier handles, Shift snapping to horizontal/vertical/45-degree segments, a highlighted close target, and touch-visible Finish/Close/Cancel actions. Closed paths use the active foreground as fill; open paths remain stroke-only.

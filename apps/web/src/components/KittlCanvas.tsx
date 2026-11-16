@@ -95,7 +95,9 @@ function editorToolCursor(tool: EditorTool) {
     gradient: '<circle cx="12" cy="12" r="8" fill="url(%23g)" stroke="#202124" stroke-width="1.7"/><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#d4ff3f"/><stop offset="1" stop-color="#4c9dff"/></linearGradient></defs>',
   };
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">${drawings[tool] ?? drawings.move}</svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 2 2, auto`;
+  const hotspot = tool === "pen" ? "12 14" : "2 2";
+  const fallbackCursor = tool === "pen" ? "crosshair" : "auto";
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspot}, ${fallbackCursor}`;
 }
 
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
@@ -865,8 +867,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setPenAnchors([]);
     setPenHoverPoint(null);
     setPenHoverCloseTarget(false);
-    setActiveTool("move");
-    setToolNotice("Pen path added. Double-click it to edit points.");
+    setToolNotice("Pen path added. Pen remains active; switch to Move and double-click the path to edit points.");
     revealLayersStack();
   }
 
@@ -1635,9 +1636,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                 )}
                 {editingPenLayer && editingPenPath && (
                   <>
-                    <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-label="Pen path point controls" className="pointer-events-none absolute inset-0 z-30 h-full w-full" style={{ touchAction: "none" }} onPointerMove={movePenEditNode} onPointerUp={endPenEditDrag} onPointerCancel={endPenEditDrag} onLostPointerCapture={endPenEditDrag}>
+                    <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-label="Pen path point controls" className="pointer-events-none absolute inset-0 z-30 h-full w-full" style={{ touchAction: "none", cursor: activeTool === "pen" ? activeToolCursorStyle : undefined }} onPointerMove={movePenEditNode} onPointerUp={endPenEditDrag} onPointerCancel={endPenEditDrag} onLostPointerCapture={endPenEditDrag}>
                       <g transform={penLayerTransform(editingPenLayer.id)}>
-                        <path d={editorPenPathData(editingPenPath)} fill="none" stroke="#000000" strokeOpacity="0.001" strokeWidth="34" pointerEvents="stroke" onPointerDown={(event) => addPenNodeOnPath(editingPenLayer.id, event)} className="cursor-crosshair" />
+                        <path d={editorPenPathData(editingPenPath)} fill="none" stroke="#000000" strokeOpacity="0.001" strokeWidth="34" pointerEvents="stroke" onPointerDown={(event) => addPenNodeOnPath(editingPenLayer.id, event)} className={activeTool === "pen" ? "" : "cursor-crosshair"} />
                         {editingPenPath.anchors.map((anchor, index) => {
                           const x = anchor.x * 1000;
                           const y = anchor.y * 1200;
@@ -1646,15 +1647,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                             <g key={`pen-anchor-${index}`}>
                               {anchor.handleIn && <>
                                 <line x1={x} y1={y} x2={x + anchor.handleIn.x * 1000} y2={y + anchor.handleIn.y * 1200} stroke="#557c31" strokeWidth="3" />
-                                <circle cx={x + anchor.handleIn.x * 1000} cy={y + anchor.handleIn.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className="cursor-crosshair" aria-label={`Point ${index + 1} incoming curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "handle-in", event)} />
+                                <circle cx={x + anchor.handleIn.x * 1000} cy={y + anchor.handleIn.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className={activeTool === "pen" ? "" : "cursor-crosshair"} aria-label={`Point ${index + 1} incoming curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "handle-in", event)} />
                                 <circle cx={x + anchor.handleIn.x * 1000} cy={y + anchor.handleIn.y * 1200} r="9" fill="white" stroke="#557c31" strokeWidth="4" pointerEvents="none" aria-hidden="true" />
                               </>}
                               {anchor.handleOut && <>
                                 <line x1={x} y1={y} x2={x + anchor.handleOut.x * 1000} y2={y + anchor.handleOut.y * 1200} stroke="#557c31" strokeWidth="3" />
-                                <circle cx={x + anchor.handleOut.x * 1000} cy={y + anchor.handleOut.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className="cursor-crosshair" aria-label={`Point ${index + 1} outgoing curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "handle-out", event)} />
+                                <circle cx={x + anchor.handleOut.x * 1000} cy={y + anchor.handleOut.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className={activeTool === "pen" ? "" : "cursor-crosshair"} aria-label={`Point ${index + 1} outgoing curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "handle-out", event)} />
                                 <circle cx={x + anchor.handleOut.x * 1000} cy={y + anchor.handleOut.y * 1200} r="9" fill="white" stroke="#557c31" strokeWidth="4" pointerEvents="none" aria-hidden="true" />
                               </>}
-                              <circle cx={x} cy={y} r="38" fill="transparent" stroke="transparent" pointerEvents="all" className="cursor-move" role="button" tabIndex={0} aria-label={`Pen point ${index + 1}; Alt-click or press Delete to remove`} onFocus={() => setSelectedPenAnchorIndex(index)} onKeyDown={(event) => {
+                              <circle cx={x} cy={y} r="38" fill="transparent" stroke="transparent" pointerEvents="all" className={activeTool === "pen" ? "" : "cursor-move"} role="button" tabIndex={0} aria-label={`Pen point ${index + 1}; Alt-click or press Delete to remove`} onFocus={() => setSelectedPenAnchorIndex(index)} onKeyDown={(event) => {
                                 if (event.key === "Delete" || event.key === "Backspace") {
                                   event.preventDefault();
                                   event.stopPropagation();

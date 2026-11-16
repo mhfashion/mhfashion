@@ -148,6 +148,13 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /pen: '<path/);
   assert.match(source, /pencil: '<path/);
   assert.match(source, /activeToolCursorStyle/);
+  const finishPenPathSource = source.slice(source.indexOf("function finishPenPath"), source.indexOf("function addPenAnchor"));
+  assert.doesNotMatch(finishPenPathSource, /setActiveTool\("move"\)/, "Finishing a path keeps the Pen tool active");
+  assert.match(source, /const hotspot = tool === "pen" \? "12 14" : "2 2"/);
+  assert.match(source, /const fallbackCursor = tool === "pen" \? "crosshair" : "auto"/);
+  assert.match(source, /style=\{\{ touchAction: "none", cursor: activeTool === "pen" \? activeToolCursorStyle : undefined \}\}/);
+  assert.match(source, /className=\{activeTool === "pen" \? "" : "cursor-crosshair"\}/);
+  assert.match(source, /className=\{activeTool === "pen" \? "" : "cursor-move"\}/);
   assert.match(source, /draggedEditorPenAnchor/);
   assert.match(source, /snapEditorPenPoint/);
   assert.match(source, /isNearPenStart/);
