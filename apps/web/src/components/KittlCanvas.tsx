@@ -256,12 +256,16 @@ function ArtworkOverlay({
       {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
       {selectedLayerIds.length > 0 && selectionBounds && !editingText && (
         <g pointerEvents="none" data-editor-transform-controls="true">
-          <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9d16" strokeDasharray="10 8" strokeWidth="4" />
+          <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#d4ff3f" strokeWidth="2" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
           {resizeHandles.map((handle) => (
-            <circle key={handle.key} cx={handle.x} cy={handle.y} r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" data-resize-handle={handle.key} onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} />
+            <g key={handle.key} data-resize-handle={handle.key}>
+              <circle cx={handle.x} cy={handle.y} r="22" fill="transparent" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} />
+              <rect x={handle.x - 5} y={handle.y - 5} width="10" height="10" rx="1.5" fill="#202124" stroke="#d4ff3f" strokeWidth="2" vectorEffect="non-scaling-stroke" pointerEvents="none" />
+            </g>
           ))}
-          <line x1={(selectionBounds.x + selectionBounds.width / 2)} y1={selectionBounds.y + selectionBounds.height} x2={(selectionBounds.x + selectionBounds.width / 2)} y2={selectionBounds.y + selectionBounds.height + 48} stroke="#4c9d16" strokeWidth="4" />
-          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 70} r="18" fill="#4c9d16" stroke="white" strokeWidth="5" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" />
+          <line x1={(selectionBounds.x + selectionBounds.width / 2)} y1={selectionBounds.y + selectionBounds.height} x2={selectionBounds.x + selectionBounds.width / 2} y2={selectionBounds.y + selectionBounds.height + 40} stroke="#d4ff3f" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="24" fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" />
+          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="6" fill="#202124" stroke="#d4ff3f" strokeWidth="2" vectorEffect="non-scaling-stroke" pointerEvents="none" data-rotate-handle="true" />
         </g>
       )}
     </svg>

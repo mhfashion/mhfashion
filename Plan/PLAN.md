@@ -2533,3 +2533,7 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 ## 2026-11-17 Directive Update — Tools Bar first
 
 Pause unfinished Subpath/Node Editing, Fill/Stroke properties, and Bézier-handle work. Finalize the visible Tools Bar structure first: Move, Hand tool, Pan tool, Pen tool, Brush, Eraser tool, Shape tools, Gradient tool, Color switch tool, Undo, and Redo. Implement each tool one at a time only after this structure is accepted. Keep the Pen direction Photoshop/Kittl-inspired and do not modify the Layer Box.
+
+## 2026-11-17 Directive Update — Free Transform visual language
+
+Keep the existing Free Transform behavior, but make its visual treatment Kittl-inspired: a thin selection line, compact resize handles, and a small rotation control using MH Fashion theme colors instead of blue. Preserve all eight resize points, rotation, move behavior, and separate touch hit areas for Phone/Mobile.

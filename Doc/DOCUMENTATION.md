@@ -812,3 +812,9 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 ### 2026-11-17 — Tools Bar structure reset before tool-by-tool implementation
 
 The unfinished Subpath/Node Editing, Fill/Stroke property panel, and Bézier-handle work was paused before commit. The visible Tools Bar order is now Move, Hand tool, Pan tool, Pen tool, Brush, Eraser tool, Shape tools, Gradient tool, Color switch tool, Undo, and Redo. Individual tool behavior will be implemented one at a time after the structure is accepted. The Layer Box remains unchanged, and the existing Photoshop/Kittl-inspired Pen foundation is retained.
+
+### 2026-11-17 — Kittl-style Free Transform visual pass
+
+The existing Free Transform behavior was kept intact: all eight resize handles, move behavior, and rotation remain functional. Its appearance now uses the MH Fashion theme accent instead of Kittl blue: a thin 2px accent outline, compact square resize controls, a thin rotation stem, and a small rotation dot. Each visible control has a separate transparent touch hit area so Phone/Mobile editing remains finger-friendly without making the visual controls oversized.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.

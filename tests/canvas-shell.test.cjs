@@ -320,6 +320,9 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(source, /selectionBounds=\{selectionBounds\}/);
   assert.match(source, /x=\{selectionBounds\.x\}/);
   assert.match(source, /aria-label="Rotate selected layer"/);
+  assert.match(source, /stroke="#d4ff3f" strokeWidth="2" vectorEffect="non-scaling-stroke" data-transform-outline/);
+  assert.match(source, /data-rotate-handle="true"/);
+  assert.match(source, /r="22" fill="transparent" pointerEvents="auto"/);
   assert.match(source, /function startCanvasLayerRotate/);
   assert.match(source, /layerRotations/);
   assert.match(artworkLayers, /<mask[\s\S]*?maskUnits="userSpaceOnUse"/);
