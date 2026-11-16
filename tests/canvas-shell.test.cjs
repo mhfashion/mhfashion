@@ -143,6 +143,10 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /createEditorShapeLayer\(id, `Pen path/);
   assert.match(source, /const activeToolCursor = activeTool === "pen" \? "cursor-crosshair"/);
   assert.match(source, /activeToolCursor\}`/);
+  assert.match(source, /function editorToolCursor\(tool: EditorTool\)/);
+  assert.match(source, /pen: '<path/);
+  assert.match(source, /pencil: '<path/);
+  assert.match(source, /activeToolCursorStyle/);
   assert.match(source, /draggedEditorPenAnchor/);
   assert.match(source, /snapEditorPenPoint/);
   assert.match(source, /isNearPenStart/);

@@ -2549,3 +2549,7 @@ The former `Pan` label was incorrect. It means **Pencil tool**, which must remai
 ## 2026-11-17 Directive Update — Kittl blue rotating Free Transform
 
 Make Free Transform thinner and Kittl-like with a blue outline and rotation control. When the selected layer rotates, the entire Free Transform control group must rotate with it. Display the current rotation degree in a small live label near the rotation handle. Preserve all resize, move, rotate, and responsive touch behavior.
+
+## 2026-11-17 Directive Update — Tool-shaped cursors
+
+Do not show one generic plus/crosshair cursor for every tool. The Canvas cursor must visually match the selected tool: Pen nib, Pencil, Brush, Eraser, Move arrows, Hand, Text I-beam, Shape, and Gradient. Keep the same cursor state on the viewport and print canvas while preserving touch behavior on Phone/Mobile.

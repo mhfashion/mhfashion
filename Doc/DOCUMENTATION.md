@@ -836,3 +836,9 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 Free Transform now uses a thinner Kittl-style blue outline (`#4c9dff`) and compact blue/white resize and rotation controls. The complete transform-control group rotates around the selection center together with the selected layer, including the resize handles, rotation stem, rotation dot, and angle badge. While rotating, a small live degree label is displayed near the rotation control; the displayed value is normalized to 0–359 degrees. Existing move, resize, rotation, and mobile touch hit areas remain intact.
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-17 — Tool-shaped Canvas cursors
+
+Replaced the generic plus/crosshair cursor treatment with custom SVG data cursors tied to the selected tool. Pen now shows a pen nib, Pencil shows a pencil, Brush shows a brush, Eraser shows an eraser, Move shows four-way arrows, Hand shows an open hand, Text shows an I-beam, Shape shows a shape/crosshair, and Gradient shows a gradient swatch. The cursor is applied to both the main editor viewport and the print-canvas surface; pointer/touch interactions remain unchanged and mobile falls back safely to touch behavior.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.

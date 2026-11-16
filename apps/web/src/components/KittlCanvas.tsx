@@ -77,6 +77,22 @@ const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
 const DEFAULT_TEXT_FONT_SIZE = 110;
 const TEXT_EDIT_BOX_WIDTH = 900;
 
+function editorToolCursor(tool: EditorTool) {
+  const drawings: Record<string, string> = {
+    pen: '<path d="M5 19 7 8l5-5 5 5 2 11-4 2H9zM12 3v10" fill="white" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="14" r="1.5" fill="#4c9dff"/>',
+    pencil: '<path d="m4 17 1-4L15 3l4 4L9 17zM4 17l4-1-3-3z" fill="#d4ff3f" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><path d="m14 4 4 4" stroke="#202124" stroke-width="1.7"/>',
+    brush: '<path d="m5 18 4-4 8-8 3 3-8 8-4 1z" fill="#d4ff3f" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><path d="m14 6 3 3" stroke="#202124" stroke-width="1.7"/>',
+    eraser: '<path d="m4 15 9-10 6 6-9 9H6z" fill="white" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><path d="m12 7 6 6" stroke="#4c9dff" stroke-width="1.7"/>',
+    move: '<path d="M12 2v20M2 12h20M12 2l-3 3m3-3 3 3M22 12l-3-3m3 3-3 3M12 22l-3-3m3 3 3-3M2 12l3-3m-3 3 3 3" fill="none" stroke="#202124" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+    hand: '<path d="M7 11V6a1.5 1.5 0 0 1 3 0v4-6a1.5 1.5 0 0 1 3 0v6-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v5c0 5-3 7-6 7h-2c-3 0-4-2-4-4z" fill="white" stroke="#202124" stroke-width="1.5" stroke-linejoin="round"/>',
+    text: '<path d="M5 4h14M12 4v16M8 20h8" fill="none" stroke="#202124" stroke-width="1.8" stroke-linecap="round"/>',
+    shape: '<path d="M5 5h14v14H5z" fill="white" stroke="#202124" stroke-width="1.7"/><path d="M12 2v20M2 12h20" stroke="#4c9dff" stroke-width="1.2"/>',
+    gradient: '<circle cx="12" cy="12" r="8" fill="url(%23g)" stroke="#202124" stroke-width="1.7"/><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#d4ff3f"/><stop offset="1" stop-color="#4c9dff"/></linearGradient></defs>',
+  };
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">${drawings[tool] ?? drawings.move}</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 2 2, auto`;
+}
+
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
@@ -1342,6 +1358,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const editingPenLayer = layers.find((layer) => layer.id === editingPenPathLayerId && !layer.locked && layer.shape?.paths[0]?.penPath);
   const editingPenPath = editingPenLayer?.shape?.paths[0]?.penPath ?? null;
   const activeToolCursor = activeTool === "pen" ? "cursor-crosshair" : activeTool === "pencil" ? "cursor-crosshair" : activeTool === "brush" ? "cursor-crosshair" : activeTool === "eraser" ? "cursor-cell" : activeTool === "shape" || activeTool === "gradient" ? "cursor-crosshair" : activeTool === "text" ? "cursor-text" : activeTool === "move" ? "cursor-move" : activeTool === "hand" ? "cursor-grab" : "cursor-default";
+  const activeToolCursorStyle = editorToolCursor(activeTool);
 
   return (
     <main className="relative flex h-full min-h-0 flex-col overflow-hidden bg-bg text-text-primary">
@@ -1369,6 +1386,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           }}
           data-pan-mode={(touchPanEnabled || activeTool === "hand") ? "hand" : "scroll"}
           data-active-tool={activeTool}
+          style={{ cursor: isPanning ? "grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "grab" : activeToolCursorStyle }}
           className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : activeToolCursor}`}
         >
           <div
@@ -1396,7 +1414,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
               onPointerCancel={endNodeDrag}
               onLostPointerCapture={endNodeDrag}
               className={`relative ${menuOpen ? "z-30" : "z-10"} w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : activeToolCursor}`}
-              style={{ transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
+              style={{ cursor: draggingNode === "Print canvas" ? "grabbing" : activeToolCursorStyle, transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
             >
               <div className="relative">
                 <canvas
