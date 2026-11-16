@@ -2557,3 +2557,5 @@ Do not show one generic plus/crosshair cursor for every tool. The Canvas cursor 
 ## 2026-11-17 Directive Update — Circular rotation handle
 
 The Free Transform rotation control should be a small white circular button with a circular rotate-arrow icon, matching the supplied reference. Remove the protruding connector stem entirely. Keep the larger invisible hit area and the small live degree label.
+
+- 2026-11-16: Following the owner's direct request to make Shape tools functional like Kittl Rectangle with selectable options, replaced the Shape placeholder with nine presets and drag-to-draw SVG preview/creation (Rectangle, Rounded rectangle, Ellipse, Triangle, Diamond, Line, Arrow, Star, Hexagon). Created geometry is stored as an editable shape layer, selected on the canvas, and shared with the mockup renderer. Added regression coverage; custom path editing and independent fill/stroke controls remain future scope. See `Doc/DOCUMENTATION.md#work-log`.

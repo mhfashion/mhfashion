@@ -1,22 +1,30 @@
 "use client";
 
 import {
+  ArrowRight,
   Blend,
   Brush,
   ChevronDown,
   ChevronUp,
+  Circle,
+  Diamond,
   Eraser,
+  Hexagon,
   Hand,
+  Minus,
   Move,
   Pencil,
   PenTool,
   Redo2,
   RefreshCw,
+  Star,
   Square,
+  Triangle,
   Type,
   Undo2,
 } from "lucide-react";
 import { useRef } from "react";
+import { EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, type EditorShapePreset } from "@/lib/editor-layers";
 
 export type EditorTool = "move" | "hand" | "pencil" | "pen" | "text" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
 
@@ -28,7 +36,9 @@ type Props = {
   notice: string;
   foregroundColor: string;
   backgroundColor: string;
+  selectedShape: EditorShapePreset;
   onSelect: (tool: EditorTool) => void;
+  onSelectShape: (shape: EditorShapePreset) => void;
   onForegroundColorChange: (color: string) => void;
   onBackgroundColorChange: (color: string) => void;
   onUndo: () => void;
@@ -50,6 +60,18 @@ const tools = [
   { id: "gradient", label: "Gradient tool", Icon: Blend },
 ] as const;
 
+const shapeIcons = {
+  rectangle: Square,
+  "rounded-rectangle": Square,
+  ellipse: Circle,
+  triangle: Triangle,
+  diamond: Diamond,
+  line: Minus,
+  arrow: ArrowRight,
+  star: Star,
+  hexagon: Hexagon,
+} as const;
+
 export default function EditorToolsBar({
   activeTool,
   collapsed,
@@ -58,7 +80,9 @@ export default function EditorToolsBar({
   notice,
   foregroundColor,
   backgroundColor,
+  selectedShape,
   onSelect,
+  onSelectShape,
   onForegroundColorChange,
   onBackgroundColorChange,
   onUndo,
@@ -77,6 +101,18 @@ export default function EditorToolsBar({
         data-testid="editor-tools-bar"
         className="pointer-events-auto relative flex w-fit max-w-[calc(100vw-16px)] items-center gap-1 rounded-2xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-lg backdrop-blur"
       >
+        {!collapsed && activeTool === "shape" && (
+          <div role="group" aria-label="Shape options" data-testid="editor-shape-picker" className="absolute bottom-full left-1/2 z-30 mb-2 grid w-[min(288px,calc(100vw-24px))] -translate-x-1/2 grid-cols-3 gap-1 rounded-xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-xl backdrop-blur">
+            <span className="col-span-3 px-1 pb-0.5 text-center text-[9px] text-text-muted">Choose a shape, then drag on the canvas</span>
+            {EDITOR_SHAPE_PRESETS.map((preset) => {
+              const Icon = shapeIcons[preset];
+              return <button key={preset} type="button" aria-label={`Select ${EDITOR_SHAPE_LABELS[preset]} shape`} aria-pressed={selectedShape === preset} onClick={() => onSelectShape(preset)} className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-transparent px-1 py-1 text-[9px] leading-tight text-text-secondary outline-none transition hover:border-accent/40 hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent aria-pressed:border-accent aria-pressed:bg-accent/15 aria-pressed:text-accent">
+                <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
+                <span className="max-w-full truncate">{EDITOR_SHAPE_LABELS[preset]}</span>
+              </button>;
+            })}
+          </div>
+        )}
         {!collapsed && (
           <div className="flex max-w-full flex-wrap items-center justify-center gap-0.5">
             {tools.map(({ id, label, Icon }) => (

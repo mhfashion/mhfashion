@@ -55,6 +55,98 @@ export type EditorShapePath = {
 };
 export type EditorShapeBuilderMode = "select" | "merge" | "subtract" | "intersect";
 export type EditorShapeContent = { paths: EditorShapePath[]; builderMode?: EditorShapeBuilderMode };
+export const EDITOR_SHAPE_PRESETS = ["rectangle", "rounded-rectangle", "ellipse", "triangle", "diamond", "line", "arrow", "star", "hexagon"] as const;
+export type EditorShapePreset = typeof EDITOR_SHAPE_PRESETS[number];
+export const EDITOR_SHAPE_LABELS: Record<EditorShapePreset, string> = {
+  rectangle: "Rectangle",
+  "rounded-rectangle": "Rounded rectangle",
+  ellipse: "Ellipse",
+  triangle: "Triangle",
+  diamond: "Diamond",
+  line: "Line",
+  arrow: "Arrow",
+  star: "Star",
+  hexagon: "Hexagon",
+};
+
+type ShapePoint = { x: number; y: number };
+function shapePath(points: ShapePoint[], close = true): string {
+  const coordinate = (value: number) => Number(value.toFixed(2));
+  return `${points.map((point, index) => `${index === 0 ? "M" : "L"} ${coordinate(point.x)} ${coordinate(point.y)}`).join(" ")}${close ? " Z" : ""}`;
+}
+
+/** Return vector paths for a shape dragged between two points in 1000 x 1200 artwork units. */
+export function createEditorShapePaths(
+  preset: EditorShapePreset,
+  start: ShapePoint,
+  end: ShapePoint,
+  color: string,
+): EditorShapePath[] {
+  if (preset === "line" || preset === "arrow") {
+    const paths: EditorShapePath[] = [{ d: shapePath([start, end], false), fill: "none", stroke: color, strokeWidth: 18 }];
+    if (preset === "arrow") {
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.max(1, Math.hypot(dx, dy));
+      const headLength = Math.min(48, Math.max(8, length * 0.22));
+      const unitX = dx / length;
+      const unitY = dy / length;
+      const base = { x: end.x - unitX * headLength, y: end.y - unitY * headLength };
+      const wing = headLength * 0.48;
+      paths.push(
+        { d: shapePath([end, { x: base.x - unitY * wing, y: base.y + unitX * wing }], false), fill: "none", stroke: color, strokeWidth: 18 },
+        { d: shapePath([end, { x: base.x + unitY * wing, y: base.y - unitX * wing }], false), fill: "none", stroke: color, strokeWidth: 18 },
+      );
+    }
+    return paths;
+  }
+
+  const left = Math.min(start.x, end.x);
+  const top = Math.min(start.y, end.y);
+  const width = Math.max(1, Math.abs(end.x - start.x));
+  const height = Math.max(1, Math.abs(end.y - start.y));
+  const right = left + width;
+  const bottom = top + height;
+  const centerX = left + width / 2;
+  const centerY = top + height / 2;
+  let points: ShapePoint[];
+  if (preset === "rectangle") {
+    points = [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }];
+  } else if (preset === "rounded-rectangle") {
+    const radius = Math.min(width, height) * 0.16;
+    const corners = [
+      { x: right - radius, y: top + radius, startAngle: -90 },
+      { x: right - radius, y: bottom - radius, startAngle: 0 },
+      { x: left + radius, y: bottom - radius, startAngle: 90 },
+      { x: left + radius, y: top + radius, startAngle: 180 },
+    ];
+    points = corners.flatMap((corner) => Array.from({ length: 7 }, (_, index) => {
+      const angle = (corner.startAngle + index * 15) * Math.PI / 180;
+      return { x: corner.x + Math.cos(angle) * radius, y: corner.y + Math.sin(angle) * radius };
+    }));
+  } else if (preset === "ellipse") {
+    points = Array.from({ length: 48 }, (_, index) => {
+      const angle = (index / 48) * Math.PI * 2;
+      return { x: centerX + Math.cos(angle) * width / 2, y: centerY + Math.sin(angle) * height / 2 };
+    });
+  } else if (preset === "triangle") {
+    points = [{ x: centerX, y: top }, { x: right, y: bottom }, { x: left, y: bottom }];
+  } else if (preset === "diamond") {
+    points = [{ x: centerX, y: top }, { x: right, y: centerY }, { x: centerX, y: bottom }, { x: left, y: centerY }];
+  } else if (preset === "star") {
+    points = Array.from({ length: 10 }, (_, index) => {
+      const angle = -Math.PI / 2 + index * Math.PI / 5;
+      const radius = index % 2 === 0 ? 1 : 0.44;
+      return { x: centerX + Math.cos(angle) * width / 2 * radius, y: centerY + Math.sin(angle) * height / 2 * radius };
+    });
+  } else {
+    points = Array.from({ length: 6 }, (_, index) => {
+      const angle = -Math.PI / 2 + index * Math.PI / 3;
+      return { x: centerX + Math.cos(angle) * width / 2, y: centerY + Math.sin(angle) * height / 2 };
+    });
+  }
+  return [{ d: shapePath(points), fill: color, stroke: "none", strokeWidth: 0 }];
+}
 
 function cloneEditorPenPath(penPath: EditorPenPath): EditorPenPath {
   return {

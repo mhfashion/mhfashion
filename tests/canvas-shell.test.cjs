@@ -190,6 +190,22 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(mockupArtwork, /strokes\.some\(\(stroke\) => stroke\.tool === "brush"\) \? 32 : 18/);
 });
 
+test("Shape tool exposes selectable presets and creates live vector previews on drag", () => {
+  assert.match(toolsBar, /data-testid="editor-shape-picker"/);
+  assert.match(toolsBar, /role="group" aria-label="Shape options"/);
+  assert.match(toolsBar, /Choose a shape, then drag on the canvas/);
+  assert.match(toolsBar, /min-h-11/);
+  for (const label of ["Rectangle", "Rounded rectangle", "Ellipse", "Triangle", "Diamond", "Line", "Arrow", "Star", "Hexagon"]) {
+    assert.ok(layerModelSource.includes(label), `missing shape choice ${label}`);
+  }
+  assert.match(source, /function startShapeDrawing/);
+  assert.match(source, /activeShapeDragRef/);
+  assert.match(source, /data-editor-shape-preview/);
+  assert.match(source, /createEditorShapePaths\(shapeDrag\.preset/);
+  assert.match(source, /createEditorShapeLayer\(id, `\$\{label\}/);
+  assert.doesNotMatch(source, /Shape Tool is ready for the upcoming vector-shape pipeline/);
+});
+
 test("artwork on each Mockup can be moved and resized as one object", () => {
   assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?layers=\{layers\}[\s\S]*?maxArtworkEdgePx=/);
   assert.match(mockupArtwork, /aria-label=\{`Move \$\{side\} artwork`\}/);
@@ -439,7 +455,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /editingTextLayer=\{editingTextLayer\}/);
   // Every sidebar addition must be reachable in the Layers stack.
   assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
-  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 5, "Text, element, design, upload and Pen path reveal the Layers stack");
+  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 6, "Text, element, design, upload, Pen path and Shape reveal the Layers stack");
   assert.match(layersPanel, /EditorLayerPreview paths=\{layer\.shape\?\.paths\} text=\{layer\.text\} image=\{layer\.image\}/);
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
   assert.match(source, /canvasLayerTransforms/);

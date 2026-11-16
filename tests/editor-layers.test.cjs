@@ -22,6 +22,8 @@ const {
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
+  EDITOR_SHAPE_PRESETS,
+  createEditorShapePaths,
   groupEditorLayers,
   linkEditorLayers,
   moveEditorLayerToIndex,
@@ -232,6 +234,25 @@ test("shape builder performs deterministic rectangle merge, subtract, and inters
   const intersected = applyEditorShapeBuilderOperation([layer], layer.id, "intersect")[0];
   assert.equal(intersected.shape.builderMode, "intersect");
   assert.equal(intersected.shape.paths[0].d, "M 300 300 H 500 V 500 H 300 Z");
+});
+
+test("shape preset geometry covers reversed drags and returns renderable vector paths", () => {
+  const rectangle = createEditorShapePaths("rectangle", { x: 400, y: 500 }, { x: 100, y: 200 }, "#d4ff3f");
+  assert.equal(rectangle[0].d, "M 100 200 L 400 200 L 400 500 L 100 500 Z");
+  assert.equal(rectangle[0].fill, "#d4ff3f");
+
+  for (const preset of EDITOR_SHAPE_PRESETS) {
+    const paths = createEditorShapePaths(preset, { x: 100, y: 120 }, { x: 580, y: 720 }, "#202124");
+    assert.ok(paths.length > 0, `${preset} should return at least one path`);
+    for (const path of paths) {
+      assert.match(path.d, /^M -?[\d.]+ -?[\d.]+/);
+      assert.ok(path.fill || path.stroke, `${preset} should render with a fill or stroke`);
+      assert.ok(!/NaN|Infinity/.test(path.d), `${preset} should use finite coordinates`);
+    }
+  }
+  assert.equal(createEditorShapePaths("arrow", { x: 10, y: 10 }, { x: 100, y: 100 }, "#000").length, 3);
+  assert.equal(createEditorShapePaths("line", { x: 10, y: 10 }, { x: 100, y: 100 }, "#000")[0].fill, "none");
+  assert.ok(createEditorShapePaths("ellipse", { x: 10, y: 10 }, { x: 100, y: 100 }, "#000")[0].d.split("L ").length > 40);
 });
 
 test("text effects stack immutably and remain independent when a text layer is duplicated", () => {

@@ -848,3 +848,12 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 Refined the Free Transform rotation control to match the supplied reference: removed the protruding connector stem and replaced the plain dot with a small white circular control containing a dark circular rotate-arrow glyph and a thin Kittl-blue outline. The larger transparent hit area remains for reliable pointer/touch rotation, and the live degree badge remains nearby.
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+
+### 2026-11-16 — Functional Kittl-inspired Shape tool
+
+- Replaced the Shape tool's placeholder notice with a compact, touch-friendly preset picker: Rectangle, Rounded rectangle, Ellipse, Triangle, Diamond, Line, Arrow, Star, and Hexagon. The selected preset remains active while drawing; the foreground color styles new geometry.
+- Dragging on the print canvas renders a live SVG preview; releasing creates a native editable `shape` layer, selects it, reveals the Layers stack on desktop, and makes it available to the shared mockup renderer. Pointer cancel/lost capture clears an unfinished shape rather than committing it. Existing layer transform handles apply to these vector layers.
+- Added a pure geometry helper for the nine presets and regression coverage for all preset paths, reversed drag bounds, fill/stroke behavior, and arrow/ellipse details. The picker includes labels and accessible pressed state, and does not depend on hover.
+- Validation after rebasing onto the concurrent main updates: all six relevant unit suites passed **47/47** (Guide 9, browser guards 1, canvas spec 1, canvas-shell 16, editor layers 15, Pen paths 5); TypeScript passed; Next.js production build and OpenNext Cloudflare Worker build passed; `git diff --check` passed. ESLint reported **0 errors / 25 warnings**.
+- Current scope: shape choices are geometric vector paths and draw with a drag gesture. Custom path editing, independent fill/stroke styling controls, and more advanced shape adjustment handles are not part of this increment.

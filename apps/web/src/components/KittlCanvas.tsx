@@ -22,6 +22,8 @@ import {
   createEditorArtworkLayer,
   createEditorImageLayer,
   createEditorShapeLayer,
+  createEditorShapePaths,
+  EDITOR_SHAPE_LABELS,
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
@@ -51,6 +53,7 @@ import type { EditorPenAnchor, EditorPenPath } from "@/lib/editor-pen-path";
 import type {
   EditorArtworkLayer,
   EditorLayerAppearance,
+  EditorShapePreset,
   EditorTextContent,
   LayerEditTarget,
   MaskBrushMode,
@@ -114,6 +117,7 @@ type ActiveArtworkStroke = {
   points: Point[];
   color: string;
 };
+type ActiveShapeDrag = { pointerId: number; preset: EditorShapePreset; start: Point; current: Point; color: string };
 
 function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   const points = [
@@ -310,6 +314,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [activeTool, setActiveTool] = useState<EditorTool>("pen");
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const [toolNotice, setToolNotice] = useState("");
+  const [selectedShape, setSelectedShape] = useState<EditorShapePreset>("rectangle");
+  const [shapeDrawing, setShapeDrawing] = useState<ActiveShapeDrag | null>(null);
   const [foregroundColor, setForegroundColor] = useState("#202124");
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [penAnchors, setPenAnchors] = useState<EditorPenAnchor[]>([]);
@@ -397,6 +403,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const panGestureRef = useRef(false);
   const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
   const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
+  const activeShapeDragRef = useRef<ActiveShapeDrag | null>(null);
   const penAnchorDragRef = useRef<PenAnchorDrag | null>(null);
   const penEditDragRef = useRef<PenEditDrag | null>(null);
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget } | null>(null);
@@ -808,6 +815,19 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     penAnchorDragRef.current = { pointerId: event.pointerId, index, point };
   }
 
+  function startShapeDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (activeShapeDragRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    const canvasPoint = { x: point.x * 1000, y: point.y * 1200 };
+    const drag: ActiveShapeDrag = { pointerId: event.pointerId, preset: selectedShape, start: canvasPoint, current: canvasPoint, color: foregroundColor };
+    activeShapeDragRef.current = drag;
+    setShapeDrawing(drag);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setToolNotice("");
+  }
+
   function penPathForLayer(layerId: string): EditorPenPath | null {
     const layer = layers.find((item) => item.id === layerId);
     return layer?.shape?.paths[0]?.penPath ?? null;
@@ -940,12 +960,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       addPenAnchor(event);
       return;
     }
+    if (activeTool === "shape") {
+      startShapeDrawing(event);
+      return;
+    }
     if (["remove-bg", "shape", "gradient"].includes(activeTool)) {
       event.preventDefault();
       event.stopPropagation();
-      setToolNotice(activeTool === "shape"
-        ? "Shape Tool is ready for the upcoming vector-shape pipeline."
-        : activeTool === "gradient"
+      setToolNotice(activeTool === "gradient"
           ? "Gradient Tool is ready for the upcoming gradient-fill pipeline."
           : "Remove BG needs an uploaded image; background removal is not connected yet.");
       return;
@@ -992,6 +1014,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    const shapeDrag = activeShapeDragRef.current;
+    if (shapeDrag?.pointerId === event.pointerId) {
+      event.preventDefault();
+      const point = toCanvasPoint(event.clientX, event.clientY);
+      const updated = { ...shapeDrag, current: { x: point.x * 1000, y: point.y * 1200 } };
+      activeShapeDragRef.current = updated;
+      setShapeDrawing(updated);
+      return;
+    }
     if (activeTool === "pen") {
       const rawPoint = toCanvasPoint(event.clientX, event.clientY);
       const drag = penAnchorDragRef.current;
@@ -1031,6 +1062,29 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function endArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    const shapeDrag = activeShapeDragRef.current;
+    if (shapeDrag?.pointerId === event.pointerId) {
+      activeShapeDragRef.current = null;
+      setShapeDrawing(null);
+      if (event.type !== "pointerup") return;
+      const point = toCanvasPoint(event.clientX, event.clientY);
+      const end = { x: point.x * 1000, y: point.y * 1200 };
+      if (Math.hypot(end.x - shapeDrag.start.x, end.y - shapeDrag.start.y) < 8) return;
+      const id = claimLayerId();
+      const label = EDITOR_SHAPE_LABELS[shapeDrag.preset];
+      const shape = createEditorShapeLayer(id, `${label} ${nextLayerIdRef.current - 1}`, {
+        paths: createEditorShapePaths(shapeDrag.preset, shapeDrag.start, end, shapeDrag.color),
+      });
+      rememberLayerSnapshot();
+      setLayers((current) => [shape, ...current]);
+      setSelectedLayerId(id);
+      setSelectedLayerIds([id]);
+      setSelectedTarget("artwork");
+      setEditingTextLayerId(null);
+      setToolNotice(`${label} added to Layers.`);
+      revealLayersStack();
+      return;
+    }
     if (penAnchorDragRef.current?.pointerId === event.pointerId) penAnchorDragRef.current = null;
     if (activeEraserRef.current?.pointerId === event.pointerId) activeEraserRef.current = null;
     if (activeArtworkStrokeRef.current?.pointerId !== event.pointerId) return;
@@ -1067,9 +1121,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setActiveTool(tool);
     setToolNotice(tool === "remove-bg"
       ? "Remove BG needs an uploaded image; background removal is not connected yet."
-      : tool === "shape"
-        ? "Shape Tool is ready for the upcoming vector-shape pipeline."
-        : tool === "gradient"
+      : tool === "gradient"
           ? "Gradient Tool is ready for the upcoming gradient-fill pipeline."
           : "");
   }
@@ -1436,7 +1488,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   onPointerCancel={endArtworkStroke}
                   onLostPointerCapture={endArtworkStroke}
                   onDoubleClick={() => activeTool === "pen" && finishPenPath(false)}
-                  className="block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)]"
+                  className={`block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)] ${activeTool === "shape" ? "cursor-crosshair" : ""}`}
                   style={{
                     backgroundColor: "#ffffff",
                     backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
@@ -1551,6 +1603,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                       {point.handleOut && <line x1={point.x * 1000} y1={point.y * 1200} x2={(point.x + point.handleOut.x) * 1000} y2={(point.y + point.handleOut.y) * 1200} stroke={foregroundColor} strokeWidth="5" vectorEffect="non-scaling-stroke" />}
                       <circle cx={point.x * 1000} cy={point.y * 1200} r={index === 0 ? (penHoverCloseTarget ? 16 : 13) : 10} fill={index === 0 ? (penHoverCloseTarget ? "#d4ff3f" : "#ffffff") : foregroundColor} stroke={foregroundColor} strokeWidth="6" vectorEffect="non-scaling-stroke" data-pen-close-target={index === 0 && penHoverCloseTarget ? "true" : undefined} />
                     </g>)}
+                  </svg>
+                )}
+                {shapeDrawing && (
+                  <svg aria-label="Shape preview" data-editor-shape-preview={shapeDrawing.preset} viewBox="0 0 1000 1200" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
+                    {createEditorShapePaths(shapeDrawing.preset, shapeDrawing.start, shapeDrawing.current, shapeDrawing.color).map((path, index) => <path key={index} d={path.d} fill={path.fill ?? "none"} stroke={path.stroke ?? "none"} strokeWidth={path.strokeWidth ?? 0} strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />)}
                   </svg>
                 )}
                 {activeTool === "pen" && (
@@ -1741,7 +1798,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         notice={toolNotice}
         foregroundColor={foregroundColor}
         backgroundColor={backgroundColor}
+        selectedShape={selectedShape}
         onSelect={chooseTool}
+        onSelectShape={setSelectedShape}
         onForegroundColorChange={setForegroundColor}
         onBackgroundColorChange={setBackgroundColor}
         onUndo={undoCanvasAction}
