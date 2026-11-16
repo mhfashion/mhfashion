@@ -448,7 +448,7 @@ test("editor reuses the existing web-app Header Bar above its full-height worksp
   assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
 });
 
-test("Editor Header Bar 2 uses equal rounded boxes, theme swatches, price, and mobile box-only mode", () => {
+test("Editor Header Bar 2 uses equal green boxes, a rounded Color dropdown, and Price before Save", () => {
   assert.match(createRoute, /import EditorHeaderBar2 from "@\/components\/EditorHeaderBar2"/);
   assert.match(createRoute, /useState<EditorProduct>\(DEFAULT_EDITOR_PRODUCT\)/);
   assert.match(createRoute, /useState\(DEFAULT_EDITOR_GSM\)/);
@@ -463,8 +463,8 @@ test("Editor Header Bar 2 uses equal rounded boxes, theme swatches, price, and m
   assert.match(headerBar2, /const GSM_OPTIONS = \[DEFAULT_EDITOR_GSM, "180 GSM", "200 GSM", "240 GSM"\]/);
   assert.match(headerBar2, /const SIZE_OPTIONS = \["XS", "S", "M", "L", "XL", "2XL", "3XL"\]/);
   assert.match(headerBar2, /const COLOR_OPTIONS = \[[\s\S]*?bg-bg[\s\S]*?bg-bg-surface[\s\S]*?bg-accent/);
-  assert.match(headerBar2, /const FIELD_BOX =[\s\S]*?w-20 rounded-full/);
-  assert.match(headerBar2, /const ACTION_BOX =[\s\S]*?w-20[\s\S]*?rounded-full/);
+  assert.match(headerBar2, /const FIELD_BOX =[\s\S]*?w-20 rounded-full[\s\S]*?border-accent bg-accent[\s\S]*?text-accent-foreground/);
+  assert.match(headerBar2, /const ACTION_BOX =[\s\S]*?w-20[\s\S]*?rounded-full[\s\S]*?border-accent bg-accent[\s\S]*?text-accent-foreground/);
   assert.match(headerBar2, /pointer:coarse/);
   assert.doesNotMatch(productGsmSelect, /Choose|option value=""/);
   assert.match(headerBar2, /function PendingSelect\([\s\S]*?value="—"[\s\S]*?options=\{\["—"\]\}/);
@@ -474,18 +474,24 @@ test("Editor Header Bar 2 uses equal rounded boxes, theme swatches, price, and m
   assert.match(headerBar2, /<ColorField value=\{selectedColor\} onChange=\{setSelectedColor\} \/>/);
   assert.match(headerBar2, /label="Size"[\s\S]*?options=\{SIZE_OPTIONS\}/);
   assert.match(headerBar2, /aria-label="Color"[\s\S]*?data-editor-box="Color"/);
-  assert.match(headerBar2, /aria-pressed=\{value === color\.value\}/);
+  assert.match(headerBar2, /aria-haspopup="listbox"[\s\S]*?aria-expanded=\{open\}/);
+  assert.match(headerBar2, /data-color-swatch=\{selectedColor\.value\}/);
+  assert.match(headerBar2, /role="listbox"[\s\S]*?rounded-full[\s\S]*?border-accent bg-accent/);
+  assert.match(headerBar2, /role="option"[\s\S]*?aria-selected=\{value === color\.value\}/);
+  assert.match(headerBar2, /createPortal/);
   assert.match(headerBar2, /data-editor-box=\{label\}/);
   assert.match(headerBar2, /hidden shrink-0 text-xs font-medium text-text-secondary sm:inline/);
   assert.match(headerBar2, /aria-label="Save" data-editor-box="Save" disabled/);
   assert.match(headerBar2, /aria-label="Buy"[\s\S]*?data-editor-box="Buy"[\s\S]*?disabled/);
   assert.match(headerBar2, /data-editor-price/);
   assert.match(headerBar2, /Price —/);
+  assert.ok(headerBar2.indexOf("data-editor-price") < headerBar2.indexOf('aria-label="Save"'), "Price appears to the left of Save");
   assert.match(headerBar2, /className="hidden shrink-0 whitespace-nowrap[\s\S]*?sm:inline"/);
   assert.match(headerBar2, /text-text-secondary/);
   assert.match(headerBar2, /overflow-x-auto/);
   assert.match(source, /bg-bg text-text-primary/);
   assert.match(source, /border-border bg-bg px-2/);
-  assert.match(headerBar2, /import \{ useState \} from "react"/);
+  assert.match(headerBar2, /import \{ useEffect, useRef, useState \} from "react"/);
+  assert.match(headerBar2, /import \{ createPortal \} from "react-dom"/);
   assert.match(headerBar2, /import \{ DEFAULT_EDITOR_GSM, type EditorProduct \} from "@\/lib\/editor-product"/);
 });

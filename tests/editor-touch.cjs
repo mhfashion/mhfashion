@@ -241,7 +241,12 @@ async function main() {
           width: Math.round(box.getBoundingClientRect().width),
           height: Math.round(box.getBoundingClientRect().height),
         })),
-        colorSwatches: toolbar.querySelectorAll('[data-editor-box="Color"] button').length,
+        boxColors: [...toolbar.querySelectorAll("[data-editor-box]")].map((box) => getComputedStyle(box).backgroundColor),
+        accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
+        colorExpanded: toolbar.querySelector('button[aria-label="Color"]')?.getAttribute("aria-expanded"),
+        colorCurrent: toolbar.querySelector('button[aria-label="Color"] [data-color-swatch]')?.getAttribute("data-color-swatch"),
+        colorArrow: Boolean(toolbar.querySelector('button[aria-label="Color"] svg.lucide-chevron-down')),
+        colorMenuOpen: Boolean(document.querySelector('[data-testid="header-bar2-color-options"]')),
         selectedProduct: toolbar.querySelector('select[aria-label="Product"]').value,
         selectedGsm: toolbar.querySelector('select[aria-label="GSM"]').value,
         productBoxWidth: toolbar.querySelector('select[aria-label="Product"]').getBoundingClientRect().width,
@@ -253,7 +258,7 @@ async function main() {
     });
     assert.ok(initial.headerHeight > 0 && initial.mobileHeader !== "none" && initial.desktopHeader === "none", "Reuse the existing mobile Header Bar");
     assert.ok(initial.bar2Top >= initial.headerBottom - 1 && initial.editorTop >= initial.bar2Bottom - 1, "Bar 2 sits between Header Bar and Editor");
-    assert.deepEqual(initial.bar2Labels, ["Product", "GSM", "Color Background", "Color Surface", "Color Accent", "Size", "Save", "Buy"]);
+    assert.deepEqual(initial.bar2Labels, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
     assert.ok(initial.bar2Height <= 44, "Header Bar 2 is compact");
     assert.deepEqual(initial.selectOptions, [
       ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"],
@@ -267,11 +272,50 @@ async function main() {
     assert.ok(initial.boxMetrics.every((box) => box.width === 80 && box.height === 44), "All mobile boxes share equal width and touch height");
     assert.equal(initial.visibleFieldLabels, 0, "Mobile keeps only the field/action boxes, not separate field labels");
     assert.equal(initial.priceVisible, false, "Mobile hides the separate price text");
-    assert.equal(initial.colorSwatches, 3, "Color is a box of theme swatches only");
+    assert.equal(initial.colorExpanded, "false", "Color starts as a closed dropdown");
+    assert.equal(initial.colorCurrent, "accent", "Color shows its selected theme swatch in the box");
+    assert.equal(initial.colorArrow, true, "Color uses the same down-arrow affordance as the other selectors");
+    assert.equal(initial.colorMenuOpen, false, "Color choices are tucked into the dropdown until opened");
+    assert.ok(initial.boxColors.every((color) => color === `rgb(${initial.accent})`), "Every control box uses the app's green accent fill");
     assert.ok(initial.productBoxWidth <= 80, "Product selector stays compact");
     assert.equal(initial.productCanChange, true, "T-Shirt and Phone are selectable");
     assert.deepEqual(initial.futureProductsDisabled, ["Hoodie", "Cup", "Kids", "Bag"]);
     assert.ok(initial.saveBuyDisabled, "Save and Buy remain placeholders while Color and Size are usable selectors");
+
+    await tap('button[aria-label="Color"]');
+    const colorMenu = await evaluate(() => {
+      const menu = document.querySelector('[role="listbox"][aria-label="Color options"]');
+      const rect = menu.getBoundingClientRect();
+      return {
+        exists: Boolean(menu),
+        radius: Number.parseFloat(getComputedStyle(menu).borderTopLeftRadius),
+        background: getComputedStyle(menu).backgroundColor,
+        accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
+        options: [...menu.querySelectorAll('[role="option"]')].map((option) => ({
+          label: option.getAttribute("aria-label"),
+          selected: option.getAttribute("aria-selected"),
+          radius: Number.parseFloat(getComputedStyle(option).borderTopLeftRadius),
+        })),
+        bounds: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+        viewport: { width: innerWidth, height: innerHeight },
+        expanded: document.querySelector('button[aria-label="Color"]')?.getAttribute("aria-expanded"),
+      };
+    });
+    assert.equal(colorMenu.exists, true, "Color arrow opens its options list");
+    assert.equal(colorMenu.expanded, "true");
+    assert.ok(colorMenu.radius >= 100, "Color dropdown container is fully rounded");
+    assert.equal(colorMenu.background, `rgb(${colorMenu.accent})`, "Color dropdown uses the app's green accent");
+    assert.deepEqual(colorMenu.options.map((option) => option.label), ["Color Background", "Color Surface", "Color Accent"]);
+    assert.equal(colorMenu.options[2].selected, "true", "The current Accent choice is marked selected");
+    assert.ok(colorMenu.options.every((option) => option.radius >= 16), "Color dropdown choices are also fully rounded");
+    assert.ok(colorMenu.bounds.left >= 0 && colorMenu.bounds.right <= colorMenu.viewport.width, "Color dropdown stays within the phone viewport");
+    await tap('button[aria-label="Color Surface"]');
+    const chosenColor = await evaluate(() => ({
+      value: document.querySelector('button[aria-label="Color"] [data-color-swatch]')?.getAttribute("data-color-swatch"),
+      expanded: document.querySelector('button[aria-label="Color"]')?.getAttribute("aria-expanded"),
+    }));
+    assert.equal(chosenColor.value, "surface", "Choosing a dropdown swatch updates the Color box");
+    assert.equal(chosenColor.expanded, "false", "Choosing a swatch closes the dropdown");
     if (width === 390) assert.equal(await chooseSelect('select[aria-label="GSM"]', "200 GSM"), "200 GSM");
     assert.ok(initial.mainBottom <= initial.navTop + 1, "Editor stays above mobile navigation");
     assert.ok(initial.bodyHeight <= initial.viewportHeight + 1, "Editor and nav do not create document overflow");
@@ -526,10 +570,8 @@ async function main() {
         })),
         visibleFieldLabels: [...toolbar.querySelectorAll("[data-editor-field-label]")].filter((label) => getComputedStyle(label).display !== "none").length,
         priceVisible: getComputedStyle(toolbar.querySelector("[data-editor-price]")).display !== "none",
-        colorSwatches: [...toolbar.querySelectorAll('[data-editor-box="Color"] button')].map((button) => ({
-          label: button.getAttribute("aria-label"),
-          selected: button.getAttribute("aria-pressed"),
-        })),
+        colorSelected: toolbar.querySelector('button[aria-label="Color"] [data-color-swatch]')?.getAttribute("data-color-swatch"),
+        colorExpanded: toolbar.querySelector('button[aria-label="Color"]')?.getAttribute("aria-expanded"),
         gsmExists: Boolean(toolbar.querySelector('select[aria-label="GSM"]')),
         sizeExists: Boolean(toolbar.querySelector('select[aria-label="Size"]')),
         visibleMockups: [...document.querySelectorAll('section[aria-label$="Mockup"]')].filter((section) => getComputedStyle(section).display !== "none").length,
@@ -543,7 +585,8 @@ async function main() {
     assert.ok(phoneState.boxMetrics.every((box) => box.width === 80 && box.height === 44 && box.radius >= 16), "All mobile controls have matching pill geometry and 44px touch height");
     assert.equal(phoneState.visibleFieldLabels, 0, "Phone viewport shows the selector boxes without their text labels");
     assert.equal(phoneState.priceVisible, false, "Phone viewport keeps only boxes, hiding the separate price text");
-    assert.equal(phoneState.colorSwatches.length, 3, "Color box contains only the three theme-color swatches");
+    assert.equal(phoneState.colorSelected, "surface", "The selected Color swatch remains visible for Phone");
+    assert.equal(phoneState.colorExpanded, "false", "Color dropdown is closed after selection");
     assert.equal(phoneState.gsmExists, false, "Phone product keeps GSM hidden");
     assert.equal(phoneState.sizeExists, false, "Phone product keeps Size hidden");
     assert.equal(phoneState.visibleMockups, 1, "Phone shows one usable Mockup");
@@ -553,15 +596,13 @@ async function main() {
     assert.deepEqual(await canvasMenuItems(), ["Show Grid", "Add Front Mockup"], "Phone offers only the Front Mockup entry");
     await closeCanvasMenu();
     assert.ok(phoneState.pendingDisabled, "Brand and Model remain placeholders");
-    await tap('button[aria-label="Color Surface"]');
-    assert.equal(await evaluate(() => document.querySelector('button[aria-label="Color Surface"]')?.getAttribute("aria-pressed")), "true", "Color swatches are selectable");
     assert.equal(await chooseSelect('select[aria-label="Product"]', "T-Shirt"), "T-Shirt");
     const apparelState = await evaluate(() => ({
       gsm: document.querySelector('select[aria-label="GSM"]')?.value,
       size: document.querySelector('select[aria-label="Size"]')?.value,
       sizeOptions: [...document.querySelectorAll('select[aria-label="Size"] option')].map((option) => option.value),
       color: Boolean(document.querySelector('[data-editor-box="Color"]')),
-      selectedColor: document.querySelector('button[aria-label="Color Surface"]')?.getAttribute("aria-pressed"),
+      selectedColor: document.querySelector('button[aria-label="Color"] [data-color-swatch]')?.getAttribute("data-color-swatch"),
       backVisible: getComputedStyle(document.querySelector('section[aria-label="Back Mockup"]')).display !== "none",
       addBackInMockupBox: document.querySelectorAll('section[aria-label="Front Mockup"] button[aria-label="Add Back Mockup"]').length,
     }));
@@ -569,7 +610,7 @@ async function main() {
     assert.equal(apparelState.size, "XL", "Size defaults to XL without a Choose option");
     assert.ok(apparelState.sizeOptions.includes("2XL"), "Size offers standard extended sizes");
     assert.equal(apparelState.color, true);
-    assert.equal(apparelState.selectedColor, "true", "Selected Color remains while switching product categories");
+    assert.equal(apparelState.selectedColor, "surface", "Selected Color remains while switching product categories");
     assert.equal(apparelState.backVisible, true, "T-Shirt restores its Back Mockup");
     assert.equal(apparelState.addBackInMockupBox, 0, "Mockup boxes carry no add control");
     assert.deepEqual(await canvasMenuItems(), ["Show Grid", "Add Front Mockup", "Add Back Mockup"], "Apparel exposes both mockup sides");
@@ -685,13 +726,18 @@ async function main() {
         labelsVisible: [...toolbar.querySelectorAll("[data-editor-field-label]")].every((label) => getComputedStyle(label).display !== "none"),
         priceVisible: getComputedStyle(toolbar.querySelector("[data-editor-price]")).display !== "none",
         priceText: toolbar.querySelector("[data-editor-price]").textContent.trim(),
+        priceLeftOfSave: toolbar.querySelector("[data-editor-price]").getBoundingClientRect().right <= toolbar.querySelector('button[aria-label="Save"]').getBoundingClientRect().left,
+        boxColors: boxes.map((box) => getComputedStyle(box).backgroundColor),
+        accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
       };
     });
     assert.deepEqual(bar2DesktopBoxes.names, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
     assert.ok(bar2DesktopBoxes.metrics.every((box) => box.width === 80 && box.height === 32 && box.radius >= 16), "Every desktop Bar 2 box shares the same compact pill geometry");
     assert.equal(bar2DesktopBoxes.labelsVisible, true, "Desktop shows Product/GSM/Color/Size labels");
     assert.equal(bar2DesktopBoxes.priceVisible, true, "Desktop shows the Save-adjacent price field");
+    assert.equal(bar2DesktopBoxes.priceLeftOfSave, true, "Desktop Price appears immediately to the left of Save");
     assert.equal(bar2DesktopBoxes.priceText, "Price —", "Price stays an explicit placeholder until product pricing is connected");
+    assert.ok(bar2DesktopBoxes.boxColors.every((color) => color === `rgb(${bar2DesktopBoxes.accent})`), "Every desktop control box uses the green app accent fill");
     await clickMouse('button[aria-label="Expand Layers panel"]');
     await clickMouse('button[aria-label="Expand Edit sidebar"]');
     const desktopDocks = await evaluate(() => {

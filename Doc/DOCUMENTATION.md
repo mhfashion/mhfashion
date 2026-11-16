@@ -17,6 +17,14 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-17 — Header Bar 2 green boxes, Color dropdown, and price order
+
+- Applied the owner's correction to Header Bar 2: `Price —` now appears immediately to the left of Save; every Product/GSM/Color/Size/Save/Buy box uses the app's green accent fill while keeping the same fully rounded 80×32px desktop / 80×44px touch dimensions.
+- Replaced the always-visible Color dots with a box containing the selected theme swatch and a down-chevron. The chevron opens a fully rounded green dropdown with Background, Surface, and Accent options. The portal-mounted menu is not clipped by the horizontally scrollable bar, and it closes on selection, outside click, or Escape.
+- Files: `apps/web/src/components/EditorHeaderBar2.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-touch.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Validation: production build passed; lint completed with 0 errors / 26 warnings; all repository Node tests passed **44/44** and canvas-shell passed **15/15**. Focused CDP verification passed at 1280×900 desktop and 390×844 phone sizes for green box fills, Price-before-Save, rounded menu geometry, Color selection by touch, and mobile hiding of labels/price.
+- Scope note: the broader `tests/editor-touch.cjs` run completed its Header Bar 2 checks, then stopped at the existing Edit sidebar selector on line 330 (`aside[aria-label="Edit sidebar"]`); that unrelated Sidebar test was left untouched.
+
 ### 2026-11-16 — Owner-directed Header Bar 2 pill selector redesign
 
 - Rebuilt Header Bar 2 controls as consistent fully rounded boxes: 80×32px on desktop and 80×44px for coarse-pointer/touch layouts. Product defaults to `T-Shirt` with no `Choose` option; GSM defaults to `160 GSM` with no `Choose` option; Size defaults to `XL` with `XS` through `3XL` choices.
