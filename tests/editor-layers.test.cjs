@@ -32,6 +32,7 @@ const {
   updateEditorLayerTextStyle,
   ungroupEditorLayers,
   unlinkEditorLayers,
+  updateEditorPenPath,
   updateLayerLastStroke,
 } = layerModel.exports;
 
@@ -154,6 +155,26 @@ test("Add Text, element and upload layers keep their own content and stay in the
   const duplicatedText = duplicateEditorLayer(typed, "text-1", "text-2")[0];
   assert.equal(duplicatedText.text.value, "MH FASHION");
   assert.notStrictEqual(duplicatedText.text, typed[0].text);
+});
+
+test("Pen paths retain editable Bézier nodes, update their SVG data, and duplicate independently", () => {
+  const penPath = { closed: false, anchors: [
+    { x: 0.1, y: 0.5, handleOut: { x: 0.2, y: -0.1 } },
+    { x: 0.9, y: 0.5, handleIn: { x: -0.2, y: -0.1 } },
+  ] };
+  const layer = createEditorShapeLayer("pen-1", "Pen path 1", {
+    paths: [{ d: "M 100 600 C 300 480 700 480 900 600", fill: "none", stroke: "#111111", penPath }],
+  });
+  const nextPenPath = { ...penPath, anchors: [{ ...penPath.anchors[0], x: 0.12 }, penPath.anchors[1]] };
+  const updated = updateEditorPenPath([layer], layer.id, nextPenPath, "M 120 600 C 320 480 700 480 900 600");
+  const duplicate = duplicateEditorLayer(updated, layer.id, "pen-copy")[0];
+
+  assert.equal(updated[0].shape.paths[0].d, "M 120 600 C 320 480 700 480 900 600");
+  assert.deepEqual(updated[0].shape.paths[0].penPath, nextPenPath);
+  assert.notStrictEqual(updated[0].shape.paths[0].penPath, penPath);
+  assert.notStrictEqual(updated[0].shape.paths[0].penPath.anchors, penPath.anchors);
+  assert.notStrictEqual(duplicate.shape.paths[0].penPath.anchors, updated[0].shape.paths[0].penPath.anchors);
+  assert.notStrictEqual(duplicate.shape.paths[0].penPath.anchors[0].handleOut, updated[0].shape.paths[0].penPath.anchors[0].handleOut);
 });
 
 test("groups preserve independent layers while links provide an explicit shared transform membership", () => {

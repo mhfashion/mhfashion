@@ -1,3 +1,5 @@
+import type { EditorPenPath } from "./editor-pen-path";
+
 export type ArtworkPoint = { x: number; y: number };
 export type ArtworkStroke = { points: ArtworkPoint[]; tool?: "pen" | "brush"; color?: string };
 export type MaskBrushMode = "hide" | "reveal";
@@ -49,9 +51,26 @@ export type EditorShapePath = {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
+  penPath?: EditorPenPath;
 };
 export type EditorShapeBuilderMode = "select" | "merge" | "subtract" | "intersect";
 export type EditorShapeContent = { paths: EditorShapePath[]; builderMode?: EditorShapeBuilderMode };
+
+function cloneEditorPenPath(penPath: EditorPenPath): EditorPenPath {
+  return {
+    ...penPath,
+    anchors: penPath.anchors.map((anchor) => ({
+      ...anchor,
+      ...(anchor.handleIn ? { handleIn: { ...anchor.handleIn } } : {}),
+      ...(anchor.handleOut ? { handleOut: { ...anchor.handleOut } } : {}),
+    })),
+  };
+}
+
+function cloneEditorShapePath(path: EditorShapePath): EditorShapePath {
+  return path.penPath ? { ...path, penPath: cloneEditorPenPath(path.penPath) } : { ...path };
+}
+
 export type EditorImageContent = {
   src: string;
   x: number;
@@ -119,8 +138,29 @@ export function createEditorShapeLayer(
   return {
     ...createEditorArtworkLayer(id, name),
     kind: "shape",
-    shape: { paths: shape.paths.map((path) => ({ ...path })), builderMode: shape.builderMode ?? "select" },
+    shape: { paths: shape.paths.map(cloneEditorShapePath), builderMode: shape.builderMode ?? "select" },
   };
+}
+
+export function updateEditorPenPath(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  penPath: EditorPenPath,
+  pathData: string,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => {
+    if (layer.id !== layerId || !layer.shape || layer.shape.paths.length === 0) return layer;
+    const clonedPath = cloneEditorPenPath(penPath);
+    return {
+      ...layer,
+      shape: {
+        ...layer.shape,
+        paths: layer.shape.paths.map((path, index) => index === 0
+          ? { ...path, d: pathData, penPath: clonedPath }
+          : path),
+      },
+    };
+  });
 }
 
 export function createEditorImageLayer(
@@ -376,7 +416,7 @@ export function duplicateEditorLayer(
     strokes: source.strokes.map(copyStroke),
     mask: source.mask?.map((stroke) => ({ ...copyStroke(stroke), mode: stroke.mode })) ?? null,
     text: source.text ? { ...source.text, effects: source.text.effects?.map((effect) => ({ ...effect })) } : null,
-    shape: source.shape ? { paths: source.shape.paths.map((path) => ({ ...path })), builderMode: source.shape.builderMode } : null,
+    shape: source.shape ? { paths: source.shape.paths.map(cloneEditorShapePath), builderMode: source.shape.builderMode } : null,
     image: source.image ? { ...source.image } : null,
   };
   const next = [...layers];

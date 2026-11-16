@@ -137,6 +137,17 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /onDoubleClick=\{\(\) => activeTool === "pen" && finishPenPath\(false\)\}/);
   assert.match(source, /aria-label="Pen path preview"/);
   assert.match(source, /createEditorShapeLayer\(id, `Pen path/);
+  assert.match(source, /draggedEditorPenAnchor/);
+  assert.match(source, /snapEditorPenPoint/);
+  assert.match(source, /isNearPenStart/);
+  assert.match(source, /data-pen-close-target/);
+  assert.match(source, /aria-label="Pen path point controls"/);
+  assert.match(source, /r="38" fill="transparent" stroke="transparent" pointerEvents="all"/);
+  assert.match(source, /event\.key === "Delete" \|\| event\.key === "Backspace"/);
+  assert.match(source, /touchAction: "none"/);
+  assert.match(source, /addPenNodeOnPath/);
+  assert.match(source, /Alt-click point to remove/);
+  assert.match(source, /aria-label="Pen tool actions"/);
   assert.doesNotMatch(source, /activeTool === "text"/);
   assert.match(editSidebar, /Add Text/);
   assert.match(toolsBar, /role="group" aria-label="Color swatches"/);

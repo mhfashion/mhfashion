@@ -17,6 +17,14 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-16 — Owner-directed Kittl-inspired Pen curves and node editing
+
+- Replaced the straight-anchor-only Pen interaction with click-to-place corners, click-drag smooth Bézier handles, Shift snapping to horizontal/vertical/45-degree segments, a highlighted close target, and touch-visible Finish/Close/Cancel actions. Closed paths use the active foreground as fill; open paths remain stroke-only.
+- Pen geometry is retained as editable anchor/handle/closed-state data alongside SVG path data. Double-clicking a selected Pen path enters node-edit mode; dragging points/handles edits the vector, clicking a segment inserts a node with cubic subdivision, and Alt-click, focused-point Delete/Backspace, or Delete point removes a node subject to open/closed minimums. Touch-sized invisible hit areas support Phone/Mobile pointer work. Ordinary handle drag mirrors the opposite handle; Alt-drag breaks the tangent. Changes are recorded through the existing layer undo history.
+- Files: `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-pen-path.ts`, `apps/web/src/lib/editor-layers.ts`, `tests/editor-pen-path.test.cjs`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`, `package.json`, `Plan/PLAN.md`.
+- Validation: `npm run build` passed with TypeScript; `npm run test:editor-pen-path` passed **5/5**, `npm run test:editor-layers` passed **14/14**, and `npm run test:canvas-shell` passed **15/15**. Focused ESLint on the edited app files and `git diff --check` passed with no warnings/errors.
+- Limitations: snapping to unrelated objects/nodes and the full path appearance property set are not implemented in this pass. Pen paths currently create separate Shape layers and remain in the app's existing in-memory editor state; Save/persistent draft support is still unavailable.
+
 ### 2026-11-16 — Owner-directed Header Bar 2 pill selector redesign
 
 - Rebuilt Header Bar 2 controls as consistent fully rounded boxes: 80×32px on desktop and 80×44px for coarse-pointer/touch layouts. Product defaults to `T-Shirt` with no `Choose` option; GSM defaults to `160 GSM` with no `Choose` option; Size defaults to `XL` with `XS` through `3XL` choices.

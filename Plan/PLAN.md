@@ -1265,18 +1265,11 @@ The selected product may impose a print-area boundary, maximum scale, minimum le
 
 ### 7.1 Pen tool
 
-The Pen tool creates editable vector paths, not raster marks:
+The Pen tool creates editable vector paths, not raster marks. Following the owner's direct request, its current interaction model is Kittl-inspired: click places a corner point; click-drag creates a smooth Bézier point; Shift snaps the new segment to horizontal, vertical, or 45-degree directions; and hovering over the first point highlights the close target. A path is closed by clicking that target or using **Close path**; an open path can be finished with double-click or **Finish**, and an unfinished path can be discarded with **Cancel**. [23]
 
-- click creates corner anchors;
-- click-drag creates smooth anchors with direction handles;
-- click an existing endpoint closes a path;
-- `Alt/Option` temporarily changes the active handle behavior;
-- `Esc` commits an open path;
-- path properties include fill, stroke, stroke width, cap, join, dash, opacity, and blend mode;
-- every path is stored as a path object with anchors, handles, closed/open state, fill, and stroke;
-- a first Pen object can reuse an eligible blank layer under the current layer rules.
+Finished Pen paths store both their SVG path data and editable anchor/handle/closed-state metadata. Double-clicking a selected Pen path enters node editing; dragging an anchor moves it, dragging a handle adjusts its curve, clicking a segment inserts a node while preserving cubic geometry, and Alt-click, focused-point Delete/Backspace, or **Delete point** removes a selected node subject to the minimum point count. Touch-sized invisible hit targets make node/handle dragging usable on phone screens. Alt-dragging a handle breaks the mirrored tangent; ordinary handle dragging keeps the opposite handle mirrored. Drawing and node edits use the existing canvas undo/redo snapshot history.
 
-Illustrator's Pen documentation treats paths as editable anchor-and-handle geometry, and its tool family includes Add Anchor Point, Delete Anchor Point, Anchor Point, and Curvature tools. MH Fashion should adopt that model for production vector artwork. [9]
+Current scope limits: snapping to nearby unrelated objects or nodes is not implemented; each finished Pen path currently creates its own Shape layer rather than reusing a blank layer; and the broader shape property set (dash, opacity, blend controls and advanced cap/join settings) is not part of this Pen interaction pass. Kittl's current documentation describes the reference behavior as straight/curved path creation, Shift snapping, close-path feedback, node insertion/removal, and later node/handle editing. [23] [24]
 
 ### 7.2 Path Select and anchor editing
 
@@ -1788,6 +1781,8 @@ The editor is production-ready only when all of the following are true:
 [20]: https://helpx.adobe.com/photoshop/desktop/create-manage-layers/smart-objects/create-embedded-smart-objects.html "Photoshop Create embedded Smart Objects"
 [21]: https://www.canva.com/help/finding-and-arranging-layers/ "Canva Finding and arranging layers"
 [22]: https://www.canva.com/help/brand-kit/ "Canva Set up Brand Kits"
+[23]: https://help.kittl.com/editing-and-design/pen-tool "Kittl Use Pen tool"
+[24]: https://help.kittl.com/editing-and-design "Kittl Editing and design"
 
 
 ## Appendix A — Fabric.js implementation logic
@@ -2532,3 +2527,5 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 
 - 2026-11-16: Following the owner's direct request, expanded Text Adjustments to a configurable, reorderable SVG effect stack (Shadow, Outline, Glow, Offset, Echo, Extrude, Stripe) with live shared canvas/mockup rendering, while preserving existing legacy Shadow/Outline text data. Removed the Text button and direct canvas-click insertion route from the bottom Tools bar; Edit sidebar `Add Text` remains the insertion path. Added Phone/Mobile-safe controls and regression checks. This current implementation supersedes the historical 2026-11-15 instruction that the bottom Text tool should insert at the clicked canvas position. See `Doc/DOCUMENTATION.md#work-log`.
 - 2026-11-16: Following the owner's direct Header Bar 2 request, made Product/GSM/Color/Size/Save/Buy controls consistent fully rounded 80×32px desktop and 80×44px touch boxes; retained T-Shirt and 160 GSM defaults, set Size to XL, added theme-token color swatches, hid field labels and the price text on phone layouts, and added the desktop `Price —` placeholder beside Save. Save/Buy remain disabled until their services exist. Build, 44 Node tests, lint, and focused Header Bar 2 desktop/phone CDP checks passed; broader old Editor browser assertions remain untouched because they target the unrelated Sidebar. See `Doc/DOCUMENTATION.md#work-log`.
+
+- 2026-11-16: Following the owner's direct request, expanded the Pen tool into a Kittl-inspired Bézier workflow: click/drag nodes, Shift snapping, close/finish/cancel controls, persisted editable anchor metadata, double-click node editing, segment insertion, handle dragging, and node deletion. Updated the Pen behavior section to distinguish shipped behavior from remaining snapping/style scope. Added geometry/model/UI regression tests; production build and focused tests passed. See `Doc/DOCUMENTATION.md#work-log`.
