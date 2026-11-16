@@ -132,12 +132,15 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.doesNotMatch(toolsBar, /id: "text"|label: "Text"/);
   assert.match(toolsBar, /Pan canvas/);
   assert.match(toolsBar, /id: "pan"/);
+  assert.match(toolsBar, /PenTool/);
   assert.match(toolsBar, /shadow-\[0_2px_8px_rgba\(212,255,63,.35\)\]/);
   assert.match(source, /function finishPenPath\(close = false\)/);
   assert.match(source, /function addPenAnchor/);
   assert.match(source, /onDoubleClick=\{\(\) => activeTool === "pen" && finishPenPath\(false\)\}/);
   assert.match(source, /aria-label="Pen path preview"/);
   assert.match(source, /createEditorShapeLayer\(id, `Pen path/);
+  assert.match(source, /const activeToolCursor = activeTool === "pen" \? "cursor-crosshair"/);
+  assert.match(source, /activeToolCursor\}`/);
   assert.match(source, /draggedEditorPenAnchor/);
   assert.match(source, /snapEditorPenPoint/);
   assert.match(source, /isNearPenStart/);

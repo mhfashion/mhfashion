@@ -2537,3 +2537,7 @@ Pause unfinished Subpath/Node Editing, Fill/Stroke properties, and Bézier-handl
 ## 2026-11-17 Directive Update — Free Transform visual language
 
 Keep the existing Free Transform behavior, but make its visual treatment Kittl-inspired: a thin selection line, compact resize handles, and a small rotation control using MH Fashion theme colors instead of blue. Preserve all eight resize points, rotation, move behavior, and separate touch hit areas for Phone/Mobile.
+
+## 2026-11-17 Directive Update — Pen icon and selected-tool cursor
+
+Use a Photoshop/Kittl-style pen-nib icon for Pen, based on the owner's reference. When a tool is selected, keep the Canvas cursor in that tool's own form instead of always showing a Hand/grab cursor: Pen/Brush crosshair, Eraser cell, Shape/Gradient crosshair, Move move-cursor, and Hand/Pan grab-cursor.

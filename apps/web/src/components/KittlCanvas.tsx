@@ -1329,6 +1329,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const selectedPenPath = selectedPenLayer?.shape?.paths[0]?.penPath ?? null;
   const editingPenLayer = layers.find((layer) => layer.id === editingPenPathLayerId && !layer.locked && layer.shape?.paths[0]?.penPath);
   const editingPenPath = editingPenLayer?.shape?.paths[0]?.penPath ?? null;
+  const activeToolCursor = activeTool === "pen" ? "cursor-crosshair" : activeTool === "brush" ? "cursor-crosshair" : activeTool === "eraser" ? "cursor-cell" : activeTool === "shape" || activeTool === "gradient" ? "cursor-crosshair" : activeTool === "move" ? "cursor-move" : activeTool === "hand" || activeTool === "pan" ? "cursor-grab" : "cursor-default";
 
   return (
     <main className="relative flex h-full min-h-0 flex-col overflow-hidden bg-bg text-text-primary">
@@ -1355,7 +1356,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
             if (event.button === 1) event.preventDefault();
           }}
           data-pan-mode={(touchPanEnabled || activeTool === "hand" || activeTool === "pan") ? "hand" : "scroll"}
-          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand" || activeTool === "pan") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand" || activeTool === "pan") ? "cursor-grab" : "cursor-default"}`}
+          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand" || activeTool === "pan") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand" || activeTool === "pan") ? "cursor-grab" : activeToolCursor}`}
         >
           <div
             ref={workspaceRef}
@@ -1381,7 +1382,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
               onPointerUp={endNodeDrag}
               onPointerCancel={endNodeDrag}
               onLostPointerCapture={endNodeDrag}
-              className={`relative ${menuOpen ? "z-30" : "z-10"} w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : "cursor-grab"}`}
+              className={`relative ${menuOpen ? "z-30" : "z-10"} w-[min(18.25rem,78vw)] shrink-0 touch-none select-none ${draggingNode === "Print canvas" ? "cursor-grabbing" : activeToolCursor}`}
               style={{ transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
             >
               <div className="relative">
