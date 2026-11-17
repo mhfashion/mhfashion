@@ -2576,3 +2576,26 @@ Keep the existing vector Pen path workflow and make its cursor/tool state consis
 Following the owner's direct request, click-dragged Pen anchors now show paired guides and visible handle endpoints; saved-path handles can be dragged to change the cubic curve, and Alt still breaks the mirrored tangent. The live preview uses a 1.5px stroke, the committed path is thin at default canvas size, and the “Click: corner…” instruction plus empty idle hint panel are removed. Finish/Close/Cancel remain available during drawing. Handle motion is tracked globally while dragging so the edit survives SVG redraws; listeners are removed on pointerup, pointercancel, or unmount.
 
 Evidence: production build passed; `node --test tests/*.test.cjs` passed **55/55**; Pen geometry and canvas-shell tests passed **21/21**; lint had **0 errors / 25 warnings**; and focused production Chromium verified visible endpoints, thin preview, hint removal, and saved-handle movement changing the path data. See `Doc/DOCUMENTATION.md` for the work-log entry.
+## 2026-11-18 Directive Update — Cursor shapes must match Tools Bar
+
+Canvas cursors must use the same visual icon shapes as the corresponding Tools Bar icons, not separate approximations. Pen, Pencil, Brush, Move, Hand, Text, Shape, and Gradient must match their toolbar icon geometry. Eraser is the only exception: show a small circular cursor instead of the Eraser icon.
+
+## 2026-11-18 Directive Update — Photo layer Adjustments
+
+When an uploaded photo layer is selected and Adjustments is opened, show a compact Photo section with color controls and action boxes for Remove background and Upscale. Brightness, Contrast, Saturation, and Blur must render live on the photo and persist immutably. Keep the Remove background/Upscale controls ready for real image-service endpoints; until those endpoints are connected, preserve their active state without pretending that backend processing has completed.
+
+## 2026-11-18 Directive Update — Photoshop RAW-style photo controls
+
+Extend Photo Adjustments beyond basic color sliders with RAW-style controls: Temperature, Tint, Exposure, Highlights, Shadows, Vibrance, Hue, Vignette, and independent Red/Green/Blue channel controls. Render the adjustments live and keep each value immutable on the image layer. Use compact grouped controls so the panel remains usable on Desktop and Phone/Mobile.
+
+## 2026-11-18 Directive Update — Photo Curves and Levels
+
+Add Curves and Levels to Photo Adjustments. Levels must provide Black point, White point, and Gamma. Curves must provide a compact live graph with editable points. Both controls must render live, persist immutably on the image layer, and remain usable on Desktop and Phone/Mobile.
+
+## 2026-11-18 Directive Update — Selective Color, HSL, AI Enhance, and Smart Filters
+
+Add Selective Color and HSL controls to Photo Adjustments, including per-component color sliders and HSL Hue/Saturation/Lightness. Add AI Enhance and Smart Filters with intensity/preset controls. Keep the behavior non-destructive and live on the photo layer, with the AI actions ready for a future connected service.
+
+## 2026-11-18 Directive Update — Photo Layer Mask and Blend Modes
+
+Photo layers must expose Add/Edit/Remove Layer Mask controls and Blend Modes in the editing workflow. Reuse the existing non-destructive black-hide/white-reveal mask brush system and apply Blend Modes to the photo rendering group. Keep the controls available on Desktop and Phone/Mobile.

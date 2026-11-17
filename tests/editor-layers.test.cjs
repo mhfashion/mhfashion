@@ -28,6 +28,7 @@ const {
   createEditorImageLayer,
   createEditorShapeLayer,
   createEditorTextLayer,
+  updateEditorImageAdjustments,
   deleteEditorLayer,
   duplicateEditorLayer,
   EDITOR_SHAPE_PRESETS,
@@ -161,6 +162,13 @@ test("Add Text, element and upload layers keep their own content and stay in the
   });
   assert.equal(image.kind, "image");
   assert.equal(image.image.byteSize, 40960);
+  const maskedImage = addLayerMask([image], "image-1");
+  assert.ok(maskedImage[0].mask, "Photo layers accept a non-destructive layer mask");
+  const blendedImage = updateEditorLayer(maskedImage, "image-1", { blendMode: "multiply" });
+  assert.equal(blendedImage[0].blendMode, "multiply", "Photo layers retain blend mode updates");
+  const adjustedImage = updateEditorImageAdjustments([image], "image-1", { brightness: 125, contrast: 80, saturation: 140, blur: 2, temperature: 20, tint: -10, exposure: 15, highlights: -25, shadows: 35, vibrance: 45, vignette: 30, hue: 12, red: 115, green: 90, blue: 105, levelsBlack: 8, levelsWhite: 96, levelsGamma: 1.15, curves: [0, 30, 55, 80, 100], selectiveCyan: 12, selectiveMagenta: -8, selectiveYellow: 20, selectiveBlack: -5, hslHue: 15, hslSaturation: 25, hslLightness: -10, aiEnhanced: true, smartFilter: "cinematic", smartFilterIntensity: 70, backgroundRemoved: true, upscaled: true });
+  assert.deepEqual(adjustedImage[0].image, { ...image.image, brightness: 125, contrast: 80, saturation: 140, blur: 2, temperature: 20, tint: -10, exposure: 15, highlights: -25, shadows: 35, vibrance: 45, vignette: 30, hue: 12, red: 115, green: 90, blue: 105, levelsBlack: 8, levelsWhite: 96, levelsGamma: 1.15, curves: [0, 30, 55, 80, 100], selectiveCyan: 12, selectiveMagenta: -8, selectiveYellow: 20, selectiveBlack: -5, hslHue: 15, hslSaturation: 25, hslLightness: -10, aiEnhanced: true, smartFilter: "cinematic", smartFilterIntensity: 70, backgroundRemoved: true, upscaled: true });
+  assert.equal(image.image.brightness, undefined, "Photo adjustments are immutable");
 
   const duplicatedText = duplicateEditorLayer(typed, "text-1", "text-2")[0];
   assert.equal(duplicatedText.text.value, "MH FASHION");

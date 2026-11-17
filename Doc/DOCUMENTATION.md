@@ -890,3 +890,38 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 - Added deterministic math regression coverage for proportional and free scaling, center anchoring, rotated side handles, and rotation snapping. Validation passed: six relevant suites **50/50**; TypeScript passed; Next.js production and OpenNext Cloudflare builds passed; `git diff --check` passed. ESLint returned **0 errors / 25 warnings**.
 - Scope limitation: this increment covers move, proportional/free scale, center scaling, and snapped/free rotation. Photoshop's skew, perspective, distortion, warp, numeric transform fields, persistence to serialized layer data, and synchronization of canvas transform maps into separate mockup previews are not implemented here.
 - Behavior reference: [Adobe Photoshop — Transform images, shapes, and paths](https://helpx.adobe.com/photoshop/desktop/crop-resize-transform/resize-adjust-resolution/transform-images-and-shapes-and-paths.html) and [Kittl — Canvas essentials](https://help.kittl.com/editing-and-design/basic-handling).
+### 2026-11-18 — Canvas cursors match Tools Bar icons
+
+Aligned the custom Canvas cursor SVGs with the same Lucide icon geometry used by the Tools Bar instead of using separately drawn approximations. Pen, Pencil, Brush, Move, Hand, Text, Shape, and Gradient now reuse matching icon path shapes and stroke treatment. Eraser follows the requested exception and displays a simple circular cursor rather than the Eraser icon. The cursor remains synchronized between the editor viewport and print canvas.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — Photo layer Adjustments panel
+
+Added a Photo-specific collapsible section to Adjustments for selected uploaded image layers. It includes live Brightness, Contrast, Saturation, and Blur sliders plus compact Remove background and Upscale action boxes. Image adjustment state is stored immutably on `EditorImageContent`, rendered as SVG image CSS filters, and exposed with data attributes for future connected service processing. The two action boxes currently toggle their requested state and clearly show when active; actual AI background-removal/upscale processing remains dependent on the image service endpoint.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — RAW-style Photo color controls
+
+Expanded the Photo Adjustments section toward a Photoshop Camera Raw workflow. Added live Temperature, Tint, Exposure, Highlights, Shadows, Vibrance, Hue, and Vignette controls, plus a Color Mix group with independent Red, Green, and Blue channel sliders. RGB channel values use an SVG component-transfer filter; Temperature/Tint/Hue/Vibrance/Exposure are composed into the live image filter; Vignette renders as a radial gradient overlay. All values persist immutably on the image layer and remain ready for future non-destructive RAW processing services.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — Photo Curves and Levels
+
+Added Photoshop Camera Raw-style Levels and Curves to the Photo Adjustments section. Levels includes Black point, White point, and Gamma controls. Curves includes a live graph preview and five editable control-point sliders; the curve is applied through SVG component-transfer table values. Levels are applied through SVG table/gamma transfer stages before RGB channel mixing, so the controls render non-destructively in the Canvas and previews. All state remains immutable on the image layer.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — Selective Color, HSL, AI Enhance, and Smart Filters
+
+Expanded Photo Adjustments with a Selective Color group for Cyan, Magenta, Yellow, and Black; an HSL group for Hue, Saturation, and Lightness; an AI Enhance toggle; and Smart Filter presets with intensity control. Smart presets include Clarity, Cinematic, Vintage, B&W, Warm, and Cool. These values persist immutably on the photo layer and compose into the live SVG/CSS filter chain. AI Enhance and Smart Filters currently provide deterministic local preview behavior while remaining ready for future AI/image-service integration.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — Photo Layer Masks and Blend Modes
+
+Added Photo-specific Mask controls inside the Photo Adjustments section. Uploaded photo layers can now add a non-destructive layer mask, enter mask editing directly from Adjustments, or remove the mask. Existing black-hide/white-reveal brush behavior and the Canvas mask rendering are reused, so photo masks affect the image and its mockups consistently. Added a Blend mode selector to Appearance with Normal, Multiply, Screen, and Overlay; the selected mode is applied to the photo rendering group and persists through the existing immutable layer update path.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.

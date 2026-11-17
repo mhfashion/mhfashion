@@ -147,6 +147,8 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /function editorToolCursor\(tool: EditorTool\)/);
   assert.match(source, /pen: '<path/);
   assert.match(source, /pencil: '<path/);
+  assert.match(source, /shape: '<rect/);
+  assert.match(source, /eraser: '<circle cx="12" cy="12" r="7"\/>/);
   assert.match(source, /activeToolCursorStyle/);
   const finishPenPathSource = source.slice(source.indexOf("function finishPenPath"), source.indexOf("function addPenAnchor"));
   assert.doesNotMatch(finishPenPathSource, /setActiveTool\("move"\)/, "Finishing a path keeps the Pen tool active");
@@ -398,7 +400,7 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
 
 test("Adjustment panel groups Kittl-style text controls into compact expandable sections", () => {
   assert.match(adjustmentsPanel, /function Section\(/);
-  for (const section of ["Text", "Font", "Style & Alignment", "Effects", "Transform", "Appearance"]) {
+  for (const section of ["Text", "Font", "Style & Alignment", "Effects", "Transform", "Photo", "Appearance"]) {
     assert.ok(adjustmentsPanel.includes(`title=\"${section}\"`), `missing ${section} adjustment section`);
   }
   assert.match(adjustmentsPanel, /aria-label="Search fonts"/);
@@ -417,6 +419,45 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(layerModelSource, /textEffect\?: "none" \| "shadow" \| "outline"/);
   assert.match(layerModelSource, /export function applyEditorShapeBuilderOperation/);
   assert.match(layerPreview, /data-editor-text-transform/);
+  assert.match(adjustmentsPanel, /aria-label="Photo brightness"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo contrast"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo saturation"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo temperature"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo tint"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo exposure"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo highlights"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo shadows"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo vibrance"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo red channel"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo green channel"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo blue channel"/);
+  assert.match(adjustmentsPanel, /aria-label="Selective color cyan"/);
+  assert.match(adjustmentsPanel, /aria-label="Selective color magenta"/);
+  assert.match(adjustmentsPanel, /aria-label="Selective color yellow"/);
+  assert.match(adjustmentsPanel, /aria-label="Selective color black"/);
+  assert.match(adjustmentsPanel, /aria-label="HSL hue"/);
+  assert.match(adjustmentsPanel, /aria-label="HSL saturation"/);
+  assert.match(adjustmentsPanel, /aria-label="HSL lightness"/);
+  assert.match(adjustmentsPanel, /aria-label="AI Enhance photo"/);
+  assert.match(adjustmentsPanel, /aria-label="Smart filter"/);
+  assert.match(adjustmentsPanel, /aria-label="Smart filter intensity"/);
+  assert.match(adjustmentsPanel, /Add photo layer mask/);
+  assert.match(adjustmentsPanel, /Edit photo layer mask/);
+  assert.match(adjustmentsPanel, /aria-label="Remove photo layer mask"/);
+  assert.match(adjustmentsPanel, /Blend mode for \$\{selectedLayer\.name\}/);
+  assert.match(adjustmentsPanel, /aria-label="Photo vignette"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo levels black point"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo levels white point"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo levels gamma"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo curves preview"/);
+  assert.match(adjustmentsPanel, /Photo curve point/);
+  assert.match(adjustmentsPanel, /aria-label="Remove background"/);
+  assert.match(adjustmentsPanel, /aria-label="Upscale photo"/);
+  assert.match(layerPreview, /data-editor-image-background-removed/);
+  assert.match(layerPreview, /data-editor-image-vignette/);
+  assert.match(layerPreview, /feFuncR/);
+  assert.match(layerPreview, /levelsTableValues/);
+  assert.match(layerPreview, /curveTableValues/);
 });
 
 test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requested categories", () => {

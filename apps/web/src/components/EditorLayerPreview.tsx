@@ -18,6 +18,28 @@ export default function EditorLayerPreview({
 }) {
   const rawId = useId();
   const effectPrefix = `text-effect-${rawId.replace(/[^a-zA-Z0-9_-]/g, "") || "preview"}`;
+  const imageFilterId = `${effectPrefix}-image-rgb`;
+  const vignetteId = `${effectPrefix}-vignette`;
+  const curveTableValues = (image?.curves ?? [0, 25, 50, 75, 100]).map((point) => Math.max(0, Math.min(100, point)) / 100).join(" ");
+  const levelsTableValues = `${(image?.levelsBlack ?? 0) / 100} ${(image?.levelsWhite ?? 100) / 100}`;
+  const smartIntensity = (image?.smartFilterIntensity ?? 100) / 100;
+  const smartFilter = image?.smartFilter ?? "none";
+  const smartContrast = image?.aiEnhanced ? 1 + 0.16 * smartIntensity : 1;
+  const smartSaturation = image?.aiEnhanced ? 1 + 0.2 * smartIntensity : 1;
+  const smartBrightness = image?.aiEnhanced ? 1 + 0.04 * smartIntensity : 1;
+  const smartFilterCss = smartFilter === "bw"
+    ? `saturate(${1 - smartIntensity})`
+    : smartFilter === "vintage"
+      ? `sepia(${0.45 * smartIntensity}) contrast(${1 - 0.08 * smartIntensity})`
+      : smartFilter === "cinematic"
+        ? `contrast(${1 + 0.18 * smartIntensity}) saturate(${1 + 0.08 * smartIntensity})`
+        : smartFilter === "warm"
+          ? `sepia(${0.18 * smartIntensity}) hue-rotate(${-8 * smartIntensity}deg)`
+          : smartFilter === "cool"
+            ? `hue-rotate(${18 * smartIntensity}deg) saturate(${1 + 0.08 * smartIntensity})`
+            : smartFilter === "clarity"
+              ? `contrast(${1 + 0.12 * smartIntensity}) saturate(${1 + 0.1 * smartIntensity})`
+              : "";
   const effectKey = (effect: EditorTextEffect) => effect.id.replace(/[^a-zA-Z0-9_-]/g, "-");
   return (
     <>
@@ -103,15 +125,49 @@ export default function EditorLayerPreview({
         );
       })()}
       {image && (
-        <image
-          href={image.src}
-          x={image.x}
-          y={image.y}
-          width={image.width}
-          height={image.height}
-          preserveAspectRatio="none"
-          data-editor-image-content="true"
-        />
+        <g data-editor-image-layer="true">
+          <defs>
+            <filter id={imageFilterId} colorInterpolationFilters="sRGB">
+              <feComponentTransfer>
+                <feFuncR type="table" tableValues={levelsTableValues} />
+                <feFuncG type="table" tableValues={levelsTableValues} />
+                <feFuncB type="table" tableValues={levelsTableValues} />
+              </feComponentTransfer>
+              <feComponentTransfer>
+                <feFuncR type="gamma" amplitude="1" exponent={image.levelsGamma ?? 1} offset="0" />
+                <feFuncG type="gamma" amplitude="1" exponent={image.levelsGamma ?? 1} offset="0" />
+                <feFuncB type="gamma" amplitude="1" exponent={image.levelsGamma ?? 1} offset="0" />
+              </feComponentTransfer>
+              <feComponentTransfer>
+                <feFuncR type="linear" slope={(image.red ?? 100) / 100} />
+                <feFuncG type="linear" slope={(image.green ?? 100) / 100} />
+                <feFuncB type="linear" slope={(image.blue ?? 100) / 100} />
+              </feComponentTransfer>
+              <feComponentTransfer>
+                <feFuncR type="table" tableValues={curveTableValues} />
+                <feFuncG type="table" tableValues={curveTableValues} />
+                <feFuncB type="table" tableValues={curveTableValues} />
+              </feComponentTransfer>
+            </filter>
+            <radialGradient id={vignetteId} cx="50%" cy="50%" r="72%">
+              <stop offset="52%" stopColor="#000" stopOpacity="0" />
+              <stop offset="100%" stopColor="#000" stopOpacity={(image.vignette ?? 0) / 100} />
+            </radialGradient>
+          </defs>
+          <image
+            href={image.src}
+            x={image.x}
+            y={image.y}
+            width={image.width}
+            height={image.height}
+            preserveAspectRatio="none"
+            style={{ filter: `url(#${imageFilterId}) brightness(${Math.max(0, smartBrightness * (1 + ((image.exposure ?? 0) + (image.shadows ?? 0) * 0.35 + (image.highlights ?? 0) * 0.15) / 100) * (1 - (image.selectiveBlack ?? 0) / 500))}) contrast(${Math.max(0, smartContrast * ((image.contrast ?? 100) / 100 + (image.highlights ?? 0) / 500))}) saturate(${Math.max(0, smartSaturation * (1 + ((image.saturation ?? 100) - 100 + (image.vibrance ?? 0) + (image.hslSaturation ?? 0) + (image.selectiveCyan ?? 0) + (image.selectiveMagenta ?? 0) + (image.selectiveYellow ?? 0)) / 100))}) sepia(${Math.max(0, image.temperature ?? 0) / 100}) hue-rotate(${(image.hue ?? 0) + (image.temperature ?? 0) * 0.35 + (image.tint ?? 0) * 0.45 + (image.hslHue ?? 0) + ((image.selectiveMagenta ?? 0) - (image.selectiveYellow ?? 0)) * 0.15}deg) brightness(${Math.max(0, 1 + (image.hslLightness ?? 0) / 1000)}) ${smartFilterCss} blur(${image.blur ?? 0}px)` }}
+            data-editor-image-background-removed={image.backgroundRemoved ? "true" : "false"}
+            data-editor-image-upscaled={image.upscaled ? "true" : "false"}
+            data-editor-image-content="true"
+          />
+          {(image.vignette ?? 0) > 0 && <rect x={image.x} y={image.y} width={image.width} height={image.height} fill={`url(#${vignetteId})`} pointerEvents="none" data-editor-image-vignette="true" />}
+        </g>
       )}
     </>
   );

@@ -170,6 +170,37 @@ export type EditorImageContent = {
   width: number;
   height: number;
   byteSize: number;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  blur?: number;
+  temperature?: number;
+  tint?: number;
+  exposure?: number;
+  highlights?: number;
+  shadows?: number;
+  vibrance?: number;
+  vignette?: number;
+  hue?: number;
+  red?: number;
+  green?: number;
+  blue?: number;
+  levelsBlack?: number;
+  levelsWhite?: number;
+  levelsGamma?: number;
+  curves?: number[];
+  selectiveCyan?: number;
+  selectiveMagenta?: number;
+  selectiveYellow?: number;
+  selectiveBlack?: number;
+  hslHue?: number;
+  hslSaturation?: number;
+  hslLightness?: number;
+  aiEnhanced?: boolean;
+  smartFilter?: "none" | "clarity" | "cinematic" | "vintage" | "bw" | "warm" | "cool";
+  smartFilterIntensity?: number;
+  backgroundRemoved?: boolean;
+  upscaled?: boolean;
 };
 
 export type EditorArtworkLayer = {
@@ -261,6 +292,16 @@ export function createEditorImageLayer(
   image: EditorImageContent,
 ): EditorArtworkLayer {
   return { ...createEditorArtworkLayer(id, name), kind: "image", image: { ...image } };
+}
+
+export function updateEditorImageAdjustments(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "temperature" | "tint" | "exposure" | "highlights" | "shadows" | "vibrance" | "vignette" | "hue" | "red" | "green" | "blue" | "levelsBlack" | "levelsWhite" | "levelsGamma" | "curves" | "selectiveCyan" | "selectiveMagenta" | "selectiveYellow" | "selectiveBlack" | "hslHue" | "hslSaturation" | "hslLightness" | "aiEnhanced" | "smartFilter" | "smartFilterIntensity" | "backgroundRemoved" | "upscaled">>,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => layer.id === layerId && layer.image
+    ? { ...layer, image: { ...layer.image, ...update } }
+    : layer);
 }
 
 export function setEditorLayerText(
