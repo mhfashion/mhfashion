@@ -1851,6 +1851,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onUpdateTextStyle={updateSelectedTextStyle}
           onUpdateShapeBuilder={updateSelectedShapeBuilder}
           onUpdateImage={updateSelectedImage}
+          onAddMask={createLayerMask}
+          onRemoveMask={deleteLayerMask}
+          onSelectMask={() => setSelectedTarget("mask")}
         />}
         {!adjustmentsOpen && <EditorLayersPanel
           open={layersOpen}

@@ -911,3 +911,9 @@ Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js prod
 Expanded Photo Adjustments with a Selective Color group for Cyan, Magenta, Yellow, and Black; an HSL group for Hue, Saturation, and Lightness; an AI Enhance toggle; and Smart Filter presets with intensity control. Smart presets include Clarity, Cinematic, Vintage, B&W, Warm, and Cool. These values persist immutably on the photo layer and compose into the live SVG/CSS filter chain. AI Enhance and Smart Filters currently provide deterministic local preview behavior while remaining ready for future AI/image-service integration.
 
 Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — Photo Layer Masks and Blend Modes
+
+Added Photo-specific Mask controls inside the Photo Adjustments section. Uploaded photo layers can now add a non-destructive layer mask, enter mask editing directly from Adjustments, or remove the mask. Existing black-hide/white-reveal brush behavior and the Canvas mask rendering are reused, so photo masks affect the image and its mockups consistently. Added a Blend mode selector to Appearance with Normal, Multiply, Screen, and Overlay; the selected mode is applied to the photo rendering group and persists through the existing immutable layer update path.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.

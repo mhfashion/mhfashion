@@ -428,6 +428,10 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(adjustmentsPanel, /aria-label="AI Enhance photo"/);
   assert.match(adjustmentsPanel, /aria-label="Smart filter"/);
   assert.match(adjustmentsPanel, /aria-label="Smart filter intensity"/);
+  assert.match(adjustmentsPanel, /Add photo layer mask/);
+  assert.match(adjustmentsPanel, /Edit photo layer mask/);
+  assert.match(adjustmentsPanel, /aria-label="Remove photo layer mask"/);
+  assert.match(adjustmentsPanel, /Blend mode for \$\{selectedLayer\.name\}/);
   assert.match(adjustmentsPanel, /aria-label="Photo vignette"/);
   assert.match(adjustmentsPanel, /aria-label="Photo levels black point"/);
   assert.match(adjustmentsPanel, /aria-label="Photo levels white point"/);
