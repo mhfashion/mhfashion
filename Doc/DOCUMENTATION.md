@@ -899,3 +899,9 @@ Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js prod
 Expanded the Photo Adjustments section toward a Photoshop Camera Raw workflow. Added live Temperature, Tint, Exposure, Highlights, Shadows, Vibrance, Hue, and Vignette controls, plus a Color Mix group with independent Red, Green, and Blue channel sliders. RGB channel values use an SVG component-transfer filter; Temperature/Tint/Hue/Vibrance/Exposure are composed into the live image filter; Vignette renders as a radial gradient overlay. All values persist immutably on the image layer and remain ready for future non-destructive RAW processing services.
 
 Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — Photo Curves and Levels
+
+Added Photoshop Camera Raw-style Levels and Curves to the Photo Adjustments section. Levels includes Black point, White point, and Gamma controls. Curves includes a live graph preview and five editable control-point sliders; the curve is applied through SVG component-transfer table values. Levels are applied through SVG table/gamma transfer stages before RGB channel mixing, so the controls render non-destructively in the Canvas and previews. All state remains immutable on the image layer.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.

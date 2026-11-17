@@ -2579,3 +2579,7 @@ When an uploaded photo layer is selected and Adjustments is opened, show a compa
 ## 2026-11-18 Directive Update — Photoshop RAW-style photo controls
 
 Extend Photo Adjustments beyond basic color sliders with RAW-style controls: Temperature, Tint, Exposure, Highlights, Shadows, Vibrance, Hue, Vignette, and independent Red/Green/Blue channel controls. Render the adjustments live and keep each value immutable on the image layer. Use compact grouped controls so the panel remains usable on Desktop and Phone/Mobile.
+
+## 2026-11-18 Directive Update — Photo Curves and Levels
+
+Add Curves and Levels to Photo Adjustments. Levels must provide Black point, White point, and Gamma. Curves must provide a compact live graph with editable points. Both controls must render live, persist immutably on the image layer, and remain usable on Desktop and Phone/Mobile.

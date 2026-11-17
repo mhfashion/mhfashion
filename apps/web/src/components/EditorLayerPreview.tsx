@@ -20,6 +20,8 @@ export default function EditorLayerPreview({
   const effectPrefix = `text-effect-${rawId.replace(/[^a-zA-Z0-9_-]/g, "") || "preview"}`;
   const imageFilterId = `${effectPrefix}-image-rgb`;
   const vignetteId = `${effectPrefix}-vignette`;
+  const curveTableValues = (image?.curves ?? [0, 25, 50, 75, 100]).map((point) => Math.max(0, Math.min(100, point)) / 100).join(" ");
+  const levelsTableValues = `${(image?.levelsBlack ?? 0) / 100} ${(image?.levelsWhite ?? 100) / 100}`;
   const effectKey = (effect: EditorTextEffect) => effect.id.replace(/[^a-zA-Z0-9_-]/g, "-");
   return (
     <>
@@ -109,9 +111,24 @@ export default function EditorLayerPreview({
           <defs>
             <filter id={imageFilterId} colorInterpolationFilters="sRGB">
               <feComponentTransfer>
+                <feFuncR type="table" tableValues={levelsTableValues} />
+                <feFuncG type="table" tableValues={levelsTableValues} />
+                <feFuncB type="table" tableValues={levelsTableValues} />
+              </feComponentTransfer>
+              <feComponentTransfer>
+                <feFuncR type="gamma" amplitude="1" exponent={image.levelsGamma ?? 1} offset="0" />
+                <feFuncG type="gamma" amplitude="1" exponent={image.levelsGamma ?? 1} offset="0" />
+                <feFuncB type="gamma" amplitude="1" exponent={image.levelsGamma ?? 1} offset="0" />
+              </feComponentTransfer>
+              <feComponentTransfer>
                 <feFuncR type="linear" slope={(image.red ?? 100) / 100} />
                 <feFuncG type="linear" slope={(image.green ?? 100) / 100} />
                 <feFuncB type="linear" slope={(image.blue ?? 100) / 100} />
+              </feComponentTransfer>
+              <feComponentTransfer>
+                <feFuncR type="table" tableValues={curveTableValues} />
+                <feFuncG type="table" tableValues={curveTableValues} />
+                <feFuncB type="table" tableValues={curveTableValues} />
               </feComponentTransfer>
             </filter>
             <radialGradient id={vignetteId} cx="50%" cy="50%" r="72%">
