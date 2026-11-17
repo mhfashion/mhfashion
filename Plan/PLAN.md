@@ -1271,6 +1271,8 @@ Finished Pen paths store both their SVG path data and editable anchor/handle/clo
 
 Implemented 2026-11-17: one Pen-nib cursor (tip hotspot `12 14`, crosshair fallback) is used consistently on the viewport and print canvas while Pen is selected, from path start through curve drawing, Cancel, Finish/Close, and after commit. Finish/Close leaves Pen selected and ready for another path. Existing node editing remains available through Move and retains that tool's cursor; other tools' cursors are unchanged. Remaining limits: snapping to nearby unrelated objects or nodes, reuse of a blank Shape layer, and broader shape properties (dash, opacity, blend controls, advanced cap/join settings) are not implemented. Other Photoshop-specific variants or controls remain unimplemented until the owner specifies them.
 
+Implemented 2026-11-18: click-dragged anchors show paired Bézier guide lines and visible endpoint dots in the live Pen preview; committed path handles remain adjustable in the existing node-edit workflow, including Alt to break the mirrored tangent. Handle drags continue tracking pointer movement through editor redraws. The active preview uses a 1.5px stroke, and the committed Pen path uses a thin stroke at the default canvas size. Removed the “Click: corner · drag: curve · Shift: snap · click start: close” instruction and the empty idle hint panel; Finish/Close path/Cancel remain available while a path is active. Additional Photoshop-specific modes remain out of scope until the owner specifies them.
+
 ### 7.2 Path Select and anchor editing
 
 Path Select must have two explicit modes:
@@ -2568,3 +2570,9 @@ The owner accepts Photoshop-style behavior in place of exact Kittl replication; 
 ## 2026-11-17 Directive Update — Photoshop-like Pen continuity
 
 Keep the existing vector Pen path workflow and make its cursor/tool state consistent: use the same Pen-nib cursor on the viewport and print canvas from the first anchor through curve creation, path editing, Cancel, Finish/Close, and after path commit. Finishing or closing a path must leave Pen selected and ready to start another path, not switch automatically to Move. Preserve other tools' cursors and existing Bézier, snapping, close, finish, cancel, and point-edit behavior. Implement only this slice; wait for the owner's step-by-step direction before adding other Photoshop-specific Pen modes.
+
+## 2026-11-18 Implementation update — Photoshop-style Pen Bézier handles
+
+Following the owner's direct request, click-dragged Pen anchors now show paired guides and visible handle endpoints; saved-path handles can be dragged to change the cubic curve, and Alt still breaks the mirrored tangent. The live preview uses a 1.5px stroke, the committed path is thin at default canvas size, and the “Click: corner…” instruction plus empty idle hint panel are removed. Finish/Close/Cancel remain available during drawing. Handle motion is tracked globally while dragging so the edit survives SVG redraws; listeners are removed on pointerup, pointercancel, or unmount.
+
+Evidence: production build passed; `node --test tests/*.test.cjs` passed **55/55**; Pen geometry and canvas-shell tests passed **21/21**; lint had **0 errors / 25 warnings**; and focused production Chromium verified visible endpoints, thin preview, hint removal, and saved-handle movement changing the path data. See `Doc/DOCUMENTATION.md` for the work-log entry.

@@ -32,6 +32,14 @@ This log records completed website-related changes in the connected repository. 
 - Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
 - Validation: Next.js production build passed; all repository Node tests passed **55/55**, including canvas-shell **16/16**; lint completed with **0 errors / 25 warnings**; and `git diff --check` passed. Focused production-mode Chromium verified the same cursor before the first anchor, after each anchor, and after both Finish and Close path; Pen remained selected and a new path could start immediately after either completion.
 
+### 2026-11-18 — Photoshop-style Pen Bézier handles, thin path, and hint removal
+
+- Dragging from an anchor now shows both Bézier guide lines and visible endpoint dots in the live preview. Existing saved-path handles remain editable; dragging a handle changes the cubic path, and Alt still breaks the mirrored tangent.
+- Thinned the live Pen preview to 1.5px and the committed Pen path to a fine line at the default canvas size. Removed the “Click: corner · drag: curve · Shift: snap · click start: close” instruction and the empty idle box; Finish, Close path, and Cancel remain visible during an active path.
+- Stabilized handle editing across React redraws by tracking pointer move/up/cancel for the duration of an active handle drag and cleaning up listeners on release or unmount.
+- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Validation on 2026-11-18: production build passed; all repository Node tests passed **55/55**; Pen geometry and canvas-shell tests passed **21/21**; lint completed with **0 errors / 25 warnings**. Focused production Chromium verified idle hint removal, visible in/out handle endpoints, 1.5px preview, active path actions, and that dragging a saved-path handle changes the cubic SVG path data. `git diff --check` passed.
+
 ### 2026-11-16 — Owner-directed Kittl-inspired Pen curves and node editing
 
 - Replaced the straight-anchor-only Pen interaction with click-to-place corners, click-drag smooth Bézier handles, Shift snapping to horizontal/vertical/45-degree segments, a highlighted close target, and touch-visible Finish/Close/Cancel actions. Closed paths use the active foreground as fill; open paths remain stroke-only.

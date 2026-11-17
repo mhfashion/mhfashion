@@ -431,6 +431,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const activeShapeDragRef = useRef<ActiveShapeDrag | null>(null);
   const penAnchorDragRef = useRef<PenAnchorDrag | null>(null);
   const penEditDragRef = useRef<PenEditDrag | null>(null);
+  const penEditWindowHandlersRef = useRef<{ move: (event: PointerEvent) => void; end: (event: PointerEvent) => void } | null>(null);
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget } | null>(null);
   const canvasArtworkDragRef = useRef<CanvasArtworkDrag | null>(null);
   const canvasLayerResizeRef = useRef<CanvasLayerResizeDrag | null>(null);
@@ -451,6 +452,16 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     };
     narrowViewport.addEventListener("change", closeSidebarsBeforeTheyOverlap);
     return () => narrowViewport.removeEventListener("change", closeSidebarsBeforeTheyOverlap);
+  }, []);
+
+  useEffect(() => () => {
+    const handlers = penEditWindowHandlersRef.current;
+    if (!handlers) return;
+    window.removeEventListener("pointermove", handlers.move, true);
+    window.removeEventListener("pointerup", handlers.end, true);
+    window.removeEventListener("pointercancel", handlers.end, true);
+    penEditWindowHandlersRef.current = null;
+    penEditDragRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -858,7 +869,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const id = claimLayerId();
     rememberLayerSnapshot();
     const shapeLayer = createEditorShapeLayer(id, `Pen path ${nextLayerIdRef.current - 1}`, {
-      paths: [{ d: pathData, fill: close ? foregroundColor : "none", stroke: foregroundColor, strokeWidth: 18, penPath }],
+      paths: [{ d: pathData, fill: close ? foregroundColor : "none", stroke: foregroundColor, strokeWidth: 5, penPath }],
     });
     setLayers((current) => [shapeLayer, ...current]);
     setSelectedLayerId(id);
@@ -938,6 +949,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setLayers((current) => updateEditorPenPath(current, layerId, penPath, editorPenPathData(penPath)));
   }
 
+  function clearPenEditWindowHandlers() {
+    const handlers = penEditWindowHandlersRef.current;
+    if (!handlers) return;
+    window.removeEventListener("pointermove", handlers.move, true);
+    window.removeEventListener("pointerup", handlers.end, true);
+    window.removeEventListener("pointercancel", handlers.end, true);
+    penEditWindowHandlersRef.current = null;
+  }
+
   function startPenEditDrag(
     layerId: string,
     index: number,
@@ -950,6 +970,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const path = penPathForLayer(layerId);
     const origin = path?.anchors[index];
     if (!path || !origin) return;
+    clearPenEditWindowHandlers();
     if (kind === "anchor" && event.altKey) {
       const next = removeEditorPenAnchor(path, index);
       if (next) {
@@ -971,10 +992,19 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       start: toPenLayerPoint(event.clientX, event.clientY, layerId),
       origin: { ...origin },
     };
-    event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
+    const moveHandler = (moveEvent: PointerEvent) => {
+      if (penEditDragRef.current?.pointerId === moveEvent.pointerId) movePenEditNode(moveEvent);
+    };
+    const endHandler = (endEvent: PointerEvent) => {
+      if (penEditDragRef.current?.pointerId === endEvent.pointerId) endPenEditDrag(endEvent);
+    };
+    penEditWindowHandlersRef.current = { move: moveHandler, end: endHandler };
+    window.addEventListener("pointermove", moveHandler, true);
+    window.addEventListener("pointerup", endHandler, true);
+    window.addEventListener("pointercancel", endHandler, true);
   }
 
-  function movePenEditNode(event: React.PointerEvent<SVGSVGElement>) {
+  function movePenEditNode(event: PointerEvent) {
     const drag = penEditDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
@@ -997,8 +1027,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     updatePenLayer(drag.layerId, { ...path, anchors });
   }
 
-  function endPenEditDrag(event: React.PointerEvent<SVGSVGElement>) {
-    if (penEditDragRef.current?.pointerId === event.pointerId) penEditDragRef.current = null;
+  function endPenEditDrag(event: PointerEvent) {
+    if (penEditDragRef.current?.pointerId !== event.pointerId) return;
+    penEditDragRef.current = null;
+    clearPenEditWindowHandlers();
   }
 
   function addPenNodeOnPath(layerId: string, event: React.PointerEvent<SVGPathElement>) {
@@ -1636,7 +1668,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                 )}
                 {editingPenLayer && editingPenPath && (
                   <>
-                    <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-label="Pen path point controls" className="pointer-events-none absolute inset-0 z-30 h-full w-full" style={{ touchAction: "none", cursor: activeTool === "pen" ? activeToolCursorStyle : undefined }} onPointerMove={movePenEditNode} onPointerUp={endPenEditDrag} onPointerCancel={endPenEditDrag} onLostPointerCapture={endPenEditDrag}>
+                    <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-label="Pen path point controls" className="pointer-events-none absolute inset-0 z-30 h-full w-full" style={{ touchAction: "none", cursor: activeTool === "pen" ? activeToolCursorStyle : undefined }}>
                       <g transform={penLayerTransform(editingPenLayer.id)}>
                         <path d={editorPenPathData(editingPenPath)} fill="none" stroke="#000000" strokeOpacity="0.001" strokeWidth="34" pointerEvents="stroke" onPointerDown={(event) => addPenNodeOnPath(editingPenLayer.id, event)} className={activeTool === "pen" ? "" : "cursor-crosshair"} />
                         {editingPenPath.anchors.map((anchor, index) => {
@@ -1668,20 +1700,26 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                         })}
                       </g>
                     </svg>
-                    <div aria-label="Pen path editing controls" className="absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-16px)] -translate-x-1/2 items-center gap-2 rounded-xl border border-border bg-bg-surface/95 px-2 py-1 text-[10px] text-text-primary shadow-lg">
+                    <div aria-label="Pen path editing controls" className="pointer-events-none absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-16px)] -translate-x-1/2 items-center gap-2 rounded-xl border border-border bg-bg-surface/95 px-2 py-1 text-[10px] text-text-primary shadow-lg">
                       <span className="hidden sm:inline">Drag points/handles · click path to add · Alt-click point to remove</span>
-                      <button type="button" onClick={removeSelectedPenNode} disabled={selectedPenAnchorIndex === null} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Delete point</button>
-                      <button type="button" onClick={() => { setEditingPenPathLayerId(null); setSelectedPenAnchorIndex(null); }} className="rounded-lg bg-accent px-2 py-1 text-accent-foreground">Done</button>
+                      <button type="button" onClick={removeSelectedPenNode} disabled={selectedPenAnchorIndex === null} className="pointer-events-auto rounded-lg border border-border px-2 py-1 disabled:opacity-40">Delete point</button>
+                      <button type="button" onClick={() => { setEditingPenPathLayerId(null); setSelectedPenAnchorIndex(null); }} className="pointer-events-auto rounded-lg bg-accent px-2 py-1 text-accent-foreground">Done</button>
                     </div>
                   </>
                 )}
                 {activeTool === "pen" && penAnchors.length > 0 && (
                   <svg aria-label="Pen path preview" viewBox="0 0 1000 1200" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
-                    <path d={editorPenPathData({ anchors: penAnchors, closed: false }, penHoverPoint)} fill="none" stroke={foregroundColor} strokeWidth="10" strokeDasharray="16 10" vectorEffect="non-scaling-stroke" />
+                    <path d={editorPenPathData({ anchors: penAnchors, closed: false }, penHoverPoint)} fill="none" stroke={foregroundColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
                     {penAnchors.map((point, index) => <g key={`${point.x}-${point.y}-${index}`}>
-                      {point.handleIn && <line x1={point.x * 1000} y1={point.y * 1200} x2={(point.x + point.handleIn.x) * 1000} y2={(point.y + point.handleIn.y) * 1200} stroke={foregroundColor} strokeWidth="5" vectorEffect="non-scaling-stroke" />}
-                      {point.handleOut && <line x1={point.x * 1000} y1={point.y * 1200} x2={(point.x + point.handleOut.x) * 1000} y2={(point.y + point.handleOut.y) * 1200} stroke={foregroundColor} strokeWidth="5" vectorEffect="non-scaling-stroke" />}
-                      <circle cx={point.x * 1000} cy={point.y * 1200} r={index === 0 ? (penHoverCloseTarget ? 16 : 13) : 10} fill={index === 0 ? (penHoverCloseTarget ? "#d4ff3f" : "#ffffff") : foregroundColor} stroke={foregroundColor} strokeWidth="6" vectorEffect="non-scaling-stroke" data-pen-close-target={index === 0 && penHoverCloseTarget ? "true" : undefined} />
+                      {point.handleIn && <>
+                        <line x1={point.x * 1000} y1={point.y * 1200} x2={(point.x + point.handleIn.x) * 1000} y2={(point.y + point.handleIn.y) * 1200} stroke={foregroundColor} strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+                        <circle cx={(point.x + point.handleIn.x) * 1000} cy={(point.y + point.handleIn.y) * 1200} r="5" fill="#ffffff" stroke={foregroundColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" data-pen-handle-endpoint="in" aria-hidden="true" />
+                      </>}
+                      {point.handleOut && <>
+                        <line x1={point.x * 1000} y1={point.y * 1200} x2={(point.x + point.handleOut.x) * 1000} y2={(point.y + point.handleOut.y) * 1200} stroke={foregroundColor} strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+                        <circle cx={(point.x + point.handleOut.x) * 1000} cy={(point.y + point.handleOut.y) * 1200} r="5" fill="#ffffff" stroke={foregroundColor} strokeWidth="1.5" vectorEffect="non-scaling-stroke" data-pen-handle-endpoint="out" aria-hidden="true" />
+                      </>}
+                      <circle cx={point.x * 1000} cy={point.y * 1200} r={index === 0 ? (penHoverCloseTarget ? 16 : 13) : 10} fill={index === 0 ? (penHoverCloseTarget ? "#d4ff3f" : "#ffffff") : foregroundColor} stroke={foregroundColor} strokeWidth="2" vectorEffect="non-scaling-stroke" data-pen-close-target={index === 0 && penHoverCloseTarget ? "true" : undefined} />
                     </g>)}
                   </svg>
                 )}
@@ -1690,14 +1728,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     {createEditorShapePaths(shapeDrawing.preset, shapeDrawing.start, shapeDrawing.current, shapeDrawing.color).map((path, index) => <path key={index} d={path.d} fill={path.fill ?? "none"} stroke={path.stroke ?? "none"} strokeWidth={path.strokeWidth ?? 0} strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />)}
                   </svg>
                 )}
-                {activeTool === "pen" && (
+                {activeTool === "pen" && penAnchors.length > 0 && (
                   <div aria-label="Pen tool actions" className="absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-16px)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-xl border border-border bg-bg-surface/95 px-2 py-1 text-[10px] text-text-primary shadow-lg">
-                    <span className="hidden sm:inline">Click: corner · drag: curve · Shift: snap · click start: close</span>
-                    {penAnchors.length > 0 && <>
-                      <button type="button" onClick={() => finishPenPath(false)} disabled={penAnchors.length < 2} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Finish</button>
-                      <button type="button" onClick={() => finishPenPath(true)} disabled={penAnchors.length < 3} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Close path</button>
-                      <button type="button" onClick={() => { setPenAnchors([]); setPenHoverPoint(null); setPenHoverCloseTarget(false); penAnchorDragRef.current = null; }} className="rounded-lg border border-border px-2 py-1">Cancel</button>
-                    </>}
+                    <button type="button" onClick={() => finishPenPath(false)} disabled={penAnchors.length < 2} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Finish</button>
+                    <button type="button" onClick={() => finishPenPath(true)} disabled={penAnchors.length < 3} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Close path</button>
+                    <button type="button" onClick={() => { setPenAnchors([]); setPenHoverPoint(null); setPenHoverCloseTarget(false); penAnchorDragRef.current = null; }} className="rounded-lg border border-border px-2 py-1">Cancel</button>
                   </div>
                 )}
                 <div ref={menuRef} className="absolute -right-5 top-1/2 z-20 -translate-y-1/2">
