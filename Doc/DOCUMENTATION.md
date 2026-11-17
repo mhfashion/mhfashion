@@ -905,3 +905,9 @@ Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js prod
 Added Photoshop Camera Raw-style Levels and Curves to the Photo Adjustments section. Levels includes Black point, White point, and Gamma controls. Curves includes a live graph preview and five editable control-point sliders; the curve is applied through SVG component-transfer table values. Levels are applied through SVG table/gamma transfer stages before RGB channel mixing, so the controls render non-destructively in the Canvas and previews. All state remains immutable on the image layer.
 
 Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — Selective Color, HSL, AI Enhance, and Smart Filters
+
+Expanded Photo Adjustments with a Selective Color group for Cyan, Magenta, Yellow, and Black; an HSL group for Hue, Saturation, and Lightness; an AI Enhance toggle; and Smart Filter presets with intensity control. Smart presets include Clarity, Cinematic, Vintage, B&W, Warm, and Cool. These values persist immutably on the photo layer and compose into the live SVG/CSS filter chain. AI Enhance and Smart Filters currently provide deterministic local preview behavior while remaining ready for future AI/image-service integration.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.

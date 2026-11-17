@@ -1372,7 +1372,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setLayers((current) => updateEditorLayerTextStyle(current, selectedLayerId, update));
   }
 
-  function updateSelectedImage(update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "temperature" | "tint" | "exposure" | "highlights" | "shadows" | "vibrance" | "vignette" | "hue" | "red" | "green" | "blue" | "levelsBlack" | "levelsWhite" | "levelsGamma" | "curves" | "backgroundRemoved" | "upscaled">>) {
+  function updateSelectedImage(update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "temperature" | "tint" | "exposure" | "highlights" | "shadows" | "vibrance" | "vignette" | "hue" | "red" | "green" | "blue" | "levelsBlack" | "levelsWhite" | "levelsGamma" | "curves" | "selectiveCyan" | "selectiveMagenta" | "selectiveYellow" | "selectiveBlack" | "hslHue" | "hslSaturation" | "hslLightness" | "aiEnhanced" | "smartFilter" | "smartFilterIntensity" | "backgroundRemoved" | "upscaled">>) {
     if (!selectedLayerId) return;
     setLayers((current) => updateEditorImageAdjustments(current, selectedLayerId, update));
   }

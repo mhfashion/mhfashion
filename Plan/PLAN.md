@@ -2583,3 +2583,7 @@ Extend Photo Adjustments beyond basic color sliders with RAW-style controls: Tem
 ## 2026-11-18 Directive Update — Photo Curves and Levels
 
 Add Curves and Levels to Photo Adjustments. Levels must provide Black point, White point, and Gamma. Curves must provide a compact live graph with editable points. Both controls must render live, persist immutably on the image layer, and remain usable on Desktop and Phone/Mobile.
+
+## 2026-11-18 Directive Update — Selective Color, HSL, AI Enhance, and Smart Filters
+
+Add Selective Color and HSL controls to Photo Adjustments, including per-component color sliders and HSL Hue/Saturation/Lightness. Add AI Enhance and Smart Filters with intensity/preset controls. Keep the behavior non-destructive and live on the photo layer, with the AI actions ready for a future connected service.

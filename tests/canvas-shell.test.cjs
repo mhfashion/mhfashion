@@ -418,6 +418,16 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(adjustmentsPanel, /aria-label="Photo red channel"/);
   assert.match(adjustmentsPanel, /aria-label="Photo green channel"/);
   assert.match(adjustmentsPanel, /aria-label="Photo blue channel"/);
+  assert.match(adjustmentsPanel, /aria-label="Selective color cyan"/);
+  assert.match(adjustmentsPanel, /aria-label="Selective color magenta"/);
+  assert.match(adjustmentsPanel, /aria-label="Selective color yellow"/);
+  assert.match(adjustmentsPanel, /aria-label="Selective color black"/);
+  assert.match(adjustmentsPanel, /aria-label="HSL hue"/);
+  assert.match(adjustmentsPanel, /aria-label="HSL saturation"/);
+  assert.match(adjustmentsPanel, /aria-label="HSL lightness"/);
+  assert.match(adjustmentsPanel, /aria-label="AI Enhance photo"/);
+  assert.match(adjustmentsPanel, /aria-label="Smart filter"/);
+  assert.match(adjustmentsPanel, /aria-label="Smart filter intensity"/);
   assert.match(adjustmentsPanel, /aria-label="Photo vignette"/);
   assert.match(adjustmentsPanel, /aria-label="Photo levels black point"/);
   assert.match(adjustmentsPanel, /aria-label="Photo levels white point"/);
