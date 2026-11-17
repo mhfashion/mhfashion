@@ -38,6 +38,7 @@ import {
   ungroupEditorLayers,
   unlinkEditorLayers,
   updateEditorLayerTextStyle,
+  updateEditorImageAdjustments,
   updateEditorPenPath,
   updateEditorShapeBuilderMode,
   applyEditorShapeBuilderOperation,
@@ -54,6 +55,7 @@ import {
 import type { EditorPenAnchor, EditorPenPath } from "@/lib/editor-pen-path";
 import type {
   EditorArtworkLayer,
+  EditorImageContent,
   EditorLayerAppearance,
   EditorShapePreset,
   EditorTextContent,
@@ -1370,6 +1372,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setLayers((current) => updateEditorLayerTextStyle(current, selectedLayerId, update));
   }
 
+  function updateSelectedImage(update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "backgroundRemoved" | "upscaled">>) {
+    if (!selectedLayerId) return;
+    setLayers((current) => updateEditorImageAdjustments(current, selectedLayerId, update));
+  }
+
   function updateSelectedShapeBuilder(builderMode: "select" | "merge" | "subtract" | "intersect") {
     if (!selectedLayerId) return;
     setLayers((current) => builderMode === "select" ? updateEditorShapeBuilderMode(current, selectedLayerId, builderMode) : applyEditorShapeBuilderOperation(current, selectedLayerId, builderMode));
@@ -1843,6 +1850,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onUpdateText={updateSelectedText}
           onUpdateTextStyle={updateSelectedTextStyle}
           onUpdateShapeBuilder={updateSelectedShapeBuilder}
+          onUpdateImage={updateSelectedImage}
         />}
         {!adjustmentsOpen && <EditorLayersPanel
           open={layersOpen}

@@ -170,6 +170,12 @@ export type EditorImageContent = {
   width: number;
   height: number;
   byteSize: number;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  blur?: number;
+  backgroundRemoved?: boolean;
+  upscaled?: boolean;
 };
 
 export type EditorArtworkLayer = {
@@ -261,6 +267,16 @@ export function createEditorImageLayer(
   image: EditorImageContent,
 ): EditorArtworkLayer {
   return { ...createEditorArtworkLayer(id, name), kind: "image", image: { ...image } };
+}
+
+export function updateEditorImageAdjustments(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "backgroundRemoved" | "upscaled">>,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => layer.id === layerId && layer.image
+    ? { ...layer, image: { ...layer.image, ...update } }
+    : layer);
 }
 
 export function setEditorLayerText(

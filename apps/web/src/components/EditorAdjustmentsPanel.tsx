@@ -2,7 +2,7 @@
 
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { EditorArtworkLayer, EditorShapeBuilderMode, EditorTextContent, EditorTextEffect, EditorTextEffectKind } from "@/lib/editor-layers";
+import type { EditorArtworkLayer, EditorImageContent, EditorShapeBuilderMode, EditorTextContent, EditorTextEffect, EditorTextEffectKind } from "@/lib/editor-layers";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
 const EDITOR_FONTS = ["Inter", "Arial", "Georgia", "Impact", "Courier New", "Trebuchet MS", "Verdana", "Times New Roman"];
@@ -33,7 +33,7 @@ function NumberField({ label, value, min, max, step = 1, ariaLabel, onChange }: 
   return <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>{label}</span><input aria-label={ariaLabel} type="number" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-20 rounded-lg border border-border bg-bg px-2 py-1.5 text-right text-[11px] text-text-primary outline-none focus:border-accent" /></label>;
 }
 
-export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder }: {
+export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateImage }: {
   open: boolean;
   onToggle: () => void;
   selectedLayer: EditorArtworkLayer | null;
@@ -41,8 +41,10 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   onUpdateText: (value: string) => void;
   onUpdateTextStyle: (update: TextStyleUpdate) => void;
   onUpdateShapeBuilder: (mode: EditorShapeBuilderMode) => void;
+  onUpdateImage: (update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "backgroundRemoved" | "upscaled">>) => void;
 }) {
   const text = selectedLayer?.text;
+  const image = selectedLayer?.image;
   const [fontQuery, setFontQuery] = useState("");
   const [recentFonts, setRecentFonts] = useState<string[]>([]);
   const [nextEffectId, setNextEffectId] = useState(1);
@@ -95,6 +97,19 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
           {selectedLayer.shape && <Section title="Shape Builder" open={openSection === "Shape Builder"} onToggle={() => toggleSection("Shape Builder")}>
             <div className="grid grid-cols-2 gap-1.5">{(["select", "merge", "subtract", "intersect"] as const).map((mode) => <button key={mode} type="button" aria-label={`Shape builder ${mode}`} aria-pressed={(selectedLayer.shape?.builderMode ?? "select") === mode} onClick={() => onUpdateShapeBuilder(mode)} className="rounded-lg border border-border px-2 py-2 text-[10px] capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{mode === "select" ? "Select" : mode}</button>)}</div>
             <p className="mt-2 text-[9px] leading-relaxed text-text-muted">Choose a builder mode before combining or editing vector shapes on the Canvas.</p>
+          </Section>}
+          {image && <Section title="Photo" open={openSection === "Photo"} onToggle={() => toggleSection("Photo")}>
+            <div className="space-y-3">
+              <label className="block text-[10px] text-text-secondary">Brightness<span className="float-right font-semibold text-text-primary">{image.brightness ?? 100}%</span><input aria-label="Photo brightness" type="range" min="0" max="200" value={image.brightness ?? 100} onChange={(event) => onUpdateImage({ brightness: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>
+              <label className="block text-[10px] text-text-secondary">Contrast<span className="float-right font-semibold text-text-primary">{image.contrast ?? 100}%</span><input aria-label="Photo contrast" type="range" min="0" max="200" value={image.contrast ?? 100} onChange={(event) => onUpdateImage({ contrast: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>
+              <label className="block text-[10px] text-text-secondary">Saturation<span className="float-right font-semibold text-text-primary">{image.saturation ?? 100}%</span><input aria-label="Photo saturation" type="range" min="0" max="200" value={image.saturation ?? 100} onChange={(event) => onUpdateImage({ saturation: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>
+              <label className="block text-[10px] text-text-secondary">Blur<span className="float-right font-semibold text-text-primary">{image.blur ?? 0}px</span><input aria-label="Photo blur" type="range" min="0" max="20" value={image.blur ?? 0} onChange={(event) => onUpdateImage({ blur: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button type="button" aria-label="Remove background" aria-pressed={image.backgroundRemoved === true} onClick={() => onUpdateImage({ backgroundRemoved: !image.backgroundRemoved })} className="min-h-12 rounded-lg border border-border px-2 py-2 text-[10px] font-semibold transition hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/15">{image.backgroundRemoved ? "Background removed" : "Remove background"}</button>
+                <button type="button" aria-label="Upscale photo" aria-pressed={image.upscaled === true} onClick={() => onUpdateImage({ upscaled: !image.upscaled })} className="min-h-12 rounded-lg border border-border px-2 py-2 text-[10px] font-semibold transition hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/15">{image.upscaled ? "Upscaled" : "Upscale"}</button>
+              </div>
+              <p className="text-[9px] leading-relaxed text-text-muted">Color changes render live. Background removal and upscale are ready for the connected image service.</p>
+            </div>
           </Section>}
           {text ? <>
             <Section title="Text" open={openSection === "Text"} onToggle={() => toggleSection("Text")}>

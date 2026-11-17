@@ -28,6 +28,7 @@ const {
   createEditorImageLayer,
   createEditorShapeLayer,
   createEditorTextLayer,
+  updateEditorImageAdjustments,
   deleteEditorLayer,
   duplicateEditorLayer,
   EDITOR_SHAPE_PRESETS,
@@ -161,6 +162,9 @@ test("Add Text, element and upload layers keep their own content and stay in the
   });
   assert.equal(image.kind, "image");
   assert.equal(image.image.byteSize, 40960);
+  const adjustedImage = updateEditorImageAdjustments([image], "image-1", { brightness: 125, contrast: 80, saturation: 140, blur: 2, backgroundRemoved: true, upscaled: true });
+  assert.deepEqual(adjustedImage[0].image, { ...image.image, brightness: 125, contrast: 80, saturation: 140, blur: 2, backgroundRemoved: true, upscaled: true });
+  assert.equal(image.image.brightness, undefined, "Photo adjustments are immutable");
 
   const duplicatedText = duplicateEditorLayer(typed, "text-1", "text-2")[0];
   assert.equal(duplicatedText.text.value, "MH FASHION");

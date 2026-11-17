@@ -2571,3 +2571,7 @@ Keep the existing vector Pen path workflow and make its cursor/tool state consis
 ## 2026-11-18 Directive Update — Cursor shapes must match Tools Bar
 
 Canvas cursors must use the same visual icon shapes as the corresponding Tools Bar icons, not separate approximations. Pen, Pencil, Brush, Move, Hand, Text, Shape, and Gradient must match their toolbar icon geometry. Eraser is the only exception: show a small circular cursor instead of the Eraser icon.
+
+## 2026-11-18 Directive Update — Photo layer Adjustments
+
+When an uploaded photo layer is selected and Adjustments is opened, show a compact Photo section with color controls and action boxes for Remove background and Upscale. Brightness, Contrast, Saturation, and Blur must render live on the photo and persist immutably. Keep the Remove background/Upscale controls ready for real image-service endpoints; until those endpoints are connected, preserve their active state without pretending that backend processing has completed.

@@ -387,7 +387,7 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
 
 test("Adjustment panel groups Kittl-style text controls into compact expandable sections", () => {
   assert.match(adjustmentsPanel, /function Section\(/);
-  for (const section of ["Text", "Font", "Style & Alignment", "Effects", "Transform", "Appearance"]) {
+  for (const section of ["Text", "Font", "Style & Alignment", "Effects", "Transform", "Photo", "Appearance"]) {
     assert.ok(adjustmentsPanel.includes(`title=\"${section}\"`), `missing ${section} adjustment section`);
   }
   assert.match(adjustmentsPanel, /aria-label="Search fonts"/);
@@ -406,6 +406,12 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(layerModelSource, /textEffect\?: "none" \| "shadow" \| "outline"/);
   assert.match(layerModelSource, /export function applyEditorShapeBuilderOperation/);
   assert.match(layerPreview, /data-editor-text-transform/);
+  assert.match(adjustmentsPanel, /aria-label="Photo brightness"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo contrast"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo saturation"/);
+  assert.match(adjustmentsPanel, /aria-label="Remove background"/);
+  assert.match(adjustmentsPanel, /aria-label="Upscale photo"/);
+  assert.match(layerPreview, /data-editor-image-background-removed/);
 });
 
 test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requested categories", () => {

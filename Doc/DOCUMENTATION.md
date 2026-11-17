@@ -887,3 +887,9 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 Aligned the custom Canvas cursor SVGs with the same Lucide icon geometry used by the Tools Bar instead of using separately drawn approximations. Pen, Pencil, Brush, Move, Hand, Text, Shape, and Gradient now reuse matching icon path shapes and stroke treatment. Eraser follows the requested exception and displays a simple circular cursor rather than the Eraser icon. The cursor remains synchronized between the editor viewport and print canvas.
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — Photo layer Adjustments panel
+
+Added a Photo-specific collapsible section to Adjustments for selected uploaded image layers. It includes live Brightness, Contrast, Saturation, and Blur sliders plus compact Remove background and Upscale action boxes. Image adjustment state is stored immutably on `EditorImageContent`, rendered as SVG image CSS filters, and exposed with data attributes for future connected service processing. The two action boxes currently toggle their requested state and clearly show when active; actual AI background-removal/upscale processing remains dependent on the image service endpoint.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.

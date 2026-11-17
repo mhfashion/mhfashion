@@ -110,6 +110,9 @@ export default function EditorLayerPreview({
           width={image.width}
           height={image.height}
           preserveAspectRatio="none"
+          style={{ filter: `brightness(${(image.brightness ?? 100) / 100}) contrast(${(image.contrast ?? 100) / 100}) saturate(${(image.saturation ?? 100) / 100}) blur(${image.blur ?? 0}px)` }}
+          data-editor-image-background-removed={image.backgroundRemoved ? "true" : "false"}
+          data-editor-image-upscaled={image.upscaled ? "true" : "false"}
           data-editor-image-content="true"
         />
       )}
