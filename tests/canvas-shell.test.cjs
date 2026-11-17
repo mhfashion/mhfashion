@@ -147,6 +147,8 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /function editorToolCursor\(tool: EditorTool\)/);
   assert.match(source, /pen: '<path/);
   assert.match(source, /pencil: '<path/);
+  assert.match(source, /shape: '<rect/);
+  assert.match(source, /eraser: '<circle cx="12" cy="12" r="7"\/>/);
   assert.match(source, /activeToolCursorStyle/);
   const finishPenPathSource = source.slice(source.indexOf("function finishPenPath"), source.indexOf("function addPenAnchor"));
   assert.doesNotMatch(finishPenPathSource, /setActiveTool\("move"\)/, "Finishing a path keeps the Pen tool active");

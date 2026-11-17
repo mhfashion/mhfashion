@@ -84,17 +84,17 @@ const TEXT_EDIT_BOX_WIDTH = 900;
 
 function editorToolCursor(tool: EditorTool) {
   const drawings: Record<string, string> = {
-    pen: '<path d="M5 19 7 8l5-5 5 5 2 11-4 2H9zM12 3v10" fill="white" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="14" r="1.5" fill="#4c9dff"/>',
-    pencil: '<path d="m4 17 1-4L15 3l4 4L9 17zM4 17l4-1-3-3z" fill="#d4ff3f" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><path d="m14 4 4 4" stroke="#202124" stroke-width="1.7"/>',
-    brush: '<path d="m5 18 4-4 8-8 3 3-8 8-4 1z" fill="#d4ff3f" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><path d="m14 6 3 3" stroke="#202124" stroke-width="1.7"/>',
-    eraser: '<path d="m4 15 9-10 6 6-9 9H6z" fill="white" stroke="#202124" stroke-width="1.7" stroke-linejoin="round"/><path d="m12 7 6 6" stroke="#4c9dff" stroke-width="1.7"/>',
-    move: '<path d="M12 2v20M2 12h20M12 2l-3 3m3-3 3 3M22 12l-3-3m3 3-3 3M12 22l-3-3m3 3 3-3M2 12l3-3m-3 3 3 3" fill="none" stroke="#202124" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
-    hand: '<path d="M7 11V6a1.5 1.5 0 0 1 3 0v4-6a1.5 1.5 0 0 1 3 0v6-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v5c0 5-3 7-6 7h-2c-3 0-4-2-4-4z" fill="white" stroke="#202124" stroke-width="1.5" stroke-linejoin="round"/>',
-    text: '<path d="M5 4h14M12 4v16M8 20h8" fill="none" stroke="#202124" stroke-width="1.8" stroke-linecap="round"/>',
-    shape: '<path d="M5 5h14v14H5z" fill="white" stroke="#202124" stroke-width="1.7"/><path d="M12 2v20M2 12h20" stroke="#4c9dff" stroke-width="1.2"/>',
-    gradient: '<circle cx="12" cy="12" r="8" fill="url(%23g)" stroke="#202124" stroke-width="1.7"/><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#d4ff3f"/><stop offset="1" stop-color="#4c9dff"/></linearGradient></defs>',
+    pen: '<path d="M15.707 21.293a1 1 0 0 1-1.414 0l-1.586-1.586a1 1 0 0 1 0-1.414l5.586-5.586a1 1 0 0 1 1.414 0l1.586 1.586a1 1 0 0 1 0 1.414z"/><path d="m18 13-1.375-6.874a1 1 0 0 0-.746-.776L3.235 2.028a1 1 0 0 0-1.207 1.207L5.35 15.879a1 1 0 0 0 .776.746L13 18"/><path d="m2.3 2.3 7.286 7.286"/><circle cx="11" cy="11" r="2"/>',
+    pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+    brush: '<path d="m11 10 3 3"/><path d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z"/><path d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031"/>',
+    eraser: '<circle cx="12" cy="12" r="7"/>',
+    move: '<path d="M12 2v20"/><path d="m15 19-3 3-3-3"/><path d="m19 9 3 3-3 3"/><path d="M2 12h20"/><path d="m5 9-3 3 3 3"/><path d="m9 5 3-3 3 3"/>',
+    hand: '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+    text: '<path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/>',
+    shape: '<rect width="18" height="18" x="3" y="3" rx="2"/>',
+    gradient: '<circle cx="15" cy="9" r="7"/><circle cx="9" cy="15" r="7"/>',
   };
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">${drawings[tool] ?? drawings.move}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#202124" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${drawings[tool] ?? drawings.move}</svg>`;
   const hotspot = tool === "pen" ? "12 14" : "2 2";
   const fallbackCursor = tool === "pen" ? "crosshair" : "auto";
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspot}, ${fallbackCursor}`;

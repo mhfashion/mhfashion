@@ -2568,3 +2568,6 @@ The owner accepts Photoshop-style behavior in place of exact Kittl replication; 
 ## 2026-11-17 Directive Update — Photoshop-like Pen continuity
 
 Keep the existing vector Pen path workflow and make its cursor/tool state consistent: use the same Pen-nib cursor on the viewport and print canvas from the first anchor through curve creation, path editing, Cancel, Finish/Close, and after path commit. Finishing or closing a path must leave Pen selected and ready to start another path, not switch automatically to Move. Preserve other tools' cursors and existing Bézier, snapping, close, finish, cancel, and point-edit behavior. Implement only this slice; wait for the owner's step-by-step direction before adding other Photoshop-specific Pen modes.
+## 2026-11-18 Directive Update — Cursor shapes must match Tools Bar
+
+Canvas cursors must use the same visual icon shapes as the corresponding Tools Bar icons, not separate approximations. Pen, Pencil, Brush, Move, Hand, Text, Shape, and Gradient must match their toolbar icon geometry. Eraser is the only exception: show a small circular cursor instead of the Eraser icon.

@@ -882,3 +882,8 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 - Added deterministic math regression coverage for proportional and free scaling, center anchoring, rotated side handles, and rotation snapping. Validation passed: six relevant suites **50/50**; TypeScript passed; Next.js production and OpenNext Cloudflare builds passed; `git diff --check` passed. ESLint returned **0 errors / 25 warnings**.
 - Scope limitation: this increment covers move, proportional/free scale, center scaling, and snapped/free rotation. Photoshop's skew, perspective, distortion, warp, numeric transform fields, persistence to serialized layer data, and synchronization of canvas transform maps into separate mockup previews are not implemented here.
 - Behavior reference: [Adobe Photoshop — Transform images, shapes, and paths](https://helpx.adobe.com/photoshop/desktop/crop-resize-transform/resize-adjust-resolution/transform-images-and-shapes-and-paths.html) and [Kittl — Canvas essentials](https://help.kittl.com/editing-and-design/basic-handling).
+### 2026-11-18 — Canvas cursors match Tools Bar icons
+
+Aligned the custom Canvas cursor SVGs with the same Lucide icon geometry used by the Tools Bar instead of using separately drawn approximations. Pen, Pencil, Brush, Move, Hand, Text, Shape, and Gradient now reuse matching icon path shapes and stroke treatment. Eraser follows the requested exception and displays a simple circular cursor rather than the Eraser icon. The cursor remains synchronized between the editor viewport and print canvas.
+
+Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
