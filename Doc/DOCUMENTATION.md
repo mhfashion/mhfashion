@@ -893,3 +893,9 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 Added a Photo-specific collapsible section to Adjustments for selected uploaded image layers. It includes live Brightness, Contrast, Saturation, and Blur sliders plus compact Remove background and Upscale action boxes. Image adjustment state is stored immutably on `EditorImageContent`, rendered as SVG image CSS filters, and exposed with data attributes for future connected service processing. The two action boxes currently toggle their requested state and clearly show when active; actual AI background-removal/upscale processing remains dependent on the image service endpoint.
 
 Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
+
+### 2026-11-18 — RAW-style Photo color controls
+
+Expanded the Photo Adjustments section toward a Photoshop Camera Raw workflow. Added live Temperature, Tint, Exposure, Highlights, Shadows, Vibrance, Hue, and Vignette controls, plus a Color Mix group with independent Red, Green, and Blue channel sliders. RGB channel values use an SVG component-transfer filter; Temperature/Tint/Hue/Vibrance/Exposure are composed into the live image filter; Vignette renders as a radial gradient overlay. All values persist immutably on the image layer and remain ready for future non-destructive RAW processing services.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.

@@ -18,6 +18,8 @@ export default function EditorLayerPreview({
 }) {
   const rawId = useId();
   const effectPrefix = `text-effect-${rawId.replace(/[^a-zA-Z0-9_-]/g, "") || "preview"}`;
+  const imageFilterId = `${effectPrefix}-image-rgb`;
+  const vignetteId = `${effectPrefix}-vignette`;
   const effectKey = (effect: EditorTextEffect) => effect.id.replace(/[^a-zA-Z0-9_-]/g, "-");
   return (
     <>
@@ -103,18 +105,34 @@ export default function EditorLayerPreview({
         );
       })()}
       {image && (
-        <image
-          href={image.src}
-          x={image.x}
-          y={image.y}
-          width={image.width}
-          height={image.height}
-          preserveAspectRatio="none"
-          style={{ filter: `brightness(${(image.brightness ?? 100) / 100}) contrast(${(image.contrast ?? 100) / 100}) saturate(${(image.saturation ?? 100) / 100}) blur(${image.blur ?? 0}px)` }}
-          data-editor-image-background-removed={image.backgroundRemoved ? "true" : "false"}
-          data-editor-image-upscaled={image.upscaled ? "true" : "false"}
-          data-editor-image-content="true"
-        />
+        <g data-editor-image-layer="true">
+          <defs>
+            <filter id={imageFilterId} colorInterpolationFilters="sRGB">
+              <feComponentTransfer>
+                <feFuncR type="linear" slope={(image.red ?? 100) / 100} />
+                <feFuncG type="linear" slope={(image.green ?? 100) / 100} />
+                <feFuncB type="linear" slope={(image.blue ?? 100) / 100} />
+              </feComponentTransfer>
+            </filter>
+            <radialGradient id={vignetteId} cx="50%" cy="50%" r="72%">
+              <stop offset="52%" stopColor="#000" stopOpacity="0" />
+              <stop offset="100%" stopColor="#000" stopOpacity={(image.vignette ?? 0) / 100} />
+            </radialGradient>
+          </defs>
+          <image
+            href={image.src}
+            x={image.x}
+            y={image.y}
+            width={image.width}
+            height={image.height}
+            preserveAspectRatio="none"
+            style={{ filter: `url(#${imageFilterId}) brightness(${Math.max(0, 1 + ((image.exposure ?? 0) + (image.shadows ?? 0) * 0.35 + (image.highlights ?? 0) * 0.15) / 100)}) contrast(${Math.max(0, (image.contrast ?? 100) / 100 + (image.highlights ?? 0) / 500)}) saturate(${Math.max(0, 1 + ((image.saturation ?? 100) - 100 + (image.vibrance ?? 0)) / 100)}) sepia(${Math.max(0, image.temperature ?? 0) / 100}) hue-rotate(${(image.hue ?? 0) + (image.temperature ?? 0) * 0.35 + (image.tint ?? 0) * 0.45}deg) blur(${image.blur ?? 0}px)` }}
+            data-editor-image-background-removed={image.backgroundRemoved ? "true" : "false"}
+            data-editor-image-upscaled={image.upscaled ? "true" : "false"}
+            data-editor-image-content="true"
+          />
+          {(image.vignette ?? 0) > 0 && <rect x={image.x} y={image.y} width={image.width} height={image.height} fill={`url(#${vignetteId})`} pointerEvents="none" data-editor-image-vignette="true" />}
+        </g>
       )}
     </>
   );

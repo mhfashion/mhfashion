@@ -409,9 +409,21 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(adjustmentsPanel, /aria-label="Photo brightness"/);
   assert.match(adjustmentsPanel, /aria-label="Photo contrast"/);
   assert.match(adjustmentsPanel, /aria-label="Photo saturation"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo temperature"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo tint"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo exposure"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo highlights"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo shadows"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo vibrance"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo red channel"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo green channel"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo blue channel"/);
+  assert.match(adjustmentsPanel, /aria-label="Photo vignette"/);
   assert.match(adjustmentsPanel, /aria-label="Remove background"/);
   assert.match(adjustmentsPanel, /aria-label="Upscale photo"/);
   assert.match(layerPreview, /data-editor-image-background-removed/);
+  assert.match(layerPreview, /data-editor-image-vignette/);
+  assert.match(layerPreview, /feFuncR/);
 });
 
 test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requested categories", () => {

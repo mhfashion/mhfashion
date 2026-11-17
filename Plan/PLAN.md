@@ -2575,3 +2575,7 @@ Canvas cursors must use the same visual icon shapes as the corresponding Tools B
 ## 2026-11-18 Directive Update — Photo layer Adjustments
 
 When an uploaded photo layer is selected and Adjustments is opened, show a compact Photo section with color controls and action boxes for Remove background and Upscale. Brightness, Contrast, Saturation, and Blur must render live on the photo and persist immutably. Keep the Remove background/Upscale controls ready for real image-service endpoints; until those endpoints are connected, preserve their active state without pretending that backend processing has completed.
+
+## 2026-11-18 Directive Update — Photoshop RAW-style photo controls
+
+Extend Photo Adjustments beyond basic color sliders with RAW-style controls: Temperature, Tint, Exposure, Highlights, Shadows, Vibrance, Hue, Vignette, and independent Red/Green/Blue channel controls. Render the adjustments live and keep each value immutable on the image layer. Use compact grouped controls so the panel remains usable on Desktop and Phone/Mobile.

@@ -174,6 +174,17 @@ export type EditorImageContent = {
   contrast?: number;
   saturation?: number;
   blur?: number;
+  temperature?: number;
+  tint?: number;
+  exposure?: number;
+  highlights?: number;
+  shadows?: number;
+  vibrance?: number;
+  vignette?: number;
+  hue?: number;
+  red?: number;
+  green?: number;
+  blue?: number;
   backgroundRemoved?: boolean;
   upscaled?: boolean;
 };
@@ -272,7 +283,7 @@ export function createEditorImageLayer(
 export function updateEditorImageAdjustments(
   layers: EditorArtworkLayer[],
   layerId: string,
-  update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "backgroundRemoved" | "upscaled">>,
+  update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "temperature" | "tint" | "exposure" | "highlights" | "shadows" | "vibrance" | "vignette" | "hue" | "red" | "green" | "blue" | "backgroundRemoved" | "upscaled">>,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => layer.id === layerId && layer.image
     ? { ...layer, image: { ...layer.image, ...update } }
