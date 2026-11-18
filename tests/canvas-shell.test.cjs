@@ -22,6 +22,7 @@ const artworkLayers = readFileSync(path.join(__dirname, "../apps/web/src/compone
 const transformMath = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-transform.ts"), "utf8");
 const layerPreview = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
 const layerModelSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-layers.ts"), "utf8");
+const mockupSource = readFileSync(path.join(__dirname, "../apps/web/src/components/MockupArtwork.tsx"), "utf8");
 function loadArtworkTiers() {
   const fileName = path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts");
   const compiled = ts.transpileModule(tierSource, {
@@ -156,7 +157,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /activeToolCursorStyle/);
   const finishPenPathSource = source.slice(source.indexOf("function finishPenPath"), source.indexOf("function addPenAnchor"));
   assert.doesNotMatch(finishPenPathSource, /setActiveTool\("move"\)/, "Finishing a path keeps the Pen tool active");
-  assert.match(source, /const hotspot = tool === "pen" \? "15 22" : "2 2"/);
+  assert.match(source, /const hotspot = "2 2"/);
   assert.match(source, /const fallbackCursor = tool === "pen" \? "crosshair" : "auto"/);
   assert.match(source, /style=\{\{ touchAction: "none", cursor: activeTool === "pen" \? activeToolCursorStyle : undefined \}\}/);
   assert.match(source, /className=\{activeTool === "pen" \? "" : "cursor-crosshair"\}/);
@@ -650,6 +651,25 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /onEditingTextChange\?\.\(event\.target\.value\)/);
   assert.match(source, /setEditorLayerText\(current, editingTextLayerId, value\)/);
   assert.match(source, /editingTextLayer=\{editingTextLayer\}/);
+  // Multi-line typing: the inline editor is a textarea that grows with each line,
+  // Enter inserts a new line, and the artwork renders one tspan per line.
+  assert.match(source, /<textarea[\s\S]*?aria-label="Type text on the canvas"/);
+  assert.match(source, /if \(event\.key === "Escape"\) event\.currentTarget\.blur\(\)/);
+  assert.match(layerPreview, /text\.value\.split\("\\n"\)/);
+  assert.match(layerPreview, /<tspan key=\{index\} x=\{text\.x\} dy=\{index === 0 \? 0 : lineHeight\}>/);
+  // A Text layer stays text-only: drawing and shapes are refused, not appended.
+  assert.match(source, /function textLayerRejection\(layer: EditorArtworkLayer \| undefined\)/);
+  assert.match(source, /layer\.kind !== "text"\) return null/);
+  assert.match(source, /const rejection = textLayerRejection\(selectedLayer\)/);
+  assert.match(layerModelSource, /if \(layer\.id !== layerId \|\| layer\.locked \|\| layer\.kind === "text"\) return layer;/);
+  // The transform box hugs the text instead of spanning the artwork like an image.
+  assert.match(layerModelSource, /export function editorTextCanvasBounds/);
+  assert.match(source, /editorTextCanvasBounds\(layer\.text\)/);
+  // The mockup preview uses the same measured bounds, not the old per-character estimate.
+  assert.match(mockupSource, /editorTextCanvasBounds\(layer\.text\)/);
+  assert.doesNotMatch(mockupSource, /layer\.text\.value\.length \* layer\.text\.fontSize \* 0\.58/);
+  // The Pen cursor hotspot sits on the icon's nib (top-left), not the tail.
+  assert.match(source, /const hotspot = "2 2"/);
   // Every sidebar addition must be reachable in the Layers stack.
   assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
   assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 4, "Only explicit text, element, design and upload insertion reveals Layers");

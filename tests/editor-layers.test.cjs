@@ -64,6 +64,9 @@ const {
   unlinkEditorLayers,
   updateEditorPenPath,
   updateLayerLastStroke,
+  editorTextCanvasBounds,
+  editorTextMetrics,
+  editorTextLineWidth,
 } = layerModel.exports;
 
 const pointStroke = (x1, x2 = x1) => ({ points: [{ x: x1, y: 0.5 }, { x: x2, y: 0.5 }] });
@@ -602,4 +605,75 @@ test("brush presets and normalization cover every brush field", () => {
   assert.equal(normalized.scatter, 100);
   assert.equal(normalized.angleJitter, 0);
   assert.equal(normalized.roundnessJitter, 100);
+});
+
+test("a Text layer stays text-only: strokes and shape paths are refused", () => {
+  const textLayer = createEditorTextLayer("t1", "Text 1", { value: "Hello", x: 500, y: 600, fontSize: 110, color: "#111111" });
+  const layers = [textLayer];
+
+  const afterStroke = appendLayerStroke(layers, "t1", "artwork", pointStroke(0.4), "hide");
+  assert.equal(afterStroke[0].strokes.length, 0, "brush/pencil strokes never land on a text layer");
+
+  const afterShape = appendEditorShapePaths(layers, "t1", [{ d: "M0 0 L10 10", fill: "none", stroke: "#000" }]);
+  assert.equal(afterShape[0].shape, null, "shape paths never land on a text layer");
+  assert.equal(afterShape[0].kind, "text", "the text layer keeps its kind");
+
+  // A normal artwork layer still accepts both.
+  const artwork = createEditorArtworkLayer("a1", "Layer 1");
+  assert.equal(appendLayerStroke([artwork], "a1", "artwork", pointStroke(0.4), "hide")[0].strokes.length, 1);
+  assert.equal(appendEditorShapePaths([artwork], "a1", [{ d: "M0 0 L10 10", fill: "none", stroke: "#000" }])[0].kind, "shape");
+});
+
+test("text bounds hug the glyphs, respect alignment, and grow with extra lines", () => {
+  const single = { value: "Hi", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center" };
+  const singleBounds = editorTextCanvasBounds(single);
+  assert.ok(singleBounds.width > 0 && singleBounds.width < 200, "a short word is a small box, not artwork-wide");
+  assert.ok(singleBounds.x < 500 && singleBounds.x + singleBounds.width > 500, "centred text straddles its origin");
+
+  const twoLines = editorTextCanvasBounds({ ...single, value: "Hi\nThere" });
+  assert.ok(twoLines.height > singleBounds.height, "a second line makes the box taller");
+
+  const leftAligned = editorTextCanvasBounds({ ...single, textAlign: "left" });
+  assert.equal(leftAligned.x, 500, "left-aligned text starts at its origin");
+  const rightAligned = editorTextCanvasBounds({ ...single, textAlign: "right" });
+  assert.equal(rightAligned.x + rightAligned.width, 500, "right-aligned text ends at its origin");
+
+  const spaced = editorTextLineWidth({ ...single, letterSpacing: 10 }, "Hi");
+  assert.ok(spaced > editorTextLineWidth(single, "Hi"), "letter spacing widens the measured line");
+
+  const metrics = editorTextMetrics({ ...single, value: "one\ntwo\nthree" });
+  assert.equal(metrics.lines.length, 3);
+  assert.equal(metrics.width, Math.max(single.fontSize, ...metrics.widths));
+});
+
+test("text bounds measure the real font when a browser canvas is available", () => {
+  const single = { value: "SAMPLE", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center" };
+  const fallback = editorTextCanvasBounds(single);
+
+  // A wide-glyph string ("MMMM") measures far wider than the 0.58em/char estimate, so the
+  // box must follow the real metrics instead of cutting through the text.
+  const previousDocument = globalThis.document;
+  globalThis.document = {
+    createElement: () => ({
+      getContext: () => ({
+        font: "",
+        measureText: (line) => ({
+          width: line.length * 90,
+          actualBoundingBoxAscent: 74,
+          actualBoundingBoxDescent: 21,
+        }),
+      }),
+    }),
+  };
+  try {
+    const measured = editorTextCanvasBounds(single);
+    assert.ok(measured.width > fallback.width, "real measurement widens the box beyond the estimate");
+    assert.equal(measured.width, 6 * 90, "the box uses the measured advance width");
+    assert.ok(measured.x < 500 && measured.x + measured.width > 500, "centred text still straddles its origin");
+    // Height follows the measured ascent+descent, floored at the font size.
+    assert.equal(measured.height, Math.max(single.fontSize, 74 + 21), "height follows the measured ascent and descent");
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
 });

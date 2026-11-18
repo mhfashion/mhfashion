@@ -2584,6 +2584,10 @@ Evidence: production build passed; `node --test tests/*.test.cjs` passed **55/55
 
 Canvas cursors must use the same visual icon shapes as the corresponding Tools Bar icons, not separate approximations. Pen, Pencil, Brush, Move, Hand, Text, Shape, and Gradient must match their toolbar icon geometry. Eraser is the only exception: show a small circular cursor instead of the Eraser icon.
 
+## 2026-11-18 Directive Update — Text typing, transform box, and Pen cursor fixes
+
+The owner reported three regressions. (1) Multi-line text was broken: the inline editor committed on Enter instead of starting a new line. It is now a growing `textarea`, Enter adds a line (Escape commits), and `EditorLayerPreview` renders one `tspan` per line so the drawn text matches what is typed. (2) Text and Free Transform had stopped working together: the transform box spanned the artwork like an image. It now hugs the glyphs via `editorTextCanvasBounds`, and a text layer is text-only again (the Pen, Brush, Pencil, Eraser, and Shape tools refuse to draw on it). The box measures the real font with `CanvasRenderingContext2D.measureText`, because the earlier fixed per-character estimate was too narrow for wide glyphs and the box cut through the text; `MockupArtwork` shares the same measured bounds. These two were a reverted change (`432ac36` reverted `c974e3c`) and are re-applied. (3) The Pen nib-tip cursor was off-target: the hotspot sat on the pen icon's tail (`15 22`), so it now sits on the nib (`2 2`), matching every other tool's anchor.
+
 ## 2026-11-18 Directive Update — Photo layer Adjustments
 
 When an uploaded photo layer is selected and Adjustments is opened, show a compact Photo section with color controls and action boxes for Remove background and Upscale. Brightness, Contrast, Saturation, and Blur must render live on the photo and persist immutably. Keep the Remove background/Upscale controls ready for real image-service endpoints; until those endpoints are connected, preserve their active state without pretending that backend processing has completed.

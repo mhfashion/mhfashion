@@ -212,6 +212,87 @@ export type EditorTextContent = {
   decorationWidth?: number;
   effects?: EditorTextEffect[];
 };
+
+export const EDITOR_TEXT_DEFAULT_LINE_HEIGHT = 1.2;
+export const EDITOR_TEXT_FONT_FAMILY = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
+
+export function editorTextLines(text: EditorTextContent): string[] {
+  return text.value.split("\n");
+}
+
+export function editorTextLineHeight(text: EditorTextContent): number {
+  return text.fontSize * (text.lineHeight ?? EDITOR_TEXT_DEFAULT_LINE_HEIGHT);
+}
+
+export type EditorTextLineMetrics = { width: number; ascent: number; descent: number };
+
+// Character advance varies a lot with the glyph (a bold "M" is ~0.99em, a lowercase
+// run ~0.58em), so a fixed per-character estimate makes the transform box cut through
+// the text. The browser measures the real font; Node (tests, SSR) keeps the estimate.
+function fallbackTextLineMetrics(text: EditorTextContent, line: string): EditorTextLineMetrics {
+  const glyphs = Math.max(1, line.length);
+  return {
+    width: glyphs * text.fontSize * 0.58 + Math.max(0, glyphs - 1) * (text.letterSpacing ?? 0),
+    ascent: text.fontSize * 0.82,
+    descent: text.fontSize * 0.26,
+  };
+}
+
+let measurementContext: CanvasRenderingContext2D | null = null;
+
+function editorTextMeasurementContext(): CanvasRenderingContext2D | null {
+  if (measurementContext) return measurementContext;
+  if (typeof document !== "undefined" && typeof document.createElement === "function") {
+    measurementContext = document.createElement("canvas").getContext("2d") ?? null;
+  }
+  return measurementContext;
+}
+
+export function editorTextLineMetrics(text: EditorTextContent, line: string): EditorTextLineMetrics {
+  const fallback = fallbackTextLineMetrics(text, line);
+  const context = editorTextMeasurementContext();
+  if (!context) return fallback;
+  context.font = `${text.fontStyle ?? "normal"} ${text.fontWeight ?? 700} ${text.fontSize}px ${text.fontFamily ?? EDITOR_TEXT_FONT_FAMILY}`;
+  const measured = context.measureText(line);
+  const width = measured.width + Math.max(0, line.length - 1) * (text.letterSpacing ?? 0);
+  return {
+    width: Number.isFinite(width) && width > 0 ? width : fallback.width,
+    ascent: measured.actualBoundingBoxAscent > 0 ? measured.actualBoundingBoxAscent : fallback.ascent,
+    descent: measured.actualBoundingBoxDescent > 0 ? measured.actualBoundingBoxDescent : fallback.descent,
+  };
+}
+
+export function editorTextLineWidth(text: EditorTextContent, line: string): number {
+  return editorTextLineMetrics(text, line).width;
+}
+
+export function editorTextMetrics(text: EditorTextContent) {
+  const lines = editorTextLines(text);
+  const lineHeight = editorTextLineHeight(text);
+  const lineMetrics = lines.map((line) => editorTextLineMetrics(text, line));
+  const widths = lineMetrics.map((metrics) => metrics.width);
+  const ascent = Math.max(text.fontSize * 0.5, ...lineMetrics.map((metrics) => metrics.ascent));
+  const descent = Math.max(text.fontSize * 0.1, ...lineMetrics.map((metrics) => metrics.descent));
+  return {
+    lines,
+    lineHeight,
+    widths,
+    ascent,
+    descent,
+    width: Math.max(text.fontSize, ...widths),
+    height: (lines.length - 1) * lineHeight + ascent + descent,
+  };
+}
+
+export function editorTextCanvasBounds(text: EditorTextContent): { x: number; y: number; width: number; height: number } {
+  const { lines, lineHeight, width, ascent, descent } = editorTextMetrics(text);
+  const align = text.textAlign ?? "center";
+  const left = align === "left" ? text.x : align === "right" ? text.x - width : text.x - width / 2;
+  const top = text.y - ascent;
+  const bottom = text.y + (lines.length - 1) * lineHeight + descent;
+  return { x: left, y: top, width, height: Math.max(text.fontSize, bottom - top) };
+}
+
 export type EditorShapePath = {
   d: string;
   fill?: string;
@@ -616,7 +697,7 @@ export function appendEditorShapePaths(
 ): EditorArtworkLayer[] {
   if (paths.length === 0) return layers;
   return layers.map((layer) => {
-    if (layer.id !== layerId || layer.locked) return layer;
+    if (layer.id !== layerId || layer.locked || layer.kind === "text") return layer;
     const existingPaths = (layer.shape?.paths ?? []).map(cloneEditorShapePath);
     const nextPaths = [...existingPaths, ...paths.map(cloneEditorShapePath)];
     // Seed a style from the first geometry so the Shape panel always has real values.
@@ -787,7 +868,7 @@ export function appendLayerStroke(
   maskBrushMode: MaskBrushMode,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => {
-    if (layer.id !== layerId || layer.locked) return layer;
+    if (layer.id !== layerId || layer.locked || layer.kind === "text") return layer;
     if (target === "mask") {
       if (layer.mask === null) return layer;
       return {
@@ -807,7 +888,7 @@ export function updateLayerLastStroke(
   maskBrushMode: MaskBrushMode,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => {
-    if (layer.id !== layerId || layer.locked) return layer;
+    if (layer.id !== layerId || layer.locked || layer.kind === "text") return layer;
     if (target === "mask") {
       if (!layer.mask?.length) return layer;
       return {

@@ -4,7 +4,6 @@ import { Grid2X2, Hand, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
-import { EDITOR_TEXT_FONT_FAMILY } from "@/components/EditorLayerPreview";
 import EditorToolsBar, { type EditorTool } from "@/components/EditorToolsBar";
 import EditorEditSidebar from "@/components/EditorEditSidebar";
 import EditorAdjustmentsPanel from "@/components/EditorAdjustmentsPanel";
@@ -33,6 +32,8 @@ import {
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
+  editorTextCanvasBounds,
+  EDITOR_TEXT_FONT_FAMILY,
   groupEditorLayers,
   linkEditorLayers,
   moveEditorLayerToIndex,
@@ -127,9 +128,10 @@ function editorToolCursor(tool: EditorTool) {
     gradient: '<circle cx="15" cy="9" r="7"/><circle cx="9" cy="15" r="7"/>',
   };
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#202124" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${drawings[tool] ?? drawings.move}</svg>`;
-  // The hotspot sits on the nib (the icon's bottom tip), so a click places an
-  // anchor exactly where the pen point is, matching Photoshop.
-  const hotspot = tool === "pen" ? "15 22" : "2 2";
+  // The pen icon's nib (where its slit points) is the top-left corner, so the
+  // hotspot sits there — the same anchor every other tool uses. An earlier value
+  // ("15 22") landed on the pen's tail, so the anchor appeared offset from the nib.
+  const hotspot = "2 2";
   const fallbackCursor = tool === "pen" ? "crosshair" : "auto";
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspot}, ${fallbackCursor}`;
 }
@@ -165,9 +167,10 @@ type ActiveArtworkStroke = {
 type ActiveShapeDrag = { pointerId: number; layerId: string; preset: EditorShapePreset; start: Point; current: Point; color: string };
 
 function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
+  const textBounds = layer.text ? editorTextCanvasBounds(layer.text) : null;
   const points = [
     ...layer.strokes.flatMap((stroke) => stroke.points.map((point) => ({ x: point.x * 1000, y: point.y * 1200 }))),
-    ...(layer.text ? [{ x: layer.text.x - Math.max(layer.text.fontSize, layer.text.value.length * layer.text.fontSize * 0.58) / 2, y: layer.text.y - layer.text.fontSize }, { x: layer.text.x + Math.max(layer.text.fontSize, layer.text.value.length * layer.text.fontSize * 0.58) / 2, y: layer.text.y + layer.text.fontSize * 0.25 }] : []),
+    ...(textBounds ? [{ x: textBounds.x, y: textBounds.y }, { x: textBounds.x + textBounds.width, y: textBounds.y + textBounds.height }] : []),
     ...(layer.image ? [{ x: layer.image.x, y: layer.image.y }, { x: layer.image.x + layer.image.width, y: layer.image.y + layer.image.height }] : []),
     ...((layer.shape?.paths ?? []).flatMap((path) => {
       const values = path.d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
@@ -303,7 +306,7 @@ function ArtworkOverlay({
             x={editingText.x - TEXT_EDIT_BOX_WIDTH / 2}
             y={editingText.y - editingText.fontSize - 72}
             width={TEXT_EDIT_BOX_WIDTH}
-            height={editingText.fontSize * 1.32 + 72}
+            height={editingText.value.split("\n").length * editingText.fontSize * (editingText.lineHeight ?? 1.2) + 72}
             pointerEvents="auto"
             data-editor-text-editor="true"
           >
@@ -316,20 +319,21 @@ function ArtworkOverlay({
                   <input type="color" value={editingText.color} aria-label="Text color" onChange={(event) => onEditingTextStyle?.({ color: event.target.value })} onPointerDown={(event) => event.stopPropagation()} className="h-6 w-7" />
                 </label>
               </div>
-              <input
+              <textarea
                 autoFocus
                 value={editingText.value}
                 aria-label="Type text on the canvas"
                 placeholder="Type your text"
+                rows={editingText.value.split("\n").length}
                 onChange={(event) => onEditingTextChange?.(event.target.value)}
                 onBlur={() => onEditingTextCommit?.()}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
+                  if (event.key === "Escape") event.currentTarget.blur();
                 }}
                 onPointerDown={(event) => event.stopPropagation()}
-                className="w-full border-0 bg-transparent leading-none outline-none placeholder:text-[#9aa0a6]"
+                className="w-full resize-none border-0 bg-transparent outline-none placeholder:text-[#9aa0a6]"
                 style={{
-                  height: `${editingText.fontSize * 1.32}px`,
+                  height: `${editingText.value.split("\n").length * editingText.fontSize * (editingText.lineHeight ?? 1.2) + 8}px`,
                   lineHeight: `${editingText.fontSize * (editingText.lineHeight ?? 1.2)}px`,
                   fontSize: `${editingText.fontSize}px`,
                   color: editingText.color,
@@ -789,6 +793,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setRedoStack([]);
   }
 
+  // A Text layer holds only text. Photoshop and Kittl keep it that way too: drawing,
+  // shapes and erasing never land on a text layer, so the tools are refused instead of
+  // silently mixing artwork into the text.
+  function textLayerRejection(layer: EditorArtworkLayer | undefined): string | null {
+    if (!layer) return null;
+    if (layer.kind !== "text") return null;
+    return `${layer.name} is a text layer. Select or create a non-text layer before drawing.`;
+  }
+
   /**
    * The eraser records a pass, not a one-shot delete. Brush mode lays down soft dabs that
    * build up over a drag; stroke mode clears any whole stroke whose points fall under the nib.
@@ -1053,6 +1066,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       return;
     }
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
+    const rejection = textLayerRejection(selectedLayer);
+    if (rejection) {
+      setToolNotice(rejection);
+      setPenAnchors([]);
+      setPenHoverPoint(null);
+      setPenHoverCloseTarget(false);
+      return;
+    }
     if (!selectedLayer || selectedLayer.locked) {
       setToolNotice("Select an unlocked layer before drawing.");
       setPenAnchors([]);
@@ -1080,6 +1101,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function addPenAnchor(event: React.PointerEvent<HTMLCanvasElement>) {
     if (event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
+    const rejection = textLayerRejection(selectedLayer);
+    if (rejection) {
+      event.preventDefault();
+      event.stopPropagation();
+      setToolNotice(rejection);
+      return;
+    }
     if (!selectedLayer || selectedLayer.locked) {
       setToolNotice("Select an unlocked layer before drawing.");
       return;
@@ -1109,6 +1137,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function startShapeDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeShapeDragRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
+    const rejection = textLayerRejection(selectedLayer);
+    if (rejection) {
+      event.preventDefault();
+      event.stopPropagation();
+      setToolNotice(rejection);
+      return;
+    }
     if (!selectedLayer || selectedLayer.locked) {
       setToolNotice("Select an unlocked layer before drawing.");
       return;
@@ -1325,6 +1360,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       return;
     }
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
+    const rejection = textLayerRejection(selectedLayer);
+    if (rejection) {
+      event.preventDefault();
+      event.stopPropagation();
+      setToolNotice(rejection);
+      return;
+    }
     if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) return;
     event.preventDefault();
     event.stopPropagation();

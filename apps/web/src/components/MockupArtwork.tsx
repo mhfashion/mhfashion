@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
 import { LARGE_ARTWORK_EDGE_PX, SMALL_ARTWORK_EDGE_PX } from "@/lib/editor-artwork-tiers";
-import type { EditorArtworkLayer, MaskBrushMode } from "@/lib/editor-layers";
+import { editorTextCanvasBounds, type EditorArtworkLayer, type MaskBrushMode } from "@/lib/editor-layers";
 
 type MockupSide = "Front Mockup" | "Back Mockup";
 type Point = { x: number; y: number };
@@ -37,11 +37,11 @@ function getArtworkBounds(layers: EditorArtworkLayer[]): Bounds {
   }
   for (const layer of layers) {
     if (layer.text) {
-      const width = Math.max(layer.text.fontSize, layer.text.value.length * layer.text.fontSize * 0.58);
-      minX = Math.min(minX, layer.text.x - width / 2);
-      maxX = Math.max(maxX, layer.text.x + width / 2);
-      minY = Math.min(minY, layer.text.y - layer.text.fontSize);
-      maxY = Math.max(maxY, layer.text.y + layer.text.fontSize * 0.25);
+      const textBounds = editorTextCanvasBounds(layer.text);
+      minX = Math.min(minX, textBounds.x);
+      maxX = Math.max(maxX, textBounds.x + textBounds.width);
+      minY = Math.min(minY, textBounds.y);
+      maxY = Math.max(maxY, textBounds.y + textBounds.height);
     }
     if (layer.image) {
       minX = Math.min(minX, layer.image.x);
