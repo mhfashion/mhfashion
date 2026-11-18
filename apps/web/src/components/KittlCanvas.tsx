@@ -175,6 +175,9 @@ type ActiveGradientDrag = { pointerId: number; layerId: string | null; start: Po
 
 function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   const textBounds = layer.text ? editorTextCanvasBounds(layer.text) : null;
+  // A text-only layer should hug its measured glyph block. The safety inset used
+  // by artwork/shape layers makes text transforms visibly larger than the copy.
+  if (layer.kind === "text" && textBounds) return textBounds;
   // A gradient layer fills the whole artwork, so its box is the full canvas.
   if (layer.gradient) return { x: 0, y: 0, width: 1000, height: 1200 };
   const points = [

@@ -1072,3 +1072,8 @@ Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js prod
 ### 2026-11-19 — Sidebar preview captions removed
 
 Removed visible design/layer/file captions beneath preview cards in the Edit Sidebar. Designs, Elements, Text layer previews, and uploaded photo previews now show the artwork/image itself without the extra name, source-design, filename, or byte-size rows highlighted in the reference screenshot. The cards remain clickable and retain accessible `aria-label` values so interaction and accessibility behavior are unchanged. Search, Add Text, upload-size policy, and Image Create controls remain available.
+
+
+### 2026-11-19 — Text transform hugs copy and supports line breaks
+
+Text-only Free Transform selection bounds now use the measured glyph block directly instead of the generic artwork safety inset, so the box follows the actual text width and multi-line height. Text editing remains an inline `textarea`: Enter inserts line breaks, the editor grows with the number of lines, and the SVG canvas/mockup renderer draws each line independently from the same `\n` content. Desktop and coarse-pointer sizing retain the existing transform handles and touch behavior.

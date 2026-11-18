@@ -2661,3 +2661,8 @@ Keep the Edit Sidebar rail/panel and Adjustments box visually consistent with th
 ## 2026-11-19 Directive Update — Sidebar preview cards are caption-free
 
 Edit Sidebar preview cards must not show the design name, layer name/source design, uploaded filename, or uploaded byte-size captions beneath the preview image. Apply this consistently to Designs, Elements, Text layers, and Upload photo previews. Keep the preview cards clickable, retain accessible labels, and keep the search, Add Text, upload-limit behavior, and Image Create controls.
+
+
+## 2026-11-19 Directive Update — Text bounds and line-separated typing
+
+A text layer's Free Transform box must follow the text's measured glyph width and total multi-line height, not an artwork-sized or padded box. Inline text editing must support Enter/newline-separated typing; every line must render consistently on the canvas and mockups. Keep the behavior usable on Desktop and Phone/Mobile.

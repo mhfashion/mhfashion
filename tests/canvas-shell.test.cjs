@@ -707,6 +707,8 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   // The transform box hugs the text instead of spanning the artwork like an image.
   assert.match(layerModelSource, /export function editorTextCanvasBounds/);
   assert.match(source, /editorTextCanvasBounds\(layer\.text\)/);
+  assert.match(source, /if \(layer\.kind === "text" && textBounds\) return textBounds/);
+  assert.match(source, /editingText\.value\.split\("\\n"\)\.length/);
   // The mockup preview uses the same measured bounds, not the old per-character estimate.
   assert.match(mockupSource, /editorTextCanvasBounds\(layer\.text\)/);
   assert.doesNotMatch(mockupSource, /layer\.text\.value\.length \* layer\.text\.fontSize \* 0\.58/);
