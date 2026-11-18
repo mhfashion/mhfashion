@@ -10,21 +10,40 @@ function pathFor(stroke: ArtworkStroke) {
     .join(" ");
 }
 
+/** Default ink look for a brush/pencil stroke that predates per-stroke options. */
+export const ARTWORK_BRUSH_DEFAULT_WIDTH = 52;
+export const ARTWORK_BRUSH_DEFAULT_OPACITY = 0.68;
+export const ARTWORK_PENCIL_DEFAULT_WIDTH = 24;
+
+export function artworkStrokeWidth(stroke: ArtworkStroke, fallback = ARTWORK_PENCIL_DEFAULT_WIDTH) {
+  return stroke.width ?? (stroke.tool === "brush" ? ARTWORK_BRUSH_DEFAULT_WIDTH : fallback);
+}
+export function artworkStrokeOpacity(stroke: ArtworkStroke) {
+  return stroke.opacity ?? (stroke.tool === "brush" ? ARTWORK_BRUSH_DEFAULT_OPACITY : 1);
+}
+export function artworkStrokeSoftness(stroke: ArtworkStroke) {
+  return stroke.softness ?? 0;
+}
+
 function StrokeShape({
   stroke,
   color,
   width,
   className,
   isArtwork = false,
+  blurId,
 }: {
   stroke: ArtworkStroke;
   color: string;
   width: number;
   className?: string;
   isArtwork?: boolean;
+  blurId?: string;
 }) {
-  const strokeWidth = isArtwork && stroke.tool === "brush" ? 52 : width;
-  const strokeOpacity = isArtwork && stroke.tool === "brush" ? 0.68 : undefined;
+  const strokeWidth = isArtwork ? artworkStrokeWidth(stroke, width) : width;
+  const strokeOpacity = isArtwork ? artworkStrokeOpacity(stroke) : undefined;
+  const softness = isArtwork ? artworkStrokeSoftness(stroke) : 0;
+  const softFilter = softness > 0 && blurId ? `url(#${blurId})` : undefined;
   if (stroke.points.length === 0) return null;
   if (stroke.points.length === 1) {
     return (
@@ -34,7 +53,9 @@ function StrokeShape({
         r={strokeWidth / 2}
         fill={color}
         opacity={strokeOpacity}
+        filter={softFilter}
         data-editor-artwork-stroke={isArtwork ? "true" : undefined}
+        data-editor-stroke-shape={isArtwork ? stroke.shape ?? "round" : undefined}
         className={className}
       />
     );
@@ -46,9 +67,11 @@ function StrokeShape({
       stroke={color}
       strokeWidth={strokeWidth}
       strokeOpacity={strokeOpacity}
-      strokeLinecap="round"
+      strokeLinecap={stroke.shape === "square" ? "butt" : "round"}
       strokeLinejoin="round"
+      filter={softFilter}
       data-editor-artwork-stroke={isArtwork ? "true" : undefined}
+      data-editor-stroke-shape={isArtwork ? stroke.shape ?? "round" : undefined}
       className={className}
     />
   );
@@ -119,8 +142,22 @@ export default function EditorArtworkLayers({
               </defs>
             )}
             <g transform={transform} mask={layer.mask !== null ? `url(#${maskId})` : undefined} opacity={layer.fillOpacity / 100}>
+              {layer.strokes.some((stroke) => artworkStrokeSoftness(stroke) > 0) && (
+                <defs>
+                  <filter id={`${instanceId}-${layer.id.replace(/[^a-zA-Z0-9_-]/g, "")}-soften`} x="-25%" y="-25%" width="150%" height="150%">
+                    <feGaussianBlur stdDeviation="14" />
+                  </filter>
+                </defs>
+              )}
               {layer.strokes.map((stroke, index) => (
-                <StrokeShape key={index} stroke={stroke} color={stroke.color ?? "#202124"} width={24} isArtwork />
+                <StrokeShape
+                  key={index}
+                  stroke={stroke}
+                  color={stroke.color ?? "#202124"}
+                  width={ARTWORK_PENCIL_DEFAULT_WIDTH}
+                  isArtwork
+                  blurId={`${instanceId}-${layer.id.replace(/[^a-zA-Z0-9_-]/g, "")}-soften`}
+                />
               ))}
               {(layer.shape !== null || layer.text !== null || layer.image !== null) && (
                 <g data-editor-layer-kind={layer.kind}>

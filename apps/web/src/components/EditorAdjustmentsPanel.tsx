@@ -2,10 +2,37 @@
 
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { EditorArtworkLayer, EditorImageContent, EditorShapeBuilderMode, EditorTextContent, EditorTextEffect, EditorTextEffectKind } from "@/lib/editor-layers";
+import type { EditorArtworkLayer, EditorBrushSettings, EditorEraserSettings, EditorImageContent, EditorPenSettings, EditorShapeBuilderMode, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorToolOptions } from "@/lib/editor-layers";
+import type { EditorTool } from "@/components/EditorToolsBar";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
 const EDITOR_FONTS = ["Inter", "Arial", "Georgia", "Impact", "Courier New", "Trebuchet MS", "Verdana", "Times New Roman"];
+const TOOL_LABELS: Record<EditorTool, string> = {
+  move: "Move",
+  hand: "Hand",
+  pencil: "Pencil",
+  pen: "Pen",
+  text: "Text",
+  brush: "Brush",
+  eraser: "Eraser",
+  shape: "Shape",
+  gradient: "Gradient",
+  "remove-bg": "Remove BG",
+};
+const TOOL_OPTION_HINTS: Partial<Record<EditorTool, string>> = {
+  move: "Drag the canvas to move the selected layer. Adjust a layer's own size, opacity, and blend under Appearance.",
+  hand: "Drag to pan the workspace view. Zoom stays available from the canvas controls.",
+  text: "Select a text layer to edit its font, size, color, alignment, effects, and decoration.",
+  shape: "Pick a shape from the Shape chip, then drag on the canvas to draw it into the active layer.",
+  gradient: "Gradient fill is not connected yet. Its controls will appear here once the fill pipeline ships.",
+  "remove-bg": "Upload a photo layer to use background removal. The image service is not connected yet.",
+};
+type ToolOptionsPatch = {
+  brush?: Partial<EditorBrushSettings>;
+  pencil?: Partial<EditorBrushSettings>;
+  eraser?: Partial<EditorEraserSettings>;
+  pen?: Partial<EditorPenSettings>;
+};
 type TextStyleUpdate = Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth" | "effects">>;
 const EFFECT_TYPES: { kind: EditorTextEffectKind; label: string; color: string }[] = [
   { kind: "shadow", label: "Shadow", color: "#111827" },
@@ -33,10 +60,28 @@ function NumberField({ label, value, min, max, step = 1, ariaLabel, onChange }: 
   return <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>{label}</span><input aria-label={ariaLabel} type="number" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-20 rounded-lg border border-border bg-bg px-2 py-1.5 text-right text-[11px] text-text-primary outline-none focus:border-accent" /></label>;
 }
 
-export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateImage, onAddMask, onRemoveMask, onSelectMask }: {
+function RangeField({ label, value, min, max, step = 1, suffix, ariaLabel, onChange }: { label: string; value: number; min: number; max: number; step?: number; suffix?: string; ariaLabel: string; onChange: (value: number) => void }) {
+  return <label className="block text-[10px] text-text-secondary">{label}<span className="float-right font-semibold text-text-primary">{value}{suffix}</span><input aria-label={ariaLabel} type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>;
+}
+
+function BrushOptions({ label, value, onChange }: { label: string; value: EditorBrushSettings; onChange: (patch: Partial<EditorBrushSettings>) => void }) {
+  return <div className="space-y-2">
+    <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>{label} shape</span><div role="group" aria-label={`${label} shape`} className="flex gap-1">{(["round", "square"] as const).map((shape) => <button key={shape} type="button" aria-label={`${label} ${shape} tip`} aria-pressed={value.shape === shape} onClick={() => onChange({ shape })} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{shape}</button>)}</div></div>
+    <RangeField label={`${label} size`} value={value.size} min={1} max={200} suffix="px" ariaLabel={`${label} size`} onChange={(size) => onChange({ size })} />
+    <RangeField label="Opacity" value={Math.round(value.opacity * 100)} min={1} max={100} suffix="%" ariaLabel={`${label} opacity`} onChange={(percent) => onChange({ opacity: percent / 100 })} />
+    <RangeField label="Softness" value={value.softness} min={0} max={100} suffix="%" ariaLabel={`${label} softness`} onChange={(softness) => onChange({ softness })} />
+    <RangeField label="Feather" value={value.feather} min={0} max={100} suffix="%" ariaLabel={`${label} feather`} onChange={(feather) => onChange({ feather })} />
+    <p className="text-[9px] leading-relaxed text-text-muted">These values apply to the next {label.toLowerCase()} stroke you draw and stay until you change them.</p>
+  </div>;
+}
+
+export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateImage, onAddMask, onRemoveMask, onSelectMask }: {
   open: boolean;
   onToggle: () => void;
   selectedLayer: EditorArtworkLayer | null;
+  activeTool: EditorTool;
+  toolOptions: EditorToolOptions;
+  onUpdateToolOptions: (patch: ToolOptionsPatch) => void;
   onUpdateLayer: (id: string, update: Partial<Pick<EditorArtworkLayer, "opacity" | "fillOpacity" | "blendMode">>) => void;
   onUpdateText: (value: string) => void;
   onUpdateTextStyle: (update: TextStyleUpdate) => void;
@@ -51,7 +96,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   const [fontQuery, setFontQuery] = useState("");
   const [recentFonts, setRecentFonts] = useState<string[]>([]);
   const [nextEffectId, setNextEffectId] = useState(1);
-  const [openSection, setOpenSection] = useState("Text");
+  const [openSection, setOpenSection] = useState("Tool Options");
   const effectStack: EditorTextEffect[] = text ? text.effects ?? (text.textEffect === "shadow"
     ? [{ id: "legacy-shadow", kind: "shadow", color: text.effectColor ?? "#000000", offsetX: text.effectOffset ?? 12, offsetY: text.effectOffset ?? 12, blur: text.effectBlur ?? 0 }]
     : text.textEffect === "outline"
@@ -100,7 +145,26 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
         <span aria-hidden="true" className="h-2 w-2 rounded-full bg-accent shadow-[0_0_10px_#d4ff3f]" />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        {!selectedLayer ? <p className="p-2 text-[11px] text-[#666] dark:text-[#bdbdbd]">Select a layer to edit its properties.</p> : <div className="space-y-2 text-[11px]">
+        <div className="space-y-2 text-[11px]">
+          <Section title={`Tool Options · ${TOOL_LABELS[activeTool]}`} open={openSection === "Tool Options"} onToggle={() => toggleSection("Tool Options")}>
+            {(activeTool === "brush" || activeTool === "pencil") && <BrushOptions
+              label={activeTool === "brush" ? "Brush" : "Pencil"}
+              value={activeTool === "brush" ? toolOptions.brush : toolOptions.pencil}
+              onChange={(patch) => onUpdateToolOptions(activeTool === "brush" ? { brush: patch } : { pencil: patch })}
+            />}
+            {activeTool === "eraser" && <div className="space-y-2">
+              <label className="block text-[10px] text-text-secondary">Eraser size<span className="float-right font-semibold text-text-primary">{toolOptions.eraser.size}px</span><input aria-label="Eraser size" type="range" min="10" max="600" value={toolOptions.eraser.size} onChange={(event) => onUpdateToolOptions({ eraser: { size: Number(event.target.value) } })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>
+              <p className="text-[9px] leading-relaxed text-text-muted">The eraser removes strokes whose points fall inside this radius. It never erases locked layers.</p>
+            </div>}
+            {activeTool === "pen" && <div className="space-y-2">
+              <label className="block text-[10px] text-text-secondary">Path width<span className="float-right font-semibold text-text-primary">{toolOptions.pen.width}px</span><input aria-label="Pen path width" type="range" min="1" max="60" value={toolOptions.pen.width} onChange={(event) => onUpdateToolOptions({ pen: { width: Number(event.target.value) } })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>
+              <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Cap</span><div role="group" aria-label="Pen cap" className="flex gap-1">{(["round", "butt", "square"] as const).map((cap) => <button key={cap} type="button" aria-label={`Pen cap ${cap}`} aria-pressed={toolOptions.pen.cap === cap} onClick={() => onUpdateToolOptions({ pen: { cap } })} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{cap}</button>)}</div></div>
+              <p className="text-[9px] leading-relaxed text-text-muted">These values are saved as this tool&apos;s defaults for the next path you draw.</p>
+            </div>}
+            {(activeTool === "text" || activeTool === "move" || activeTool === "hand" || activeTool === "shape" || activeTool === "gradient" || activeTool === "remove-bg") && <p className="text-[10px] leading-relaxed text-text-muted">{TOOL_OPTION_HINTS[activeTool]}</p>}
+          </Section>
+          {!selectedLayer && <p className="p-2 text-[11px] text-[#666] dark:text-[#bdbdbd]">Select a layer to edit its properties.</p>}
+          {selectedLayer && <>
           <div className="rounded-xl border border-border/70 bg-bg/70 px-3 py-2 font-semibold text-text-primary shadow-sm dark:bg-white/[0.04]">{selectedLayer.name}<span className="mt-0.5 block text-[9px] font-normal uppercase tracking-wider text-text-muted">{selectedLayer.kind} layer</span></div>
           {selectedLayer.shape && <Section title="Shape Builder" open={openSection === "Shape Builder"} onToggle={() => toggleSection("Shape Builder")}>
             <div className="grid grid-cols-2 gap-1.5">{(["select", "merge", "subtract", "intersect"] as const).map((mode) => <button key={mode} type="button" aria-label={`Shape builder ${mode}`} aria-pressed={(selectedLayer.shape?.builderMode ?? "select") === mode} onClick={() => onUpdateShapeBuilder(mode)} className="rounded-lg border border-border px-2 py-2 text-[10px] capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{mode === "select" ? "Select" : mode}</button>)}</div>
@@ -221,7 +285,8 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
           <Section title="Appearance" open={openSection === "Appearance"} onToggle={() => toggleSection("Appearance")}>
             <div className="space-y-3"><label className="block text-[10px] text-text-secondary">Blend mode<select aria-label={`Blend mode for ${selectedLayer.name}`} value={selectedLayer.blendMode} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { blendMode: event.target.value as "normal" | "multiply" | "screen" | "overlay" })} className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-primary"><option value="normal">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option></select></label><label className="block text-[10px] text-text-secondary">Opacity<span className="float-right font-semibold text-text-primary">{selectedLayer.opacity}%</span><input aria-label="Adjustment opacity" type="range" min="0" max="100" value={selectedLayer.opacity} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { opacity: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label><label className="block text-[10px] text-text-secondary">Fill<span className="float-right font-semibold text-text-primary">{selectedLayer.fillOpacity}%</span><input aria-label="Adjustment fill" type="range" min="0" max="100" value={selectedLayer.fillOpacity} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { fillOpacity: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label></div>
           </Section>
-        </div>}
+          </>}
+        </div>
       </div>
     </aside>}
     <button type="button" aria-label={open ? "Close Adjustments panel" : "Open Adjustments panel"} aria-expanded={open} onClick={onToggle} className="absolute top-2 z-40 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11" style={{ right: open ? PANEL_WIDTH : 0 }}><ChevronRight size={17} aria-hidden="true" /></button>

@@ -178,7 +178,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /pointer-events-auto rounded-lg bg-accent/);
   assert.match(source, /Alt-click point to remove/);
   assert.match(source, /aria-label="Pen tool actions"/);
-  assert.match(source, /strokeWidth: 5, penPath/);
+  assert.match(source, /strokeWidth: toolOptions\.pen\.width, penPath/);
   assert.match(source, /strokeWidth="1\.5" vectorEffect="non-scaling-stroke"/);
   assert.match(source, /data-pen-handle-endpoint="in"/);
   assert.match(source, /data-pen-handle-endpoint="out"/);
@@ -215,7 +215,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /function rememberLayerSnapshot\(/);
   assert.match(layerModelSource, /tool\?: "pen" \| "brush"/);
   assert.match(layerModelSource, /return \{ \.\.\.stroke, points:/);
-  assert.match(artworkLayers, /stroke\.tool === "brush" \? 52 : width/);
+  assert.match(artworkLayers, /artworkStrokeWidth\(stroke, width\)/);
   assert.match(mockupArtwork, /strokes\.some\(\(stroke\) => stroke\.tool === "brush"\) \? 32 : 18/);
 });
 
@@ -660,4 +660,81 @@ test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and 
   assert.match(headerBar2, /import \{ createPortal \} from "react-dom"/);
   assert.match(headerBar2, /import \{ DEFAULT_EDITOR_GSM, type EditorProduct \} from "@\/lib\/editor-product"/);
   assert.match(headerBar2, /import \{ calculateEditorPriceKs \} from "@\/lib\/editor-price"/);
+});
+
+test("Free Transform box hides while a Brush/Pencil stroke is being drawn", () => {
+  // Drawing state is toggled from the freehand stroke lifecycle.
+  assert.match(source, /const \[isDrawingStroke, setIsDrawingStroke\] = useState\(false\)/);
+  assert.match(source, /setIsDrawingStroke\(true\)/);
+  assert.match(source, /setIsDrawingStroke\(false\)/);
+  // The transform overlay only renders when no stroke is in progress.
+  assert.match(source, /selectionBounds && !editingText && !drawingStroke && \(/);
+  assert.match(source, /drawingStroke\?: boolean/);
+  assert.match(source, /drawingStroke=\{isDrawingStroke\}/);
+});
+
+test("Adjustments panel exposes per-tool options for the active tool", () => {
+  // Tool options live in shared editor state and are normalized on every change.
+  assert.match(source, /const \[toolOptions, setToolOptions\] = useState<EditorToolOptions>/);
+  assert.match(source, /normalizeEditorToolOptions\(EDITOR_TOOL_OPTIONS_DEFAULT\)/);
+  assert.match(source, /function updateToolOptions\(/);
+  assert.match(source, /activeTool=\{activeTool\}/);
+  assert.match(source, /toolOptions=\{toolOptions\}/);
+  assert.match(source, /onUpdateToolOptions=\{updateToolOptions\}/);
+  // Brush and Pencil share the BrushOptions control; the panel titles the section per tool.
+  assert.match(adjustmentsPanel, /Tool Options · \$\{TOOL_LABELS\[activeTool\]\}/);
+  assert.match(adjustmentsPanel, /activeTool === "brush" \|\| activeTool === "pencil"/);
+  assert.match(adjustmentsPanel, /function BrushOptions\(/);
+  // The brush controls are labelled from the tool name, so Brush and Pencil share them.
+  assert.match(adjustmentsPanel, /\$\{label\} shape/);
+  assert.match(adjustmentsPanel, /\$\{label\} size/);
+  assert.match(adjustmentsPanel, /label=\{activeTool === "brush" \? "Brush" : "Pencil"\}/);
+  for (const label of ["Opacity", "Softness", "Feather"]) {
+    assert.match(adjustmentsPanel, new RegExp(`label="${label}"`));
+  }
+  assert.match(adjustmentsPanel, /activeTool === "eraser"/);
+  assert.match(adjustmentsPanel, /aria-label="Eraser size"/);
+  assert.match(adjustmentsPanel, /activeTool === "pen"/);
+  assert.match(adjustmentsPanel, /aria-label="Pen path width"/);
+  assert.match(adjustmentsPanel, /aria-label=\{`Pen cap \$\{cap\}`\}/);
+  // The panel opens even without a selected layer so tool options stay reachable.
+  assert.match(layersPanel, /aria-label="Open Adjustments panel" title="Open Adjustments" onClick=\{onOpenAdjustments\}/);
+  assert.doesNotMatch(layersPanel, /aria-label="Open Adjustments panel" title="Open Adjustments" disabled=\{!selectedLayer\}/);
+  // Brush/pencil strokes carry the chosen nib so the canvas renders them per-stroke.
+  assert.match(source, /width: brushSettings\.size/);
+  assert.match(source, /opacity: brushSettings\.opacity/);
+  assert.match(source, /shape: brushSettings\.shape/);
+  assert.match(artworkLayers, /export function artworkStrokeWidth\(/);
+  assert.match(artworkLayers, /export function artworkStrokeOpacity\(/);
+  assert.match(artworkLayers, /data-editor-stroke-shape=/);
+});
+
+test("editor tool options normalize to safe ranges", () => {
+  const fileName = path.join(__dirname, "../apps/web/src/lib/editor-layers.ts");
+  const compiled = ts.transpileModule(layerModelSource, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    fileName,
+  }).outputText;
+  const module = { exports: {} };
+  new Function("module", "exports", compiled)(module, module.exports);
+  const { normalizeEditorToolOptions, EDITOR_TOOL_OPTIONS_DEFAULT } = module.exports;
+
+  const defaults = normalizeEditorToolOptions(undefined);
+  assert.equal(defaults.brush.size, EDITOR_TOOL_OPTIONS_DEFAULT.brush.size);
+  assert.equal(defaults.brush.shape, "round");
+  assert.equal(defaults.pen.cap, "round");
+
+  const clamped = normalizeEditorToolOptions({
+    brush: { size: 9999, opacity: 5, softness: -40, feather: 500, shape: "square" },
+    eraser: { size: 1 },
+    pen: { width: 999, cap: "square" },
+  });
+  assert.equal(clamped.brush.size, 400);
+  assert.equal(clamped.brush.opacity, 1);
+  assert.equal(clamped.brush.softness, 0);
+  assert.equal(clamped.brush.feather, 100);
+  assert.equal(clamped.brush.shape, "square");
+  assert.equal(clamped.eraser.size, 10);
+  assert.equal(clamped.pen.width, 60);
+  assert.equal(clamped.pen.cap, "square");
 });

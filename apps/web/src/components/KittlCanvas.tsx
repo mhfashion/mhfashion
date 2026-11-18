@@ -32,9 +32,11 @@ import {
   groupEditorLayers,
   linkEditorLayers,
   moveEditorLayerToIndex,
+  normalizeEditorToolOptions,
   removeLayerMask,
   reorderEditorLayer,
   setEditorLayerText,
+  EDITOR_TOOL_OPTIONS_DEFAULT,
   ungroupEditorLayers,
   unlinkEditorLayers,
   updateEditorLayerTextStyle,
@@ -45,6 +47,7 @@ import {
   updateEditorLayer,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
+import type { EditorBrushShape, EditorToolOptions } from "@/lib/editor-layers";
 import {
   draggedEditorPenAnchor,
   editorPenPathData,
@@ -138,6 +141,10 @@ type ActiveArtworkStroke = {
   maskBrushMode: MaskBrushMode;
   points: Point[];
   color: string;
+  width?: number;
+  opacity?: number;
+  shape?: EditorBrushShape;
+  softness?: number;
 };
 type ActiveShapeDrag = { pointerId: number; layerId: string; preset: EditorShapePreset; start: Point; current: Point; color: string };
 
@@ -180,6 +187,7 @@ function ArtworkOverlay({
   editingTextLayer,
   selectedLayerIds,
   selectionBounds,
+  drawingStroke = false,
   layerScales,
   layerOrigins,
   onMoveStart,
@@ -205,6 +213,8 @@ function ArtworkOverlay({
   editingTextLayer?: EditorArtworkLayer | null;
   selectedLayerIds: string[];
   selectionBounds: CanvasBounds | null;
+  /** Hide the Free Transform box while a freehand stroke is being drawn. */
+  drawingStroke?: boolean;
   layerScales: Record<string, Point>;
   layerOrigins: Record<string, Point>;
   onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
@@ -323,7 +333,7 @@ function ArtworkOverlay({
         )}
       </g>
       {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
-      {selectedLayerIds.length > 0 && selectionBounds && !editingText && (
+      {selectedLayerIds.length > 0 && selectionBounds && !editingText && !drawingStroke && (
         <g pointerEvents="none" data-editor-transform-controls="true" transform={`rotate(${transformRotation} ${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height / 2})`}>
           <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
           {resizeHandles.map((handle) => (
@@ -371,6 +381,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [editSidebarOpen, setEditSidebarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<EditorTool>("pen");
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
+  const [toolOptions, setToolOptions] = useState<EditorToolOptions>(() => normalizeEditorToolOptions(EDITOR_TOOL_OPTIONS_DEFAULT));
+  // True while a freehand stroke is being drawn, so the Free Transform box hides itself
+  // the moment the pointer goes down and stays hidden until the stroke ends.
+  const [isDrawingStroke, setIsDrawingStroke] = useState(false);
   const [toolNotice, setToolNotice] = useState("");
   const [selectedShape, setSelectedShape] = useState<EditorShapePreset>("rectangle");
   const [shapeDrawing, setShapeDrawing] = useState<ActiveShapeDrag | null>(null);
@@ -726,7 +740,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function eraseArtworkAt(point: Point, layerId: string, target: LayerEditTarget) {
-    const radiusPx = 180;
+    const radiusPx = toolOptions.eraser.size;
     const isTouched = (stroke: { points: Point[] }) => stroke.points.some((strokePoint) =>
       Math.hypot(
         (strokePoint.x - point.x) * PRINT_CANVAS_SPEC.widthPx,
@@ -927,7 +941,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const pathData = editorPenPathData(penPath);
     rememberLayerSnapshot();
     setLayers((current) => appendEditorShapePaths(current, selectedLayer.id, [
-      { d: pathData, fill: close ? foregroundColor : "none", stroke: foregroundColor, strokeWidth: 5, penPath },
+      { d: pathData, fill: close ? foregroundColor : "none", stroke: foregroundColor, strokeWidth: toolOptions.pen.width, penPath },
     ]));
     setSelectedLayerId(selectedLayer.id);
     setSelectedLayerIds([selectedLayer.id]);
@@ -1185,6 +1199,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       return;
     }
     const tool = activeTool === "brush" ? "brush" : "pen";
+    const brushSettings = activeTool === "brush" ? toolOptions.brush : toolOptions.pencil;
     const effectiveMaskBrushMode: MaskBrushMode = selectedTarget === "mask" && foregroundColor.toLowerCase() === "#ffffff" ? "reveal" : "hide";
     if (selectedTarget === "mask") setMaskBrushMode(effectiveMaskBrushMode);
     const activeStroke: ActiveArtworkStroke = {
@@ -1195,14 +1210,27 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       maskBrushMode: selectedTarget === "mask" ? effectiveMaskBrushMode : maskBrushMode,
       points: [point],
       color: foregroundColor,
+      width: brushSettings.size,
+      opacity: brushSettings.opacity,
+      shape: brushSettings.shape,
+      softness: Math.max(brushSettings.softness, brushSettings.feather),
     };
     activeArtworkStrokeRef.current = activeStroke;
+    setIsDrawingStroke(true);
     rememberLayerSnapshot();
     setLayers((current) => appendLayerStroke(
       current,
       activeStroke.layerId,
       activeStroke.target,
-      { points: [point], tool, color: foregroundColor },
+      {
+        points: [point],
+        tool,
+        color: foregroundColor,
+        width: activeStroke.width,
+        opacity: activeStroke.opacity,
+        shape: activeStroke.shape,
+        softness: activeStroke.softness,
+      },
       activeStroke.maskBrushMode,
     ));
   }
@@ -1250,7 +1278,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       current,
       active.layerId,
       active.target,
-      { points: [...active.points], tool: active.tool, color: active.color },
+      {
+        points: [...active.points],
+        tool: active.tool,
+        color: active.color,
+        width: active.width,
+        opacity: active.opacity,
+        shape: active.shape,
+        softness: active.softness,
+      },
       active.maskBrushMode,
     ));
   }
@@ -1282,6 +1318,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (activeEraserRef.current?.pointerId === event.pointerId) activeEraserRef.current = null;
     if (activeArtworkStrokeRef.current?.pointerId !== event.pointerId) return;
     activeArtworkStrokeRef.current = null;
+    setIsDrawingStroke(false);
   }
 
   function undoCanvasAction() {
@@ -1604,6 +1641,20 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setLayers((current) => updateEditorLayer(current, id, update));
   }
 
+  function updateToolOptions(patch: {
+    brush?: Partial<EditorToolOptions["brush"]>;
+    pencil?: Partial<EditorToolOptions["pencil"]>;
+    eraser?: Partial<EditorToolOptions["eraser"]>;
+    pen?: Partial<EditorToolOptions["pen"]>;
+  }) {
+    setToolOptions((current) => normalizeEditorToolOptions({
+      brush: { ...current.brush, ...patch.brush },
+      pencil: { ...current.pencil, ...patch.pencil },
+      eraser: { ...current.eraser, ...patch.eraser },
+      pen: { ...current.pen, ...patch.pen },
+    }));
+  }
+
   function resetView() {
     setZoom(1);
     setPan({ x: 0, y: 0 });
@@ -1720,6 +1771,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   editingTextLayer={editingTextLayer}
                   selectedLayerIds={selectedLayerIds}
                   selectionBounds={selectionBounds}
+                  drawingStroke={isDrawingStroke}
                   layerScales={canvasLayerScales}
                   layerOrigins={canvasLayerOrigins}
                   layerRotations={canvasLayerRotations}
@@ -1969,6 +2021,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           open={adjustmentsOpen}
           onToggle={closeAdjustments}
           selectedLayer={layers.find((layer) => layer.id === selectedLayerId) ?? null}
+          activeTool={activeTool}
+          toolOptions={toolOptions}
+          onUpdateToolOptions={updateToolOptions}
           onUpdateLayer={updateLayer}
           onUpdateText={updateSelectedText}
           onUpdateTextStyle={updateSelectedTextStyle}

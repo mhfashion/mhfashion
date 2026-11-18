@@ -1,7 +1,66 @@
 import type { EditorPenPath } from "./editor-pen-path";
 
 export type ArtworkPoint = { x: number; y: number };
-export type ArtworkStroke = { points: ArtworkPoint[]; tool?: "pen" | "brush"; color?: string };
+export type EditorBrushShape = "round" | "square";
+export type ArtworkStroke = {
+  points: ArtworkPoint[];
+  tool?: "pen" | "brush";
+  color?: string;
+  /** Brush/pencil nib size in 1000 x 1200 artwork units. */
+  width?: number;
+  /** Brush/pencil ink opacity, 0 to 1. */
+  opacity?: number;
+  shape?: EditorBrushShape;
+  /** Edge softness, 0 (hard) to 100 (fully feathered). */
+  softness?: number;
+};
+export type EditorBrushSettings = {
+  shape: EditorBrushShape;
+  size: number;
+  opacity: number;
+  softness: number;
+  feather: number;
+};
+export type EditorPenSettings = { width: number; cap: "round" | "butt" | "square" };
+export type EditorEraserSettings = { size: number };
+export type EditorToolOptions = {
+  brush: EditorBrushSettings;
+  pencil: EditorBrushSettings;
+  eraser: EditorEraserSettings;
+  pen: EditorPenSettings;
+};
+export const EDITOR_BRUSH_SHAPES: EditorBrushShape[] = ["round", "square"];
+export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
+  brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0 },
+  pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0 },
+  eraser: { size: 180 },
+  pen: { width: 5, cap: "round" },
+};
+
+const clamp = (value: number, min: number, max: number) => Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : min;
+
+export function normalizeEditorBrush(input: Partial<EditorBrushSettings> | undefined, fallback: EditorBrushSettings): EditorBrushSettings {
+  return {
+    shape: input?.shape === "square" ? "square" : "round",
+    size: clamp(input?.size ?? fallback.size, 1, 400),
+    opacity: clamp(input?.opacity ?? fallback.opacity, 0.01, 1),
+    softness: clamp(input?.softness ?? fallback.softness, 0, 100),
+    feather: clamp(input?.feather ?? fallback.feather, 0, 100),
+  };
+}
+
+/** Clamp every tool option so the stored values always render safely. */
+export function normalizeEditorToolOptions(input: Partial<EditorToolOptions> | undefined): EditorToolOptions {
+  return {
+    brush: normalizeEditorBrush(input?.brush, EDITOR_TOOL_OPTIONS_DEFAULT.brush),
+    pencil: normalizeEditorBrush(input?.pencil, EDITOR_TOOL_OPTIONS_DEFAULT.pencil),
+    eraser: { size: clamp(input?.eraser?.size ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.size, 10, 600) },
+    pen: {
+      width: clamp(input?.pen?.width ?? EDITOR_TOOL_OPTIONS_DEFAULT.pen.width, 1, 60),
+      cap: input?.pen?.cap === "butt" || input?.pen?.cap === "square" ? input.pen.cap : "round",
+    },
+  };
+}
 export type MaskBrushMode = "hide" | "reveal";
 export type LayerEditTarget = "artwork" | "mask";
 export type EditorLayerBlendMode = "normal" | "multiply" | "screen" | "overlay";
