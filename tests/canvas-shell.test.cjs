@@ -75,7 +75,7 @@ test("grid is optional, and the initial canvas has no visible specification badg
   assert.match(source, /h-1 w-1 rounded-full bg-accent-foreground/);
   assert.doesNotMatch(source, /bg-\[#a58be8\]|hover:bg-\[#8f72d4\]/);
   assert.match(source, /backgroundSize: "10% 10%"/g);
-  assert.match(source, /flex-col items-center justify-start overflow-auto[\s\S]*md:overflow-hidden/);
+  assert.match(source, /flex-col items-center justify-start overflow-auto[\s\S]*md:overflow-visible/);
   assert.match(source, /md:flex-row md:gap-12/);
 });
 
@@ -109,6 +109,9 @@ test("canvas strokes are stored on selected layers and shared with equal-size mo
   assert.match(mockupArtwork, /scale\(\$\{BASE_ARTWORK_SCALE \* safeTransform\.scale\}\)/);
   assert.match(source, /largeArtworkTierOwner/);
   assert.match(source, /maxArtworkEdgePx=\{getArtworkMaxEdgePx\(side, activeLargeArtworkTierOwner\)\}/);
+  assert.match(source, /const mockupLayers = useMemo\(/);
+  assert.match(source, /layerIntersectsPrintArtboard\(/);
+  assert.match(source, /layers=\{mockupLayers\}/);
   assert.match(source, /onLargeTierRequested=\{handleLargeTierRequested\}/);
   assert.match(source, /onArtworkDisplayedEdgeChange=\{handleArtworkDisplayedEdgeChange\}/);
   assert.match(mockupArtwork, /useEffect\(\(\) => \{[\s\S]*?scaleAroundCenter\(bounds, current, maxArtworkScale\)/);
@@ -337,7 +340,7 @@ test("drawing tools are inert on photo layers and the tools bar disables them", 
 });
 
 test("artwork on each Mockup can be moved and resized as one object", () => {
-  assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?layers=\{layers\}[\s\S]*?maxArtworkEdgePx=/);
+  assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?layers=\{mockupLayers\}[\s\S]*?maxArtworkEdgePx=/);
   assert.match(mockupArtwork, /aria-label=\{`Move \$\{side\} artwork`\}/);
   assert.match(mockupArtwork, /mode === "move"/);
   assert.match(mockupArtwork, /startTransform\("resize", event\)/);

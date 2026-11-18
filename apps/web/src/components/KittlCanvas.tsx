@@ -199,6 +199,38 @@ function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   return { x: minX, y: minY, width: Math.max(24, maxX - minX), height: Math.max(24, maxY - minY) };
 }
 
+function layerIntersectsPrintArtboard(
+  layer: EditorArtworkLayer,
+  scales: Record<string, Point>,
+  offsets: Record<string, Point>,
+  origins: Record<string, Point>,
+  rotations: Record<string, number>,
+) {
+  const bounds = layerCanvasBounds(layer);
+  if (!bounds) return false;
+  const scale = scales[layer.id] ?? { x: 1, y: 1 };
+  const offset = offsets[layer.id] ?? { x: 0, y: 0 };
+  const pivot = origins[layer.id] ?? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+  const rotation = rotations[layer.id] ?? 0;
+  const corners = [
+    { x: bounds.x, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    { x: bounds.x, y: bounds.y + bounds.height },
+  ].map((point) => {
+    const scaled = {
+      x: pivot.x + (point.x - pivot.x) * scale.x + offset.x,
+      y: pivot.y + (point.y - pivot.y) * scale.y + offset.y,
+    };
+    return rotateTransformPoint(scaled, { x: pivot.x + offset.x, y: pivot.y + offset.y }, rotation);
+  });
+  const minX = Math.min(...corners.map((point) => point.x));
+  const maxX = Math.max(...corners.map((point) => point.x));
+  const minY = Math.min(...corners.map((point) => point.y));
+  const maxY = Math.max(...corners.map((point) => point.y));
+  return maxX > 0 && minX < 1000 && maxY > 0 && minY < 1200;
+}
+
 function unionCanvasBounds(bounds: CanvasBounds[]): CanvasBounds | null {
   if (!bounds.length) return null;
   const minX = Math.min(...bounds.map((bound) => bound.x));
@@ -463,6 +495,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const bounds = layerCanvasBounds(layer);
     return bounds ? [[layer.id, { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }]] : [];
   })), [layers]);
+  // The workspace can show layers outside the print artboard, but mockups only
+  // receive layers that still intersect the artboard. This keeps off-artboard
+  // workspace items editable without letting them leak into product previews.
+  const mockupLayers = useMemo(
+    () => layers.filter((layer) => layerIntersectsPrintArtboard(layer, canvasLayerScales, canvasLayerTransforms, canvasLayerOrigins, canvasLayerRotations)),
+    [canvasLayerOrigins, canvasLayerRotations, canvasLayerScales, canvasLayerTransforms, layers],
+  );
   const selectionBounds = useMemo(() => {
     const bounds = selectedLayerIds.flatMap((id) => {
       const layer = layers.find((item) => item.id === id);
@@ -2014,7 +2053,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           data-pan-mode={(touchPanEnabled || activeTool === "hand") ? "hand" : "scroll"}
           data-active-tool={activeTool}
           style={{ cursor: isPanning ? "grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "grab" : activeToolCursorStyle }}
-          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : activeToolCursor}`}
+          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-visible sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : activeToolCursor}`}
         >
           <div
             ref={workspaceRef}
@@ -2364,7 +2403,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   )}
                   <MockupArtwork
                     side={side}
-                    layers={layers}
+                    layers={mockupLayers}
                     selectedMaskLayerId={selectedTarget === "mask" ? selectedLayerId : null}
                     maskBrushMode={maskBrushMode}
                     maxArtworkEdgePx={getArtworkMaxEdgePx(side, activeLargeArtworkTierOwner)}
