@@ -3,7 +3,7 @@
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorPenSettings, EditorShapeBuilderMode, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
-import { EDITOR_BRUSH_BLENDS, EDITOR_SHAPE_LINE_STYLES, resolveEditorShapeStyle } from "@/lib/editor-layers";
+import { EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_SHAPE_LINE_STYLES, resolveEditorShapeStyle } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
 
@@ -70,6 +70,11 @@ function BrushOptions({ label, value, onChange }: { label: string; value: Editor
   const square = value.shape === "square";
   return <div className="space-y-3">
     <div className="space-y-1.5">
+      <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Presets</p>
+      <div role="group" aria-label={`${label} presets`} className="flex flex-wrap gap-1">{EDITOR_BRUSH_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`${label} preset ${preset.label}`} onClick={() => onChange(preset.settings)} className="rounded-lg border border-border px-2 py-1 text-[9px] text-text-secondary outline-none hover:border-accent hover:bg-accent/10">{preset.label}</button>)}</div>
+    </div>
+
+    <div className="space-y-1.5">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Nib</p>
       <OptionGroup label="Tip" ariaLabel={`${label} shape`} options={[{ value: "round", label: "Round" }, { value: "square", label: "Square" }]} value={value.shape} onChange={(shape) => onChange({ shape: shape as EditorBrushShape })} />
       <RangeField label="Size" value={value.size} min={1} max={400} suffix="px" ariaLabel={`${label} size`} onChange={(size) => onChange({ size })} />
@@ -98,6 +103,9 @@ function BrushOptions({ label, value, onChange }: { label: string; value: Editor
       <RangeField label="Size jitter" value={value.sizeJitter} min={0} max={100} suffix="%" ariaLabel={`${label} size jitter`} onChange={(sizeJitter) => onChange({ sizeJitter })} />
       <RangeField label="Opacity jitter" value={value.opacityJitter} min={0} max={100} suffix="%" ariaLabel={`${label} opacity jitter`} onChange={(opacityJitter) => onChange({ opacityJitter })} />
       {(value.sizeJitter > 0 || value.opacityJitter > 0) && <RangeField label="Jitter floor" value={value.jitterMinimum} min={0} max={100} suffix="%" ariaLabel={`${label} jitter floor`} onChange={(jitterMinimum) => onChange({ jitterMinimum })} />}
+      <RangeField label="Scatter" value={value.scatter} min={0} max={100} suffix="%" ariaLabel={`${label} scatter`} onChange={(scatter) => onChange({ scatter })} />
+      <RangeField label="Angle jitter" value={value.angleJitter} min={0} max={100} suffix="%" ariaLabel={`${label} angle jitter`} onChange={(angleJitter) => onChange({ angleJitter })} />
+      <RangeField label="Roundness jitter" value={value.roundnessJitter} min={0} max={100} suffix="%" ariaLabel={`${label} roundness jitter`} onChange={(roundnessJitter) => onChange({ roundnessJitter })} />
       <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Fade out tail</span><input aria-label={`${label} fade out`} type="checkbox" checked={value.fadeOut} onChange={(event) => onChange({ fadeOut: event.target.checked })} className="h-3.5 w-3.5 accent-[var(--accent)]" /></label>
     </div>
 

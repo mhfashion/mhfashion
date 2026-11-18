@@ -38,6 +38,9 @@ const {
   distanceToSegment,
   segmentDistancePx,
   smoothBrushPoints,
+  EDITOR_BRUSH_PRESETS,
+  EDITOR_TOOL_OPTIONS_DEFAULT,
+  normalizeEditorBrush,
   eraserDabBlurRadius,
   eraserDabPoints,
   updateLayerLastErasure,
@@ -559,4 +562,44 @@ test("segmentDistancePx measures clearance and reports crossing segments as touc
   assert.equal(segmentDistancePx(0, 0, 10, 0, 0, 3, 10, 3), 3, "parallel segments report their perpendicular clearance");
   assert.equal(segmentDistancePx(0, 0, 10, 0, 20, 0, 30, 0), 10, "collinear segments report the endpoint gap");
   assert.equal(segmentDistancePx(0, 0, 10, 0, 5, 4, 5, 8), 4, "a segment starting above reports the nearest endpoint");
+});
+
+test("brush scatter and tip jitter vary dabs without leaving the nib envelope", () => {
+  const stroke = {
+    points: [{ x: 0.2, y: 0.5 }, { x: 0.8, y: 0.5 }],
+    width: 100,
+    spacing: 10,
+    flow: 100,
+    angle: 30,
+    roundness: 50,
+    scatter: 80,
+    angleJitter: 100,
+    roundnessJitter: 100,
+  };
+  const dabs = brushDabPoints(stroke);
+  const base = brushDabPoints({ ...stroke, scatter: 0, angleJitter: 0, roundnessJitter: 0 });
+  assert.ok(Math.abs(dabs.length - base.length) <= 1, "scatter leaves the dab count essentially unchanged");
+  assert.ok(dabs.some((dab, index) => dab.x !== base[index].x || dab.y !== base[index].y), "scatter displaces dabs off the path");
+  const envelope = (100 / 1000) * (80 / 100);
+  for (const dab of dabs) {
+    assert.ok(dab.x >= 0.2 - envelope && dab.x <= 0.8 + envelope, "scattered dabs stay within the scatter envelope");
+  }
+  assert.ok(dabs.every((dab) => dab.angle >= 30 - 180 - 1e-9 && dab.angle <= 30 + 180 + 1e-9), "angle jitter stays within the base angle plus or minus 180 degrees");
+  assert.ok(dabs.some((dab) => dab.angle !== 30), "angle jitter actually varies the tip rotation");
+  assert.ok(dabs.every((dab) => dab.roundness >= 0 && dab.roundness <= 100), "roundness jitter stays a valid percentage");
+  assert.ok(dabs.some((dab) => dab.roundness !== 50), "roundness jitter actually varies the corner roundness");
+});
+
+test("brush presets and normalization cover every brush field", () => {
+  assert.ok(EDITOR_BRUSH_PRESETS.length >= 5, "there are several ready-made presets");
+  const ids = EDITOR_BRUSH_PRESETS.map((preset) => preset.id);
+  assert.equal(new Set(ids).size, ids.length, "preset ids are unique");
+  for (const preset of EDITOR_BRUSH_PRESETS) {
+    const normalized = normalizeEditorBrush(preset.settings, EDITOR_TOOL_OPTIONS_DEFAULT.brush);
+    assert.deepEqual(normalized, preset.settings, `${preset.label} settings are already within the valid ranges`);
+  }
+  const normalized = normalizeEditorBrush({ scatter: 500, angleJitter: -10, roundnessJitter: 900 }, EDITOR_TOOL_OPTIONS_DEFAULT.brush);
+  assert.equal(normalized.scatter, 100);
+  assert.equal(normalized.angleJitter, 0);
+  assert.equal(normalized.roundnessJitter, 100);
 });

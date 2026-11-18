@@ -1345,6 +1345,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       jitterMinimum: brushSettings.jitterMinimum,
       angle: brushSettings.angle,
       roundness: brushSettings.roundness,
+      scatter: brushSettings.scatter,
+      angleJitter: brushSettings.angleJitter,
+      roundnessJitter: brushSettings.roundnessJitter,
       fadeOut: brushSettings.fadeOut,
       blend: brushSettings.blend,
     };

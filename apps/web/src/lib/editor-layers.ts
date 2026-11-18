@@ -31,6 +31,12 @@ export type ArtworkStroke = {
   angle?: number;
   /** Corner roundness of a square nib, 0 (sharp) to 100 (fully round). */
   roundness?: number;
+  /** Dab scatter as a percentage of the nib diameter, 0 to 100. */
+  scatter?: number;
+  /** Per-dab tip rotation jitter as a percentage, 0 to 100. */
+  angleJitter?: number;
+  /** Per-dab corner roundness jitter as a percentage, 0 to 100. */
+  roundnessJitter?: number;
   /** Whether the stroke fades to transparent at its end. */
   fadeOut?: boolean;
   /** Dab compositing inside the stroke. */
@@ -50,6 +56,9 @@ export type EditorBrushSettings = {
   jitterMinimum: number;
   angle: number;
   roundness: number;
+  scatter: number;
+  angleJitter: number;
+  roundnessJitter: number;
   fadeOut: boolean;
   blend: EditorBrushBlend;
 };
@@ -91,13 +100,25 @@ export type EditorToolOptions = {
 };
 export const EDITOR_BRUSH_SHAPES: EditorBrushShape[] = ["round", "square"];
 export const EDITOR_BRUSH_BLENDS: EditorBrushBlend[] = ["normal", "multiply", "screen"];
+
 export const EDITOR_ERASER_MODES: EditorEraserMode[] = ["brush", "stroke"];
 export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
-  brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0, spacing: 8, flow: 100, smoothing: 3, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, fadeOut: false, blend: "normal" },
-  pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, fadeOut: false, blend: "normal" },
+  brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0, spacing: 8, flow: 100, smoothing: 3, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
+  pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   eraser: { mode: "brush", shape: "round", size: 120, hardness: 60, opacity: 100, flow: 100, spacing: 12, angle: 0, roundness: 100 },
   pen: { width: 5, cap: "round" },
 };
+
+/** Kittl-style ready-made brush presets; each is a full brush settings patch. */
+export const EDITOR_BRUSH_PRESETS: { id: string; label: string; settings: EditorBrushSettings }[] = [
+  { id: "hard-round", label: "Hard round", settings: { ...EDITOR_TOOL_OPTIONS_DEFAULT.brush } },
+  { id: "soft-round", label: "Soft round", settings: { ...EDITOR_TOOL_OPTIONS_DEFAULT.brush, softness: 60, feather: 40, opacity: 0.55, flow: 70 } },
+  { id: "spray", label: "Spray", settings: { ...EDITOR_TOOL_OPTIONS_DEFAULT.brush, spacing: 4, flow: 25, sizeJitter: 55, opacityJitter: 70, jitterMinimum: 15, scatter: 45 } },
+  { id: "chalk", label: "Chalk", settings: { ...EDITOR_TOOL_OPTIONS_DEFAULT.brush, shape: "square", spacing: 12, flow: 60, angle: 24, roundness: 35, angleJitter: 60, roundnessJitter: 55, scatter: 12 } },
+  { id: "marker", label: "Marker", settings: { ...EDITOR_TOOL_OPTIONS_DEFAULT.brush, shape: "square", size: 70, opacity: 0.85, flow: 100, spacing: 6, roundness: 20, blend: "multiply" } },
+  { id: "ink", label: "Ink", settings: { ...EDITOR_TOOL_OPTIONS_DEFAULT.brush, size: 34, opacity: 1, flow: 100, spacing: 5, smoothing: 6, fadeOut: true } },
+  { id: "airbrush", label: "Airbrush", settings: { ...EDITOR_TOOL_OPTIONS_DEFAULT.brush, softness: 100, feather: 100, opacity: 0.3, flow: 15, spacing: 3, scatter: 20 } },
+];
 
 const clamp = (value: number, min: number, max: number) => Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : min;
 
@@ -117,6 +138,9 @@ export function normalizeEditorBrush(input: Partial<EditorBrushSettings> | undef
     jitterMinimum: clamp(input?.jitterMinimum ?? fallback.jitterMinimum, 0, 100),
     angle: clamp(input?.angle ?? fallback.angle, -180, 180),
     roundness: clamp(input?.roundness ?? fallback.roundness, 0, 100),
+    scatter: clamp(input?.scatter ?? fallback.scatter, 0, 100),
+    angleJitter: clamp(input?.angleJitter ?? fallback.angleJitter, 0, 100),
+    roundnessJitter: clamp(input?.roundnessJitter ?? fallback.roundnessJitter, 0, 100),
     fadeOut: input?.fadeOut ?? fallback.fadeOut,
     blend,
   };
@@ -939,6 +963,10 @@ export type BrushDab = {
   scale: number;
   /** Dab opacity as a fraction of the brush opacity, 0 to 1. */
   alpha: number;
+  /** Tip rotation in degrees for this dab, base angle plus angle jitter. */
+  angle: number;
+  /** Corner roundness percentage for this dab, base roundness plus roundness jitter. */
+  roundness: number;
 };
 
 /**
@@ -979,6 +1007,11 @@ export function brushDabPoints(stroke: ArtworkStroke): BrushDab[] {
   const sizeJitter = clamp(stroke.sizeJitter ?? 0, 0, 100);
   const opacityJitter = clamp(stroke.opacityJitter ?? 0, 0, 100);
   const jitterMinimum = clamp(stroke.jitterMinimum ?? 20, 0, 100);
+  const scatter = clamp(stroke.scatter ?? 0, 0, 100);
+  const angleJitter = clamp(stroke.angleJitter ?? 0, 0, 100);
+  const roundnessJitter = clamp(stroke.roundnessJitter ?? 0, 0, 100);
+  const baseAngle = clamp(stroke.angle ?? 0, -180, 180);
+  const baseRoundness = clamp(stroke.roundness ?? EDITOR_TOOL_OPTIONS_DEFAULT.brush.roundness, 0, 100);
   const flow = clamp(stroke.flow ?? 100, 1, 100) / 100;
   const run = smoothBrushPoints(points, smoothing);
   let step = Math.max(0.5, (width * spacing) / 100);
@@ -990,15 +1023,29 @@ export function brushDabPoints(stroke: ArtworkStroke): BrushDab[] {
   }, 0);
   if (pathLength / step > MAX_BRUSH_DABS) step = pathLength / MAX_BRUSH_DABS;
   const dab = (x: number, y: number, index: number): BrushDab => {
-    // xorshift-style hash keeps jitter stable across renders without a seeded RNG instance.
+    // Hashes keep jitter stable across renders without a seeded RNG instance.
     const hash = Math.abs(Math.sin(index * 12.9898 + 78.233) * 43758.5453) % 1;
     const hash2 = Math.abs(Math.sin(index * 93.9898 + 67.345) * 24634.6345) % 1;
+    const hash3 = Math.abs(Math.sin(index * 27.617 + 11.953) * 31415.9265) % 1;
+    const hash4 = Math.abs(Math.sin(index * 55.123 + 42.007) * 13579.2468) % 1;
+    const hash5 = Math.abs(Math.sin(index * 71.771 + 3.141) * 24680.1357) % 1;
     const minScale = jitterMinimum / 100;
+    // Scatter displaces the dab perpendicular to the path by up to this fraction of the nib.
+    let sx = x;
+    let sy = y;
+    if (scatter > 0) {
+      const magnitude = (scatter / 100) * (width / 1000) * hash5;
+      const direction = hash4 * Math.PI * 2;
+      sx = x + Math.cos(direction) * magnitude;
+      sy = y + Math.sin(direction) * magnitude * (1000 / 1200);
+    }
     return {
-      x,
-      y,
+      x: sx,
+      y: sy,
       scale: 1 - (sizeJitter / 100) * hash * (1 - minScale),
       alpha: Math.max(0, flow * (1 - (opacityJitter / 100) * hash2)),
+      angle: baseAngle + (angleJitter / 100) * 180 * (hash3 * 2 - 1),
+      roundness: clamp(baseRoundness + (roundnessJitter / 100) * 100 * (hash4 * 2 - 1), 0, 100),
     };
   };
   if (run.length === 1) return [dab(run[0].x, run[0].y, 0)];

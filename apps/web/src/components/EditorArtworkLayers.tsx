@@ -94,8 +94,6 @@ function StrokeDabs({
   if (dabs.length === 0) return null;
   const width = stroke.width ?? ARTWORK_BRUSH_DEFAULT_WIDTH;
   const opacity = stroke.opacity ?? ARTWORK_BRUSH_DEFAULT_OPACITY;
-  const roundness = stroke.roundness ?? EDITOR_TOOL_OPTIONS_DEFAULT.brush.roundness;
-  const angle = stroke.angle ?? 0;
   const fadeOut = stroke.fadeOut === true;
   const blurRadius = brushDabBlurRadius(stroke);
   const filter = blurRadius > 0.05 && blurId ? `url(#${blurId})` : undefined;
@@ -123,8 +121,8 @@ function StrokeDabs({
             y={cy - radius}
             width={radius * 2}
             height={radius * 2}
-            rx={(roundness / 100) * radius}
-            transform={`rotate(${angle} ${cx} ${cy})`}
+            rx={(dab.roundness / 100) * radius}
+            transform={`rotate(${dab.angle} ${cx} ${cy})`}
             fill={color}
             fillOpacity={fillOpacity}
           />

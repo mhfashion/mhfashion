@@ -788,11 +788,13 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
     assert.match(adjustmentsPanel, new RegExp(`label="${label}"`));
   }
   // Photoshop/Kittl brush engine controls: tip geometry, dab build-up, dynamics, and blending.
-  for (const field of ["angle", "roundness", "flow", "spacing", "smoothing", "size jitter", "opacity jitter", "jitter floor", "blend"]) {
+  for (const field of ["angle", "roundness", "flow", "spacing", "smoothing", "size jitter", "opacity jitter", "jitter floor", "scatter", "angle jitter", "roundness jitter", "blend"]) {
     assert.match(adjustmentsPanel, new RegExp(`ariaLabel=\\{` + "`" + `\\$\\{label\\} ${field}` + "`" + `\\}`));
   }
   assert.match(adjustmentsPanel, /aria-label=\{`\$\{label\} fade out`\}/);
   assert.match(adjustmentsPanel, /EDITOR_BRUSH_BLENDS\.map\(/);
+  assert.match(adjustmentsPanel, /EDITOR_BRUSH_PRESETS\.map\(/);
+  assert.match(adjustmentsPanel, /aria-label=\{`\$\{label\} preset \$\{preset\.label\}`\}/);
   assert.match(artworkLayers, /brushDabPoints\(stroke\)/);
   assert.match(artworkLayers, /data-editor-brush-blend=/);
   assert.match(adjustmentsPanel, /activeTool === "eraser"/);
@@ -815,7 +817,7 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
   assert.match(source, /opacity: brushSettings\.opacity/);
   assert.match(source, /shape: brushSettings\.shape/);
   // The brush engine options travel with the stroke so the committed artwork keeps its look.
-  for (const field of ["spacing", "flow", "smoothing", "sizeJitter", "opacityJitter", "jitterMinimum", "angle", "roundness", "fadeOut", "blend"]) {
+  for (const field of ["spacing", "flow", "smoothing", "sizeJitter", "opacityJitter", "jitterMinimum", "angle", "roundness", "scatter", "angleJitter", "roundnessJitter", "fadeOut", "blend"]) {
     assert.match(source, new RegExp(`${field}: brushSettings\\.${field}`));
   }
   assert.match(artworkLayers, /export function artworkStrokeWidth\(/);
