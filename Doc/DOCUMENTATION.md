@@ -15,6 +15,16 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
+### 2026-11-18 — Text Free Transform now hugs the glyph ink, not the font line box
+
+- The owner reported again that both earlier text fixes were still not right, with the Free Transform box the more obvious one: the outline sat well away from the text, so the box looked about twice the height of the letters.
+- **Root cause.** `editorTextCanvasBounds` used the font **line box** (`fontBoundingBoxAscent`/`Descent`). For the 110px default font that is 102 + 26 = 128 units, while the drawn capitals only reach ~84 units of ink, so the outline was ~44 units taller than the visible glyphs — roughly 11px of empty gap above and 12px below on screen. The "write downward" path was already correct after the previous fix (re-entering a layer puts the caret at the end), but the box defect dominated the report.
+- **Fix.** `editorTextLineMetrics` now measures both boxes: the font line box (`ascent`/`descent`, still used to align the inline editor caret) and the glyph **ink** box (`inkAscent`/`inkDescent`, from `actualBoundingBoxAscent`/`Descent`). `editorTextMetrics` unions each line's ink box around its own baseline (line *i* sits *i* line-heights down), skipping blank lines so an empty line never adds phantom height, and `editorTextCanvasBounds` returns that ink box. The canvas keeps its uniform 18-unit selection margin, so the outline now hugs the glyphs evenly on all four sides.
+- **Result.** The single-line box is 35px tall on screen instead of 47.8px, with ~5px above and ~5px below the ink (was ~11px / ~12px). A two-line `AAAA`/`gggg` box measures 273 units = 132 (line height) + 74 (caps ink) + 30 (descender ink) + 36 (2×18 margin), matching the model exactly.
+- Files: `apps/web/src/lib/editor-layers.ts`, `tests/editor-layers.test.cjs`, `Doc/DOCUMENTATION.md`, `TODO.md`.
+- Validation: TypeScript passed; ESLint exit 0 on the changed files; Next.js production build passed; all repository Node tests passed **108/108** (editor-layers **42/42**, canvas-shell **22/22**), plus the `guide-http` integration suite **5/5** against the running server. Headless-Chromium CDP on desktop 1280×900 and phone 390×844 confirmed the box hugs the ink (symmetric ~5px padding, was ~11px above / ~12px below), a two-line label keeps one `tspan` per line, and re-entering a layer writes downward (`"ONE"` → Enter → `"ONE\nTWO"`, caret at the end).
+- Known limitation: the 18-unit selection margin is shared with every other layer kind, so a text box is a few pixels larger than the ink; it is uniform on all four sides. The 2026-11-18 "write downward on re-entry" entry below described the box as the SVG line box; that is superseded by this ink-hugging change.
+
 ### 2026-11-18 — Photoshop-style Gradient tool: draw, re-aim, and edit gradient layers
 
 - Added a `gradient` layer kind and the `EditorGradient` model to `apps/web/src/lib/editor-layers.ts`: a Photoshop shape (`linear`, `radial`, `angle` conic, `reflected`, `diamond`), a drag axis (`x1/y1` -> `x2/y2` in the shared 1000x1200 artwork space), and up to eight stops (id, offset 0-100, hex colour, opacity 0-1). The default ramp is black to white on a horizontal axis at y=600.
@@ -26,6 +36,16 @@ This file consolidates the website work log, code audit, Guide content maintenan
 - Limitation: this is a vector gradient fill, not a raster or mesh gradient. Per-stop midpoint/bias, Photoshop's noise/dither options, and gradient strokes (only fills) are not included.
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
+
+### 2026-11-18 — Text Free Transform now hugs the glyph ink, not the font line box
+
+- The owner reported again that both earlier text fixes were still not right, with the Free Transform box the more obvious one: the outline sat well away from the text, so the box looked about twice the height of the letters.
+- **Root cause.** `editorTextCanvasBounds` used the font **line box** (`fontBoundingBoxAscent`/`Descent`). For the 110px default font that is 102 + 26 = 128 units, while the drawn capitals only reach ~84 units of ink, so the outline was ~44 units taller than the visible glyphs — roughly 11px of empty gap above and 12px below on screen. The "write downward" path was already correct after the previous fix (re-entering a layer puts the caret at the end), but the box defect dominated the report.
+- **Fix.** `editorTextLineMetrics` now measures both boxes: the font line box (`ascent`/`descent`, still used to align the inline editor caret) and the glyph **ink** box (`inkAscent`/`inkDescent`, from `actualBoundingBoxAscent`/`Descent`). `editorTextMetrics` unions each line's ink box around its own baseline (line *i* sits *i* line-heights down), skipping blank lines so an empty line never adds phantom height, and `editorTextCanvasBounds` returns that ink box. The canvas keeps its uniform 18-unit selection margin, so the outline now hugs the glyphs evenly on all four sides.
+- **Result.** The single-line box is 35px tall on screen instead of 47.8px, with ~5px above and ~5px below the ink (was ~11px / ~12px). A two-line `AAAA`/`gggg` box measures 273 units = 132 (line height) + 74 (caps ink) + 30 (descender ink) + 36 (2×18 margin), matching the model exactly.
+- Files: `apps/web/src/lib/editor-layers.ts`, `tests/editor-layers.test.cjs`, `Doc/DOCUMENTATION.md`, `TODO.md`.
+- Validation: TypeScript passed; ESLint exit 0 on the changed files; Next.js production build passed; all repository Node tests passed **108/108** (editor-layers **42/42**, canvas-shell **22/22**), plus the `guide-http` integration suite **5/5** against the running server. Headless-Chromium CDP on desktop 1280×900 and phone 390×844 confirmed the box hugs the ink (symmetric ~5px padding, was ~11px above / ~12px below), a two-line label keeps one `tspan` per line, and re-entering a layer writes downward (`"ONE"` → Enter → `"ONE\nTWO"`, caret at the end).
+- Known limitation: the 18-unit selection margin is shared with every other layer kind, so a text box is a few pixels larger than the ink; it is uniform on all four sides. The previous 2026-11-18 entry below described the box as the SVG line box; that is superseded by this ink-hugging change.
 
 ### 2026-11-18 — Text: write downward on re-entry, and a box that truly hugs the glyphs
 

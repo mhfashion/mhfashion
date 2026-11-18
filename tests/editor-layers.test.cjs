@@ -685,10 +685,54 @@ test("text bounds measure the real font when a browser canvas is available", () 
     assert.ok(measured.width > fallback.width, "real measurement widens the box beyond the estimate");
     assert.equal(measured.width, 6 * 90, "the box uses the measured advance width");
     assert.ok(measured.x < 500 && measured.x + measured.width > 500, "centred text still straddles its origin");
-    // The box hugs the SVG line box: one font ascent above the baseline and one font
-    // descent below the last line, with no extra floor or padding.
-    assert.equal(measured.height, 90 + 24, "height follows the font ascent and descent");
-    assert.equal(measured.y, single.y - 90, "the box starts one ascent above the baseline");
+    // The box hugs the painted glyphs: the top sits on the ink above the baseline and the
+    // bottom on the ink below it, not on the (taller) font line box.
+    assert.equal(measured.height, 74 + 21, "height follows the glyph ink, not the font line box");
+    assert.equal(measured.y, single.y - 74, "the box starts at the top of the glyph ink");
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test("text bounds hug the painted glyphs, not the taller font line box", () => {
+  // `editorTextMeasurementContext` caches the first canvas context, so this mock only takes
+  // effect if it runs first; the assertions below hold for any mock where the ink box
+  // (74/21) is shorter than the font line box (90/24).
+  const single = { value: "HHH", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center" };
+  const previousDocument = globalThis.document;
+  globalThis.document = {
+    createElement: () => ({
+      getContext: () => ({
+        font: "",
+        measureText: (line) => ({
+          width: line.length * 90,
+          fontBoundingBoxAscent: 90,
+          fontBoundingBoxDescent: 24,
+          actualBoundingBoxAscent: line.trim() ? 74 : 0,
+          actualBoundingBoxDescent: line.trim() ? 21 : 0,
+        }),
+      }),
+    }),
+  };
+  try {
+    // An all-caps line paints ink only up to the cap height, so the box must stop at the
+    // ink (74 above / 21 below) rather than the taller font line box, which would leave a
+    // large empty gap above and below the glyphs.
+    const caps = editorTextCanvasBounds(single);
+    assert.equal(caps.y, 600 - 74, "the top of the box sits on the glyph ink");
+    assert.equal(caps.height, 74 + 21, "the box height is the glyph ink, not the font line box");
+
+    // The inline editor still needs the font line box to align its caret, so metrics keep it.
+    const metrics = editorTextMetrics(single);
+    assert.ok(metrics.ascent > 74, "metrics still expose a taller font line-box ascent");
+    assert.ok(metrics.height <= metrics.ascent + metrics.descent, "the hug box is no taller than the line box");
+
+    // A blank line paints no ink, so it must not stretch the box around empty space.
+    const withBlank = editorTextCanvasBounds({ ...single, value: "HHH\n\nHHH" });
+    const twoLines = editorTextCanvasBounds({ ...single, value: "HHH\nHHH" });
+    assert.ok(withBlank.height >= twoLines.height, "a blank middle line keeps the box at least as tall");
+    assert.equal(withBlank.y, caps.y, "a blank line never adds ink above the first line");
   } finally {
     if (previousDocument === undefined) delete globalThis.document;
     else globalThis.document = previousDocument;

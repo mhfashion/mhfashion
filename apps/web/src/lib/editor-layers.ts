@@ -239,17 +239,30 @@ export function editorTextLineHeight(text: EditorTextContent): number {
   return text.fontSize * (text.lineHeight ?? EDITOR_TEXT_DEFAULT_LINE_HEIGHT);
 }
 
-export type EditorTextLineMetrics = { width: number; ascent: number; descent: number };
+export type EditorTextLineMetrics = {
+  width: number;
+  /** Font line-box ascent: baseline up to the top of the em box. Lays out the inline editor. */
+  ascent: number;
+  /** Font line-box descent: baseline down to the bottom of the em box. */
+  descent: number;
+  /** Ink ascent: baseline up to the top of the glyphs actually painted on this line. */
+  inkAscent: number;
+  /** Ink descent: baseline down to the bottom of the painted glyphs (descenders). */
+  inkDescent: number;
+};
 
 // Character advance varies a lot with the glyph (a bold "M" is ~0.99em, a lowercase
 // run ~0.58em), so a fixed per-character estimate makes the transform box cut through
 // the text. The browser measures the real font; Node (tests, SSR) keeps the estimate.
 function fallbackTextLineMetrics(text: EditorTextContent, line: string): EditorTextLineMetrics {
   const glyphs = Math.max(1, line.length);
+  const hasInk = line.trim().length > 0;
   return {
     width: glyphs * text.fontSize * 0.58 + Math.max(0, glyphs - 1) * (text.letterSpacing ?? 0),
     ascent: text.fontSize * 0.9,
     descent: text.fontSize * 0.24,
+    inkAscent: hasInk ? text.fontSize * 0.72 : 0,
+    inkDescent: hasInk ? text.fontSize * 0.2 : 0,
   };
 }
 
@@ -270,9 +283,10 @@ export function editorTextLineMetrics(text: EditorTextContent, line: string): Ed
   context.font = `${text.fontStyle ?? "normal"} ${text.fontWeight ?? 700} ${text.fontSize}px ${text.fontFamily ?? EDITOR_TEXT_FONT_FAMILY}`;
   const measured = context.measureText(line);
   const width = measured.width + Math.max(0, line.length - 1) * (text.letterSpacing ?? 0);
-  // The transform box must hug the same line box SVG paints, so prefer the font's own
-  // ascent/descent over the ink box (actualBoundingBox), which is cap-height only and
-  // would leave the box short at the top for all-caps text.
+  // Two different vertical boxes are needed. The font line box (fontBoundingBox) positions
+  // the inline editor so its caret sits on the drawn baseline, while the glyph ink box
+  // (actualBoundingBox) is what the Free Transform outline must hug. Using the line box for
+  // the outline left large empty gaps above and below all-caps text.
   const ascent = measured.fontBoundingBoxAscent > 0
     ? measured.fontBoundingBoxAscent
     : measured.actualBoundingBoxAscent > 0
@@ -283,10 +297,20 @@ export function editorTextLineMetrics(text: EditorTextContent, line: string): Ed
     : measured.actualBoundingBoxDescent > 0
       ? measured.actualBoundingBoxDescent
       : fallback.descent;
+  // An empty line paints no ink, so it must not stretch the box above or below the glyphs.
+  const hasInk = line.trim().length > 0;
+  const inkAscent = hasInk
+    ? measured.actualBoundingBoxAscent > 0 ? measured.actualBoundingBoxAscent : fallback.inkAscent
+    : 0;
+  const inkDescent = hasInk
+    ? measured.actualBoundingBoxDescent > 0 ? measured.actualBoundingBoxDescent : fallback.inkDescent
+    : 0;
   return {
     width: Number.isFinite(width) && width > 0 ? width : fallback.width,
     ascent,
     descent,
+    inkAscent,
+    inkDescent,
   };
 }
 
@@ -301,29 +325,36 @@ export function editorTextMetrics(text: EditorTextContent) {
   const widths = lineMetrics.map((metrics) => metrics.width);
   const ascent = Math.max(...lineMetrics.map((metrics) => metrics.ascent));
   const descent = Math.max(...lineMetrics.map((metrics) => metrics.descent));
+  // The transform box must hug the painted glyphs, so union each line's ink box around its
+  // own baseline (line i sits i line-heights below the first baseline).
+  const inkTops = lineMetrics.map((metrics, index) => index * lineHeight - metrics.inkAscent);
+  const inkBottoms = lineMetrics.map((metrics, index) => index * lineHeight + metrics.inkDescent);
+  const inkTop = Math.min(0, ...inkTops);
+  const inkBottom = Math.max(0, ...inkBottoms);
   return {
     lines,
     lineHeight,
     widths,
     ascent,
     descent,
+    inkTop,
+    inkBottom,
     width: Math.max(1, ...widths),
-    height: (lines.length - 1) * lineHeight + ascent + descent,
+    height: inkBottom - inkTop,
   };
 }
 
 /**
- * The Free Transform box for a text layer, matching the SVG `<text>` box: `y` is the
- * first-line baseline, so the box starts one ascent above it and ends one descent below
- * the last line. No extra floor or padding is added here — the canvas pads uniformly.
+ * The Free Transform box for a text layer, hugging the painted glyphs: `x` follows the
+ * alignment, `y` is the top of the ink (highest glyph above the first baseline) and
+ * `height` reaches the lowest ink below the last line. The canvas adds its uniform selection
+ * margin, so the outline sits evenly around the glyphs instead of the taller font line box.
  */
 export function editorTextCanvasBounds(text: EditorTextContent): { x: number; y: number; width: number; height: number } {
-  const { lines, lineHeight, width, ascent, descent } = editorTextMetrics(text);
+  const { width, inkTop, inkBottom } = editorTextMetrics(text);
   const align = text.textAlign ?? "center";
   const left = align === "left" ? text.x : align === "right" ? text.x - width : text.x - width / 2;
-  const top = text.y - ascent;
-  const height = (lines.length - 1) * lineHeight + ascent + descent;
-  return { x: left, y: top, width, height };
+  return { x: left, y: text.y + inkTop, width, height: Math.max(1, inkBottom - inkTop) };
 }
 
 export type EditorShapePath = {
