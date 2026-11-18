@@ -1,24 +1,82 @@
 "use client";
 
 import { useId, type SVGProps } from "react";
-import type { EditorImageContent, EditorShapePath, EditorShapeStyle, EditorTextContent, EditorTextEffect } from "@/lib/editor-layers";
-import { EDITOR_TEXT_FONT_FAMILY, roundEditorShapePath } from "@/lib/editor-layers";
+import type { EditorGradient, EditorImageContent, EditorShapePath, EditorShapeStyle, EditorTextContent, EditorTextEffect } from "@/lib/editor-layers";
+import { EDITOR_TEXT_FONT_FAMILY, editorGradientConicWedges, editorGradientDiamondFacets, editorGradientGeometry, roundEditorShapePath, sortEditorGradientStops } from "@/lib/editor-layers";
 import { buildToneTable, colorMatrixValues, grainParams, photoFilterCss, splitToneBands, vignetteParams } from "@/lib/photo-adjustments";
 
 // The print canvas and every preview share one 1000 x 1200 unit artwork space.
 export const EDITOR_ARTWORK_VIEWBOX = "0 0 1000 1200";
 export { EDITOR_TEXT_FONT_FAMILY };
 
+export function GradientPreview({ gradient, idPrefix }: { gradient: EditorGradient; idPrefix: string }) {
+  const { cx, cy, radius } = editorGradientGeometry(gradient);
+  const stops = sortEditorGradientStops(gradient.stops);
+  const stopNodes = stops.map((stop) => (
+    <stop key={stop.id} offset={`${stop.offset}%`} stopColor={stop.color} stopOpacity={stop.opacity} />
+  ));
+  const clipId = `${idPrefix}-clip`;
+  const fillId = `${idPrefix}-fill`;
+  const facetIds = [0, 1, 2, 3].map((index) => `${idPrefix}-facet-${index}`);
+
+  // "Reflected" mirrors the ramp about the start point, so the far side runs back to the first stop.
+  const reflectedNodes = gradient.type === "reflected"
+    ? [...stops].reverse().map((stop) => <stop key={`r-${stop.id}`} offset={`${(100 - stop.offset) / 2}%`} stopColor={stop.color} stopOpacity={stop.opacity} />)
+      .concat(stops.map((stop) => <stop key={`f-${stop.id}`} offset={`${50 + stop.offset / 2}%`} stopColor={stop.color} stopOpacity={stop.opacity} />))
+    : stopNodes;
+
+  return (
+    <g data-editor-gradient-layer={gradient.type}>
+      <defs>
+        <clipPath id={clipId}>
+          <rect x="0" y="0" width="1000" height="1200" />
+        </clipPath>
+        {gradient.type === "linear" && (
+          <linearGradient id={fillId} gradientUnits="userSpaceOnUse" x1={gradient.x1} y1={gradient.y1} x2={gradient.x2} y2={gradient.y2}>{stopNodes}</linearGradient>
+        )}
+        {gradient.type === "reflected" && (
+          <linearGradient id={fillId} gradientUnits="userSpaceOnUse" x1={gradient.x1 - (gradient.x2 - gradient.x1)} y1={gradient.y1 - (gradient.y2 - gradient.y1)} x2={gradient.x2} y2={gradient.y2}>{reflectedNodes}</linearGradient>
+        )}
+        {gradient.type === "radial" && (
+          <radialGradient id={fillId} gradientUnits="userSpaceOnUse" cx={cx} cy={cy} r={radius}>{stopNodes}</radialGradient>
+        )}
+        {gradient.type === "diamond" && editorGradientDiamondFacets(gradient).map((facet, index) => (
+          <linearGradient key={facetIds[index]} id={facetIds[index]} gradientUnits="userSpaceOnUse" x1={facet.from.x} y1={facet.from.y} x2={facet.to.x} y2={facet.to.y}>{stopNodes}</linearGradient>
+        ))}
+      </defs>
+      {(gradient.type === "linear" || gradient.type === "reflected" || gradient.type === "radial") && (
+        <rect x="0" y="0" width="1000" height="1200" fill={`url(#${fillId})`} />
+      )}
+      {gradient.type === "angle" && (
+        <g clipPath={`url(#${clipId})`} shapeRendering="crispEdges">
+          {editorGradientConicWedges(gradient).map((wedge, index) => (
+            <path key={index} d={wedge.d} fill={wedge.color} fillOpacity={wedge.opacity} stroke={wedge.color} strokeOpacity={wedge.opacity} strokeWidth="1.5" />
+          ))}
+        </g>
+      )}
+      {gradient.type === "diamond" && (
+        <g clipPath={`url(#${clipId})`}>
+          {editorGradientDiamondFacets(gradient).map((facet, index) => (
+            <path key={index} d={facet.d} fill={`url(#${facetIds[index]})`} />
+          ))}
+        </g>
+      )}
+    </g>
+  );
+}
+
 export default function EditorLayerPreview({
   paths = [],
   shapeStyle = null,
   text = null,
   image = null,
+  gradient = null,
 }: {
   paths?: EditorShapePath[];
   shapeStyle?: EditorShapeStyle | null;
   text?: EditorTextContent | null;
   image?: EditorImageContent | null;
+  gradient?: EditorGradient | null;
 }) {
   const rawId = useId();
   const effectPrefix = `text-effect-${rawId.replace(/[^a-zA-Z0-9_-]/g, "") || "preview"}`;
@@ -214,6 +272,7 @@ export default function EditorLayerPreview({
           {grain.amount > 0 && <rect x={image.x} y={image.y} width={image.width} height={image.height} filter={`url(#${imageGrainId})`} opacity={grain.amount * 0.4} pointerEvents="none" data-editor-image-grain="true" />}
         </g>
       )}
+      {gradient && <GradientPreview gradient={gradient} idPrefix={`${effectPrefix}-gradient`} />}
     </>
   );
 }

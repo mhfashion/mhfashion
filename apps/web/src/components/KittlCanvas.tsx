@@ -4,6 +4,7 @@ import { Grid2X2, Hand, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MockupArtwork from "@/components/MockupArtwork";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
+import { GradientPreview } from "@/components/EditorLayerPreview";
 import EditorToolsBar, { type EditorTool } from "@/components/EditorToolsBar";
 import EditorEditSidebar from "@/components/EditorEditSidebar";
 import EditorAdjustmentsPanel from "@/components/EditorAdjustmentsPanel";
@@ -24,6 +25,7 @@ import {
   appendLayerStroke,
   clearLayerErasures,
   createEditorArtworkLayer,
+  createEditorGradientLayer,
   createEditorImageLayer,
   createEditorShapePaths,
   defaultEditorShapeStyle,
@@ -32,6 +34,7 @@ import {
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
+  editorGradientFromToolSettings,
   editorTextCanvasBounds,
   EDITOR_TEXT_FONT_FAMILY,
   groupEditorLayers,
@@ -41,6 +44,7 @@ import {
   removeLayerMask,
   reorderEditorLayer,
   segmentDistancePx,
+  setEditorLayerGradient,
   setEditorLayerText,
   EDITOR_TOOL_OPTIONS_DEFAULT,
   ungroupEditorLayers,
@@ -55,7 +59,7 @@ import {
   updateLayerLastErasure,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
-import type { ArtworkStroke, EditorBrushShape, EditorErasure, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
+import type { ArtworkStroke, EditorBrushShape, EditorErasure, EditorGradient, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
 import {
   cornerEditorPenAnchor,
   draggedEditorPenAnchor,
@@ -165,9 +169,14 @@ type ActiveArtworkStroke = {
   brush?: Partial<ArtworkStroke>;
 };
 type ActiveShapeDrag = { pointerId: number; layerId: string; preset: EditorShapePreset; start: Point; current: Point; color: string };
+/** A Gradient drag paints a full-canvas fill. `layerId` is an existing gradient layer to
+ * re-aim, or null to drop a brand-new gradient layer when the drag ends. */
+type ActiveGradientDrag = { pointerId: number; layerId: string | null; start: Point; current: Point; gradient: EditorGradient };
 
 function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   const textBounds = layer.text ? editorTextCanvasBounds(layer.text) : null;
+  // A gradient layer fills the whole artwork, so its box is the full canvas.
+  if (layer.gradient) return { x: 0, y: 0, width: 1000, height: 1200 };
   const points = [
     ...layer.strokes.flatMap((stroke) => stroke.points.map((point) => ({ x: point.x * 1000, y: point.y * 1200 }))),
     ...(textBounds ? [{ x: textBounds.x, y: textBounds.y }, { x: textBounds.x + textBounds.width, y: textBounds.y + textBounds.height }] : []),
@@ -408,6 +417,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [toolNotice, setToolNotice] = useState("");
   const [selectedShape, setSelectedShape] = useState<EditorShapePreset>("rectangle");
   const [shapeDrawing, setShapeDrawing] = useState<ActiveShapeDrag | null>(null);
+  const [gradientDrawing, setGradientDrawing] = useState<ActiveGradientDrag | null>(null);
   const [foregroundColor, setForegroundColor] = useState("#202124");
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [penAnchors, setPenAnchors] = useState<EditorPenAnchor[]>([]);
@@ -431,6 +441,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [nextLinkId, setNextLinkId] = useState(1);
   const nextLayerIdRef = useRef(2);
   const nextTextLayerLabelRef = useRef(1);
+  const nextGradientLayerLabelRef = useRef(1);
   // Set while a text layer is being typed directly on the print canvas.
   const [editingTextLayerId, setEditingTextLayerId] = useState<string | null>(null);
   const editingTextLayer = useMemo(
@@ -514,6 +525,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
   const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
   const activeShapeDragRef = useRef<ActiveShapeDrag | null>(null);
+  const activeGradientDragRef = useRef<ActiveGradientDrag | null>(null);
   const penAnchorDragRef = useRef<PenAnchorDrag | null>(null);
   const penEditDragRef = useRef<PenEditDrag | null>(null);
   const penEditWindowHandlersRef = useRef<{ move: (event: PointerEvent) => void; end: (event: PointerEvent) => void } | null>(null);
@@ -1159,6 +1171,75 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setToolNotice("");
   }
 
+  // The Gradient tool paints a full-canvas fill. Photoshop-like: if a gradient layer is
+  // selected the drag re-aims that layer's axis; otherwise it drops a new gradient layer.
+  // A tap (or a tiny drag) still works, dropping the default axis through the point.
+  function startGradientDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (activeGradientDragRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
+    const rejection = textLayerRejection(selectedLayer);
+    if (rejection) {
+      event.preventDefault();
+      event.stopPropagation();
+      setToolNotice(rejection);
+      return;
+    }
+    const targetGradientLayer = selectedLayer?.kind === "gradient" && !selectedLayer.locked && selectedLayer.gradient ? selectedLayer : null;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    const canvasPoint = { x: point.x * 1000, y: point.y * 1200 };
+    const drag: ActiveGradientDrag = {
+      pointerId: event.pointerId,
+      layerId: targetGradientLayer?.id ?? null,
+      start: canvasPoint,
+      current: canvasPoint,
+      // Re-aiming an existing layer keeps its stops; a fresh layer starts from the tool preset.
+      gradient: targetGradientLayer?.gradient ?? editorGradientFromToolSettings(toolOptions.gradient),
+    };
+    activeGradientDragRef.current = drag;
+    setGradientDrawing(drag);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setToolNotice("");
+  }
+
+  function gradientWithAxis(drag: ActiveGradientDrag, end: Point): EditorGradient {
+    const dx = end.x - drag.start.x;
+    const dy = end.y - drag.start.y;
+    // A click (no real drag) falls back to a full-width horizontal axis through the point.
+    if (Math.hypot(dx, dy) < 8) {
+      return { ...drag.gradient, x1: drag.start.x - 320, y1: drag.start.y, x2: drag.start.x + 320, y2: drag.start.y };
+    }
+    return { ...drag.gradient, x1: drag.start.x, y1: drag.start.y, x2: end.x, y2: end.y };
+  }
+
+  function endGradientDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
+    const drag = activeGradientDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    activeGradientDragRef.current = null;
+    setGradientDrawing(null);
+    if (event.type !== "pointerup") return;
+    const point = toCanvasPoint(event.clientX, event.clientY);
+    const gradient = gradientWithAxis(drag, { x: point.x * 1000, y: point.y * 1200 });
+    if (drag.layerId) {
+      rememberLayerSnapshot();
+      setLayers((current) => setEditorLayerGradient(current, drag.layerId!, gradient));
+      setSelectedTarget("artwork");
+      setToolNotice("Gradient direction updated.");
+      return;
+    }
+    const id = claimLayerId();
+    const label = nextGradientLayerLabelRef.current++;
+    rememberLayerSnapshot();
+    setLayers((current) => [createEditorGradientLayer(id, `Gradient ${label}`, gradient), ...current]);
+    setSelectedLayerId(id);
+    setSelectedLayerIds([id]);
+    setSelectedTarget("artwork");
+    setEditingTextLayerId(null);
+    revealLayersStack();
+    setToolNotice(`Gradient ${label} added. Drag on it to re-aim, or tune its stops in Adjustments.`);
+  }
+
   function penPathForLayer(layerId: string, pathIndex = 0): EditorPenPath | null {
     const layer = layers.find((item) => item.id === layerId);
     return layer?.shape?.paths[pathIndex]?.penPath ?? null;
@@ -1331,12 +1412,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       startShapeDrawing(event);
       return;
     }
-    if (["remove-bg", "shape", "gradient"].includes(activeTool)) {
+    if (activeTool === "gradient") {
+      startGradientDrawing(event);
+      return;
+    }
+    if (activeTool === "remove-bg") {
       event.preventDefault();
       event.stopPropagation();
-      setToolNotice(activeTool === "gradient"
-          ? "Gradient Tool is ready for the upcoming gradient-fill pipeline."
-          : "Remove BG needs an uploaded image; background removal is not connected yet.");
+      setToolNotice("Remove BG needs an uploaded image; background removal is not connected yet.");
       return;
     }
     const point = toCanvasPoint(event.clientX, event.clientY);
@@ -1431,6 +1514,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeTool === "eraser") setEraserCursor(toCanvasPoint(event.clientX, event.clientY));
+    const gradientDrag = activeGradientDragRef.current;
+    if (gradientDrag?.pointerId === event.pointerId) {
+      event.preventDefault();
+      const point = toCanvasPoint(event.clientX, event.clientY);
+      const updated = { ...gradientDrag, current: { x: point.x * 1000, y: point.y * 1200 } };
+      activeGradientDragRef.current = updated;
+      setGradientDrawing(updated);
+      return;
+    }
     const shapeDrag = activeShapeDragRef.current;
     if (shapeDrag?.pointerId === event.pointerId) {
       event.preventDefault();
@@ -1488,6 +1580,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function endArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (activeGradientDragRef.current?.pointerId === event.pointerId) {
+      endGradientDrawing(event);
+      return;
+    }
     const shapeDrag = activeShapeDragRef.current;
     if (shapeDrag?.pointerId === event.pointerId) {
       activeShapeDragRef.current = null;
@@ -1555,11 +1651,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       setPenHoverCloseTarget(false);
     }
     setActiveTool(tool);
-    if (tool === "pen" || tool === "shape") setSelectedTarget("artwork");
+    if (tool === "pen" || tool === "shape" || tool === "gradient") setSelectedTarget("artwork");
     setToolNotice(tool === "remove-bg"
       ? "Remove BG needs an uploaded image; background removal is not connected yet."
       : tool === "gradient"
-          ? "Gradient Tool is ready for the upcoming gradient-fill pipeline."
+          ? "Drag on the canvas to draw a gradient on a new layer. Pick its shape and preset in Adjustments."
           : "");
   }
 
@@ -1746,6 +1842,12 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setLayers((current) => updateEditorShapeStyle(current, selectedLayerId, update));
   }
 
+  function updateSelectedGradient(gradient: EditorGradient) {
+    if (!selectedLayerId) return;
+    rememberLayerSnapshot();
+    setLayers((current) => setEditorLayerGradient(current, selectedLayerId, gradient));
+  }
+
   function addLayer() {
     const id = `layer-${nextLayerIdRef.current++}`;
     const number = nextLayerIdRef.current - 1;
@@ -1856,12 +1958,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     pencil?: Partial<EditorToolOptions["pencil"]>;
     eraser?: Partial<EditorToolOptions["eraser"]>;
     pen?: Partial<EditorToolOptions["pen"]>;
+    gradient?: Partial<EditorToolOptions["gradient"]>;
   }) {
     setToolOptions((current) => normalizeEditorToolOptions({
       brush: { ...current.brush, ...patch.brush },
       pencil: { ...current.pencil, ...patch.pencil },
       eraser: { ...current.eraser, ...patch.eraser },
       pen: { ...current.pen, ...patch.pen },
+      gradient: { ...current.gradient, ...patch.gradient },
     }));
   }
 
@@ -2124,6 +2228,19 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     </svg>
                   );
                 })()}
+                {gradientDrawing && (() => {
+                  const preview = gradientWithAxis(gradientDrawing, gradientDrawing.current);
+                  return (
+                    <svg aria-label="Gradient preview" data-editor-gradient-preview={preview.type} viewBox="0 0 1000 1200" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
+                      <g opacity="0.75">
+                        <GradientPreview gradient={preview} idPrefix="gradient-drag-preview" />
+                      </g>
+                      <line x1={preview.x1} y1={preview.y1} x2={preview.x2} y2={preview.y2} stroke="#ffffff" strokeWidth="2" strokeDasharray="8 8" vectorEffect="non-scaling-stroke" />
+                      <circle cx={preview.x1} cy={preview.y1} r="6" fill="#ffffff" stroke="#202124" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                      <circle cx={preview.x2} cy={preview.y2} r="6" fill="#202124" stroke="#ffffff" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                    </svg>
+                  );
+                })()}
                 {activeTool === "pen" && penAnchors.length > 0 && (
                   <div aria-label="Pen tool actions" className="absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-16px)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-xl border border-border bg-bg-surface/95 px-2 py-1 text-[10px] text-text-primary shadow-lg">
                     <span className="hidden px-1 sm:inline">Click anchors · drag for curves · Alt-drag for corners · Enter finish · Esc cancel</span>
@@ -2280,6 +2397,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onUpdateShapeBuilder={updateSelectedShapeBuilder}
           onUpdateShapeStyle={updateSelectedShapeStyle}
           onUpdateImage={updateSelectedImage}
+          onUpdateGradient={updateSelectedGradient}
           onAddMask={createLayerMask}
           onRemoveMask={deleteLayerMask}
           onSelectMask={() => setSelectedTarget("mask")}

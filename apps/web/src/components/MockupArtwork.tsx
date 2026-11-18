@@ -134,7 +134,7 @@ export default function MockupArtwork({
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
   const renderableLayers = useMemo(() => layers.filter((layer) => layer.visible && (
-    layer.strokes.length > 0 || Boolean(layer.text?.value) || Boolean(layer.image) || Boolean(layer.shape?.paths.length)
+    layer.strokes.length > 0 || Boolean(layer.text?.value) || Boolean(layer.image) || Boolean(layer.shape?.paths.length) || Boolean(layer.gradient)
   )), [layers]);
   const bounds = useMemo(() => getArtworkBounds(renderableLayers), [renderableLayers]);
   const maxArtworkScale = getMaxArtworkScale(bounds, maxArtworkEdgePx);

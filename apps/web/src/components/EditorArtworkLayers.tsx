@@ -298,9 +298,9 @@ export default function EditorArtworkLayers({
                   </g>
                 );
               })}
-              {(layer.shape !== null || layer.text !== null || layer.image !== null) && (
+              {(layer.shape !== null || layer.text !== null || layer.image !== null || layer.gradient !== null) && (
                 <g data-editor-layer-kind={layer.kind}>
-                  <EditorLayerPreview paths={layer.shape?.paths} shapeStyle={layer.shape ? resolveEditorShapeStyle(layer.shape) : null} text={layer.text} image={layer.image} />
+                  <EditorLayerPreview paths={layer.shape?.paths} shapeStyle={layer.shape ? resolveEditorShapeStyle(layer.shape) : null} text={layer.text} image={layer.image} gradient={layer.gradient} />
                 </g>
               )}
               </g>

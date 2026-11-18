@@ -67,6 +67,19 @@ const {
   editorTextCanvasBounds,
   editorTextMetrics,
   editorTextLineWidth,
+  createEditorGradientLayer,
+  defaultEditorGradient,
+  normalizeEditorGradient,
+  sortEditorGradientStops,
+  sampleEditorGradient,
+  editorGradientGeometry,
+  editorGradientConicWedges,
+  editorGradientDiamondFacets,
+  editorGradientFromToolSettings,
+  setEditorLayerGradient,
+  EDITOR_GRADIENT_PRESETS,
+  EDITOR_GRADIENT_TYPES,
+  EDITOR_GRADIENT_STOP_LIMIT,
 } = layerModel.exports;
 
 const pointStroke = (x1, x2 = x1) => ({ points: [{ x: x1, y: 0.5 }, { x: x2, y: 0.5 }] });
@@ -79,7 +92,7 @@ test("new layers get editable defaults and drawing remains isolated to the selec
 
   assert.deepEqual(first, {
     id: "one", name: "Layer 1", kind: "artwork", visible: true, locked: false, opacity: 100,
-    fillOpacity: 100, blendMode: "normal", groupId: null, linkId: null, strokes: [], erasures: [], mask: null, text: null, shape: null, image: null,
+    fillOpacity: 100, blendMode: "normal", groupId: null, linkId: null, strokes: [], erasures: [], mask: null, text: null, shape: null, image: null, gradient: null,
   });
   assert.equal(original[1].strokes.length, 0, "Updates are immutable");
   assert.equal(drawn[0].strokes.length, 0);
@@ -676,4 +689,90 @@ test("text bounds measure the real font when a browser canvas is available", () 
     if (previousDocument === undefined) delete globalThis.document;
     else globalThis.document = previousDocument;
   }
+});
+
+test("gradient layers hold a Photoshop-style axis, shape, and stops", () => {
+  const layer = createEditorGradientLayer("g1", "Gradient 1", defaultEditorGradient());
+  assert.equal(layer.kind, "gradient");
+  assert.ok(layer.gradient, "the gradient content is attached");
+  assert.equal(layer.gradient.type, "linear");
+  assert.equal(layer.gradient.stops.length, 2);
+  // Every other content slot stays empty so a gradient layer never carries stray artwork.
+  assert.equal(layer.text, null);
+  assert.equal(layer.shape, null);
+  assert.equal(layer.image, null);
+
+  const moved = setEditorLayerGradient([layer], "g1", { ...layer.gradient, x1: 0, y1: 0, x2: 1000, y2: 1200 });
+  assert.equal(moved[0].gradient.x2, 1000, "the axis end moves");
+  assert.equal(moved[0].gradient.y2, 1200, "the axis end moves on both axes");
+  // A different layer is untouched.
+  const other = createEditorArtworkLayer("a1", "Layer 1");
+  assert.equal(setEditorLayerGradient([other], "a1", defaultEditorGradient())[0].gradient, null);
+});
+
+test("gradient stops normalize, clamp, sort, and sample like Photoshop", () => {
+  const messy = normalizeEditorGradient({
+    type: "radial",
+    x1: 10, y1: 20, x2: 30, y2: 40,
+    stops: [
+      { id: "b", offset: 250, color: "#ff0000", opacity: 5 },
+      { id: "a", offset: -30, color: "not-a-color", opacity: -1 },
+    ],
+  });
+  assert.equal(messy.type, "radial");
+  assert.equal(messy.stops.length, 2);
+  assert.deepEqual(messy.stops.map((stop) => stop.offset), [0, 100], "offsets clamp to 0-100 and sort");
+  assert.equal(messy.stops[0].color, "#000000", "an invalid colour falls back to black");
+  assert.equal(messy.stops[1].opacity, 1, "opacity clamps to 0-1");
+
+  const black = { id: "k", offset: 0, color: "#000000", opacity: 1 };
+  const white = { id: "w", offset: 100, color: "#ffffff", opacity: 1 };
+  assert.equal(sampleEditorGradient([black, white], 0.5).color, "#808080", "the midpoint blends to mid grey");
+  assert.equal(sampleEditorGradient([black, white], -1).color, "#000000", "below the ramp clamps to the first stop");
+  assert.equal(sampleEditorGradient([black, white], 2).color, "#ffffff", "above the ramp clamps to the last stop");
+
+  const unsorted = sortEditorGradientStops([white, black]);
+  assert.deepEqual(unsorted.map((stop) => stop.offset), [0, 100]);
+});
+
+test("gradient geometry, conic wedges, and diamond facets cover the axis length", () => {
+  const gradient = { type: "linear", x1: 100, y1: 200, x2: 400, y2: 600, stops: defaultEditorGradient().stops };
+  const geometry = editorGradientGeometry(gradient);
+  assert.equal(geometry.cx, 100);
+  assert.equal(geometry.cy, 200);
+  assert.equal(geometry.radius, 500, "the drag length sets the radius (3-4-5 triangle)");
+
+  const wedges = editorGradientConicWedges(gradient, 24);
+  assert.equal(wedges.length, 24, "one wedge per segment");
+  assert.ok(wedges.every((wedge) => wedge.d.startsWith(`M ${geometry.cx.toFixed(2)} ${geometry.cy.toFixed(2)}`)), "every wedge starts at the origin");
+
+  const facets = editorGradientDiamondFacets(gradient);
+  assert.equal(facets.length, 4, "a diamond has four facets");
+  assert.ok(facets.every((facet) => facet.from.x === geometry.cx && facet.from.y === geometry.cy), "each facet ramps out from the centre");
+});
+
+test("the gradient tool settings build a gradient layer's starting content", () => {
+  const linear = editorGradientFromToolSettings({ type: "linear", presetId: "sunset" });
+  assert.equal(linear.type, "linear");
+  assert.equal(linear.stops.length, 3, "the sunset preset carries three stops");
+  assert.equal(linear.stops[0].color, "#ff7a18");
+
+  const radial = editorGradientFromToolSettings({ type: "radial", presetId: "ocean" });
+  assert.equal(radial.type, "radial");
+  assert.equal(radial.stops.length, 2);
+
+  // An unknown preset falls back to the first preset instead of throwing.
+  const fallback = editorGradientFromToolSettings({ type: "angle", presetId: "does-not-exist" });
+  assert.equal(fallback.stops.length, EDITOR_GRADIENT_PRESETS[0].stops.length);
+
+  assert.ok(EDITOR_GRADIENT_TYPES.includes("angle") && EDITOR_GRADIENT_TYPES.includes("diamond"));
+  assert.ok(EDITOR_GRADIENT_STOP_LIMIT >= 2);
+});
+
+test("duplicating a gradient layer deep-copies its stops", () => {
+  const layer = createEditorGradientLayer("g1", "Gradient 1", defaultEditorGradient());
+  const duplicated = duplicateEditorLayer([layer], "g1", "g2")[0];
+  assert.equal(duplicated.kind, "gradient");
+  assert.notEqual(duplicated.gradient.stops, layer.gradient.stops, "the stop array is a new array");
+  assert.notEqual(duplicated.gradient.stops[0], layer.gradient.stops[0], "each stop is a new object");
 });

@@ -97,6 +97,7 @@ export type EditorToolOptions = {
   pencil: EditorBrushSettings;
   eraser: EditorEraserSettings;
   pen: EditorPenSettings;
+  gradient: EditorGradientToolSettings;
 };
 export const EDITOR_BRUSH_SHAPES: EditorBrushShape[] = ["round", "square"];
 export const EDITOR_BRUSH_BLENDS: EditorBrushBlend[] = ["normal", "multiply", "screen"];
@@ -107,6 +108,7 @@ export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
   pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   eraser: { mode: "brush", shape: "round", size: 120, hardness: 60, opacity: 100, flow: 100, spacing: 12, angle: 0, roundness: 100 },
   pen: { width: 5, cap: "round" },
+  gradient: { type: "linear", presetId: "black-white" },
 };
 
 /** Kittl-style ready-made brush presets; each is a full brush settings patch. */
@@ -166,13 +168,26 @@ export function normalizeEditorToolOptions(input: Partial<EditorToolOptions> | u
       width: clamp(input?.pen?.width ?? EDITOR_TOOL_OPTIONS_DEFAULT.pen.width, 1, 60),
       cap: input?.pen?.cap === "butt" || input?.pen?.cap === "square" ? input.pen.cap : "round",
     },
+    gradient: normalizeEditorGradientToolSettings(input?.gradient),
   };
+}
+
+/** The Gradient tool holds the shape and preset a new gradient layer starts from. */
+export type EditorGradientToolSettings = {
+  type: EditorGradientType;
+  presetId: string;
+};
+
+export function normalizeEditorGradientToolSettings(input: Partial<EditorGradientToolSettings> | undefined): EditorGradientToolSettings {
+  const type = EDITOR_GRADIENT_TYPES.includes(input?.type as EditorGradientType) ? input!.type as EditorGradientType : EDITOR_TOOL_OPTIONS_DEFAULT.gradient.type;
+  const presetId = EDITOR_GRADIENT_PRESETS.some((preset) => preset.id === input?.presetId) ? input!.presetId! : EDITOR_TOOL_OPTIONS_DEFAULT.gradient.presetId;
+  return { type, presetId };
 }
 export type MaskBrushMode = "hide" | "reveal";
 export type LayerEditTarget = "artwork" | "mask";
 export type EditorLayerBlendMode = "normal" | "multiply" | "screen" | "overlay";
 export type LayerMaskStroke = ArtworkStroke & { mode: MaskBrushMode };
-export type EditorLayerKind = "artwork" | "text" | "shape" | "image";
+export type EditorLayerKind = "artwork" | "text" | "shape" | "image" | "gradient";
 export type EditorTextEffectKind = "shadow" | "outline" | "glow" | "offset" | "echo" | "extrude" | "stripe";
 export type EditorTextEffect = {
   id: string;
@@ -621,6 +636,223 @@ export type PhotoAdjustmentKey =
 
 export type PhotoAdjustmentUpdate = Partial<Pick<EditorImageContent, PhotoAdjustmentKey>>;
 
+/** Photoshop gradient shapes. Linear and reflected run along the drag axis; radial,
+ * angle (conic), and diamond grow outward from the drag start point. */
+export type EditorGradientType = "linear" | "radial" | "angle" | "reflected" | "diamond";
+export const EDITOR_GRADIENT_TYPES: EditorGradientType[] = ["linear", "radial", "angle", "reflected", "diamond"];
+export const EDITOR_GRADIENT_LABELS: Record<EditorGradientType, string> = {
+  linear: "Linear",
+  radial: "Radial",
+  angle: "Angle",
+  reflected: "Reflected",
+  diamond: "Diamond",
+};
+export type EditorGradientStop = {
+  id: string;
+  /** Position along the gradient, 0 to 100. */
+  offset: number;
+  color: string;
+  /** Stop opacity, 0 to 1. */
+  opacity: number;
+};
+export type EditorGradient = {
+  type: EditorGradientType;
+  /** Drag start in 1000 x 1200 artwork units; the axis origin for every type. */
+  x1: number;
+  y1: number;
+  /** Drag end. Its distance from the start sets the gradient length. */
+  x2: number;
+  y2: number;
+  stops: EditorGradientStop[];
+};
+/** Photoshop allows 32 stops; eight covers the editor without an unwieldy handle row. */
+export const EDITOR_GRADIENT_STOP_LIMIT = 8;
+
+export const EDITOR_GRADIENT_PRESETS: { id: string; label: string; stops: { offset: number; color: string; opacity: number }[] }[] = [
+  { id: "black-white", label: "Black → White", stops: [{ offset: 0, color: "#000000", opacity: 1 }, { offset: 100, color: "#ffffff", opacity: 1 }] },
+  { id: "white-black", label: "White → Black", stops: [{ offset: 0, color: "#ffffff", opacity: 1 }, { offset: 100, color: "#000000", opacity: 1 }] },
+  { id: "transparent", label: "Transparent", stops: [{ offset: 0, color: "#000000", opacity: 1 }, { offset: 100, color: "#000000", opacity: 0 }] },
+  { id: "accent-fade", label: "Accent fade", stops: [{ offset: 0, color: "#d4ff3f", opacity: 1 }, { offset: 100, color: "#d4ff3f", opacity: 0 }] },
+  { id: "sunset", label: "Sunset", stops: [{ offset: 0, color: "#ff7a18", opacity: 1 }, { offset: 55, color: "#af002d", opacity: 1 }, { offset: 100, color: "#320b6b", opacity: 1 }] },
+  { id: "ocean", label: "Ocean", stops: [{ offset: 0, color: "#00c6ff", opacity: 1 }, { offset: 100, color: "#0072ff", opacity: 1 }] },
+  { id: "gold", label: "Gold", stops: [{ offset: 0, color: "#f7971e", opacity: 1 }, { offset: 100, color: "#ffd200", opacity: 1 }] },
+  { id: "rainbow", label: "Rainbow", stops: [{ offset: 0, color: "#ff0000", opacity: 1 }, { offset: 17, color: "#ff8a00", opacity: 1 }, { offset: 34, color: "#ffe600", opacity: 1 }, { offset: 50, color: "#3ddc4a", opacity: 1 }, { offset: 67, color: "#2f7bff", opacity: 1 }, { offset: 84, color: "#7a2ffb", opacity: 1 }, { offset: 100, color: "#ff2fd0", opacity: 1 }] },
+];
+
+let gradientStopSeq = 0;
+export function nextEditorGradientStopId(): string {
+  gradientStopSeq += 1;
+  return `grad-stop-${gradientStopSeq}`;
+}
+
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+const clampStopOffset = (value: number): number => Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+const isGradientColor = (value: unknown): value is string => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+
+function mixHex(a: string, b: string, t: number): string {
+  const channel = (hex: string, index: number) => parseInt(hex.slice(1 + index * 2, 3 + index * 2), 16);
+  const blend = (index: number) => Math.round(channel(a, index) + (channel(b, index) - channel(a, index)) * t);
+  return `#${[0, 1, 2].map((index) => blend(index).toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function defaultEditorGradient(): EditorGradient {
+  return {
+    type: "linear",
+    x1: 250,
+    y1: 600,
+    x2: 750,
+    y2: 600,
+    stops: [
+      { id: "grad-default-1", offset: 0, color: "#000000", opacity: 1 },
+      { id: "grad-default-2", offset: 100, color: "#ffffff", opacity: 1 },
+    ],
+  };
+}
+
+export function sortEditorGradientStops(stops: EditorGradientStop[]): EditorGradientStop[] {
+  return [...stops].sort((a, b) => a.offset - b.offset);
+}
+
+export function normalizeEditorGradient(input: Partial<EditorGradient> | undefined, fallback: EditorGradient = defaultEditorGradient()): EditorGradient {
+  const type = EDITOR_GRADIENT_TYPES.includes(input?.type as EditorGradientType) ? input!.type as EditorGradientType : fallback.type;
+  const rawStops = Array.isArray(input?.stops) && input!.stops.length >= 2 ? input!.stops : fallback.stops;
+  const stops = sortEditorGradientStops(rawStops.slice(0, EDITOR_GRADIENT_STOP_LIMIT).map((stop) => ({
+    id: stop.id || nextEditorGradientStopId(),
+    offset: clampStopOffset(stop.offset),
+    color: isGradientColor(stop.color) ? stop.color : "#000000",
+    opacity: clamp01(Number.isFinite(stop.opacity) ? stop.opacity : 1),
+  })));
+  const axis = (value: unknown, fallbackValue: number) => Number.isFinite(value) ? value as number : fallbackValue;
+  return {
+    type,
+    x1: axis(input?.x1, fallback.x1),
+    y1: axis(input?.y1, fallback.y1),
+    x2: axis(input?.x2, fallback.x2),
+    y2: axis(input?.y2, fallback.y2),
+    stops,
+  };
+}
+
+/** Sample the ramp at a 0-1 position, blending the two surrounding stops. Used for
+ * conic and diamond shapes, which sample the ramp per wedge/facet. */
+export function sampleEditorGradient(stops: EditorGradientStop[], t: number): { color: string; opacity: number } {
+  const sorted = sortEditorGradientStops(stops);
+  if (sorted.length === 0) return { color: "#000000", opacity: 1 };
+  const position = clamp01(t) * 100;
+  if (position <= sorted[0].offset) return { color: sorted[0].color, opacity: sorted[0].opacity };
+  const last = sorted[sorted.length - 1];
+  if (position >= last.offset) return { color: last.color, opacity: last.opacity };
+  for (let index = 1; index < sorted.length; index += 1) {
+    const prev = sorted[index - 1];
+    const next = sorted[index];
+    if (position <= next.offset) {
+      const span = next.offset - prev.offset || 1;
+      const local = (position - prev.offset) / span;
+      return { color: mixHex(prev.color, next.color, local), opacity: prev.opacity + (next.opacity - prev.opacity) * local };
+    }
+  }
+  return { color: last.color, opacity: last.opacity };
+}
+
+/** The gradient's origin and radius. The drag length sets the radius; conic and
+ * diamond shapes read it from the same 3-4-5 distance the linear axis uses. */
+export function editorGradientGeometry(gradient: EditorGradient): { cx: number; cy: number; radius: number } {
+  return { cx: gradient.x1, cy: gradient.y1, radius: Math.hypot(gradient.x2 - gradient.x1, gradient.y2 - gradient.y1) };
+}
+
+/** A conic ("angle") gradient as flat wedges: SVG has no native conic paint, so the
+ * ramp is sampled once per segment and drawn as a pie wedge. */
+export function editorGradientConicWedges(gradient: EditorGradient, segments = 120): { d: string; color: string; opacity: number }[] {
+  const { cx, cy } = editorGradientGeometry(gradient);
+  const outer = Math.hypot(1000, 1200);
+  const startAngle = Math.atan2(gradient.y2 - gradient.y1, gradient.x2 - gradient.x1);
+  const step = (Math.PI * 2) / segments;
+  const wedges: { d: string; color: string; opacity: number }[] = [];
+  for (let index = 0; index < segments; index += 1) {
+    const a0 = startAngle + index * step;
+    const a1 = a0 + step;
+    const x0 = cx + Math.cos(a0) * outer;
+    const y0 = cy + Math.sin(a0) * outer;
+    const x1 = cx + Math.cos(a1) * outer;
+    const y1 = cy + Math.sin(a1) * outer;
+    const sample = sampleEditorGradient(gradient.stops, index / segments);
+    wedges.push({
+      d: `M ${cx.toFixed(2)} ${cy.toFixed(2)} L ${x0.toFixed(2)} ${y0.toFixed(2)} L ${x1.toFixed(2)} ${y1.toFixed(2)} Z`,
+      color: sample.color,
+      opacity: sample.opacity,
+    });
+  }
+  return wedges;
+}
+
+/** A diamond gradient as four triangular facets, each ramping out from the origin. */
+export function editorGradientDiamondFacets(gradient: EditorGradient): { d: string; from: { x: number; y: number }; to: { x: number; y: number } }[] {
+  const { cx, cy, radius } = editorGradientGeometry(gradient);
+  const corners = [
+    { x: cx, y: cy - radius },
+    { x: cx + radius, y: cy },
+    { x: cx, y: cy + radius },
+    { x: cx - radius, y: cy },
+  ];
+  return corners.map((corner, index) => {
+    const next = corners[(index + 1) % corners.length];
+    return {
+      d: `M ${cx.toFixed(2)} ${cy.toFixed(2)} L ${corner.x.toFixed(2)} ${corner.y.toFixed(2)} L ${next.x.toFixed(2)} ${next.y.toFixed(2)} Z`,
+      from: { x: cx, y: cy },
+      to: { x: (corner.x + next.x) / 2, y: (corner.y + next.y) / 2 },
+    };
+  });
+}
+
+/** Build a gradient layer's starting content from the Gradient tool's shape/preset. */
+export function editorGradientFromToolSettings(settings: EditorGradientToolSettings | undefined): EditorGradient {
+  const normalized = normalizeEditorGradientToolSettings(settings);
+  const preset = EDITOR_GRADIENT_PRESETS.find((item) => item.id === normalized.presetId) ?? EDITOR_GRADIENT_PRESETS[0];
+  return normalizeEditorGradient({
+    ...defaultEditorGradient(),
+    type: normalized.type,
+    stops: preset.stops.map((stop) => ({ id: nextEditorGradientStopId(), ...stop })),
+  });
+}
+
+export function createEditorGradientLayer(
+  id: string,
+  name: string,
+  gradient: EditorGradient,
+): EditorArtworkLayer {
+  return { ...createEditorArtworkLayer(id, name), kind: "gradient", gradient: normalizeEditorGradient(gradient) };
+}
+
+export function setEditorLayerGradient(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  gradient: EditorGradient,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => layer.id === layerId && layer.gradient
+    ? { ...layer, gradient: normalizeEditorGradient(gradient, layer.gradient) }
+    : layer);
+}
+
+export function updateEditorGradientSettings(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  update: Partial<EditorGradient>,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => layer.id === layerId && layer.gradient
+    ? { ...layer, gradient: normalizeEditorGradient({ ...layer.gradient, ...update }, layer.gradient) }
+    : layer);
+}
+
+export function setEditorGradientStops(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  stops: EditorGradientStop[],
+): EditorArtworkLayer[] {
+  return layers.map((layer) => layer.id === layerId && layer.gradient
+    ? { ...layer, gradient: normalizeEditorGradient({ ...layer.gradient, stops }, layer.gradient) }
+    : layer);
+}
+
 export type EditorArtworkLayer = {
   id: string;
   name: string;
@@ -639,6 +871,7 @@ export type EditorArtworkLayer = {
   text: EditorTextContent | null;
   shape: EditorShapeContent | null;
   image: EditorImageContent | null;
+  gradient: EditorGradient | null;
 };
 
 export type EditorLayerAppearance = Partial<
@@ -663,6 +896,7 @@ export function createEditorArtworkLayer(id: string, name: string): EditorArtwor
     text: null,
     shape: null,
     image: null,
+    gradient: null,
   };
 }
 
@@ -1287,6 +1521,7 @@ export function duplicateEditorLayer(
     text: source.text ? { ...source.text, effects: source.text.effects?.map((effect) => ({ ...effect })) } : null,
     shape: source.shape ? { paths: source.shape.paths.map(cloneEditorShapePath), builderMode: source.shape.builderMode, ...(source.shape.style ? { style: { ...source.shape.style, shadow: { ...source.shape.style.shadow }, glow: { ...source.shape.style.glow } } } : {}) } : null,
     image: source.image ? { ...source.image } : null,
+    gradient: source.gradient ? { ...source.gradient, stops: source.gradient.stops.map((stop) => ({ ...stop })) } : null,
   };
   const next = [...layers];
   next.splice(index, 0, duplicate);

@@ -2,8 +2,8 @@
 
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorPenSettings, EditorShapeBuilderMode, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
-import { EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_SHAPE_LINE_STYLES, resolveEditorShapeStyle } from "@/lib/editor-layers";
+import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorGradient, EditorGradientStop, EditorGradientToolSettings, EditorGradientType, EditorPenSettings, EditorShapeBuilderMode, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
+import { EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
 
@@ -26,7 +26,7 @@ const TOOL_OPTION_HINTS: Partial<Record<EditorTool, string>> = {
   hand: "Drag to pan the workspace view. Zoom stays available from the canvas controls.",
   text: "Select a text layer to edit its font, size, color, alignment, effects, and decoration.",
   shape: "Pick a shape from the Shape chip, then drag on the canvas to draw it into the active layer.",
-  gradient: "Gradient fill is not connected yet. Its controls will appear here once the fill pipeline ships.",
+  gradient: "Pick a shape and preset, then drag on the canvas to lay a gradient on a new layer. Drag a selected gradient layer to re-aim its axis; fine-tune stops under Gradient.",
   "remove-bg": "Upload a photo layer to use background removal. The image service is not connected yet.",
 };
 type ToolOptionsPatch = {
@@ -34,6 +34,7 @@ type ToolOptionsPatch = {
   pencil?: Partial<EditorBrushSettings>;
   eraser?: Partial<EditorEraserSettings>;
   pen?: Partial<EditorPenSettings>;
+  gradient?: Partial<EditorGradientToolSettings>;
 };
 type TextStyleUpdate = Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth" | "effects">>;
 const EFFECT_TYPES: { kind: EditorTextEffectKind; label: string; color: string }[] = [
@@ -141,7 +142,92 @@ function EraserOptions({ value, onChange, onClear, canClear }: { value: EditorEr
   </div>;
 }
 
-export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, onAddMask, onRemoveMask, onSelectMask, onClearErasures }: {
+function GradientPreviewBar({ stops }: { stops: EditorGradientStop[] }) {
+  const sorted = sortEditorGradientStops(stops);
+  const css = sorted.map((stop) => `${stop.color} ${stop.offset}%`).join(", ");
+  return <span aria-hidden="true" className="block h-5 w-full rounded-md border border-border" style={{ backgroundImage: `linear-gradient(90deg, ${css})` }} />;
+}
+
+function GradientOptions({ value, onChange }: { value: EditorGradientToolSettings; onChange: (patch: Partial<EditorGradientToolSettings>) => void }) {
+  return <div className="space-y-3">
+    <div className="space-y-1.5">
+      <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Shape</p>
+      <div role="group" aria-label="Gradient shape" className="grid grid-cols-3 gap-1">{EDITOR_GRADIENT_TYPES.map((type) => <button key={type} type="button" aria-label={`Gradient shape ${EDITOR_GRADIENT_LABELS[type]}`} aria-pressed={value.type === type} onClick={() => onChange({ type })} className="rounded-lg border border-border px-1 py-1.5 text-[9px] outline-none hover:border-accent hover:bg-accent/10 aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11">{EDITOR_GRADIENT_LABELS[type]}</button>)}</div>
+    </div>
+    <div className="space-y-1.5">
+      <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Preset</p>
+      <div role="group" aria-label="Gradient preset" className="grid grid-cols-2 gap-1.5">
+        {EDITOR_GRADIENT_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`Gradient preset ${preset.label}`} aria-pressed={value.presetId === preset.id} onClick={() => onChange({ presetId: preset.id })} className="space-y-1 rounded-lg border border-border p-1 text-left outline-none hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/10">
+          <GradientPreviewBar stops={preset.stops.map((stop, index) => ({ id: `${preset.id}-${index}`, offset: stop.offset, color: stop.color, opacity: stop.opacity }))} />
+          <span className="block truncate text-[9px] text-text-secondary">{preset.label}</span>
+        </button>)}
+      </div>
+    </div>
+    <p className="text-[9px] leading-relaxed text-text-muted">Pick a shape and preset, then drag on the canvas to lay the gradient. Drag again on a selected gradient layer to re-aim it; edit its stops under Gradient below.</p>
+  </div>;
+}
+
+/** A Photoshop-style gradient strip: draggable stop handles over a live preview ramp. */
+function GradientEditor({ gradient, onChange }: { gradient: EditorGradient; onChange: (gradient: EditorGradient) => void }) {
+  const sorted = sortEditorGradientStops(gradient.stops);
+  const css = sorted.map((stop) => `${stop.color} ${stop.offset}%`).join(", ");
+  const activeStop = (id: string | null) => sorted.find((stop) => stop.id === id) ?? sorted[0];
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(sorted[0]?.id ?? null);
+  const selected = activeStop(selectedStopId);
+  const commit = (stops: EditorGradientStop[]) => onChange({ ...gradient, stops: sortEditorGradientStops(stops) });
+  function updateStop(id: string, patch: Partial<EditorGradientStop>) {
+    commit(gradient.stops.map((stop) => stop.id === id ? { ...stop, ...patch } : stop));
+  }
+  function addStop() {
+    if (gradient.stops.length >= EDITOR_GRADIENT_STOP_LIMIT) return;
+    const sortedStops = sortEditorGradientStops(gradient.stops);
+    // Drop the new stop in the widest gap, so it never lands on top of an existing handle.
+    let bestGap = -1;
+    let insertAt = 50;
+    for (let index = 1; index < sortedStops.length; index += 1) {
+      const gap = sortedStops[index].offset - sortedStops[index - 1].offset;
+      if (gap > bestGap) {
+        bestGap = gap;
+        insertAt = (sortedStops[index].offset + sortedStops[index - 1].offset) / 2;
+      }
+    }
+    const id = nextEditorGradientStopId();
+    commit([...gradient.stops, { id, offset: Math.round(insertAt), color: "#808080", opacity: 1 }]);
+    setSelectedStopId(id);
+  }
+  function removeStop(id: string) {
+    if (gradient.stops.length <= 2) return;
+    const next = gradient.stops.filter((stop) => stop.id !== id);
+    commit(next);
+    if (selectedStopId === id) setSelectedStopId(sortEditorGradientStops(next)[0]?.id ?? null);
+  }
+  return <div className="space-y-3">
+    <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Type</span><select aria-label="Gradient layer type" value={gradient.type} onChange={(event) => onChange({ ...gradient, type: event.target.value as EditorGradientType })} className="w-28 rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-primary">{EDITOR_GRADIENT_TYPES.map((type) => <option key={type} value={type}>{EDITOR_GRADIENT_LABELS[type]}</option>)}</select></div>
+
+    <div className="relative pt-1">
+      <span aria-hidden="true" className="block h-6 w-full rounded-md border border-border" style={{ backgroundImage: `linear-gradient(90deg, ${css})` }} />
+      <div role="group" aria-label="Gradient stop handles" className="relative mt-1 h-5">
+        {sorted.map((stop) => <button key={stop.id} type="button" aria-label={`Gradient stop at ${stop.offset}%`} aria-pressed={selected?.id === stop.id} onClick={() => setSelectedStopId(stop.id)} onDoubleClick={() => removeStop(stop.id)} className="absolute top-0 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-white shadow aria-pressed:ring-2 aria-pressed:ring-accent" style={{ left: `${stop.offset}%`, backgroundColor: stop.color }} />)}
+      </div>
+      <div className="mt-1 flex items-center justify-between">
+        <button type="button" aria-label="Add gradient stop" disabled={gradient.stops.length >= EDITOR_GRADIENT_STOP_LIMIT} onClick={addStop} className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[9px] text-text-secondary outline-none hover:border-accent hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"><Plus size={11} />Add stop</button>
+        <span className="text-[9px] text-text-muted">{gradient.stops.length}/{EDITOR_GRADIENT_STOP_LIMIT} stops · double-click a handle to remove</span>
+      </div>
+    </div>
+
+    {selected && <div className="space-y-2 rounded-lg border border-border/70 bg-bg/60 p-2">
+      <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Selected stop</p>
+      <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">Color<input aria-label="Gradient stop color" type="color" value={selected.color} onChange={(event) => updateStop(selected.id, { color: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></label>
+      <RangeField label="Position" value={Math.round(selected.offset)} min={0} max={100} suffix="%" ariaLabel="Gradient stop position" onChange={(offset) => updateStop(selected.id, { offset })} />
+      <RangeField label="Opacity" value={Math.round(selected.opacity * 100)} min={0} max={100} suffix="%" ariaLabel="Gradient stop opacity" onChange={(percent) => updateStop(selected.id, { opacity: percent / 100 })} />
+      <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Start / End</span><div className="flex gap-1"><input aria-label="Gradient axis start X" type="number" value={Math.round(gradient.x1)} onChange={(event) => onChange({ ...gradient, x1: Number(event.target.value) })} className="w-14 rounded-lg border border-border bg-bg px-1 py-1 text-right text-[10px]" /><input aria-label="Gradient axis start Y" type="number" value={Math.round(gradient.y1)} onChange={(event) => onChange({ ...gradient, y1: Number(event.target.value) })} className="w-14 rounded-lg border border-border bg-bg px-1 py-1 text-right text-[10px]" /></div></div>
+      <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>End X / Y</span><div className="flex gap-1"><input aria-label="Gradient axis end X" type="number" value={Math.round(gradient.x2)} onChange={(event) => onChange({ ...gradient, x2: Number(event.target.value) })} className="w-14 rounded-lg border border-border bg-bg px-1 py-1 text-right text-[10px]" /><input aria-label="Gradient axis end Y" type="number" value={Math.round(gradient.y2)} onChange={(event) => onChange({ ...gradient, y2: Number(event.target.value) })} className="w-14 rounded-lg border border-border bg-bg px-1 py-1 text-right text-[10px]" /></div></div>
+    </div>}
+    <p className="text-[9px] leading-relaxed text-text-muted">Stops blend like Photoshop: drag a handle to move it, add one to split a ramp, and double-click to remove. The axis Start and End set the gradient direction and length.</p>
+  </div>;
+}
+
+export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures }: {
   open: boolean;
   onToggle: () => void;
   selectedLayer: EditorArtworkLayer | null;
@@ -154,6 +240,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   onUpdateShapeBuilder: (mode: EditorShapeBuilderMode) => void;
   onUpdateShapeStyle: (update: Partial<EditorShapeStyle>) => void;
   onUpdateImage: (update: PhotoAdjustmentUpdate) => void;
+  onUpdateGradient: (gradient: EditorGradient) => void;
   onAddMask: (id: string) => void;
   onRemoveMask: (id: string) => void;
   onSelectMask: () => void;
@@ -227,7 +314,11 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
               <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Cap</span><div role="group" aria-label="Pen cap" className="flex gap-1">{(["round", "butt", "square"] as const).map((cap) => <button key={cap} type="button" aria-label={`Pen cap ${cap}`} aria-pressed={toolOptions.pen.cap === cap} onClick={() => onUpdateToolOptions({ pen: { cap } })} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{cap}</button>)}</div></div>
               <p className="text-[9px] leading-relaxed text-text-muted">These values are saved as this tool&apos;s defaults for the next path you draw.</p>
             </div>}
-            {(activeTool === "text" || activeTool === "move" || activeTool === "hand" || activeTool === "shape" || activeTool === "gradient" || activeTool === "remove-bg") && <p className="text-[10px] leading-relaxed text-text-muted">{TOOL_OPTION_HINTS[activeTool]}</p>}
+            {activeTool === "gradient" && <GradientOptions
+              value={toolOptions.gradient}
+              onChange={(patch) => onUpdateToolOptions({ gradient: patch })}
+            />}
+            {(activeTool === "text" || activeTool === "move" || activeTool === "hand" || activeTool === "shape" || activeTool === "remove-bg") && <p className="text-[10px] leading-relaxed text-text-muted">{TOOL_OPTION_HINTS[activeTool]}</p>}
           </Section>
           {!selectedLayer && <p className="p-2 text-[11px] text-[#666] dark:text-[#bdbdbd]">Select a layer to edit its properties.</p>}
           {selectedLayer && <>
@@ -332,6 +423,9 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
               <p className="mt-2 text-[9px] leading-relaxed text-text-muted">Presets stay editable as live text and can be combined with effects.</p>
             </Section>
           </> : <p className="rounded-xl border border-dashed border-[#999] p-3 text-[#666] dark:border-[#555] dark:text-[#bdbdbd]">This layer has no text properties.</p>}
+          {selectedLayer.gradient && <Section title="Gradient" open={openSection === "Gradient"} onToggle={() => toggleSection("Gradient")}>
+            <GradientEditor gradient={selectedLayer.gradient} onChange={onUpdateGradient} />
+          </Section>}
           <Section title="Appearance" open={openSection === "Appearance"} onToggle={() => toggleSection("Appearance")}>
             <div className="space-y-3"><label className="block text-[10px] text-text-secondary">Blend mode<select aria-label={`Blend mode for ${selectedLayer.name}`} value={selectedLayer.blendMode} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { blendMode: event.target.value as "normal" | "multiply" | "screen" | "overlay" })} className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-primary"><option value="normal">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option></select></label><label className="block text-[10px] text-text-secondary">Opacity<span className="float-right font-semibold text-text-primary">{selectedLayer.opacity}%</span><input aria-label="Adjustment opacity" type="range" min="0" max="100" value={selectedLayer.opacity} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { opacity: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label><label className="block text-[10px] text-text-secondary">Fill<span className="float-right font-semibold text-text-primary">{selectedLayer.fillOpacity}%</span><input aria-label="Adjustment fill" type="range" min="0" max="100" value={selectedLayer.fillOpacity} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { fillOpacity: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label></div>
           </Section>

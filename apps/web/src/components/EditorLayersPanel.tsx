@@ -67,8 +67,8 @@ function ArtworkThumbnail({ layer }: { layer: EditorArtworkLayer }) {
           {layer.strokes.map((stroke, index) => (
             <path key={index} d={strokePath(stroke)} fill="none" stroke="#242424" strokeWidth="46" strokeLinecap="round" strokeLinejoin="round" />
           ))}
-          {(layer.shape !== null || layer.text !== null || layer.image !== null) && (
-            <EditorLayerPreview paths={layer.shape?.paths} shapeStyle={layer.shape ? resolveEditorShapeStyle(layer.shape) : null} text={layer.text} image={layer.image} />
+          {(layer.shape !== null || layer.text !== null || layer.image !== null || layer.gradient !== null) && (
+            <EditorLayerPreview paths={layer.shape?.paths} shapeStyle={layer.shape ? resolveEditorShapeStyle(layer.shape) : null} text={layer.text} image={layer.image} gradient={layer.gradient} />
           )}
         </g>
       </svg>

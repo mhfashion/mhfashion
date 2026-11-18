@@ -291,6 +291,36 @@ test("shape adjustments expose Photoshop/Kittl fill, stroke, radius, and effects
   assert.match(source, /onUpdateShapeStyle=\{updateSelectedShapeStyle\}/);
 });
 
+test("the Gradient tool draws, re-aims, and edits gradient layers", () => {
+  // The drag handler creates or re-aims a gradient layer and holds the tool preset.
+  assert.match(source, /function startGradientDrawing\(event: React\.PointerEvent<HTMLCanvasElement>\)/);
+  assert.match(source, /createEditorGradientLayer\(id, `Gradient \$\{label\}`, gradient\)/);
+  assert.match(source, /setEditorLayerGradient\(current, drag\.layerId!, gradient\)/);
+  assert.match(source, /editorGradientFromToolSettings\(toolOptions\.gradient\)/);
+  // A live preview overlay draws during the drag, and a tap still drops a gradient.
+  assert.match(source, /data-editor-gradient-preview=\{preview\.type\}/);
+  assert.match(source, /function gradientWithAxis\(drag: ActiveGradientDrag, end: Point\): EditorGradient/);
+  // The tool is routed from pointer-down, not refused.
+  assert.match(source, /if \(activeTool === "gradient"\) \{\n\s+startGradientDrawing\(event\);\n\s+return;/);
+  // A gradient layer fills the whole canvas and is drawn by the shared preview.
+  assert.match(source, /if \(layer\.gradient\) return \{ x: 0, y: 0, width: 1000, height: 1200 \}/);
+  assert.match(artworkLayers, /gradient=\{layer\.gradient\}/);
+  assert.match(mockupSource, /Boolean\(layer\.gradient\)/);
+  // The preview renders each Photoshop shape: linear, reflected, radial, angle, diamond.
+  assert.match(layerPreview, /data-editor-gradient-layer=\{gradient\.type\}/);
+  assert.match(layerPreview, /gradient\.type === "reflected"/);
+  assert.match(layerPreview, /editorGradientConicWedges\(gradient\)/);
+  assert.match(layerPreview, /editorGradientDiamondFacets\(gradient\)/);
+  // The Adjustments panel exposes tool shape/preset pickers and a stop editor.
+  assert.match(adjustmentsPanel, /function GradientOptions\(\{ value, onChange \}/);
+  assert.match(adjustmentsPanel, /aria-label="Gradient shape"/);
+  assert.match(adjustmentsPanel, /aria-label="Gradient preset"/);
+  assert.match(adjustmentsPanel, /function GradientEditor\(\{ gradient, onChange \}/);
+  assert.match(adjustmentsPanel, /aria-label="Gradient stop handles"/);
+  assert.match(adjustmentsPanel, /aria-label="Add gradient stop"/);
+  assert.match(source, /onUpdateGradient=\{updateSelectedGradient\}/);
+});
+
 test("drawing tools are inert on photo layers and the tools bar disables them", () => {
   // Canvas guard: a selected photo layer blocks paint/pen/shape/gradient/eraser.
   assert.match(source, /const DRAWING_TOOLS: EditorTool\[\] = \["brush", "pencil", "pen", "shape", "gradient", "eraser"\]/);
@@ -672,7 +702,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /const hotspot = "2 2"/);
   // Every sidebar addition must be reachable in the Layers stack.
   assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
-  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 4, "Only explicit text, element, design and upload insertion reveals Layers");
+  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 5, "Only explicit text, element, design, upload and gradient insertion reveals Layers");
   assert.match(layersPanel, /EditorLayerPreview paths=\{layer\.shape\?\.paths\} shapeStyle=\{layer\.shape \? resolveEditorShapeStyle\(layer\.shape\) : null\} text=\{layer\.text\} image=\{layer\.image\}/);
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
   assert.match(source, /canvasLayerTransforms/);
@@ -863,6 +893,8 @@ test("editor tool options normalize to safe ranges", () => {
   assert.equal(defaults.brush.size, EDITOR_TOOL_OPTIONS_DEFAULT.brush.size);
   assert.equal(defaults.brush.shape, "round");
   assert.equal(defaults.pen.cap, "round");
+  assert.equal(defaults.gradient.type, "linear", "the gradient tool defaults to a linear shape");
+  assert.equal(defaults.gradient.presetId, "black-white");
 
   const clamped = normalizeEditorToolOptions({
     brush: { size: 9999, opacity: 5, softness: -40, feather: 500, shape: "square", spacing: 0, flow: 0, smoothing: 99, sizeJitter: 500, opacityJitter: -10, jitterMinimum: 900, angle: 400, roundness: -20, blend: "nope" },
