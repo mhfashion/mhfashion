@@ -23,6 +23,7 @@ const { getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTrans
 const {
   addLayerMask,
   applyEditorShapeBuilderOperation,
+  appendEditorShapePaths,
   appendLayerStroke,
   createEditorArtworkLayer,
   createEditorImageLayer,
@@ -175,6 +176,24 @@ test("Add Text, element and upload layers keep their own content and stay in the
   assert.notStrictEqual(duplicatedText.text, typed[0].text);
 });
 
+test("vector shape paths append to one unlocked layer without allocating a new layer", () => {
+  const layer = createEditorArtworkLayer("active", "Layer 1");
+  const firstPath = { d: "M 10 10 L 90 90", fill: "none", stroke: "#111111" };
+  const secondPath = { d: "M 20 20 L 80 80", fill: "none", stroke: "#ff0000" };
+  const withFirst = appendEditorShapePaths([layer], layer.id, [firstPath]);
+  const withBoth = appendEditorShapePaths(withFirst, layer.id, [secondPath]);
+
+  assert.equal(withBoth.length, 1);
+  assert.equal(withBoth[0].id, "active");
+  assert.equal(withBoth[0].kind, "shape");
+  assert.deepEqual(withBoth[0].shape.paths.map((path) => path.d), [firstPath.d, secondPath.d]);
+  assert.notStrictEqual(withBoth[0].shape.paths[0], firstPath, "appended paths are cloned");
+  assert.equal(layer.shape, null, "the source layer is unchanged");
+
+  const locked = updateEditorLayer(withBoth, "active", { locked: true });
+  assert.strictEqual(appendEditorShapePaths(locked, "active", [firstPath])[0], locked[0], "locked layers reject vector drawing");
+});
+
 test("Pen paths retain editable Bézier nodes, update their SVG data, and duplicate independently", () => {
   const penPath = { closed: false, anchors: [
     { x: 0.1, y: 0.5, handleOut: { x: 0.2, y: -0.1 } },
@@ -193,6 +212,24 @@ test("Pen paths retain editable Bézier nodes, update their SVG data, and duplic
   assert.notStrictEqual(updated[0].shape.paths[0].penPath.anchors, penPath.anchors);
   assert.notStrictEqual(duplicate.shape.paths[0].penPath.anchors, updated[0].shape.paths[0].penPath.anchors);
   assert.notStrictEqual(duplicate.shape.paths[0].penPath.anchors[0].handleOut, updated[0].shape.paths[0].penPath.anchors[0].handleOut);
+});
+
+test("Pen point updates target the selected vector path while multiple paths stay in one layer", () => {
+  const firstPath = { closed: false, anchors: [{ x: 0.1, y: 0.2 }, { x: 0.4, y: 0.5 }] };
+  const secondPath = { closed: false, anchors: [{ x: 0.5, y: 0.6 }, { x: 0.9, y: 0.8 }] };
+  const layer = createEditorArtworkLayer("pen-layer", "Layer 1");
+  const sameLayer = appendEditorShapePaths([layer], layer.id, [
+    { d: "M 100 240 L 400 600", fill: "none", stroke: "#111111", penPath: firstPath },
+    { d: "M 500 720 L 900 960", fill: "none", stroke: "#111111", penPath: secondPath },
+  ]);
+  const editedSecondPath = { ...secondPath, anchors: [{ ...secondPath.anchors[0], x: 0.55 }, secondPath.anchors[1]] };
+  const updated = updateEditorPenPath(sameLayer, layer.id, editedSecondPath, "M 550 720 L 900 960", 1);
+
+  assert.equal(updated.length, 1);
+  assert.equal(updated[0].shape.paths[0].d, "M 100 240 L 400 600");
+  assert.deepEqual(updated[0].shape.paths[0].penPath, firstPath);
+  assert.equal(updated[0].shape.paths[1].d, "M 550 720 L 900 960");
+  assert.deepEqual(updated[0].shape.paths[1].penPath, editedSecondPath);
 });
 
 test("groups preserve independent layers while links provide an explicit shared transform membership", () => {

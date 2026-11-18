@@ -20,10 +20,10 @@ import { getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTran
 import type { TransformHandle } from "@/lib/editor-transform";
 import {
   addLayerMask,
+  appendEditorShapePaths,
   appendLayerStroke,
   createEditorArtworkLayer,
   createEditorImageLayer,
-  createEditorShapeLayer,
   createEditorShapePaths,
   EDITOR_SHAPE_LABELS,
   createEditorTextLayer,
@@ -107,7 +107,7 @@ type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
 type PenAnchorDrag = { pointerId: number; index: number; point: Point };
-type PenEditDrag = { pointerId: number; layerId: string; index: number; kind: "anchor" | "handle-in" | "handle-out"; start: Point; origin: EditorPenAnchor };
+type PenEditDrag = { pointerId: number; layerId: string; pathIndex: number; index: number; kind: "anchor" | "handle-in" | "handle-out"; start: Point; origin: EditorPenAnchor };
 type CanvasBounds = { x: number; y: number; width: number; height: number };
 type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
 type CanvasLayerTransformSnapshot = { scale: Point; offset: Point; rotation: number; pivot: Point };
@@ -124,7 +124,7 @@ type ActiveArtworkStroke = {
   points: Point[];
   color: string;
 };
-type ActiveShapeDrag = { pointerId: number; preset: EditorShapePreset; start: Point; current: Point; color: string };
+type ActiveShapeDrag = { pointerId: number; layerId: string; preset: EditorShapePreset; start: Point; current: Point; color: string };
 
 function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   const points = [
@@ -333,6 +333,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [penHoverCloseTarget, setPenHoverCloseTarget] = useState(false);
   const [editingPenPathLayerId, setEditingPenPathLayerId] = useState<string | null>(null);
   const [selectedPenAnchorIndex, setSelectedPenAnchorIndex] = useState<number | null>(null);
+  const [editingPenPathIndex, setEditingPenPathIndex] = useState<number | null>(null);
   const [undoStack, setUndoStack] = useState<EditorArtworkLayer[][]>([]);
   const [redoStack, setRedoStack] = useState<EditorArtworkLayer[][]>([]);
   const [canvasLayerTransforms, setCanvasLayerTransforms] = useState<Record<string, Point>>({});
@@ -866,26 +867,38 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       setPenHoverCloseTarget(false);
       return;
     }
+    const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
+    if (!selectedLayer || selectedLayer.locked) {
+      setToolNotice("Select an unlocked layer before drawing.");
+      setPenAnchors([]);
+      setPenHoverPoint(null);
+      setPenHoverCloseTarget(false);
+      return;
+    }
     const penPath: EditorPenPath = { anchors: penAnchors, closed: close };
     const pathData = editorPenPathData(penPath);
-    const id = claimLayerId();
     rememberLayerSnapshot();
-    const shapeLayer = createEditorShapeLayer(id, `Pen path ${nextLayerIdRef.current - 1}`, {
-      paths: [{ d: pathData, fill: close ? foregroundColor : "none", stroke: foregroundColor, strokeWidth: 5, penPath }],
-    });
-    setLayers((current) => [shapeLayer, ...current]);
-    setSelectedLayerId(id);
-    setSelectedLayerIds([id]);
+    setLayers((current) => appendEditorShapePaths(current, selectedLayer.id, [
+      { d: pathData, fill: close ? foregroundColor : "none", stroke: foregroundColor, strokeWidth: 5, penPath },
+    ]));
+    setSelectedLayerId(selectedLayer.id);
+    setSelectedLayerIds([selectedLayer.id]);
     setSelectedTarget("artwork");
     setPenAnchors([]);
     setPenHoverPoint(null);
     setPenHoverCloseTarget(false);
-    setToolNotice("Pen path added. Pen remains active; switch to Move and double-click the path to edit points.");
-    revealLayersStack();
+    setEditingPenPathLayerId(null);
+    setEditingPenPathIndex(null);
+    setToolNotice(`Pen path added to ${selectedLayer.name}. Pen remains active; switch to Move and double-click a path to edit points.`);
   }
 
   function addPenAnchor(event: React.PointerEvent<HTMLCanvasElement>) {
     if (event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
+    if (!selectedLayer || selectedLayer.locked) {
+      setToolNotice("Select an unlocked layer before drawing.");
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     const rawPoint = toCanvasPoint(event.clientX, event.clientY);
@@ -905,20 +918,25 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function startShapeDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeShapeDragRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+    const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
+    if (!selectedLayer || selectedLayer.locked) {
+      setToolNotice("Select an unlocked layer before drawing.");
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     const point = toCanvasPoint(event.clientX, event.clientY);
     const canvasPoint = { x: point.x * 1000, y: point.y * 1200 };
-    const drag: ActiveShapeDrag = { pointerId: event.pointerId, preset: selectedShape, start: canvasPoint, current: canvasPoint, color: foregroundColor };
+    const drag: ActiveShapeDrag = { pointerId: event.pointerId, layerId: selectedLayer.id, preset: selectedShape, start: canvasPoint, current: canvasPoint, color: foregroundColor };
     activeShapeDragRef.current = drag;
     setShapeDrawing(drag);
     event.currentTarget.setPointerCapture(event.pointerId);
     setToolNotice("");
   }
 
-  function penPathForLayer(layerId: string): EditorPenPath | null {
+  function penPathForLayer(layerId: string, pathIndex = 0): EditorPenPath | null {
     const layer = layers.find((item) => item.id === layerId);
-    return layer?.shape?.paths[0]?.penPath ?? null;
+    return layer?.shape?.paths[pathIndex]?.penPath ?? null;
   }
 
   function penLayerTransform(layerId: string) {
@@ -947,8 +965,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     };
   }
 
-  function updatePenLayer(layerId: string, penPath: EditorPenPath) {
-    setLayers((current) => updateEditorPenPath(current, layerId, penPath, editorPenPathData(penPath)));
+  function updatePenLayer(layerId: string, pathIndex: number, penPath: EditorPenPath) {
+    setLayers((current) => updateEditorPenPath(current, layerId, penPath, editorPenPathData(penPath), pathIndex));
   }
 
   function clearPenEditWindowHandlers() {
@@ -962,6 +980,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
 
   function startPenEditDrag(
     layerId: string,
+    pathIndex: number,
     index: number,
     kind: PenEditDrag["kind"],
     event: React.PointerEvent<SVGCircleElement>,
@@ -969,7 +988,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
     event.stopPropagation();
-    const path = penPathForLayer(layerId);
+    const path = penPathForLayer(layerId, pathIndex);
     const origin = path?.anchors[index];
     if (!path || !origin) return;
     clearPenEditWindowHandlers();
@@ -977,7 +996,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       const next = removeEditorPenAnchor(path, index);
       if (next) {
         rememberLayerSnapshot();
-        updatePenLayer(layerId, next);
+        updatePenLayer(layerId, pathIndex, next);
         setSelectedPenAnchorIndex(null);
       } else {
         setToolNotice(path.closed ? "A closed path needs at least three points." : "An open path needs at least two points.");
@@ -989,6 +1008,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     penEditDragRef.current = {
       pointerId: event.pointerId,
       layerId,
+      pathIndex,
       index,
       kind,
       start: toPenLayerPoint(event.clientX, event.clientY, layerId),
@@ -1010,7 +1030,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = penEditDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const path = penPathForLayer(drag.layerId);
+    const path = penPathForLayer(drag.layerId, drag.pathIndex);
     const currentAnchor = path?.anchors[drag.index];
     if (!path || !currentAnchor) return;
     const point = toPenLayerPoint(event.clientX, event.clientY, drag.layerId);
@@ -1026,7 +1046,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       }
       return { ...anchor, handleOut: handle, handleIn: event.altKey ? anchor.handleIn : { x: -handle.x, y: -handle.y } };
     });
-    updatePenLayer(drag.layerId, { ...path, anchors });
+    updatePenLayer(drag.layerId, drag.pathIndex, { ...path, anchors });
   }
 
   function endPenEditDrag(event: PointerEvent) {
@@ -1035,35 +1055,35 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     clearPenEditWindowHandlers();
   }
 
-  function addPenNodeOnPath(layerId: string, event: React.PointerEvent<SVGPathElement>) {
+  function addPenNodeOnPath(layerId: string, pathIndex: number, event: React.PointerEvent<SVGPathElement>) {
     if (event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
     event.stopPropagation();
-    const path = penPathForLayer(layerId);
+    const path = penPathForLayer(layerId, pathIndex);
     if (!path) return;
     const point = toPenLayerPoint(event.clientX, event.clientY, layerId);
     const next = insertEditorPenAnchor(path, point);
     if (!next) return;
     rememberLayerSnapshot();
-    updatePenLayer(layerId, next);
+    updatePenLayer(layerId, pathIndex, next);
     setSelectedPenAnchorIndex(null);
   }
 
-  function removePenNode(layerId: string, index: number) {
-    const path = penPathForLayer(layerId);
+  function removePenNode(layerId: string, pathIndex: number, index: number) {
+    const path = penPathForLayer(layerId, pathIndex);
     const next = path ? removeEditorPenAnchor(path, index) : null;
     if (!next) {
       setToolNotice(path?.closed ? "A closed path needs at least three points." : "An open path needs at least two points.");
       return;
     }
     rememberLayerSnapshot();
-    updatePenLayer(layerId, next);
+    updatePenLayer(layerId, pathIndex, next);
     setSelectedPenAnchorIndex(null);
   }
 
   function removeSelectedPenNode() {
     if (!editingPenPathLayerId || selectedPenAnchorIndex === null) return;
-    removePenNode(editingPenPathLayerId, selectedPenAnchorIndex);
+    removePenNode(editingPenPathLayerId, editingPenPathIndex ?? 0, selectedPenAnchorIndex);
   }
 
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -1183,19 +1203,18 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       const point = toCanvasPoint(event.clientX, event.clientY);
       const end = { x: point.x * 1000, y: point.y * 1200 };
       if (Math.hypot(end.x - shapeDrag.start.x, end.y - shapeDrag.start.y) < 8) return;
-      const id = claimLayerId();
+      const selectedLayer = layers.find((layer) => layer.id === shapeDrag.layerId);
+      if (!selectedLayer || selectedLayer.locked) {
+        setToolNotice("Select an unlocked layer before drawing.");
+        return;
+      }
       const label = EDITOR_SHAPE_LABELS[shapeDrag.preset];
-      const shape = createEditorShapeLayer(id, `${label} ${nextLayerIdRef.current - 1}`, {
-        paths: createEditorShapePaths(shapeDrag.preset, shapeDrag.start, end, shapeDrag.color),
-      });
+      const paths = createEditorShapePaths(shapeDrag.preset, shapeDrag.start, end, shapeDrag.color);
       rememberLayerSnapshot();
-      setLayers((current) => [shape, ...current]);
-      setSelectedLayerId(id);
-      setSelectedLayerIds([id]);
+      setLayers((current) => appendEditorShapePaths(current, shapeDrag.layerId, paths));
       setSelectedTarget("artwork");
       setEditingTextLayerId(null);
-      setToolNotice(`${label} added to Layers.`);
-      revealLayersStack();
+      setToolNotice(`${label} added to ${selectedLayer.name}.`);
       return;
     }
     if (penAnchorDragRef.current?.pointerId === event.pointerId) penAnchorDragRef.current = null;
@@ -1223,6 +1242,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function chooseTool(tool: EditorTool) {
     if (editingPenPathLayerId) {
       setEditingPenPathLayerId(null);
+      setEditingPenPathIndex(null);
       setSelectedPenAnchorIndex(null);
       if (tool === "move") return;
     }
@@ -1232,6 +1252,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       setPenHoverCloseTarget(false);
     }
     setActiveTool(tool);
+    if (tool === "pen" || tool === "shape") setSelectedTarget("artwork");
     setToolNotice(tool === "remove-bg"
       ? "Remove BG needs an uploaded image; background removal is not connected yet."
       : tool === "gradient"
@@ -1297,6 +1318,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setSelectedLayerId(id);
     setSelectedTarget(target);
     setEditingTextLayerId(null);
+    setEditingPenPathLayerId(null);
+    setEditingPenPathIndex(null);
+    setSelectedPenAnchorIndex(null);
     setSelectedLayerIds((current) => {
       if (!multi || target === "mask") return [id];
       return current.includes(id) ? (current.length > 1 ? current.filter((item) => item !== id) : current) : [...current, id];
@@ -1525,10 +1549,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     viewportRef.current?.scrollTo({ top: 0, left: 0 });
   }
 
-  const selectedPenLayer = layers.find((layer) => layer.id === selectedLayerId && !layer.locked && layer.shape?.paths[0]?.penPath);
-  const selectedPenPath = selectedPenLayer?.shape?.paths[0]?.penPath ?? null;
-  const editingPenLayer = layers.find((layer) => layer.id === editingPenPathLayerId && !layer.locked && layer.shape?.paths[0]?.penPath);
-  const editingPenPath = editingPenLayer?.shape?.paths[0]?.penPath ?? null;
+  const selectedPenLayer = layers.find((layer) => layer.id === selectedLayerId && !layer.locked && layer.shape?.paths.some((path) => path.penPath));
+  const selectedPenPaths = selectedPenLayer?.shape?.paths.flatMap((path, index) => path.penPath ? [{ path, index }] : []) ?? [];
+  const activeEditingPenPathIndex = editingPenPathIndex ?? 0;
+  const editingPenLayer = layers.find((layer) => layer.id === editingPenPathLayerId && !layer.locked && layer.shape?.paths[activeEditingPenPathIndex]?.penPath);
+  const editingPenPath = editingPenLayer?.shape?.paths[activeEditingPenPathIndex]?.penPath ?? null;
   const activeToolCursor = activeTool === "pen" ? "cursor-crosshair" : activeTool === "pencil" ? "cursor-crosshair" : activeTool === "brush" ? "cursor-crosshair" : activeTool === "eraser" ? "cursor-cell" : activeTool === "shape" || activeTool === "gradient" ? "cursor-crosshair" : activeTool === "text" ? "cursor-text" : activeTool === "move" ? "cursor-move" : activeTool === "hand" ? "cursor-grab" : "cursor-default";
   const activeToolCursorStyle = editorToolCursor(activeTool);
 
@@ -1650,12 +1675,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   onRotate={rotateCanvasLayer}
                   onRotateEnd={endCanvasLayerRotate}
                 />
-                {selectedPenLayer && selectedPenPath && activeTool === "move" && !editingPenPath && (
+                {selectedPenLayer && selectedPenPaths.length > 0 && activeTool === "move" && !editingPenPath && (
                   <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-label="Selected Pen path" className="pointer-events-none absolute inset-0 z-30 h-full w-full" style={{ touchAction: "none" }} onPointerMove={moveCanvasArtwork} onPointerUp={endCanvasArtworkMove} onPointerCancel={endCanvasArtworkMove} onLostPointerCapture={endCanvasArtworkMove}>
                     <g transform={penLayerTransform(selectedPenLayer.id)}>
-                      <path
-                        d={editorPenPathData(selectedPenPath)}
-                        fill={selectedPenPath.closed ? "#000000" : "none"}
+                      {selectedPenPaths.map(({ path, index }) => path.penPath && <path
+                        key={`pen-hit-${index}`}
+                        d={editorPenPathData(path.penPath)}
+                        fill={path.penPath.closed ? "#000000" : "none"}
                         fillOpacity="0.001"
                         stroke="#000000"
                         strokeOpacity="0.001"
@@ -1667,9 +1693,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                           event.preventDefault();
                           event.stopPropagation();
                           setEditingPenPathLayerId(selectedPenLayer.id);
+                          setEditingPenPathIndex(index);
                           setSelectedPenAnchorIndex(null);
                         }}
-                      />
+                      />)}
                     </g>
                   </svg>
                 )}
@@ -1677,7 +1704,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   <>
                     <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-label="Pen path point controls" className="pointer-events-none absolute inset-0 z-30 h-full w-full" style={{ touchAction: "none", cursor: activeTool === "pen" ? activeToolCursorStyle : undefined }}>
                       <g transform={penLayerTransform(editingPenLayer.id)}>
-                        <path d={editorPenPathData(editingPenPath)} fill="none" stroke="#000000" strokeOpacity="0.001" strokeWidth="34" pointerEvents="stroke" onPointerDown={(event) => addPenNodeOnPath(editingPenLayer.id, event)} className={activeTool === "pen" ? "" : "cursor-crosshair"} />
+                        <path d={editorPenPathData(editingPenPath)} fill="none" stroke="#000000" strokeOpacity="0.001" strokeWidth="34" pointerEvents="stroke" onPointerDown={(event) => addPenNodeOnPath(editingPenLayer.id, activeEditingPenPathIndex, event)} className={activeTool === "pen" ? "" : "cursor-crosshair"} />
                         {editingPenPath.anchors.map((anchor, index) => {
                           const x = anchor.x * 1000;
                           const y = anchor.y * 1200;
@@ -1686,21 +1713,21 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                             <g key={`pen-anchor-${index}`}>
                               {anchor.handleIn && <>
                                 <line x1={x} y1={y} x2={x + anchor.handleIn.x * 1000} y2={y + anchor.handleIn.y * 1200} stroke="#557c31" strokeWidth="3" />
-                                <circle cx={x + anchor.handleIn.x * 1000} cy={y + anchor.handleIn.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className={activeTool === "pen" ? "" : "cursor-crosshair"} aria-label={`Point ${index + 1} incoming curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "handle-in", event)} />
+                                <circle cx={x + anchor.handleIn.x * 1000} cy={y + anchor.handleIn.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className={activeTool === "pen" ? "" : "cursor-crosshair"} aria-label={`Point ${index + 1} incoming curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, activeEditingPenPathIndex, index, "handle-in", event)} />
                                 <circle cx={x + anchor.handleIn.x * 1000} cy={y + anchor.handleIn.y * 1200} r="9" fill="white" stroke="#557c31" strokeWidth="4" pointerEvents="none" aria-hidden="true" />
                               </>}
                               {anchor.handleOut && <>
                                 <line x1={x} y1={y} x2={x + anchor.handleOut.x * 1000} y2={y + anchor.handleOut.y * 1200} stroke="#557c31" strokeWidth="3" />
-                                <circle cx={x + anchor.handleOut.x * 1000} cy={y + anchor.handleOut.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className={activeTool === "pen" ? "" : "cursor-crosshair"} aria-label={`Point ${index + 1} outgoing curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "handle-out", event)} />
+                                <circle cx={x + anchor.handleOut.x * 1000} cy={y + anchor.handleOut.y * 1200} r="34" fill="transparent" stroke="transparent" pointerEvents="all" className={activeTool === "pen" ? "" : "cursor-crosshair"} aria-label={`Point ${index + 1} outgoing curve handle`} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, activeEditingPenPathIndex, index, "handle-out", event)} />
                                 <circle cx={x + anchor.handleOut.x * 1000} cy={y + anchor.handleOut.y * 1200} r="9" fill="white" stroke="#557c31" strokeWidth="4" pointerEvents="none" aria-hidden="true" />
                               </>}
                               <circle cx={x} cy={y} r="38" fill="transparent" stroke="transparent" pointerEvents="all" className={activeTool === "pen" ? "" : "cursor-move"} role="button" tabIndex={0} aria-label={`Pen point ${index + 1}; Alt-click or press Delete to remove`} onFocus={() => setSelectedPenAnchorIndex(index)} onKeyDown={(event) => {
                                 if (event.key === "Delete" || event.key === "Backspace") {
                                   event.preventDefault();
                                   event.stopPropagation();
-                                  removePenNode(editingPenLayer.id, index);
+                                  removePenNode(editingPenLayer.id, activeEditingPenPathIndex, index);
                                 }
-                              }} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, index, "anchor", event)} />
+                              }} onPointerDown={(event) => startPenEditDrag(editingPenLayer.id, activeEditingPenPathIndex, index, "anchor", event)} />
                               <circle cx={x} cy={y} r={selected ? "15" : "12"} fill={selected ? "#d4ff3f" : "white"} stroke="#557c31" strokeWidth="5" pointerEvents="none" aria-hidden="true" />
                             </g>
                           );
@@ -1710,7 +1737,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     <div aria-label="Pen path editing controls" className="pointer-events-none absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-16px)] -translate-x-1/2 items-center gap-2 rounded-xl border border-border bg-bg-surface/95 px-2 py-1 text-[10px] text-text-primary shadow-lg">
                       <span className="hidden sm:inline">Drag points/handles · click path to add · Alt-click point to remove</span>
                       <button type="button" onClick={removeSelectedPenNode} disabled={selectedPenAnchorIndex === null} className="pointer-events-auto rounded-lg border border-border px-2 py-1 disabled:opacity-40">Delete point</button>
-                      <button type="button" onClick={() => { setEditingPenPathLayerId(null); setSelectedPenAnchorIndex(null); }} className="pointer-events-auto rounded-lg bg-accent px-2 py-1 text-accent-foreground">Done</button>
+                      <button type="button" onClick={() => { setEditingPenPathLayerId(null); setEditingPenPathIndex(null); setSelectedPenAnchorIndex(null); }} className="pointer-events-auto rounded-lg bg-accent px-2 py-1 text-accent-foreground">Done</button>
                     </div>
                   </>
                 )}

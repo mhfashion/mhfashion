@@ -265,20 +265,40 @@ export function createEditorShapeLayer(
   };
 }
 
+export function appendEditorShapePaths(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  paths: EditorShapePath[],
+): EditorArtworkLayer[] {
+  if (paths.length === 0) return layers;
+  return layers.map((layer) => {
+    if (layer.id !== layerId || layer.locked) return layer;
+    return {
+      ...layer,
+      kind: layer.kind === "artwork" ? "shape" : layer.kind,
+      shape: {
+        paths: [...(layer.shape?.paths ?? []).map(cloneEditorShapePath), ...paths.map(cloneEditorShapePath)],
+        builderMode: layer.shape?.builderMode ?? "select",
+      },
+    };
+  });
+}
+
 export function updateEditorPenPath(
   layers: EditorArtworkLayer[],
   layerId: string,
   penPath: EditorPenPath,
   pathData: string,
+  pathIndex = 0,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => {
-    if (layer.id !== layerId || !layer.shape || layer.shape.paths.length === 0) return layer;
+    if (layer.id !== layerId || !layer.shape || !layer.shape.paths[pathIndex]) return layer;
     const clonedPath = cloneEditorPenPath(penPath);
     return {
       ...layer,
       shape: {
         ...layer.shape,
-        paths: layer.shape.paths.map((path, index) => index === 0
+        paths: layer.shape.paths.map((path, index) => index === pathIndex
           ? { ...path, d: pathData, penPath: clonedPath }
           : path),
       },

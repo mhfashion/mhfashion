@@ -2599,3 +2599,7 @@ Add Selective Color and HSL controls to Photo Adjustments, including per-compone
 ## 2026-11-18 Directive Update — Photo Layer Mask and Blend Modes
 
 Photo layers must expose Add/Edit/Remove Layer Mask controls and Blend Modes in the editing workflow. Reuse the existing non-destructive black-hide/white-reveal mask brush system and apply Blend Modes to the photo rendering group. Keep the controls available on Desktop and Phone/Mobile.
+
+
+## 2026-11-18 Directive Update — Pen and Shape reuse the active layer
+Update the earlier Shape-tool note: every Pen or Shape gesture appends its vector path to the currently selected unlocked layer; it must not create a new layer per action or automatically open the Layers panel. Missing or locked active layers block drawing instead of triggering implicit layer creation. Multiple Pen paths in one layer remain individually editable by path index. Preserve the current Pen-continuity behavior: finishing or closing a path leaves Pen active. Keep Add Layer explicit; text/image/design insertions may still create their own editable object layers.

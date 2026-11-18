@@ -141,7 +141,10 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /function addPenAnchor/);
   assert.match(source, /onDoubleClick=\{\(\) => activeTool === "pen" && finishPenPath\(false\)\}/);
   assert.match(source, /aria-label="Pen path preview"/);
-  assert.match(source, /createEditorShapeLayer\(id, `Pen path/);
+  assert.match(source, /appendEditorShapePaths\(current, selectedLayer\.id/);
+  assert.match(source, /Pen path added to \$\{selectedLayer\.name\}/);
+  assert.match(source, /selectedPenPaths\.map/);
+  assert.match(source, /activeEditingPenPathIndex/);
   assert.match(source, /const activeToolCursor = activeTool === "pen" \? "cursor-crosshair"/);
   assert.match(source, /activeToolCursor\}`/);
   assert.match(source, /function editorToolCursor\(tool: EditorTool\)/);
@@ -213,7 +216,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(mockupArtwork, /strokes\.some\(\(stroke\) => stroke\.tool === "brush"\) \? 32 : 18/);
 });
 
-test("Shape tool exposes selectable presets and creates live vector previews on drag", () => {
+test("Shape tool exposes selectable presets, previews gestures, and appends paths to the active layer", () => {
   assert.match(toolsBar, /data-testid="editor-shape-picker"/);
   assert.match(toolsBar, /role="group" aria-label="Shape options"/);
   assert.match(toolsBar, /Choose a shape, then drag on the canvas/);
@@ -223,9 +226,11 @@ test("Shape tool exposes selectable presets and creates live vector previews on 
   }
   assert.match(source, /function startShapeDrawing/);
   assert.match(source, /activeShapeDragRef/);
+  assert.match(source, /type ActiveShapeDrag = \{ pointerId: number; layerId: string/);
   assert.match(source, /data-editor-shape-preview/);
   assert.match(source, /createEditorShapePaths\(shapeDrag\.preset/);
-  assert.match(source, /createEditorShapeLayer\(id, `\$\{label\}/);
+  assert.match(source, /appendEditorShapePaths\(current, shapeDrag\.layerId, paths\)/);
+  assert.match(source, /\$\{label\} added to \$\{selectedLayer\.name\}/);
   assert.doesNotMatch(source, /Shape Tool is ready for the upcoming vector-shape pipeline/);
 });
 
@@ -523,7 +528,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /editingTextLayer=\{editingTextLayer\}/);
   // Every sidebar addition must be reachable in the Layers stack.
   assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
-  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 6, "Text, element, design, upload, Pen path and Shape reveal the Layers stack");
+  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 4, "Only explicit text, element, design and upload insertion reveals Layers");
   assert.match(layersPanel, /EditorLayerPreview paths=\{layer\.shape\?\.paths\} text=\{layer\.text\} image=\{layer\.image\}/);
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
   assert.match(source, /canvasLayerTransforms/);
