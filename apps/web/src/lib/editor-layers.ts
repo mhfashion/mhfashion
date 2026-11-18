@@ -113,7 +113,81 @@ export type EditorShapePath = {
   penPath?: EditorPenPath;
 };
 export type EditorShapeBuilderMode = "select" | "merge" | "subtract" | "intersect";
-export type EditorShapeContent = { paths: EditorShapePath[]; builderMode?: EditorShapeBuilderMode };
+export type EditorShapeLineStyle = "solid" | "dash" | "dot";
+export type EditorShapeShadow = {
+  enabled: boolean;
+  color: string;
+  offsetX: number;
+  offsetY: number;
+  blur: number;
+  opacity: number;
+};
+export type EditorShapeGlow = {
+  enabled: boolean;
+  color: string;
+  width: number;
+  opacity: number;
+};
+/** Photoshop/Kittl-style vector appearance: independent Fill and Stroke channels plus effects. */
+export type EditorShapeStyle = {
+  fill: string;
+  fillEnabled: boolean;
+  fillOpacity: number;
+  stroke: string;
+  strokeWidth: number;
+  strokeStyle: EditorShapeLineStyle;
+  cornerRadius: number;
+  shadow: EditorShapeShadow;
+  glow: EditorShapeGlow;
+};
+export type EditorShapeContent = { paths: EditorShapePath[]; builderMode?: EditorShapeBuilderMode; style?: EditorShapeStyle };
+
+export const EDITOR_SHAPE_LINE_STYLES: EditorShapeLineStyle[] = ["solid", "dash", "dot"];
+
+const clampShape = (value: number, min: number, max: number, fallback: number) => Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
+
+/** Derive a starting style from a shape's per-path fill/stroke so the panel has sensible values. */
+export function defaultEditorShapeStyle(paths: EditorShapePath[]): EditorShapeStyle {
+  const filled = paths.find((path) => path.fill && path.fill !== "none");
+  const stroked = paths.find((path) => path.stroke && path.stroke !== "none" && (path.strokeWidth ?? 0) > 0);
+  return {
+    fill: filled?.fill ?? "#202124",
+    fillEnabled: Boolean(filled),
+    fillOpacity: 100,
+    stroke: stroked?.stroke ?? "#202124",
+    strokeWidth: stroked?.strokeWidth ?? 0,
+    strokeStyle: "solid",
+    cornerRadius: 0,
+    shadow: { enabled: false, color: "#000000", offsetX: 12, offsetY: 12, blur: 6, opacity: 0.45 },
+    glow: { enabled: false, color: "#d4ff3f", width: 16, opacity: 0.7 },
+  };
+}
+
+export function normalizeEditorShapeStyle(input: EditorShapeStyle): EditorShapeStyle {
+  return {
+    fill: input.fill,
+    fillEnabled: input.fillEnabled !== false,
+    fillOpacity: clampShape(input.fillOpacity, 0, 100, 100),
+    stroke: input.stroke,
+    strokeWidth: clampShape(input.strokeWidth, 0, 120, 0),
+    strokeStyle: EDITOR_SHAPE_LINE_STYLES.includes(input.strokeStyle) ? input.strokeStyle : "solid",
+    cornerRadius: clampShape(input.cornerRadius, 0, 400, 0),
+    shadow: {
+      enabled: input.shadow?.enabled === true,
+      color: input.shadow?.color ?? "#000000",
+      offsetX: clampShape(input.shadow?.offsetX ?? 12, -120, 120, 12),
+      offsetY: clampShape(input.shadow?.offsetY ?? 12, -120, 120, 12),
+      blur: clampShape(input.shadow?.blur ?? 6, 0, 60, 6),
+      opacity: clampShape(input.shadow?.opacity ?? 0.45, 0, 1, 0.45),
+    },
+    glow: {
+      enabled: input.glow?.enabled === true,
+      color: input.glow?.color ?? "#d4ff3f",
+      width: clampShape(input.glow?.width ?? 16, 1, 60, 16),
+      opacity: clampShape(input.glow?.opacity ?? 0.7, 0, 1, 0.7),
+    },
+  };
+}
 export const EDITOR_SHAPE_PRESETS = ["rectangle", "rounded-rectangle", "ellipse", "triangle", "diamond", "line", "arrow", "star", "hexagon"] as const;
 export type EditorShapePreset = typeof EDITOR_SHAPE_PRESETS[number];
 export const EDITOR_SHAPE_LABELS: Record<EditorShapePreset, string> = {
@@ -220,6 +294,44 @@ function cloneEditorPenPath(penPath: EditorPenPath): EditorPenPath {
 
 function cloneEditorShapePath(path: EditorShapePath): EditorShapePath {
   return path.penPath ? { ...path, penPath: cloneEditorPenPath(path.penPath) } : { ...path };
+}
+
+/** The style a shape renders with, falling back to one derived from its own path fills/strokes. */
+export function resolveEditorShapeStyle(shape: EditorShapeContent): EditorShapeStyle {
+  return shape.style ?? defaultEditorShapeStyle(shape.paths);
+}
+
+/** Round the corners of a closed M/L polygon path; radius 0 or an open path returns the input. */
+export function roundEditorShapePath(d: string, radius: number): string {
+  if (!(radius > 0) || !/z\s*$/i.test(d.trim())) return d;
+  const commands = d.trim().replace(/z\s*$/i, "").match(/[ML]\s*-?[\d.]+\s+-?[\d.]+/gi);
+  if (!commands || commands.length < 3) return d;
+  const points = commands.map((command) => {
+    const match = command.match(/(-?[\d.]+)\s+(-?[\d.]+)/);
+    return { x: Number(match?.[1] ?? 0), y: Number(match?.[2] ?? 0) };
+  });
+  const total = points.length;
+  const parts: string[] = [];
+  for (let index = 0; index < total; index += 1) {
+    const current = points[index];
+    const previous = points[(index - 1 + total) % total];
+    const next = points[(index + 1) % total];
+    const toPrevious = { x: previous.x - current.x, y: previous.y - current.y };
+    const toNext = { x: next.x - current.x, y: next.y - current.y };
+    const previousLength = Math.hypot(toPrevious.x, toPrevious.y);
+    const nextLength = Math.hypot(toNext.x, toNext.y);
+    if (previousLength === 0 || nextLength === 0) {
+      parts.push(`${index === 0 ? "M" : "L"} ${current.x} ${current.y}`);
+      continue;
+    }
+    const inset = Math.min(radius, previousLength / 2, nextLength / 2);
+    const start = { x: current.x + (toPrevious.x / previousLength) * inset, y: current.y + (toPrevious.y / previousLength) * inset };
+    const end = { x: current.x + (toNext.x / nextLength) * inset, y: current.y + (toNext.y / nextLength) * inset };
+    parts.push(`${index === 0 ? "M" : "L"} ${start.x.toFixed(2)} ${start.y.toFixed(2)}`);
+    parts.push(`Q ${current.x} ${current.y} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`);
+  }
+  parts.push("Z");
+  return parts.join(" ");
 }
 
 export type EditorImageContent = {
@@ -379,7 +491,11 @@ export function createEditorShapeLayer(
   return {
     ...createEditorArtworkLayer(id, name),
     kind: "shape",
-    shape: { paths: shape.paths.map(cloneEditorShapePath), builderMode: shape.builderMode ?? "select" },
+    shape: {
+      paths: shape.paths.map(cloneEditorShapePath),
+      builderMode: shape.builderMode ?? "select",
+      ...(shape.style ? { style: normalizeEditorShapeStyle(shape.style) } : {}),
+    },
   };
 }
 
@@ -391,12 +507,35 @@ export function appendEditorShapePaths(
   if (paths.length === 0) return layers;
   return layers.map((layer) => {
     if (layer.id !== layerId || layer.locked) return layer;
+    const existingPaths = (layer.shape?.paths ?? []).map(cloneEditorShapePath);
+    const nextPaths = [...existingPaths, ...paths.map(cloneEditorShapePath)];
+    // Seed a style from the first geometry so the Shape panel always has real values.
+    const style = layer.shape?.style ?? defaultEditorShapeStyle(nextPaths);
     return {
       ...layer,
       kind: layer.kind === "artwork" ? "shape" : layer.kind,
       shape: {
-        paths: [...(layer.shape?.paths ?? []).map(cloneEditorShapePath), ...paths.map(cloneEditorShapePath)],
+        paths: nextPaths,
         builderMode: layer.shape?.builderMode ?? "select",
+        style,
+      },
+    };
+  });
+}
+
+export function updateEditorShapeStyle(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  update: Partial<EditorShapeStyle>,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => {
+    if (layer.id !== layerId || !layer.shape || layer.locked) return layer;
+    const current = resolveEditorShapeStyle(layer.shape);
+    return {
+      ...layer,
+      shape: {
+        ...layer.shape,
+        style: normalizeEditorShapeStyle({ ...current, ...update }),
       },
     };
   });
@@ -510,15 +649,15 @@ export function applyEditorShapeBuilderOperation(
     const top = Math.max(first.y, second.y);
     const right = Math.min(first.x + first.width, second.x + second.width);
     const bottom = Math.min(first.y + first.height, second.y + second.height);
-    if (builderMode === "merge") return { ...layer, shape: { paths: [{ ...firstPath, d: `${firstPath.d} ${secondPath.d}` }], builderMode } };
-    if (right <= left || bottom <= top) return { ...layer, shape: { paths: [firstPath], builderMode } };
-    if (builderMode === "intersect") return { ...layer, shape: { paths: [rectPath({ x: left, y: top, width: right - left, height: bottom - top }, firstPath)], builderMode } };
+    if (builderMode === "merge") return { ...layer, shape: { ...layer.shape, paths: [{ ...firstPath, d: `${firstPath.d} ${secondPath.d}` }], builderMode } };
+    if (right <= left || bottom <= top) return { ...layer, shape: { ...layer.shape, paths: [firstPath], builderMode } };
+    if (builderMode === "intersect") return { ...layer, shape: { ...layer.shape, paths: [rectPath({ x: left, y: top, width: right - left, height: bottom - top }, firstPath)], builderMode } };
     const pieces: EditorShapePath[] = [];
     if (left > first.x) pieces.push(rectPath({ x: first.x, y: first.y, width: left - first.x, height: first.height }, firstPath));
     if (right < first.x + first.width) pieces.push(rectPath({ x: right, y: first.y, width: first.x + first.width - right, height: first.height }, firstPath));
     if (top > first.y) pieces.push(rectPath({ x: left, y: first.y, width: right - left, height: top - first.y }, firstPath));
     if (bottom < first.y + first.height) pieces.push(rectPath({ x: left, y: bottom, width: right - left, height: first.y + first.height - bottom }, firstPath));
-    return { ...layer, shape: { paths: pieces, builderMode } };
+    return { ...layer, shape: { ...layer.shape, paths: pieces, builderMode } };
   });
 }
 
@@ -687,7 +826,7 @@ export function duplicateEditorLayer(
     strokes: source.strokes.map(copyStroke),
     mask: source.mask?.map((stroke) => ({ ...copyStroke(stroke), mode: stroke.mode })) ?? null,
     text: source.text ? { ...source.text, effects: source.text.effects?.map((effect) => ({ ...effect })) } : null,
-    shape: source.shape ? { paths: source.shape.paths.map(cloneEditorShapePath), builderMode: source.shape.builderMode } : null,
+    shape: source.shape ? { paths: source.shape.paths.map(cloneEditorShapePath), builderMode: source.shape.builderMode, ...(source.shape.style ? { style: { ...source.shape.style, shadow: { ...source.shape.style.shadow }, glow: { ...source.shape.style.glow } } } : {}) } : null,
     image: source.image ? { ...source.image } : null,
   };
   const next = [...layers];

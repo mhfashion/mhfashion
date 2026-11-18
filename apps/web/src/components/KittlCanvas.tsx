@@ -25,6 +25,8 @@ import {
   createEditorArtworkLayer,
   createEditorImageLayer,
   createEditorShapePaths,
+  defaultEditorShapeStyle,
+  roundEditorShapePath,
   EDITOR_SHAPE_LABELS,
   createEditorTextLayer,
   deleteEditorLayer,
@@ -43,11 +45,12 @@ import {
   updateEditorImageAdjustments,
   updateEditorPenPath,
   updateEditorShapeBuilderMode,
+  updateEditorShapeStyle,
   applyEditorShapeBuilderOperation,
   updateEditorLayer,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
-import type { EditorBrushShape, EditorToolOptions } from "@/lib/editor-layers";
+import type { EditorBrushShape, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
 import {
   cornerEditorPenAnchor,
   draggedEditorPenAnchor,
@@ -1608,6 +1611,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setLayers((current) => builderMode === "select" ? updateEditorShapeBuilderMode(current, selectedLayerId, builderMode) : applyEditorShapeBuilderOperation(current, selectedLayerId, builderMode));
   }
 
+  function updateSelectedShapeStyle(update: Partial<EditorShapeStyle>) {
+    if (!selectedLayerId) return;
+    setLayers((current) => updateEditorShapeStyle(current, selectedLayerId, update));
+  }
+
   function addLayer() {
     const id = `layer-${nextLayerIdRef.current++}`;
     const number = nextLayerIdRef.current - 1;
@@ -1943,11 +1951,17 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     </g>)}
                   </svg>
                 )}
-                {shapeDrawing && (
-                  <svg aria-label="Shape preview" data-editor-shape-preview={shapeDrawing.preset} viewBox="0 0 1000 1200" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
-                    {createEditorShapePaths(shapeDrawing.preset, shapeDrawing.start, shapeDrawing.current, shapeDrawing.color).map((path, index) => <path key={index} d={path.d} fill={path.fill ?? "none"} stroke={path.stroke ?? "none"} strokeWidth={path.strokeWidth ?? 0} strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />)}
-                  </svg>
-                )}
+                {shapeDrawing && (() => {
+                  const previewPaths = createEditorShapePaths(shapeDrawing.preset, shapeDrawing.start, shapeDrawing.current, shapeDrawing.color);
+                  const targetShape = layers.find((layer) => layer.id === shapeDrawing.layerId)?.shape;
+                  const previewStyle = targetShape?.style ?? defaultEditorShapeStyle(previewPaths);
+                  const dash = previewStyle.strokeStyle === "dash" ? `${Math.max(8, (previewStyle.strokeWidth || 8) * 2)} ${Math.max(6, previewStyle.strokeWidth || 8)}` : previewStyle.strokeStyle === "dot" ? `0.01 ${Math.max(8, (previewStyle.strokeWidth || 8) * 2)}` : undefined;
+                  return (
+                    <svg aria-label="Shape preview" data-editor-shape-preview={shapeDrawing.preset} viewBox="0 0 1000 1200" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
+                      {previewPaths.map((path, index) => <path key={index} d={roundEditorShapePath(path.d, previewStyle.cornerRadius)} fill={previewStyle.fillEnabled ? previewStyle.fill : "none"} fillOpacity={previewStyle.fillOpacity / 100} stroke={previewStyle.strokeWidth > 0 ? previewStyle.stroke : "none"} strokeWidth={previewStyle.strokeWidth} strokeDasharray={dash} strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />)}
+                    </svg>
+                  );
+                })()}
                 {activeTool === "pen" && penAnchors.length > 0 && (
                   <div aria-label="Pen tool actions" className="absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-16px)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-xl border border-border bg-bg-surface/95 px-2 py-1 text-[10px] text-text-primary shadow-lg">
                     <span className="hidden px-1 sm:inline">Click anchors · drag for curves · Alt-drag for corners · Enter finish · Esc cancel</span>
@@ -2102,6 +2116,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onUpdateText={updateSelectedText}
           onUpdateTextStyle={updateSelectedTextStyle}
           onUpdateShapeBuilder={updateSelectedShapeBuilder}
+          onUpdateShapeStyle={updateSelectedShapeStyle}
           onUpdateImage={updateSelectedImage}
           onAddMask={createLayerMask}
           onRemoveMask={deleteLayerMask}

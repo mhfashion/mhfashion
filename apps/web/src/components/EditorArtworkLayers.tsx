@@ -3,6 +3,7 @@
 import { useId } from "react";
 import type { ArtworkStroke, EditorArtworkLayer, MaskBrushMode } from "@/lib/editor-layers";
 import EditorLayerPreview from "@/components/EditorLayerPreview";
+import { resolveEditorShapeStyle } from "@/lib/editor-layers";
 
 function pathFor(stroke: ArtworkStroke) {
   return stroke.points
@@ -161,7 +162,7 @@ export default function EditorArtworkLayers({
               ))}
               {(layer.shape !== null || layer.text !== null || layer.image !== null) && (
                 <g data-editor-layer-kind={layer.kind}>
-                  <EditorLayerPreview paths={layer.shape?.paths} text={layer.text} image={layer.image} />
+                  <EditorLayerPreview paths={layer.shape?.paths} shapeStyle={layer.shape ? resolveEditorShapeStyle(layer.shape) : null} text={layer.text} image={layer.image} />
                 </g>
               )}
             </g>

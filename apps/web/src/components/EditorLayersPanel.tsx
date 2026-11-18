@@ -24,12 +24,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import EditorLayerPreview, { EDITOR_ARTWORK_VIEWBOX } from "@/components/EditorLayerPreview";
-import type {
-  ArtworkStroke,
-  EditorArtworkLayer,
-  EditorLayerBlendMode,
-  LayerEditTarget,
-} from "@/lib/editor-layers";
+import { resolveEditorShapeStyle, type ArtworkStroke, type EditorArtworkLayer, type EditorLayerBlendMode, type LayerEditTarget } from "@/lib/editor-layers";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
 const TINY_ICON = "flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-text-secondary outline-none hover:bg-[#d1d1d1] hover:text-[#111] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-1 focus-visible:ring-[#438bc4] dark:hover:bg-[#494949] dark:hover:text-white [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-8";
@@ -58,7 +53,7 @@ function ArtworkThumbnail({ layer }: { layer: EditorArtworkLayer }) {
           <path key={index} d={strokePath(stroke)} fill="none" stroke="#242424" strokeWidth="46" strokeLinecap="round" strokeLinejoin="round" />
         ))}
         {(layer.shape !== null || layer.text !== null || layer.image !== null) && (
-          <EditorLayerPreview paths={layer.shape?.paths} text={layer.text} image={layer.image} />
+          <EditorLayerPreview paths={layer.shape?.paths} shapeStyle={layer.shape ? resolveEditorShapeStyle(layer.shape) : null} text={layer.text} image={layer.image} />
         )}
       </svg>
     </span>

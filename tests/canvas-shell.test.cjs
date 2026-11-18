@@ -253,6 +253,40 @@ test("Shape tool exposes selectable presets, previews gestures, and appends path
   assert.doesNotMatch(source, /Shape Tool is ready for the upcoming vector-shape pipeline/);
 });
 
+test("shape adjustments expose Photoshop/Kittl fill, stroke, radius, and effects", () => {
+  // Data model: independent fill/stroke channels plus effects, with clamping.
+  assert.match(layerModelSource, /export type EditorShapeStyle = \{/);
+  assert.match(layerModelSource, /export type EditorShapeLineStyle = "solid" \| "dash" \| "dot"/);
+  assert.match(layerModelSource, /export function defaultEditorShapeStyle\(paths: EditorShapePath\[\]\): EditorShapeStyle/);
+  assert.match(layerModelSource, /export function normalizeEditorShapeStyle\(input: EditorShapeStyle\): EditorShapeStyle/);
+  assert.match(layerModelSource, /export function resolveEditorShapeStyle\(shape: EditorShapeContent\): EditorShapeStyle/);
+  assert.match(layerModelSource, /export function updateEditorShapeStyle\(/);
+  assert.match(layerModelSource, /export function roundEditorShapePath\(d: string, radius: number\): string/);
+  assert.match(layerModelSource, /shadow: \{ enabled: false, color: "#000000"/);
+  assert.match(layerModelSource, /glow: \{ enabled: false, color: "#d4ff3f"/);
+  // A new shape seeds its style from its geometry so the panel never shows empty values.
+  assert.match(layerModelSource, /const style = layer\.shape\?\.style \?\? defaultEditorShapeStyle\(nextPaths\)/);
+  // Renderer: style drives fill/stroke/dash/filter and corner rounding.
+  assert.match(layerPreview, /shapeStyle\?: EditorShapeStyle \| null/);
+  assert.match(layerPreview, /shapeDash/);
+  assert.match(layerPreview, /feDropShadow/);
+  assert.match(layerPreview, /data-editor-shape-style=\{shapeStyle \? "true" : undefined\}/);
+  assert.match(layerPreview, /roundEditorShapePath\(path\.d, shapeStyle\.cornerRadius\)/);
+  // Panel: a Shape section with fill/stroke/line-style/radius and the two effects.
+  assert.match(adjustmentsPanel, /title="Shape"/);
+  assert.match(adjustmentsPanel, /aria-label="Shape fill color"/);
+  assert.match(adjustmentsPanel, /aria-label="Shape stroke color"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Shape stroke width"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Shape corner radius"/);
+  assert.match(adjustmentsPanel, /aria-label="Toggle shape drop shadow"/);
+  assert.match(adjustmentsPanel, /aria-label="Toggle shape glow"/);
+  assert.match(adjustmentsPanel, /onUpdateShapeStyle\(\{ strokeStyle: style \}\)/);
+  // Canvas: the live preview uses the target layer's style and update handler is wired.
+  assert.match(source, /const previewStyle = targetShape\?\.style \?\? defaultEditorShapeStyle\(previewPaths\)/);
+  assert.match(source, /function updateSelectedShapeStyle\(update: Partial<EditorShapeStyle>\)/);
+  assert.match(source, /onUpdateShapeStyle=\{updateSelectedShapeStyle\}/);
+});
+
 test("drawing tools are inert on photo layers and the tools bar disables them", () => {
   // Canvas guard: a selected photo layer blocks paint/pen/shape/gradient/eraser.
   assert.match(source, /const DRAWING_TOOLS: EditorTool\[\] = \["brush", "pencil", "pen", "shape", "gradient", "eraser"\]/);
@@ -616,7 +650,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   // Every sidebar addition must be reachable in the Layers stack.
   assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
   assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 4, "Only explicit text, element, design and upload insertion reveals Layers");
-  assert.match(layersPanel, /EditorLayerPreview paths=\{layer\.shape\?\.paths\} text=\{layer\.text\} image=\{layer\.image\}/);
+  assert.match(layersPanel, /EditorLayerPreview paths=\{layer\.shape\?\.paths\} shapeStyle=\{layer\.shape \? resolveEditorShapeStyle\(layer\.shape\) : null\} text=\{layer\.text\} image=\{layer\.image\}/);
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
   assert.match(source, /canvasLayerTransforms/);
   assert.match(source, /Move canvas artwork/);

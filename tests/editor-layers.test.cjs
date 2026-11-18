@@ -24,6 +24,11 @@ const {
   addLayerMask,
   applyEditorShapeBuilderOperation,
   appendEditorShapePaths,
+  defaultEditorShapeStyle,
+  normalizeEditorShapeStyle,
+  resolveEditorShapeStyle,
+  roundEditorShapePath,
+  updateEditorShapeStyle,
   appendLayerStroke,
   createEditorArtworkLayer,
   createEditorImageLayer,
@@ -192,6 +197,71 @@ test("vector shape paths append to one unlocked layer without allocating a new l
 
   const locked = updateEditorLayer(withBoth, "active", { locked: true });
   assert.strictEqual(appendEditorShapePaths(locked, "active", [firstPath])[0], locked[0], "locked layers reject vector drawing");
+});
+
+test("shape style derives from geometry, clamps edits, and updates independently of fill/stroke paths", () => {
+  const paths = [
+    { d: "M 0 0 L 100 0 L 100 100 Z", fill: "#4c9d16", stroke: "none", strokeWidth: 0 },
+  ];
+  const seeded = defaultEditorShapeStyle(paths);
+  assert.equal(seeded.fill, "#4c9d16");
+  assert.equal(seeded.fillEnabled, true);
+  assert.equal(seeded.strokeWidth, 0);
+  assert.equal(seeded.strokeStyle, "solid");
+  assert.equal(seeded.cornerRadius, 0);
+  assert.equal(seeded.shadow.enabled, false);
+  assert.equal(seeded.glow.enabled, false);
+
+  // A layer without an explicit style resolves to a derived one.
+  const layer = createEditorShapeLayer("shape-style", "Box", { paths });
+  assert.equal(layer.shape.style, undefined);
+  assert.equal(resolveEditorShapeStyle(layer.shape).fill, "#4c9d16");
+
+  // Appending geometry seeds a style so the panel always has real values.
+  const base = createEditorArtworkLayer("style-target", "Layer 1");
+  const appended = appendEditorShapePaths([base], base.id, paths)[0];
+  assert.equal(appended.shape.style.fill, "#4c9d16");
+
+  // Updates merge partials and clamp out-of-range numbers.
+  const styled = updateEditorShapeStyle([appended], appended.id, {
+    stroke: "#ff0000",
+    strokeWidth: 500,
+    fillOpacity: -20,
+    strokeStyle: "dash",
+    cornerRadius: 9999,
+    shadow: { ...appended.shape.style.shadow, enabled: true, blur: 999 },
+  })[0];
+  assert.equal(styled.shape.style.stroke, "#ff0000");
+  assert.equal(styled.shape.style.strokeWidth, 120, "stroke width clamps to 120");
+  assert.equal(styled.shape.style.fillOpacity, 0, "fill opacity clamps to 0");
+  assert.equal(styled.shape.style.strokeStyle, "dash");
+  assert.equal(styled.shape.style.cornerRadius, 400, "corner radius clamps to 400");
+  assert.equal(styled.shape.style.shadow.enabled, true);
+  assert.equal(styled.shape.style.shadow.blur, 60, "shadow blur clamps to 60");
+  // The underlying path geometry is untouched.
+  assert.equal(styled.shape.paths[0].fill, "#4c9d16");
+
+  // A locked layer rejects style changes.
+  const lockedLayer = updateEditorLayer([styled], styled.id, { locked: true })[0];
+  assert.strictEqual(updateEditorShapeStyle([lockedLayer], lockedLayer.id, { fill: "#000000" })[0], lockedLayer);
+
+  // normalizeEditorShapeStyle falls back to safe defaults for unknown input.
+  const normalized = normalizeEditorShapeStyle({ ...seeded, strokeStyle: "wavy" });
+  assert.equal(normalized.strokeStyle, "solid");
+});
+
+test("roundEditorShapePath rounds closed polygons and leaves open or zero-radius paths unchanged", () => {
+  const square = "M 0 0 L 100 0 L 100 100 L 0 100 Z";
+  const rounded = roundEditorShapePath(square, 20);
+  assert.notEqual(rounded, square);
+  assert.match(rounded, /^M /);
+  assert.match(rounded, /Q /);
+  assert.match(rounded, /Z$/);
+  // Radius 0 is a no-op.
+  assert.equal(roundEditorShapePath(square, 0), square);
+  // Open paths are not rounded.
+  const open = "M 0 0 L 100 0 L 100 100";
+  assert.equal(roundEditorShapePath(open, 20), open);
 });
 
 test("Pen paths retain editable Bézier nodes, update their SVG data, and duplicate independently", () => {

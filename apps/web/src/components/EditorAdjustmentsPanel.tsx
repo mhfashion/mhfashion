@@ -2,7 +2,8 @@
 
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { EditorArtworkLayer, EditorBrushSettings, EditorEraserSettings, EditorPenSettings, EditorShapeBuilderMode, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
+import type { EditorArtworkLayer, EditorBrushSettings, EditorEraserSettings, EditorPenSettings, EditorShapeBuilderMode, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
+import { EDITOR_SHAPE_LINE_STYLES, resolveEditorShapeStyle } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
 
@@ -76,7 +77,7 @@ function BrushOptions({ label, value, onChange }: { label: string; value: Editor
   </div>;
 }
 
-export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateImage, onAddMask, onRemoveMask, onSelectMask }: {
+export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, onAddMask, onRemoveMask, onSelectMask }: {
   open: boolean;
   onToggle: () => void;
   selectedLayer: EditorArtworkLayer | null;
@@ -87,6 +88,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   onUpdateText: (value: string) => void;
   onUpdateTextStyle: (update: TextStyleUpdate) => void;
   onUpdateShapeBuilder: (mode: EditorShapeBuilderMode) => void;
+  onUpdateShapeStyle: (update: Partial<EditorShapeStyle>) => void;
   onUpdateImage: (update: PhotoAdjustmentUpdate) => void;
   onAddMask: (id: string) => void;
   onRemoveMask: (id: string) => void;
@@ -94,6 +96,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
 }) {
   const text = selectedLayer?.text;
   const image = selectedLayer?.image;
+  const shapeStyle = selectedLayer?.shape ? resolveEditorShapeStyle(selectedLayer.shape) : null;
   const [fontQuery, setFontQuery] = useState("");
   const [recentFonts, setRecentFonts] = useState<string[]>([]);
   const [nextEffectId, setNextEffectId] = useState(1);
@@ -162,6 +165,33 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
           {!selectedLayer && <p className="p-2 text-[11px] text-[#666] dark:text-[#bdbdbd]">Select a layer to edit its properties.</p>}
           {selectedLayer && <>
           <div className="rounded-xl border border-border/70 bg-bg/70 px-3 py-2 font-semibold text-text-primary shadow-sm dark:bg-white/[0.04]">{selectedLayer.name}<span className="mt-0.5 block text-[9px] font-normal uppercase tracking-wider text-text-muted">{selectedLayer.kind} layer</span></div>
+          {selectedLayer.shape && shapeStyle && <Section title="Shape" open={openSection === "Shape"} onToggle={() => toggleSection("Shape")}>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span className="flex items-center gap-1.5"><input aria-label="Toggle shape fill" type="checkbox" checked={shapeStyle.fillEnabled} onChange={(event) => onUpdateShapeStyle({ fillEnabled: event.target.checked })} className="h-3.5 w-3.5 accent-[var(--accent)]" />Fill</span><input aria-label="Shape fill color" type="color" value={shapeStyle.fill} onChange={(event) => onUpdateShapeStyle({ fill: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></div>
+              <RangeField label="Fill opacity" value={shapeStyle.fillOpacity} min={0} max={100} suffix="%" ariaLabel="Shape fill opacity" onChange={(fillOpacity) => onUpdateShapeStyle({ fillOpacity })} />
+              <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Stroke</span><input aria-label="Shape stroke color" type="color" value={shapeStyle.stroke} onChange={(event) => onUpdateShapeStyle({ stroke: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></div>
+              <RangeField label="Stroke width" value={shapeStyle.strokeWidth} min={0} max={60} suffix="px" ariaLabel="Shape stroke width" onChange={(strokeWidth) => onUpdateShapeStyle({ strokeWidth })} />
+              <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Line style</span><div role="group" aria-label="Shape line style" className="flex gap-1">{EDITOR_SHAPE_LINE_STYLES.map((style) => <button key={style} type="button" aria-label={`Shape line style ${style}`} aria-pressed={shapeStyle.strokeStyle === style} onClick={() => onUpdateShapeStyle({ strokeStyle: style })} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{style}</button>)}</div></div>
+              <RangeField label="Corner radius" value={shapeStyle.cornerRadius} min={0} max={200} suffix="u" ariaLabel="Shape corner radius" onChange={(cornerRadius) => onUpdateShapeStyle({ cornerRadius })} />
+              <div className="rounded-lg border border-border/70 bg-bg/60 p-2">
+                <div className="flex items-center justify-between gap-2 text-[10px] font-semibold text-text-primary"><span className="flex items-center gap-1.5"><input aria-label="Toggle shape drop shadow" type="checkbox" checked={shapeStyle.shadow.enabled} onChange={(event) => onUpdateShapeStyle({ shadow: { ...shapeStyle.shadow, enabled: event.target.checked } })} className="h-3.5 w-3.5 accent-[var(--accent)]" />Drop shadow</span><input aria-label="Shape shadow color" type="color" value={shapeStyle.shadow.color} onChange={(event) => onUpdateShapeStyle({ shadow: { ...shapeStyle.shadow, color: event.target.value } })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></div>
+                {shapeStyle.shadow.enabled && <div className="mt-2 space-y-2">
+                  <NumberField label="Offset X" value={shapeStyle.shadow.offsetX} min={-120} max={120} ariaLabel="Shape shadow offset X" onChange={(offsetX) => onUpdateShapeStyle({ shadow: { ...shapeStyle.shadow, offsetX } })} />
+                  <NumberField label="Offset Y" value={shapeStyle.shadow.offsetY} min={-120} max={120} ariaLabel="Shape shadow offset Y" onChange={(offsetY) => onUpdateShapeStyle({ shadow: { ...shapeStyle.shadow, offsetY } })} />
+                  <RangeField label="Blur" value={shapeStyle.shadow.blur} min={0} max={60} ariaLabel="Shape shadow blur" onChange={(blur) => onUpdateShapeStyle({ shadow: { ...shapeStyle.shadow, blur } })} />
+                  <RangeField label="Opacity" value={Math.round(shapeStyle.shadow.opacity * 100)} min={0} max={100} suffix="%" ariaLabel="Shape shadow opacity" onChange={(percent) => onUpdateShapeStyle({ shadow: { ...shapeStyle.shadow, opacity: percent / 100 } })} />
+                </div>}
+              </div>
+              <div className="rounded-lg border border-border/70 bg-bg/60 p-2">
+                <div className="flex items-center justify-between gap-2 text-[10px] font-semibold text-text-primary"><span className="flex items-center gap-1.5"><input aria-label="Toggle shape glow" type="checkbox" checked={shapeStyle.glow.enabled} onChange={(event) => onUpdateShapeStyle({ glow: { ...shapeStyle.glow, enabled: event.target.checked } })} className="h-3.5 w-3.5 accent-[var(--accent)]" />Outer glow</span><input aria-label="Shape glow color" type="color" value={shapeStyle.glow.color} onChange={(event) => onUpdateShapeStyle({ glow: { ...shapeStyle.glow, color: event.target.value } })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></div>
+                {shapeStyle.glow.enabled && <div className="mt-2 space-y-2">
+                  <RangeField label="Spread" value={shapeStyle.glow.width} min={1} max={60} ariaLabel="Shape glow spread" onChange={(width) => onUpdateShapeStyle({ glow: { ...shapeStyle.glow, width } })} />
+                  <RangeField label="Opacity" value={Math.round(shapeStyle.glow.opacity * 100)} min={0} max={100} suffix="%" ariaLabel="Shape glow opacity" onChange={(percent) => onUpdateShapeStyle({ glow: { ...shapeStyle.glow, opacity: percent / 100 } })} />
+                </div>}
+              </div>
+              <p className="text-[9px] leading-relaxed text-text-muted">Fill and stroke are independent, like Photoshop and Kittl. Shadow and glow render live on the canvas, the layer thumbnail, and the mockups.</p>
+            </div>
+          </Section>}
           {selectedLayer.shape && <Section title="Shape Builder" open={openSection === "Shape Builder"} onToggle={() => toggleSection("Shape Builder")}>
             <div className="grid grid-cols-2 gap-1.5">{(["select", "merge", "subtract", "intersect"] as const).map((mode) => <button key={mode} type="button" aria-label={`Shape builder ${mode}`} aria-pressed={(selectedLayer.shape?.builderMode ?? "select") === mode} onClick={() => onUpdateShapeBuilder(mode)} className="rounded-lg border border-border px-2 py-2 text-[10px] capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{mode === "select" ? "Select" : mode}</button>)}</div>
             <p className="mt-2 text-[9px] leading-relaxed text-text-muted">Choose a builder mode before combining or editing vector shapes on the Canvas.</p>

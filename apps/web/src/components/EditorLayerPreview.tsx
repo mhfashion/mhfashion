@@ -1,7 +1,8 @@
 "use client";
 
 import { useId, type SVGProps } from "react";
-import type { EditorImageContent, EditorShapePath, EditorTextContent, EditorTextEffect } from "@/lib/editor-layers";
+import type { EditorImageContent, EditorShapePath, EditorShapeStyle, EditorTextContent, EditorTextEffect } from "@/lib/editor-layers";
+import { roundEditorShapePath } from "@/lib/editor-layers";
 import { buildToneTable, colorMatrixValues, grainParams, photoFilterCss, splitToneBands, vignetteParams } from "@/lib/photo-adjustments";
 
 // The print canvas and every preview share one 1000 x 1200 unit artwork space.
@@ -10,10 +11,12 @@ export const EDITOR_TEXT_FONT_FAMILY = "'Inter', system-ui, -apple-system, 'Sego
 
 export default function EditorLayerPreview({
   paths = [],
+  shapeStyle = null,
   text = null,
   image = null,
 }: {
   paths?: EditorShapePath[];
+  shapeStyle?: EditorShapeStyle | null;
   text?: EditorTextContent | null;
   image?: EditorImageContent | null;
 }) {
@@ -23,6 +26,8 @@ export default function EditorLayerPreview({
   const imageGradientId = `${effectPrefix}-image-gradient`;
   const imageGrainId = `${effectPrefix}-image-grain`;
   const vignetteId = `${effectPrefix}-vignette`;
+  const shapeShadowId = `${effectPrefix}-shape-shadow`;
+  const shapeGlowId = `${effectPrefix}-shape-glow`;
   const toneTable = image ? buildToneTable(image) : "";
   const colorValues = image ? colorMatrixValues(image) : "";
   const imageFilterCss = image ? photoFilterCss(image) : "";
@@ -31,18 +36,58 @@ export default function EditorLayerPreview({
   const bands = image ? splitToneBands(image) : null;
   const splitToneStrength = bands ? Math.max(bands.highlights.opacity, bands.midtones.opacity, bands.shadows.opacity) : 0;
   const effectKey = (effect: EditorTextEffect) => effect.id.replace(/[^a-zA-Z0-9_-]/g, "-");
+  const shapeDash = shapeStyle?.strokeStyle === "dash"
+    ? `${Math.max(8, (shapeStyle.strokeWidth || 8) * 2)} ${Math.max(6, shapeStyle.strokeWidth || 8)}`
+    : shapeStyle?.strokeStyle === "dot"
+      ? `0.01 ${Math.max(8, (shapeStyle.strokeWidth || 8) * 2)}`
+      : undefined;
+  const shapeFilter = shapeStyle?.glow.enabled
+    ? `url(#${shapeGlowId})`
+    : shapeStyle?.shadow.enabled
+      ? `url(#${shapeShadowId})`
+      : undefined;
+  const shapeFill = !shapeStyle || !shapeStyle.fillEnabled ? "none" : shapeStyle.fill;
+  const shapeStrokeWidth = shapeStyle?.strokeWidth ?? 0;
+  const shapeStroke = shapeStyle && shapeStrokeWidth > 0 ? shapeStyle.stroke : "none";
+  const shapePaths = shapeStyle
+    ? paths.map((path) => ({ ...path, d: roundEditorShapePath(path.d, shapeStyle.cornerRadius) }))
+    : paths;
   return (
     <>
-      {paths.map((path, index) => (
+      {shapeStyle && (shapeStyle.shadow.enabled || shapeStyle.glow.enabled) && (
+        <defs>
+          {shapeStyle.shadow.enabled && (
+            <filter id={shapeShadowId} x="-40%" y="-40%" width="180%" height="180%">
+              <feDropShadow dx={shapeStyle.shadow.offsetX} dy={shapeStyle.shadow.offsetY} stdDeviation={shapeStyle.shadow.blur} floodColor={shapeStyle.shadow.color} floodOpacity={shapeStyle.shadow.opacity} />
+            </filter>
+          )}
+          {shapeStyle.glow.enabled && (
+            <filter id={shapeGlowId} x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation={shapeStyle.glow.width / 3} result="blur" />
+              <feFlood floodColor={shapeStyle.glow.color} floodOpacity={shapeStyle.glow.opacity} result="color" />
+              <feComposite in="color" in2="blur" operator="in" result="glow" />
+              <feMerge>
+                <feMergeNode in="glow" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          )}
+        </defs>
+      )}
+      {shapePaths.map((path, index) => (
         <path
           key={`shape-${index}`}
           d={path.d}
-          fill={path.fill ?? "none"}
-          stroke={path.stroke ?? "none"}
-          strokeWidth={path.strokeWidth ?? 20}
+          fill={shapeStyle ? shapeFill : path.fill ?? "none"}
+          fillOpacity={shapeStyle ? shapeStyle.fillOpacity / 100 : undefined}
+          stroke={shapeStyle ? shapeStroke : path.stroke ?? "none"}
+          strokeWidth={shapeStyle ? shapeStrokeWidth : path.strokeWidth ?? 20}
+          strokeDasharray={shapeStyle ? shapeDash : undefined}
           strokeLinecap="round"
           strokeLinejoin="round"
+          filter={shapeStyle ? shapeFilter : undefined}
           data-editor-shape-path="true"
+          data-editor-shape-style={shapeStyle ? "true" : undefined}
         />
       ))}
       {text && (() => {
