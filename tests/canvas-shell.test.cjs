@@ -596,6 +596,7 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(photoAdjustments, /Edit photo layer mask/);
   assert.match(photoAdjustments, /aria-label="Remove photo layer mask"/);
   assert.match(adjustmentsPanel, /Blend mode for \$\{selectedLayer\.name\}/);
+
   assert.match(photoAdjustments, /ariaLabel="Photo vignette"/);
   assert.match(photoAdjustments, /ariaLabel="Photo grain"/);
   assert.match(photoAdjustments, /ariaLabel="Photo levels black point"/);
@@ -607,6 +608,12 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(photoAdjustments, /ariaLabel="Upscale photo"/);
   assert.match(layerPreview, /buildToneTable\(image\)/);
   assert.match(layerPreview, /feColorMatrix type="matrix" values=\{colorValues\}/);
+
+  assert.match(adjustmentsPanel, /border-border bg-bg-surface text-text-primary/);
+  assert.match(adjustmentsPanel, /border-border bg-bg px-3 text-text-primary/);
+  assert.match(adjustmentsPanel, /aria-label=\{open \? "Return to Layers" : "Open Adjustments panel"\}/);
+  assert.match(adjustmentsPanel, /title=\{open \? "Return to Layers" : "Open Adjustments panel"\}/);
+  assert.match(adjustmentsPanel, /data-adjustments-return-arrow=\{open \? "true" : "false"\}/);
   assert.match(layerPreview, /data-editor-image-background-removed/);
   assert.match(layerPreview, /data-editor-image-vignette/);
   assert.match(layerPreview, /data-editor-image-split-tone/);
@@ -640,6 +647,8 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /style=\{\{ left: hasPanel \? "calc\(3rem \+ " \+ PANEL_WIDTH \+ "\)" : railVisible \? "3rem" : 0 \}\}/);
   assert.match(editSidebar, /h-7 w-7[^"]*rounded-full[^"]*bg-accent[^"]*text-accent-foreground/);
   assert.match(editSidebar, /aria-label="Edit sidebar rail"/);
+  assert.match(editSidebar, /border-border bg-bg-surface\/95 py-2 text-text-primary/);
+  assert.match(editSidebar, /border-border bg-bg px-3 text-text-primary/);
   assert.match(editSidebar, /"Open " \+ label \+ " in Edit sidebar"/);
   assert.match(editSidebar, /setActiveSection\(section\)/);
   for (const label of ["Designs", "Elements", "Text", "Upload", "Image Create"]) {

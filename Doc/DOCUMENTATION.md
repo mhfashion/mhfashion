@@ -1035,6 +1035,7 @@ Added Photo-specific Mask controls inside the Photo Adjustments section. Uploade
 
 Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
 
+
 ### 2026-11-18 — Photo layers are non-drawable; sectioned Photo Adjustments
 
 Three owner changes landed together. Drawing tools no longer touch a photo layer: `KittlCanvas.startArtworkStroke` returns early for `brush`, `pencil`, `pen`, `shape`, `gradient`, and `eraser` when the selected layer's kind is `image`, `chooseTool` falls back to Move with an explanatory notice, and `EditorToolsBar` receives a `drawingToolsDisabled` prop that greys those buttons out (they are the only disabled tools; Move, Hand, Text, colours, and undo/redo stay live). A photo is therefore edited only through Photo Adjustments.
@@ -1058,3 +1059,11 @@ Validation passed: photo-adjustments **13/13**, canvas-shell **19/19**, editor-l
 
 ## 2026-11-18 — Pen and Shape drawing reuse the active layer
 Pen and Shape gestures now append vector paths to the selected unlocked layer rather than creating a new layer for every completed drawing action. They keep the selected layer in place and do not automatically open the Layers panel; a locked or missing active layer blocks the drawing instead of creating one. Pen remains active after a path is committed, matching the concurrent Pen-continuity directive. Multiple Pen paths can coexist in one layer, and hit-testing, anchor insertion/removal, and Bézier-handle edits carry the path index so only the intended path changes. Explicit Add Layer remains available; text, image, and design insertions continue to create their own editable object layers. After integrating the latest `origin/main`, validation passed: all five relevant test suites **47/47**, TypeScript, Next.js production build, and OpenNext Cloudflare build. ESLint reported **0 errors and 25 warnings**, with no diagnostics in changed source files; `git diff --check` passed.
+
+### 2026-11-19 — Editor Sidebar and Adjustments theme-color correction
+
+Fixed the editor dock color inconsistency visible in the supplied screenshot. The Edit Sidebar rail and expanded panel now use the shared `bg`, `bg-surface`, `border`, and text theme tokens instead of a forced dark rail/light panel combination. The Adjustments dock and its title bar now use the same theme-aware tokens, so Light and Dark modes remain visually coherent with the rest of the editor and the existing Layers dock.
+
+The circular control at the left edge of Adjustments is now explicitly the `Return to Layers` arrow while the panel is open. It has a matching accessible label, browser title, and `data-adjustments-return-arrow` state marker; clicking it continues to close Adjustments and reopen Layers. Desktop and coarse-pointer sizing remain unchanged.
+
+Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.

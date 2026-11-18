@@ -290,8 +290,8 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
     replaceEffectStack(next);
   }
   return <>
-    {open && <aside aria-label="Adjustments panel" data-dock-side="right" className="absolute inset-y-0 right-0 z-30 flex min-h-0 flex-col overflow-hidden border-l border-[#b7b7b7] bg-[#e8e8e8] text-[#202020] shadow-xl dark:border-[#1b1b1b] dark:bg-[#303030] dark:text-[#dedede]" style={{ width: PANEL_WIDTH }}>
-      <div aria-label="Adjustments panel title" className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#1d2429] via-[#252f35] to-[#303b41] px-3 text-white shadow-sm [@media(pointer:coarse)]:h-12">
+    {open && <aside aria-label="Adjustments panel" data-dock-side="right" className="absolute inset-y-0 right-0 z-30 flex min-h-0 flex-col overflow-hidden border-l border-border bg-bg-surface text-text-primary shadow-xl dark:shadow-black/60" style={{ width: PANEL_WIDTH }}>
+      <div aria-label="Adjustments panel title" className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-bg px-3 text-text-primary shadow-sm [@media(pointer:coarse)]:h-12">
         <div><span role="heading" aria-level={2} className="text-[12px] font-semibold tracking-tight">Adjustments</span><span className="ml-2 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">Live</span></div>
         <span aria-hidden="true" className="h-2 w-2 rounded-full bg-accent shadow-[0_0_10px_#d4ff3f]" />
       </div>
@@ -433,6 +433,6 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
         </div>
       </div>
     </aside>}
-    <button type="button" aria-label={open ? "Close Adjustments panel" : "Open Adjustments panel"} aria-expanded={open} onClick={onToggle} className="absolute top-2 z-40 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11" style={{ right: open ? PANEL_WIDTH : 0 }}><ChevronRight size={17} aria-hidden="true" /></button>
+    <button type="button" aria-label={open ? "Return to Layers" : "Open Adjustments panel"} title={open ? "Return to Layers" : "Open Adjustments panel"} data-adjustments-return-arrow={open ? "true" : "false"} aria-expanded={open} onClick={onToggle} className="absolute top-2 z-40 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11" style={{ right: open ? PANEL_WIDTH : 0 }}><ChevronRight size={17} aria-hidden="true" /></button>
   </>;
 }
