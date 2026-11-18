@@ -20,8 +20,10 @@ import { getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTran
 import type { TransformHandle } from "@/lib/editor-transform";
 import {
   addLayerMask,
+  appendLayerErasure,
   appendEditorShapePaths,
   appendLayerStroke,
+  clearLayerErasures,
   createEditorArtworkLayer,
   createEditorImageLayer,
   createEditorShapePaths,
@@ -37,6 +39,7 @@ import {
   normalizeEditorToolOptions,
   removeLayerMask,
   reorderEditorLayer,
+  segmentDistancePx,
   setEditorLayerText,
   EDITOR_TOOL_OPTIONS_DEFAULT,
   ungroupEditorLayers,
@@ -48,9 +51,10 @@ import {
   updateEditorShapeStyle,
   applyEditorShapeBuilderOperation,
   updateEditorLayer,
+  updateLayerLastErasure,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
-import type { EditorBrushShape, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
+import type { ArtworkStroke, EditorBrushShape, EditorErasure, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
 import {
   cornerEditorPenAnchor,
   draggedEditorPenAnchor,
@@ -155,6 +159,8 @@ type ActiveArtworkStroke = {
   opacity?: number;
   shape?: EditorBrushShape;
   softness?: number;
+  /** Brush-engine options recorded on the stroke (spacing, flow, jitter, angle, ...). */
+  brush?: Partial<ArtworkStroke>;
 };
 type ActiveShapeDrag = { pointerId: number; layerId: string; preset: EditorShapePreset; start: Point; current: Point; color: string };
 
@@ -509,7 +515,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const penEditWindowHandlersRef = useRef<{ move: (event: PointerEvent) => void; end: (event: PointerEvent) => void } | null>(null);
   const penKeyHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
   const finishPenPathRef = useRef<(close?: boolean) => void>(() => {});
-  const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget } | null>(null);
+  const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget; points: Point[] } | null>(null);
   const canvasArtworkDragRef = useRef<CanvasArtworkDrag | null>(null);
   const canvasLayerResizeRef = useRef<CanvasLayerResizeDrag | null>(null);
   const canvasLayerRotateRef = useRef<CanvasLayerRotateDrag | null>(null);
@@ -782,14 +788,45 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setRedoStack([]);
   }
 
-  function eraseArtworkAt(point: Point, layerId: string, target: LayerEditTarget) {
+  /**
+   * The eraser records a pass, not a one-shot delete. Brush mode lays down soft dabs that
+   * build up over a drag; stroke mode clears any whole stroke whose points fall under the nib.
+   */
+  function buildEraserPass(points: Point[]): EditorErasure {
+    const settings = toolOptions.eraser;
+    return {
+      points: points.map((point) => ({ ...point })),
+      tool: "brush",
+      width: settings.size,
+      opacity: settings.opacity / 100,
+      shape: settings.shape,
+      hardness: settings.hardness,
+      flow: settings.flow,
+      spacing: settings.spacing,
+      angle: settings.angle,
+      roundness: settings.roundness,
+    };
+  }
+
+  function eraseTouchedStrokes(path: Point[], layerId: string, target: LayerEditTarget) {
     const radiusPx = toolOptions.eraser.size;
-    const isTouched = (stroke: { points: Point[] }) => stroke.points.some((strokePoint) =>
-      Math.hypot(
-        (strokePoint.x - point.x) * PRINT_CANVAS_SPEC.widthPx,
-        (strokePoint.y - point.y) * PRINT_CANVAS_SPEC.heightPx,
-      ) <= radiusPx,
-    );
+    const segments: [Point, Point][] = [];
+    for (let index = 1; index < path.length; index += 1) segments.push([path[index - 1], path[index]]);
+    if (segments.length === 0) segments.push([path[0], path[0]]);
+    const toPx = (point: Point): Point => ({ x: point.x * PRINT_CANVAS_SPEC.widthPx, y: point.y * PRINT_CANVAS_SPEC.heightPx });
+    // A fast drag records few vertices, so testing the eraser path against each stroke
+    // segment (not just its vertices) is what keeps the nib from slipping between samples.
+    const isTouched = (stroke: { points: Point[] }) => {
+      const points = stroke.points.map(toPx);
+      const strokeSegments: [Point, Point][] = [];
+      for (let index = 1; index < points.length; index += 1) strokeSegments.push([points[index - 1], points[index]]);
+      if (strokeSegments.length === 0 && points.length > 0) strokeSegments.push([points[0], points[0]]);
+      return strokeSegments.some(([from, to]) => segments.some(([start, end]) => {
+        const a = toPx(start);
+        const b = toPx(end);
+        return segmentDistancePx(a.x, a.y, b.x, b.y, from.x, from.y, to.x, to.y) <= radiusPx;
+      }));
+    };
     setLayers((current) => current.map((layer) => {
       if (layer.id !== layerId || layer.locked) return layer;
       if (target === "mask") {
@@ -800,6 +837,39 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       const strokes = layer.strokes.filter((stroke) => !isTouched(stroke));
       return strokes.length === layer.strokes.length ? layer : { ...layer, strokes };
     }));
+  }
+
+  function beginEraserPass(pointerId: number, point: Point, layerId: string, target: LayerEditTarget) {
+    rememberLayerSnapshot();
+    activeEraserRef.current = { pointerId, layerId, target, points: [point] };
+    if (toolOptions.eraser.mode === "stroke") {
+      eraseTouchedStrokes([point], layerId, target);
+      return;
+    }
+    setLayers((current) => appendLayerErasure(current, layerId, buildEraserPass([point])));
+  }
+
+  function extendEraserPass(point: Point) {
+    const eraser = activeEraserRef.current;
+    if (!eraser) return;
+    eraser.points.push(point);
+    if (toolOptions.eraser.mode === "stroke") {
+      eraseTouchedStrokes(eraser.points, eraser.layerId, eraser.target);
+      return;
+    }
+    setLayers((current) => updateLayerLastErasure(current, eraser.layerId, buildEraserPass(eraser.points)));
+  }
+
+  function endEraserPass() {
+    activeEraserRef.current = null;
+  }
+
+  function clearErasures() {
+    if (!selectedLayerId) return;
+    const target = layers.find((layer) => layer.id === selectedLayerId);
+    if (!target || target.locked) return;
+    rememberLayerSnapshot();
+    setLayers((current) => clearLayerErasures(current, selectedLayerId));
   }
 
   function resolveLinkedLayerIds(ids: string[]) {
@@ -1259,15 +1329,25 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     if (activeTool === "eraser") {
-      rememberLayerSnapshot();
-      activeEraserRef.current = { pointerId: event.pointerId, layerId: selectedLayer.id, target: selectedTarget };
-      eraseArtworkAt(point, selectedLayer.id, selectedTarget);
+      beginEraserPass(event.pointerId, point, selectedLayer.id, selectedTarget);
       return;
     }
     const tool = activeTool === "brush" ? "brush" : "pen";
     const brushSettings = activeTool === "brush" ? toolOptions.brush : toolOptions.pencil;
     const effectiveMaskBrushMode: MaskBrushMode = selectedTarget === "mask" && foregroundColor.toLowerCase() === "#ffffff" ? "reveal" : "hide";
     if (selectedTarget === "mask") setMaskBrushMode(effectiveMaskBrushMode);
+    const brushExtras = {
+      spacing: brushSettings.spacing,
+      flow: brushSettings.flow,
+      smoothing: brushSettings.smoothing,
+      sizeJitter: brushSettings.sizeJitter,
+      opacityJitter: brushSettings.opacityJitter,
+      jitterMinimum: brushSettings.jitterMinimum,
+      angle: brushSettings.angle,
+      roundness: brushSettings.roundness,
+      fadeOut: brushSettings.fadeOut,
+      blend: brushSettings.blend,
+    };
     const activeStroke: ActiveArtworkStroke = {
       pointerId: event.pointerId,
       layerId: selectedLayer.id,
@@ -1280,6 +1360,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       opacity: brushSettings.opacity,
       shape: brushSettings.shape,
       softness: Math.max(brushSettings.softness, brushSettings.feather),
+      brush: brushExtras,
     };
     activeArtworkStrokeRef.current = activeStroke;
     setIsDrawingStroke(true);
@@ -1296,6 +1377,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         opacity: activeStroke.opacity,
         shape: activeStroke.shape,
         softness: activeStroke.softness,
+        ...brushExtras,
       },
       activeStroke.maskBrushMode,
     ));
@@ -1333,7 +1415,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const eraser = activeEraserRef.current;
     if (eraser?.pointerId === event.pointerId) {
       event.preventDefault();
-      eraseArtworkAt(toCanvasPoint(event.clientX, event.clientY), eraser.layerId, eraser.target);
+      extendEraserPass(toCanvasPoint(event.clientX, event.clientY));
       return;
     }
     const active = activeArtworkStrokeRef.current;
@@ -1352,6 +1434,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         opacity: active.opacity,
         shape: active.shape,
         softness: active.softness,
+        ...active.brush,
       },
       active.maskBrushMode,
     ));
@@ -1381,7 +1464,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       return;
     }
     if (penAnchorDragRef.current?.pointerId === event.pointerId) penAnchorDragRef.current = null;
-    if (activeEraserRef.current?.pointerId === event.pointerId) activeEraserRef.current = null;
+    if (activeEraserRef.current?.pointerId === event.pointerId) endEraserPass();
     if (activeArtworkStrokeRef.current?.pointerId !== event.pointerId) return;
     activeArtworkStrokeRef.current = null;
     setIsDrawingStroke(false);
@@ -2121,6 +2204,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           onAddMask={createLayerMask}
           onRemoveMask={deleteLayerMask}
           onSelectMask={() => setSelectedTarget("mask")}
+          onClearErasures={clearErasures}
         />}
         {!adjustmentsOpen && <EditorLayersPanel
           open={layersOpen}

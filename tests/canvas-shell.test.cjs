@@ -218,7 +218,10 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(toolsBar, /Collapse editor tools/);
   assert.match(source, /activeTool === "hand" && event\.button === 0/);
   assert.match(source, /activeTool !== "move"/);
-  assert.match(source, /function eraseArtworkAt\(/);
+  assert.match(source, /function eraseTouchedStrokes\(/);
+  assert.match(source, /function beginEraserPass\(/);
+  assert.match(source, /function extendEraserPass\(/);
+  assert.match(source, /appendLayerErasure\(current, layerId, buildEraserPass\(\[point\]\)\)/);
   assert.match(source, /function undoCanvasAction\(/);
   assert.match(source, /function rememberLayerSnapshot\(/);
   assert.match(layerModelSource, /tool\?: "pen" \| "brush"/);
@@ -778,14 +781,29 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
   assert.match(adjustmentsPanel, /activeTool === "brush" \|\| activeTool === "pencil"/);
   assert.match(adjustmentsPanel, /function BrushOptions\(/);
   // The brush controls are labelled from the tool name, so Brush and Pencil share them.
-  assert.match(adjustmentsPanel, /\$\{label\} shape/);
-  assert.match(adjustmentsPanel, /\$\{label\} size/);
+  assert.match(adjustmentsPanel, /ariaLabel=\{`\$\{label\} shape`\}/);
+  assert.match(adjustmentsPanel, /ariaLabel=\{`\$\{label\} size`\}/);
   assert.match(adjustmentsPanel, /label=\{activeTool === "brush" \? "Brush" : "Pencil"\}/);
-  for (const label of ["Opacity", "Softness", "Feather"]) {
+  for (const label of ["Opacity", "Softness", "Feather", "Flow", "Spacing", "Smoothing", "Size jitter", "Opacity jitter"]) {
     assert.match(adjustmentsPanel, new RegExp(`label="${label}"`));
   }
+  // Photoshop/Kittl brush engine controls: tip geometry, dab build-up, dynamics, and blending.
+  for (const field of ["angle", "roundness", "flow", "spacing", "smoothing", "size jitter", "opacity jitter", "jitter floor", "blend"]) {
+    assert.match(adjustmentsPanel, new RegExp(`ariaLabel=\\{` + "`" + `\\$\\{label\\} ${field}` + "`" + `\\}`));
+  }
+  assert.match(adjustmentsPanel, /aria-label=\{`\$\{label\} fade out`\}/);
+  assert.match(adjustmentsPanel, /EDITOR_BRUSH_BLENDS\.map\(/);
+  assert.match(artworkLayers, /brushDabPoints\(stroke\)/);
+  assert.match(artworkLayers, /data-editor-brush-blend=/);
   assert.match(adjustmentsPanel, /activeTool === "eraser"/);
-  assert.match(adjustmentsPanel, /aria-label="Eraser size"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Eraser size"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Eraser hardness"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Eraser opacity"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Eraser flow"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Eraser spacing"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Eraser mode"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Eraser nib"/);
+  assert.match(adjustmentsPanel, /aria-label="Clear erasures on this layer"/);
   assert.match(adjustmentsPanel, /activeTool === "pen"/);
   assert.match(adjustmentsPanel, /aria-label="Pen path width"/);
   assert.match(adjustmentsPanel, /aria-label=\{`Pen cap \$\{cap\}`\}/);
@@ -796,6 +814,10 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
   assert.match(source, /width: brushSettings\.size/);
   assert.match(source, /opacity: brushSettings\.opacity/);
   assert.match(source, /shape: brushSettings\.shape/);
+  // The brush engine options travel with the stroke so the committed artwork keeps its look.
+  for (const field of ["spacing", "flow", "smoothing", "sizeJitter", "opacityJitter", "jitterMinimum", "angle", "roundness", "fadeOut", "blend"]) {
+    assert.match(source, new RegExp(`${field}: brushSettings\\.${field}`));
+  }
   assert.match(artworkLayers, /export function artworkStrokeWidth\(/);
   assert.match(artworkLayers, /export function artworkStrokeOpacity\(/);
   assert.match(artworkLayers, /data-editor-stroke-shape=/);
@@ -817,8 +839,8 @@ test("editor tool options normalize to safe ranges", () => {
   assert.equal(defaults.pen.cap, "round");
 
   const clamped = normalizeEditorToolOptions({
-    brush: { size: 9999, opacity: 5, softness: -40, feather: 500, shape: "square" },
-    eraser: { size: 1 },
+    brush: { size: 9999, opacity: 5, softness: -40, feather: 500, shape: "square", spacing: 0, flow: 0, smoothing: 99, sizeJitter: 500, opacityJitter: -10, jitterMinimum: 900, angle: 400, roundness: -20, blend: "nope" },
+    eraser: { size: 1, hardness: 500, opacity: 0, flow: 0, spacing: 999, angle: 400, roundness: -20, mode: "nope", shape: "square" },
     pen: { width: 999, cap: "square" },
   });
   assert.equal(clamped.brush.size, 400);
@@ -826,7 +848,26 @@ test("editor tool options normalize to safe ranges", () => {
   assert.equal(clamped.brush.softness, 0);
   assert.equal(clamped.brush.feather, 100);
   assert.equal(clamped.brush.shape, "square");
+  assert.equal(clamped.brush.spacing, 1);
+  assert.equal(clamped.brush.flow, 1);
+  assert.equal(clamped.brush.smoothing, 10);
+  assert.equal(clamped.brush.sizeJitter, 100);
+  assert.equal(clamped.brush.opacityJitter, 0);
+  assert.equal(clamped.brush.jitterMinimum, 100);
+  assert.equal(clamped.brush.angle, 180);
+  assert.equal(clamped.brush.roundness, 0);
+  assert.equal(clamped.brush.blend, "normal");
   assert.equal(clamped.eraser.size, 10);
+  assert.equal(clamped.eraser.hardness, 100);
+  assert.equal(clamped.eraser.opacity, 1);
+  assert.equal(clamped.eraser.flow, 1);
+  assert.equal(clamped.eraser.spacing, 100);
+  assert.equal(clamped.eraser.angle, 180);
+  assert.equal(clamped.eraser.roundness, 0);
+  assert.equal(clamped.eraser.mode, "brush");
+  assert.equal(clamped.eraser.shape, "square");
+  assert.equal(defaults.eraser.mode, "brush");
+  assert.equal(defaults.eraser.shape, "round");
   assert.equal(clamped.pen.width, 60);
   assert.equal(clamped.pen.cap, "square");
 });

@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import EditorLayerPreview, { EDITOR_ARTWORK_VIEWBOX } from "@/components/EditorLayerPreview";
-import { resolveEditorShapeStyle, type ArtworkStroke, type EditorArtworkLayer, type EditorLayerBlendMode, type LayerEditTarget } from "@/lib/editor-layers";
+import { eraserDabPoints, resolveEditorShapeStyle, type ArtworkStroke, type EditorArtworkLayer, type EditorLayerBlendMode, type LayerEditTarget } from "@/lib/editor-layers";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
 const TINY_ICON = "flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-text-secondary outline-none hover:bg-[#d1d1d1] hover:text-[#111] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-1 focus-visible:ring-[#438bc4] dark:hover:bg-[#494949] dark:hover:text-white [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-8";
@@ -49,12 +49,28 @@ function ArtworkThumbnail({ layer }: { layer: EditorArtworkLayer }) {
       style={{ backgroundImage: "linear-gradient(45deg,#d2d2d2 25%,transparent 25%),linear-gradient(-45deg,#d2d2d2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#d2d2d2 75%),linear-gradient(-45deg,transparent 75%,#d2d2d2 75%)", backgroundSize: "8px 8px", backgroundPosition: "0 0,0 4px,4px -4px,-4px 0" }}
     >
       <svg className="absolute inset-0 h-full w-full" viewBox={EDITOR_ARTWORK_VIEWBOX} preserveAspectRatio="xMidYMid meet">
-        {layer.strokes.map((stroke, index) => (
-          <path key={index} d={strokePath(stroke)} fill="none" stroke="#242424" strokeWidth="46" strokeLinecap="round" strokeLinejoin="round" />
-        ))}
-        {(layer.shape !== null || layer.text !== null || layer.image !== null) && (
-          <EditorLayerPreview paths={layer.shape?.paths} shapeStyle={layer.shape ? resolveEditorShapeStyle(layer.shape) : null} text={layer.text} image={layer.image} />
+        {layer.erasures.length > 0 && (
+          <defs>
+            <mask id={`thumb-erase-${layer.id.replace(/[^a-zA-Z0-9_-]/g, "")}`} x="0" y="0" width="1000" height="1200" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse">
+              <rect x="0" y="0" width="1000" height="1200" fill="white" />
+              {layer.erasures.map((erasure, index) => {
+                const width = erasure.width ?? 120;
+                const radius = width / 2;
+                return eraserDabPoints(erasure).map((dab, dabIndex) => (
+                  <circle key={`${index}-${dabIndex}`} cx={dab.x * 1000} cy={dab.y * 1200} r={radius} fill="#000" fillOpacity={(erasure.flow ?? 100) / 100} />
+                ));
+              })}
+            </mask>
+          </defs>
         )}
+        <g mask={layer.erasures.length > 0 ? `url(#thumb-erase-${layer.id.replace(/[^a-zA-Z0-9_-]/g, "")})` : undefined}>
+          {layer.strokes.map((stroke, index) => (
+            <path key={index} d={strokePath(stroke)} fill="none" stroke="#242424" strokeWidth="46" strokeLinecap="round" strokeLinejoin="round" />
+          ))}
+          {(layer.shape !== null || layer.text !== null || layer.image !== null) && (
+            <EditorLayerPreview paths={layer.shape?.paths} shapeStyle={layer.shape ? resolveEditorShapeStyle(layer.shape) : null} text={layer.text} image={layer.image} />
+          )}
+        </g>
       </svg>
     </span>
   );

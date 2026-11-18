@@ -2,6 +2,8 @@ import type { EditorPenPath } from "./editor-pen-path";
 
 export type ArtworkPoint = { x: number; y: number };
 export type EditorBrushShape = "round" | "square";
+/** How brush dabs composite against each other inside one stroke. */
+export type EditorBrushBlend = "normal" | "multiply" | "screen";
 export type ArtworkStroke = {
   points: ArtworkPoint[];
   tool?: "pen" | "brush";
@@ -13,6 +15,26 @@ export type ArtworkStroke = {
   shape?: EditorBrushShape;
   /** Edge softness, 0 (hard) to 100 (fully feathered). */
   softness?: number;
+  /** Distance between dabs as a percentage of the nib diameter, 1 to 100. */
+  spacing?: number;
+  /** Per-dab strength, 1 to 100. Overlapping dabs build up like Photoshop flow. */
+  flow?: number;
+  /** Dabs drawn per pointer sample, 1 to 10, smoothing a fast drag into a continuous line. */
+  smoothing?: number;
+  /** Size jitter as a percentage, 0 to 100. */
+  sizeJitter?: number;
+  /** Opacity jitter as a percentage, 0 to 100. */
+  opacityJitter?: number;
+  /** Random size/opacity jitter stops at this nib size percentage, 0 to 100. */
+  jitterMinimum?: number;
+  /** Tip rotation in degrees for a square nib, -180 to 180. */
+  angle?: number;
+  /** Corner roundness of a square nib, 0 (sharp) to 100 (fully round). */
+  roundness?: number;
+  /** Whether the stroke fades to transparent at its end. */
+  fadeOut?: boolean;
+  /** Dab compositing inside the stroke. */
+  blend?: EditorBrushBlend;
 };
 export type EditorBrushSettings = {
   shape: EditorBrushShape;
@@ -20,9 +42,47 @@ export type EditorBrushSettings = {
   opacity: number;
   softness: number;
   feather: number;
+  spacing: number;
+  flow: number;
+  smoothing: number;
+  sizeJitter: number;
+  opacityJitter: number;
+  jitterMinimum: number;
+  angle: number;
+  roundness: number;
+  fadeOut: boolean;
+  blend: EditorBrushBlend;
 };
 export type EditorPenSettings = { width: number; cap: "round" | "butt" | "square" };
-export type EditorEraserSettings = { size: number };
+/** Photoshop-style eraser: a brush-style soft erase or a whole-stroke erase. */
+export type EditorEraserMode = "brush" | "stroke";
+export type EditorEraserSettings = {
+  mode: EditorEraserMode;
+  /** Nib tip. Round uses a soft radial falloff; square uses a rotated rounded rectangle. */
+  shape: EditorBrushShape;
+  /** Nib diameter in 1000 x 1200 artwork units. */
+  size: number;
+  /** Edge hardness, 0 (fully feathered) to 100 (crisp edge). */
+  hardness: number;
+  /** Maximum erase strength of one pass, 1 to 100. */
+  opacity: number;
+  /** Per-dab erase strength, 1 to 100. Overlapping dabs build up like Photoshop flow. */
+  flow: number;
+  /** Distance between dabs as a percentage of the nib diameter, 1 to 100. */
+  spacing: number;
+  /** Tip rotation in degrees for a square nib, -180 to 180. */
+  angle: number;
+  /** Corner roundness of a square nib, 0 (sharp) to 100 (fully round). */
+  roundness: number;
+};
+/** One recorded eraser pass. A brush erasure keeps its own look so passes can differ. */
+export type EditorErasure = ArtworkStroke & {
+  hardness: number;
+  flow: number;
+  spacing: number;
+  angle: number;
+  roundness: number;
+};
 export type EditorToolOptions = {
   brush: EditorBrushSettings;
   pencil: EditorBrushSettings;
@@ -30,22 +90,35 @@ export type EditorToolOptions = {
   pen: EditorPenSettings;
 };
 export const EDITOR_BRUSH_SHAPES: EditorBrushShape[] = ["round", "square"];
+export const EDITOR_BRUSH_BLENDS: EditorBrushBlend[] = ["normal", "multiply", "screen"];
+export const EDITOR_ERASER_MODES: EditorEraserMode[] = ["brush", "stroke"];
 export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
-  brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0 },
-  pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0 },
-  eraser: { size: 180 },
+  brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0, spacing: 8, flow: 100, smoothing: 3, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, fadeOut: false, blend: "normal" },
+  pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, fadeOut: false, blend: "normal" },
+  eraser: { mode: "brush", shape: "round", size: 120, hardness: 60, opacity: 100, flow: 100, spacing: 12, angle: 0, roundness: 100 },
   pen: { width: 5, cap: "round" },
 };
 
 const clamp = (value: number, min: number, max: number) => Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : min;
 
 export function normalizeEditorBrush(input: Partial<EditorBrushSettings> | undefined, fallback: EditorBrushSettings): EditorBrushSettings {
+  const blend: EditorBrushBlend = input?.blend === "multiply" || input?.blend === "screen" ? input.blend : "normal";
   return {
     shape: input?.shape === "square" ? "square" : "round",
     size: clamp(input?.size ?? fallback.size, 1, 400),
     opacity: clamp(input?.opacity ?? fallback.opacity, 0.01, 1),
     softness: clamp(input?.softness ?? fallback.softness, 0, 100),
     feather: clamp(input?.feather ?? fallback.feather, 0, 100),
+    spacing: clamp(input?.spacing ?? fallback.spacing, 1, 100),
+    flow: clamp(input?.flow ?? fallback.flow, 1, 100),
+    smoothing: clamp(input?.smoothing ?? fallback.smoothing, 1, 10),
+    sizeJitter: clamp(input?.sizeJitter ?? fallback.sizeJitter, 0, 100),
+    opacityJitter: clamp(input?.opacityJitter ?? fallback.opacityJitter, 0, 100),
+    jitterMinimum: clamp(input?.jitterMinimum ?? fallback.jitterMinimum, 0, 100),
+    angle: clamp(input?.angle ?? fallback.angle, -180, 180),
+    roundness: clamp(input?.roundness ?? fallback.roundness, 0, 100),
+    fadeOut: input?.fadeOut ?? fallback.fadeOut,
+    blend,
   };
 }
 
@@ -54,7 +127,17 @@ export function normalizeEditorToolOptions(input: Partial<EditorToolOptions> | u
   return {
     brush: normalizeEditorBrush(input?.brush, EDITOR_TOOL_OPTIONS_DEFAULT.brush),
     pencil: normalizeEditorBrush(input?.pencil, EDITOR_TOOL_OPTIONS_DEFAULT.pencil),
-    eraser: { size: clamp(input?.eraser?.size ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.size, 10, 600) },
+    eraser: {
+      mode: input?.eraser?.mode === "stroke" ? "stroke" : "brush",
+      shape: input?.eraser?.shape === "square" ? "square" : "round",
+      size: clamp(input?.eraser?.size ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.size, 10, 600),
+      hardness: clamp(input?.eraser?.hardness ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.hardness, 0, 100),
+      opacity: clamp(input?.eraser?.opacity ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.opacity, 1, 100),
+      flow: clamp(input?.eraser?.flow ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.flow, 1, 100),
+      spacing: clamp(input?.eraser?.spacing ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.spacing, 1, 100),
+      angle: clamp(input?.eraser?.angle ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.angle, -180, 180),
+      roundness: clamp(input?.eraser?.roundness ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.roundness, 0, 100),
+    },
     pen: {
       width: clamp(input?.pen?.width ?? EDITOR_TOOL_OPTIONS_DEFAULT.pen.width, 1, 60),
       cap: input?.pen?.cap === "butt" || input?.pen?.cap === "square" ? input.pen.cap : "round",
@@ -445,6 +528,8 @@ export type EditorArtworkLayer = {
   groupId: string | null;
   linkId: string | null;
   strokes: ArtworkStroke[];
+  /** Eraser passes applied on top of the artwork, rendered as a subtractive mask. */
+  erasures: EditorErasure[];
   mask: LayerMaskStroke[] | null;
   text: EditorTextContent | null;
   shape: EditorShapeContent | null;
@@ -468,6 +553,7 @@ export function createEditorArtworkLayer(id: string, name: string): EditorArtwor
     groupId: null,
     linkId: null,
     strokes: [],
+    erasures: [],
     mask: null,
     text: null,
     shape: null,
@@ -665,6 +751,10 @@ function copyStroke(stroke: ArtworkStroke): ArtworkStroke {
   return { ...stroke, points: stroke.points.map((point) => ({ ...point })) };
 }
 
+function copyErasure(erasure: EditorErasure): EditorErasure {
+  return { ...erasure, points: erasure.points.map((point) => ({ ...point })) };
+}
+
 export function appendLayerStroke(
   layers: EditorArtworkLayer[],
   layerId: string,
@@ -704,6 +794,246 @@ export function updateLayerLastStroke(
     if (!layer.strokes.length) return layer;
     return { ...layer, strokes: [...layer.strokes.slice(0, -1), copyStroke(stroke)] };
   });
+}
+
+/** Append one eraser pass (a brush stroke of dabs or a whole-stroke erase). */
+export function appendLayerErasure(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  erasure: EditorErasure,
+): EditorArtworkLayer[] {
+  return layers.map((layer) =>
+    layer.id === layerId && !layer.locked
+      ? { ...layer, erasures: [...layer.erasures, copyErasure(erasure)] }
+      : layer,
+  );
+}
+
+/** Grow the in-progress eraser pass as the pointer moves. */
+export function updateLayerLastErasure(
+  layers: EditorArtworkLayer[],
+  layerId: string,
+  erasure: EditorErasure,
+): EditorArtworkLayer[] {
+  return layers.map((layer) =>
+    layer.id === layerId && !layer.locked && layer.erasures.length
+      ? { ...layer, erasures: [...layer.erasures.slice(0, -1), copyErasure(erasure)] }
+      : layer,
+  );
+}
+
+/** Drop every eraser pass on one layer, or on every unlocked layer when `layerId` is omitted. */
+export function clearLayerErasures(
+  layers: EditorArtworkLayer[],
+  layerId?: string,
+): EditorArtworkLayer[] {
+  return layers.map((layer) => {
+    if (layerId !== undefined && layer.id !== layerId) return layer;
+    if (layer.locked || layer.erasures.length === 0) return layer;
+    return { ...layer, erasures: [] };
+  });
+}
+
+/**
+ * Gaussian blur radius for an eraser dab. Hardness 100 gives a crisp edge; lower values
+ * widen the falloff. The radius is a fraction of the nib so the look scales with size.
+ */
+export function eraserDabBlurRadius(erasure: Pick<EditorErasure, "width" | "hardness">): number {
+  const width = erasure.width ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.size;
+  const hardness = clamp(erasure.hardness ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.hardness, 0, 100);
+  return (width / 2) * (1 - hardness / 100) * 0.9;
+}
+
+/**
+ * Build the dab polyline for an eraser pass: the raw pointer points resampled to the
+ * pass's spacing (a percentage of the nib diameter). Spacing 1 gives a near-continuous line.
+ */
+export function eraserDabPoints(erasure: Pick<EditorErasure, "points" | "width" | "spacing">): ArtworkPoint[] {
+  const points = erasure.points;
+  if (points.length <= 1) return points.map((point) => ({ ...point }));
+  const width = erasure.width ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.size;
+  const spacing = clamp(erasure.spacing ?? EDITOR_TOOL_OPTIONS_DEFAULT.eraser.spacing, 1, 100);
+  const step = Math.max(1, (width * spacing) / 100);
+  const dabs: ArtworkPoint[] = [{ ...points[0] }];
+  let carry = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const from = points[index - 1];
+    const to = points[index];
+    const dx = (to.x - from.x) * 1000;
+    const dy = (to.y - from.y) * 1200;
+    const distance = Math.hypot(dx, dy);
+    if (distance === 0) continue;
+    let travelled = step - carry;
+    while (travelled <= distance) {
+      const t = travelled / distance;
+      dabs.push({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
+      travelled += step;
+    }
+    carry = (distance - (travelled - step)) % step;
+  }
+  const last = points[points.length - 1];
+  const tail = dabs[dabs.length - 1];
+  if (Math.hypot((last.x - tail.x) * 1000, (last.y - tail.y) * 1200) > step * 0.5) {
+    dabs.push({ ...last });
+  }
+  return dabs;
+}
+
+/** Fallback nib size for a stroke recorded before per-stroke brush options existed. */
+const BRUSH_FALLBACK_WIDTH = 52;
+
+/** Upper bound on dabs rendered for one stroke, so a long dense drag stays responsive. */
+const MAX_BRUSH_DABS = 600;
+
+/** Shortest distance from a point to a line segment, in the same units as the inputs. */
+export function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq === 0 ? 0 : clamp(((px - ax) * dx + (py - ay) * dy) / lengthSq, 0, 1);
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+/**
+ * Shortest distance between two line segments, in the same units as the inputs. Returns zero
+ * when the segments cross. Used to test whether an eraser pass actually touches a stroke,
+ * which a vertex-only test misses whenever a fast drag records few samples.
+ */
+export function segmentDistancePx(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number): number {
+  if (segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy)) return 0;
+  return Math.min(
+    distanceToSegment(ax, ay, cx, cy, dx, dy),
+    distanceToSegment(bx, by, cx, cy, dx, dy),
+    distanceToSegment(cx, cy, ax, ay, bx, by),
+    distanceToSegment(dx, dy, ax, ay, bx, by),
+  );
+}
+
+function orientation(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
+  const value = (by - ay) * (cx - bx) - (bx - ax) * (cy - by);
+  return Math.abs(value) < 1e-9 ? 0 : Math.sign(value);
+}
+
+function onSegment(px: number, py: number, qx: number, qy: number, rx: number, ry: number): boolean {
+  return Math.min(px, qx) - 1e-9 <= rx && rx <= Math.max(px, qx) + 1e-9
+    && Math.min(py, qy) - 1e-9 <= ry && ry <= Math.max(py, qy) + 1e-9;
+}
+
+function segmentsIntersect(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number): boolean {
+  const o1 = orientation(ax, ay, bx, by, cx, cy);
+  const o2 = orientation(ax, ay, bx, by, dx, dy);
+  const o3 = orientation(cx, cy, dx, dy, ax, ay);
+  const o4 = orientation(cx, cy, dx, dy, bx, by);
+  if (o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && onSegment(ax, ay, bx, by, cx, cy)) return true;
+  if (o2 === 0 && onSegment(ax, ay, bx, by, dx, dy)) return true;
+  if (o3 === 0 && onSegment(cx, cy, dx, dy, ax, ay)) return true;
+  if (o4 === 0 && onSegment(cx, cy, dx, dy, bx, by)) return true;
+  return false;
+}
+
+export type BrushDab = {
+  x: number;
+  y: number;
+  /** Size as a fraction of the nib diameter, 0 to 1. */
+  scale: number;
+  /** Dab opacity as a fraction of the brush opacity, 0 to 1. */
+  alpha: number;
+};
+
+/**
+ * Stabilize a pointer path with a centered moving average. The first and last samples are
+ * kept exactly so a stroke still starts and ends under the pointer; only interior samples
+ * are averaged, which removes hand tremor without adding lag at the cursor.
+ */
+export function smoothBrushPoints(points: ArtworkPoint[], smoothing: number): ArtworkPoint[] {
+  const window = Math.round(clamp(smoothing, 1, 10)) - 1;
+  if (window < 1 || points.length < 3) return points;
+  return points.map((point, index) => {
+    if (index === 0 || index === points.length - 1) return point;
+    const from = Math.max(0, index - window);
+    const to = Math.min(points.length - 1, index + window);
+    let x = 0;
+    let y = 0;
+    for (let i = from; i <= to; i += 1) {
+      x += points[i].x;
+      y += points[i].y;
+    }
+    const count = to - from + 1;
+    return { x: x / count, y: y / count };
+  });
+}
+
+/**
+ * Build the dab polyline for a brush pass. The raw pointer samples are resampled to the
+ * brush spacing, `smoothing` dabs are added per sample segment so a fast drag still reads as
+ * a continuous line, and size/opacity jitter is applied per dab. Jitter is deterministic
+ * (hashed from the dab index) so re-rendering a stroke never makes it shimmer.
+ */
+export function brushDabPoints(stroke: ArtworkStroke): BrushDab[] {
+  const points = stroke.points;
+  if (points.length === 0) return [];
+  const width = stroke.width ?? BRUSH_FALLBACK_WIDTH;
+  const spacing = clamp(stroke.spacing ?? EDITOR_TOOL_OPTIONS_DEFAULT.brush.spacing, 1, 100);
+  const smoothing = Math.round(clamp(stroke.smoothing ?? EDITOR_TOOL_OPTIONS_DEFAULT.brush.smoothing, 1, 10));
+  const sizeJitter = clamp(stroke.sizeJitter ?? 0, 0, 100);
+  const opacityJitter = clamp(stroke.opacityJitter ?? 0, 0, 100);
+  const jitterMinimum = clamp(stroke.jitterMinimum ?? 20, 0, 100);
+  const flow = clamp(stroke.flow ?? 100, 1, 100) / 100;
+  const run = smoothBrushPoints(points, smoothing);
+  let step = Math.max(0.5, (width * spacing) / 100);
+  // A very long, very dense stroke would otherwise emit tens of thousands of DOM dabs.
+  // Widening the step to stay under the cap trades a little fidelity for a bounded render.
+  const pathLength = run.slice(1).reduce((total, point, index) => {
+    const from = run[index];
+    return total + Math.hypot((point.x - from.x) * 1000, (point.y - from.y) * 1200);
+  }, 0);
+  if (pathLength / step > MAX_BRUSH_DABS) step = pathLength / MAX_BRUSH_DABS;
+  const dab = (x: number, y: number, index: number): BrushDab => {
+    // xorshift-style hash keeps jitter stable across renders without a seeded RNG instance.
+    const hash = Math.abs(Math.sin(index * 12.9898 + 78.233) * 43758.5453) % 1;
+    const hash2 = Math.abs(Math.sin(index * 93.9898 + 67.345) * 24634.6345) % 1;
+    const minScale = jitterMinimum / 100;
+    return {
+      x,
+      y,
+      scale: 1 - (sizeJitter / 100) * hash * (1 - minScale),
+      alpha: Math.max(0, flow * (1 - (opacityJitter / 100) * hash2)),
+    };
+  };
+  if (run.length === 1) return [dab(run[0].x, run[0].y, 0)];
+  const dabs: BrushDab[] = [dab(run[0].x, run[0].y, 0)];
+  let carry = 0;
+  let index = 1;
+  for (let i = 1; i < run.length; i += 1) {
+    const from = run[i - 1];
+    const to = run[i];
+    const dx = (to.x - from.x) * 1000;
+    const dy = (to.y - from.y) * 1200;
+    const distance = Math.hypot(dx, dy);
+    if (distance === 0) continue;
+    let travelled = step - carry;
+    while (travelled <= distance) {
+      const t = travelled / distance;
+      dabs.push(dab(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, index));
+      index += 1;
+      travelled += step;
+    }
+    carry = (distance - (travelled - step)) % step;
+  }
+  const last = points[points.length - 1];
+  const tail = dabs[dabs.length - 1];
+  if (Math.hypot((last.x - tail.x) * 1000, (last.y - tail.y) * 1200) > step * 0.5) {
+    dabs.push(dab(last.x, last.y, index));
+  }
+  return dabs;
+}
+
+/** Gaussian blur radius for a brush dab, derived from nib size and edge softness. */
+export function brushDabBlurRadius(stroke: Pick<ArtworkStroke, "width" | "softness">): number {
+  const width = stroke.width ?? BRUSH_FALLBACK_WIDTH;
+  const softness = clamp(stroke.softness ?? 0, 0, 100);
+  return (width / 2) * (softness / 100) * 0.9;
 }
 
 export function addLayerMask(layers: EditorArtworkLayer[], layerId: string): EditorArtworkLayer[] {
@@ -824,6 +1154,7 @@ export function duplicateEditorLayer(
     locked: false,
     linkId: null,
     strokes: source.strokes.map(copyStroke),
+    erasures: source.erasures.map(copyErasure),
     mask: source.mask?.map((stroke) => ({ ...copyStroke(stroke), mode: stroke.mode })) ?? null,
     text: source.text ? { ...source.text, effects: source.text.effects?.map((effect) => ({ ...effect })) } : null,
     shape: source.shape ? { paths: source.shape.paths.map(cloneEditorShapePath), builderMode: source.shape.builderMode, ...(source.shape.style ? { style: { ...source.shape.style, shadow: { ...source.shape.style.shadow }, glow: { ...source.shape.style.glow } } } : {}) } : null,

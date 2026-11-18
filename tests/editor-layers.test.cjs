@@ -29,8 +29,18 @@ const {
   resolveEditorShapeStyle,
   roundEditorShapePath,
   updateEditorShapeStyle,
+  appendLayerErasure,
   appendLayerStroke,
+  brushDabBlurRadius,
+  brushDabPoints,
+  clearLayerErasures,
   createEditorArtworkLayer,
+  distanceToSegment,
+  segmentDistancePx,
+  smoothBrushPoints,
+  eraserDabBlurRadius,
+  eraserDabPoints,
+  updateLayerLastErasure,
   createEditorImageLayer,
   createEditorShapeLayer,
   createEditorTextLayer,
@@ -63,7 +73,7 @@ test("new layers get editable defaults and drawing remains isolated to the selec
 
   assert.deepEqual(first, {
     id: "one", name: "Layer 1", kind: "artwork", visible: true, locked: false, opacity: 100,
-    fillOpacity: 100, blendMode: "normal", groupId: null, linkId: null, strokes: [], mask: null, text: null, shape: null, image: null,
+    fillOpacity: 100, blendMode: "normal", groupId: null, linkId: null, strokes: [], erasures: [], mask: null, text: null, shape: null, image: null,
   });
   assert.equal(original[1].strokes.length, 0, "Updates are immutable");
   assert.equal(drawn[0].strokes.length, 0);
@@ -83,6 +93,35 @@ test("brush styling metadata survives live updates and layer duplication", () =>
   assert.equal(duplicate.strokes[0].tool, "brush");
   assert.equal(duplicate.strokes[0].color, "#f97316");
   assert.notStrictEqual(duplicate.strokes[0].points, updated[0].strokes[0].points);
+});
+
+test("eraser passes accumulate as a subtractive mask and stay off locked layers", () => {
+  const layer = createEditorArtworkLayer("one", "Layer 1");
+  const pass = { ...pointStroke(0.2, 0.4), tool: "brush", width: 120, hardness: 60, flow: 100, spacing: 12, angle: 0, roundness: 100 };
+  const started = appendLayerErasure([layer], "one", pass);
+  const grown = updateLayerLastErasure(started, "one", { ...pass, points: [{ x: 0.2, y: 0.5 }, { x: 0.5, y: 0.5 }] });
+  const second = appendLayerErasure(grown, "one", { ...pass, points: [{ x: 0.7, y: 0.5 }] });
+  const lockedLayers = updateEditorLayer(second, "one", { locked: true });
+  const locked = appendLayerErasure(lockedLayers, "one", pass);
+
+  assert.equal(layer.erasures.length, 0, "Erasures never mutate the source layer");
+  assert.equal(grown[0].erasures.length, 1, "The live pass replaces the previous one");
+  assert.equal(second[0].erasures.length, 2, "A new gesture starts a new pass");
+  assert.notStrictEqual(second[0].erasures[0].points, pass.points);
+  assert.strictEqual(locked[0], lockedLayers[0], "Locked layers reject erasures");
+  assert.deepEqual(clearLayerErasures(second, "one")[0].erasures, []);
+  assert.equal(clearLayerErasures(second, "missing")[0].erasures.length, 2);
+});
+
+test("eraser dabs resample to the nib spacing and soften with lower hardness", () => {
+  const line = { points: [{ x: 0, y: 0.5 }, { x: 0.5, y: 0.5 }], width: 100, spacing: 25 };
+  const dabs = eraserDabPoints(line);
+  assert.ok(dabs.length > 2, "Spacing above 1% inserts intermediate dabs");
+  assert.deepEqual(dabs[0], { x: 0, y: 0.5 });
+  assert.deepEqual(dabs[dabs.length - 1], { x: 0.5, y: 0.5 });
+  assert.deepEqual(eraserDabPoints({ points: [{ x: 0.3, y: 0.3 }], width: 100, spacing: 25 }), [{ x: 0.3, y: 0.3 }]);
+  assert.equal(eraserDabBlurRadius({ width: 100, hardness: 100 }), 0);
+  assert.ok(eraserDabBlurRadius({ width: 100, hardness: 0 }) > eraserDabBlurRadius({ width: 100, hardness: 50 }));
 });
 
 test("layer masks store black-hide and white-reveal strokes without changing source artwork", () => {
@@ -434,4 +473,90 @@ test("Free Transform snaps rotation to 15-degree steps only while Shift is held"
   assert.equal(snapEditorRotationDelta(13, true), 15);
   assert.equal(snapEditorRotationDelta(7, true), 0);
   assert.equal(snapEditorRotationDelta(13, false), 13);
+});
+
+test("brush dabs resample a stroke to the brush spacing and smoothing", () => {
+  const stroke = {
+    points: [{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }],
+    width: 100,
+    spacing: 10,
+    smoothing: 1,
+    flow: 100,
+  };
+  const wide = brushDabPoints(stroke);
+  assert.ok(wide.length > 2, "a spaced brush lays down several dabs along the segment");
+  assert.deepEqual({ x: wide[0].x, y: wide[0].y }, { x: 0.1, y: 0.5 }, "the run starts at the first pointer sample");
+  assert.deepEqual(
+    { x: wide[wide.length - 1].x, y: wide[wide.length - 1].y },
+    { x: 0.9, y: 0.5 },
+    "the run ends at the last pointer sample",
+  );
+  const step = (100 * 10) / 100;
+  for (let index = 1; index < wide.length; index += 1) {
+    const gap = Math.hypot((wide[index].x - wide[index - 1].x) * 1000, (wide[index].y - wide[index - 1].y) * 1200);
+    assert.ok(gap <= step + 1e-6, `dab ${index} stays within one spacing step`);
+  }
+  const denser = brushDabPoints({ ...stroke, spacing: 2 });
+  assert.ok(denser.length > wide.length, "a smaller spacing value deposits more dabs");
+  const smoothed = brushDabPoints({ ...stroke, smoothing: 5 });
+  assert.deepEqual(smoothed, wide, "smoothing keeps the same dab run on a straight path");
+});
+
+test("brush dabs apply deterministic size and opacity jitter", () => {
+  const stroke = {
+    points: [{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }],
+    width: 200,
+    spacing: 5,
+    smoothing: 3,
+    flow: 80,
+    sizeJitter: 60,
+    opacityJitter: 50,
+    jitterMinimum: 25,
+  };
+  const first = brushDabPoints(stroke);
+  const second = brushDabPoints(stroke);
+  assert.deepEqual(first, second, "jitter is hashed from the dab index so a re-render is stable");
+  assert.ok(first.some((dab) => dab.scale < 1), "size jitter varies at least one dab below the full nib");
+  assert.ok(first.some((dab) => dab.alpha < 0.8), "opacity jitter varies at least one dab below the full flow");
+  const floor = 0.25;
+  assert.ok(first.every((dab) => dab.scale >= floor - 1e-9), "size jitter never falls under the jitter floor");
+  assert.ok(first.every((dab) => dab.alpha >= 0 && dab.alpha <= 1), "dab opacity always stays a valid fraction");
+});
+
+test("brush dab blur radius scales with softness and nib size", () => {
+  assert.equal(brushDabBlurRadius({ width: 100, softness: 0 }), 0, "a hard nib adds no blur");
+  assert.ok(brushDabBlurRadius({ width: 100, softness: 100 }) > brushDabBlurRadius({ width: 100, softness: 40 }), "more softness widens the falloff");
+  assert.ok(brushDabBlurRadius({ width: 200, softness: 100 }) > brushDabBlurRadius({ width: 100, softness: 100 }), "a larger nib widens the falloff");
+});
+
+test("distanceToSegment clamps to the segment endpoints", () => {
+  assert.equal(distanceToSegment(5, 0, 0, 0, 10, 0), 0, "a point on the segment has zero distance");
+  assert.equal(distanceToSegment(5, 4, 0, 0, 10, 0), 4, "perpendicular distance is measured to the line");
+  assert.equal(distanceToSegment(-5, 0, 0, 0, 10, 0), 5, "a point past the start clamps to the start endpoint");
+  assert.equal(distanceToSegment(15, 0, 0, 0, 10, 0), 5, "a point past the end clamps to the end endpoint");
+});
+
+test("brush smoothing stabilizes interior samples and preserves the endpoints", () => {
+  const points = [{ x: 0, y: 0 }, { x: 0.25, y: 0.5 }, { x: 0.5, y: 0 }, { x: 0.75, y: 0.5 }, { x: 1, y: 0 }];
+  assert.deepEqual(smoothBrushPoints(points, 1), points, "smoothing 1 leaves the path untouched");
+  const smoothed = smoothBrushPoints(points, 5);
+  assert.deepEqual(smoothed[0], points[0], "the first sample stays under the pointer");
+  assert.deepEqual(smoothed[smoothed.length - 1], points[points.length - 1], "the last sample stays under the pointer");
+  assert.ok(smoothed[2].y < points[2].y + 0.5, "interior samples are pulled toward the running average");
+});
+
+test("brush dabs stay under the render cap for a long dense stroke", () => {
+  const points = [];
+  for (let i = 0; i <= 200; i += 1) points.push({ x: i / 200, y: 0.5 });
+  const dabs = brushDabPoints({ points, width: 400, spacing: 1, flow: 100 });
+  assert.ok(dabs.length <= 601, "the dab run is capped so a long dense drag stays responsive");
+  assert.deepEqual({ x: dabs[0].x, y: dabs[0].y }, { x: 0, y: 0.5 }, "the capped run still starts at the first sample");
+  assert.deepEqual({ x: dabs[dabs.length - 1].x, y: dabs[dabs.length - 1].y }, { x: 1, y: 0.5 }, "the capped run still ends at the last sample");
+});
+
+test("segmentDistancePx measures clearance and reports crossing segments as touching", () => {
+  assert.equal(segmentDistancePx(0, 0, 10, 0, 5, -5, 5, 5), 0, "crossing segments report zero distance");
+  assert.equal(segmentDistancePx(0, 0, 10, 0, 0, 3, 10, 3), 3, "parallel segments report their perpendicular clearance");
+  assert.equal(segmentDistancePx(0, 0, 10, 0, 20, 0, 30, 0), 10, "collinear segments report the endpoint gap");
+  assert.equal(segmentDistancePx(0, 0, 10, 0, 5, 4, 5, 8), 4, "a segment starting above reports the nearest endpoint");
 });
