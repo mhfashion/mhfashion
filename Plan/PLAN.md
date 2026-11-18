@@ -2656,3 +2656,8 @@ On the canvas, a Gradient drag paints a full-canvas fill: a drag over a selected
 ## 2026-11-19 Directive Update — Editor dock colors and Adjustments return arrow
 
 Keep the Edit Sidebar rail/panel and Adjustments box visually consistent with the active MH Fashion Light/Dark theme; do not force a dark rail or hard-coded light/dark dock colors that drift from the shared theme tokens. The circular arrow at the Adjustments edge must clearly represent returning to the Layers box, with accessible label/title/state while preserving the existing desktop and Phone/Mobile touch sizing.
+
+
+## 2026-11-19 Directive Update — Sidebar preview cards are caption-free
+
+Edit Sidebar preview cards must not show the design name, layer name/source design, uploaded filename, or uploaded byte-size captions beneath the preview image. Apply this consistently to Designs, Elements, Text layers, and Upload photo previews. Keep the preview cards clickable, retain accessible labels, and keep the search, Add Text, upload-limit behavior, and Image Create controls.

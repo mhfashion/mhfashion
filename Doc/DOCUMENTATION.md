@@ -1067,3 +1067,8 @@ Fixed the editor dock color inconsistency visible in the supplied screenshot. Th
 The circular control at the left edge of Adjustments is now explicitly the `Return to Layers` arrow while the panel is open. It has a matching accessible label, browser title, and `data-adjustments-return-arrow` state marker; clicking it continues to close Adjustments and reopen Layers. Desktop and coarse-pointer sizing remain unchanged.
 
 Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
+
+
+### 2026-11-19 — Sidebar preview captions removed
+
+Removed visible design/layer/file captions beneath preview cards in the Edit Sidebar. Designs, Elements, Text layer previews, and uploaded photo previews now show the artwork/image itself without the extra name, source-design, filename, or byte-size rows highlighted in the reference screenshot. The cards remain clickable and retain accessible `aria-label` values so interaction and accessibility behavior are unchanged. Search, Add Text, upload-size policy, and Image Create controls remain available.

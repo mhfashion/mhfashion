@@ -671,6 +671,9 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /aria-label="Design elements" className="grid grid-cols-2 gap-2"/);
   assert.match(editSidebar, /function ElementCard/);
   assert.match(editSidebar, /<ArtworkFrame>/);
+  assert.doesNotMatch(editSidebar, /block truncate px-2 py-1\.5 text-\[10px\] font-semibold text-text-primary/);
+  assert.doesNotMatch(editSidebar, /block truncate px-2 pb-1\.5 text-\[9px\] text-text-muted/);
+  assert.doesNotMatch(editSidebar, /layer\.image \? formatByteSize\(layer\.image\.byteSize\)/);
   // Image Create has no search field.
   assert.doesNotMatch(editSidebar, /Search image ideas/);
   assert.doesNotMatch(editSidebar, /Search uploads/);

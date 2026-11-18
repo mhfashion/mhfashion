@@ -60,7 +60,6 @@ function DesignCard({ design, onAdd }: { design: DesignLibraryEntry; onAdd: () =
           <EditorLayerPreview key={layer.id} paths={layer.paths} text={layer.text} />
         ))}
       </ArtworkFrame>
-      <span className="block truncate px-2 py-1.5 text-[10px] font-semibold text-text-primary">{design.name}</span>
     </button>
   );
 }
@@ -71,8 +70,6 @@ function ElementCard({ layer, onAdd }: { layer: DesignLibraryLayer; onAdd: () =>
       <ArtworkFrame>
         <EditorLayerPreview paths={layer.paths} text={layer.text} />
       </ArtworkFrame>
-      <span className="block truncate px-2 py-1.5 text-[10px] font-semibold text-text-primary">{layer.name}</span>
-      <span className="block truncate px-2 pb-1.5 text-[9px] text-text-muted">{layer.designName}</span>
     </button>
   );
 }
@@ -206,10 +203,6 @@ function PanelContent({
                   <ArtworkFrame>
                     <EditorLayerPreview image={layer.image} />
                   </ArtworkFrame>
-                  <span className="block truncate px-2 py-1.5 text-[10px] font-semibold text-text-primary">{layer.name}</span>
-                  <span className="block px-2 pb-1.5 text-[9px] text-text-muted">
-                    {layer.image ? formatByteSize(layer.image.byteSize) : ""}
-                  </span>
                 </div>
               ))}
             </div>
