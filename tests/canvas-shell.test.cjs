@@ -555,6 +555,20 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /onEditingTextChange\?\.\(event\.target\.value\)/);
   assert.match(source, /setEditorLayerText\(current, editingTextLayerId, value\)/);
   assert.match(source, /editingTextLayer=\{editingTextLayer\}/);
+  // Multi-line typing: the inline editor is a textarea that grows with each line,
+  // Enter inserts a new line, and the artwork renders one tspan per line.
+  assert.match(source, /<textarea[\s\S]*?aria-label="Type text on the canvas"/);
+  assert.match(source, /if \(event\.key === "Escape"\) event\.currentTarget\.blur\(\)/);
+  assert.match(layerPreview, /text\.value\.split\("\\n"\)/);
+  assert.match(layerPreview, /<tspan key=\{index\} x=\{text\.x\} dy=\{index === 0 \? 0 : lineHeight\}>/);
+  // A Text layer stays text-only: drawing and shapes are refused, not appended.
+  assert.match(source, /function textLayerRejection\(layer: EditorArtworkLayer \| undefined\)/);
+  assert.match(source, /layer\.kind !== "text"\) return null/);
+  assert.match(source, /const rejection = textLayerRejection\(selectedLayer\)/);
+  assert.match(layerModelSource, /if \(layer\.id !== layerId \|\| layer\.locked \|\| layer\.kind === "text"\) return layer;/);
+  // The transform box hugs the text instead of spanning the artwork like an image.
+  assert.match(layerModelSource, /export function editorTextCanvasBounds/);
+  assert.match(source, /editorTextCanvasBounds\(layer\.text\)/);
   // Every sidebar addition must be reachable in the Layers stack.
   assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
   assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 4, "Only explicit text, element, design and upload insertion reveals Layers");
