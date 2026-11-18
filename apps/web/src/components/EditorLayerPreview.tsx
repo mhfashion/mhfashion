@@ -71,15 +71,9 @@ export default function EditorLayerPreview({
             ? [{ id: "legacy-outline", kind: "outline", color: text.effectColor ?? "#000000", width: text.outlineWidth ?? 6 }]
             : [];
         const effects = text.effects ?? legacyEffects;
-        const lines = text.value.split("\n");
-        const lineHeight = text.fontSize * (text.lineHeight ?? 1.2);
         type TextEffectProps = SVGProps<SVGTextElement> & { "data-editor-text-effect"?: string; "data-editor-text-content"?: string };
         const drawText = (key: string, props: TextEffectProps = {}) => (
-          <text key={key} x={text.x} y={text.y} fontSize={text.fontSize} textAnchor={textAnchor} style={textStyle} data-editor-text-content="true" {...props}>
-            {lines.map((line, index) => (
-              <tspan key={index} x={text.x} dy={index === 0 ? 0 : lineHeight}>{line}</tspan>
-            ))}
-          </text>
+          <text key={key} x={text.x} y={text.y} fontSize={text.fontSize} textAnchor={textAnchor} style={textStyle} data-editor-text-content="true" {...props}>{text.value}</text>
         );
         return (
           <g transform={transform} data-editor-text-transform={text.textTransform ?? "none"}>
@@ -124,7 +118,7 @@ export default function EditorLayerPreview({
             })}
             {drawText("base-text", { fill: text.color, stroke: "none", "data-editor-text-content": "true" })}
             {effects.filter((effect) => effect.enabled !== false && effect.kind === "stripe").map((effect) => drawText(`stripe-${effectKey(effect)}`, { fill: `url(#${effectPrefix}-stripe-${effectKey(effect)})`, opacity: Math.max(0.05, Math.min(1, effect.opacity ?? 0.72)), "data-editor-text-effect": effect.kind }))}
-            {text.textDecoration === "line" && <line x1={text.x - text.fontSize * 2.2} y1={text.y + (lines.length - 1) * lineHeight + text.fontSize * 0.28} x2={text.x + text.fontSize * 2.2} y2={text.y + (lines.length - 1) * lineHeight + text.fontSize * 0.28} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={text.decorationWidth ?? 4} strokeLinecap="round" data-editor-text-decoration="line" />}
+            {text.textDecoration === "line" && <line x1={text.x - text.fontSize * 2.2} y1={text.y + text.fontSize * 0.28} x2={text.x + text.fontSize * 2.2} y2={text.y + text.fontSize * 0.28} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={text.decorationWidth ?? 4} strokeLinecap="round" data-editor-text-decoration="line" />}
             {text.textDecoration === "cut" && <rect x={text.x - text.fontSize * 2.2} y={text.y - text.fontSize * 0.34} width={text.fontSize * 4.4} height={text.decorationWidth ?? 4} fill={text.decorationColor ?? "#d4ff3f"} opacity="0.8" data-editor-text-decoration="cut" />}
             {text.textDecoration === "oblique" && <line x1={text.x - text.fontSize * 2.1} y1={text.y + text.fontSize * 0.2} x2={text.x - text.fontSize * 1.5} y2={text.y - text.fontSize * 0.1} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={text.decorationWidth ?? 4} data-editor-text-decoration="oblique" />}
           </g>

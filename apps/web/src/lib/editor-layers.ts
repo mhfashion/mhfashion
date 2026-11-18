@@ -46,49 +46,6 @@ export type EditorTextContent = {
   decorationWidth?: number;
   effects?: EditorTextEffect[];
 };
-
-export const EDITOR_TEXT_DEFAULT_LINE_HEIGHT = 1.2;
-
-export function editorTextLines(text: EditorTextContent): string[] {
-  return text.value.split("\n");
-}
-
-export function editorTextLineHeight(text: EditorTextContent): number {
-  return text.fontSize * (text.lineHeight ?? EDITOR_TEXT_DEFAULT_LINE_HEIGHT);
-}
-
-// Rough per-line advance width. The editor renders a UI sans-serif, where a bold
-// glyph averages about 0.58em, so the transform box hugs the text instead of
-// spanning the whole artwork like an image would.
-export function editorTextLineWidth(text: EditorTextContent, line: string): number {
-  const glyphs = Math.max(1, line.length);
-  return glyphs * text.fontSize * 0.58 + Math.max(0, glyphs - 1) * (text.letterSpacing ?? 0);
-}
-
-export function editorTextMetrics(text: EditorTextContent) {
-  const lines = editorTextLines(text);
-  const lineHeight = editorTextLineHeight(text);
-  const widths = lines.map((line) => editorTextLineWidth(text, line));
-  return {
-    lines,
-    lineHeight,
-    widths,
-    width: Math.max(text.fontSize, ...widths),
-    height: Math.max(lineHeight, lines.length * lineHeight),
-  };
-}
-
-export function editorTextCanvasBounds(text: EditorTextContent): { x: number; y: number; width: number; height: number } {
-  const { lines, lineHeight, width } = editorTextMetrics(text);
-  const align = text.textAlign ?? "center";
-  const left = align === "left" ? text.x : align === "right" ? text.x - width : text.x - width / 2;
-  const ascender = text.fontSize * 0.82;
-  const descender = text.fontSize * 0.26;
-  const top = text.y - ascender;
-  const bottom = text.y + (lines.length - 1) * lineHeight + descender;
-  return { x: left, y: top, width, height: Math.max(text.fontSize, bottom - top) };
-}
-
 export type EditorShapePath = {
   d: string;
   fill?: string;
@@ -315,7 +272,7 @@ export function appendEditorShapePaths(
 ): EditorArtworkLayer[] {
   if (paths.length === 0) return layers;
   return layers.map((layer) => {
-    if (layer.id !== layerId || layer.locked || layer.kind === "text") return layer;
+    if (layer.id !== layerId || layer.locked) return layer;
     return {
       ...layer,
       kind: layer.kind === "artwork" ? "shape" : layer.kind,
@@ -459,7 +416,7 @@ export function appendLayerStroke(
   maskBrushMode: MaskBrushMode,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => {
-    if (layer.id !== layerId || layer.locked || layer.kind === "text") return layer;
+    if (layer.id !== layerId || layer.locked) return layer;
     if (target === "mask") {
       if (layer.mask === null) return layer;
       return {

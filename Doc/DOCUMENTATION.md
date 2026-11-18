@@ -17,14 +17,6 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
-### 2026-11-18 — Text layers stay text-only, hug the transform box, and type on multiple lines
-
-- A Text layer now holds text and nothing else, matching Photoshop and Kittl. The Pen, Brush, Pencil, Eraser, and Shape tools refuse to draw on a text layer and instead show a notice ("… is a text layer. Select or create a non-text layer before drawing."). The layer model enforces this too: `appendLayerStroke` and `appendEditorShapePaths` skip a layer whose `kind` is `"text"`, so artwork can never be mixed in silently.
-- The Free Transform box now hugs the glyphs instead of spanning the artwork like an image would. A new `editorTextCanvasBounds` helper measures each line (respecting `textAlign`, `lineHeight`, and `letterSpacing`) and `layerCanvasBounds` uses it, so a two-line label shows a small box around the text.
-- Text can be typed on more than one line. The inline editor on the print canvas is now a `textarea` that grows with each line, Enter starts a new line (Escape still commits), and `EditorLayerPreview` renders one `<tspan>` per line so the drawn artwork matches the editor. The underline decoration follows the last line.
-- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
-- Validation: Next.js production build passed; TypeScript passed; ESLint clean (exit 0) on the changed files; all repository Node tests passed **63/63**; `git diff --check` passed. Focused production Chromium at desktop 1280×900 and phone 390×844 confirmed the inline editor is a textarea whose Enter adds a line, the artwork draws one tspan per line, the transform box stays small (about 104×84 px for a two-line label), and Brush and Shape draw nothing on the text layer while showing the refusal notice.
-
 ### 2026-11-18 — Free-transform handles: bigger, constant-size, with hover arrows
 
 - Enlarged the Free Transform handles and gave them a constant on-screen size. The artwork SVG is drawn in a 1000×1200 unit space that shrinks to fit its container (about 0.29 units-to-pixel at desktop), so the old fixed-unit handle drew only ~3px on screen. A `ResizeObserver` now measures the SVG scale and sizes each handle to about 10px on screen regardless of zoom, so the corners and edge handles are noticeably bigger as the owner asked.

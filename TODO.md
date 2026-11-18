@@ -4,8 +4,6 @@ The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN
 
 ## Current direct owner request — 2026-11-18
 
-- [x] **Text layers stay text-only, hug the box, and type on multiple lines (2026-11-18).** Drawing/shape tools refuse to add artwork to a text layer (notice shown) and the layer model enforces it; the Free Transform box hugs the glyphs via `editorTextCanvasBounds`; the inline editor is a growing `textarea` and the artwork renders one `tspan` per line. Implemented across `KittlCanvas.tsx`, `EditorLayerPreview.tsx`, `editor-layers.ts`; verified live on desktop and phone.
-
 - [x] **Free-transform handles: bigger, constant-size, hover arrows (2026-11-18).** Handles keep a ~10px on-screen size (measured via `ResizeObserver`) instead of shrinking with the fitted canvas; hovering a handle shows the two-sided resize glyph on its axis and the matching resize cursor on any active tool, while the rotate handle keeps its own circular-arrow glyph and a grab cursor. Implemented in `KittlCanvas.tsx`; measured live at ~14px on desktop and phone.
 
 - [x] **Shape tools: compact Kittl-style picker beside the chip (2026-11-18).** The Shape chip shows the selected shape's icon; clicking it opens a small icon-only three-column picker beside the chip (28px desktop / 40px touch options, no hint line, shape names kept as tooltip/`aria-label`). Choosing an option closes the box, keeps Shape active for immediate drawing, and updates the chip icon. The picker is closed on load. Implemented in `EditorToolsBar.tsx`; measured live at 106x106 desktop and 142x142 phone.
