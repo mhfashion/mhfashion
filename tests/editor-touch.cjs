@@ -273,13 +273,14 @@ async function main() {
     assert.equal(initial.productCanChange, true, "T-Shirt and Phone are selectable");
     assert.ok(initial.saveBuyDisabled, "Save and Buy remain placeholders while Color and Size are usable selectors");
 
-    // Every field uses the same fully rounded dropdown, not a native select.
+    // Every field uses the same rounded dropdown panel, not a native select.
     await tap('button[aria-label="Product"]');
     const productMenu = await evaluate(() => {
       const menu = document.querySelector('[role="listbox"][aria-label="Product options"]');
       const rect = menu.getBoundingClientRect();
       return {
         radius: Number.parseFloat(getComputedStyle(menu).borderTopLeftRadius),
+        height: Math.round(rect.height),
         background: getComputedStyle(menu).backgroundColor,
         accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
         options: [...menu.querySelectorAll('[role="option"]')].map((option) => ({
@@ -292,12 +293,13 @@ async function main() {
         viewport: { width: innerWidth },
       };
     });
-    assert.ok(productMenu.radius >= 100, "Product dropdown container is fully rounded like the boxes");
+    assert.ok(productMenu.radius >= 12, "Product dropdown container is rounded like the boxes");
+    assert.ok(productMenu.radius < productMenu.height / 2, "Product dropdown keeps straight sides instead of clamping into a capsule");
     assert.equal(productMenu.background, `rgb(${productMenu.accent})`, "Product dropdown uses the app's green accent");
     assert.deepEqual(productMenu.options.map((option) => option.label), ["Product T-Shirt", "Product Phone", "Product Hoodie", "Product Cup", "Product Kids", "Product Bag"]);
     assert.equal(productMenu.options[0].selected, "true", "The current T-Shirt choice is marked selected");
     assert.deepEqual(productMenu.options.filter((option) => option.disabled).map((option) => option.label), ["Product Hoodie", "Product Cup", "Product Kids", "Product Bag"]);
-    assert.ok(productMenu.options.every((option) => option.radius >= 16), "Product dropdown choices are also fully rounded");
+    assert.ok(productMenu.options.every((option) => option.radius >= 8), "Product dropdown choices are also rounded");
     assert.ok(productMenu.bounds.left >= 0 && productMenu.bounds.right <= productMenu.viewport.width, "Product dropdown stays within the phone viewport");
     await tap('button[aria-label="Product"]');
     assert.equal(await evaluate(() => Boolean(document.querySelector('[role="listbox"][aria-label="Product options"]'))), false, "Tapping the trigger again closes the dropdown");
@@ -308,6 +310,7 @@ async function main() {
       const rect = menu.getBoundingClientRect();
       return {
         radius: Number.parseFloat(getComputedStyle(menu).borderTopLeftRadius),
+        height: Math.round(rect.height),
         background: getComputedStyle(menu).backgroundColor,
         accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
         options: [...menu.querySelectorAll('[role="option"]')].map((option) => ({
@@ -321,11 +324,12 @@ async function main() {
       };
     });
     assert.equal(colorMenu.expanded, "true");
-    assert.ok(colorMenu.radius >= 100, "Color dropdown container is fully rounded");
+    assert.ok(colorMenu.radius >= 12, "Color dropdown container is rounded");
+    assert.ok(colorMenu.radius < colorMenu.height / 2, "Color dropdown keeps straight sides instead of clamping into a capsule");
     assert.equal(colorMenu.background, `rgb(${colorMenu.accent})`, "Color dropdown uses the app's green accent");
     assert.deepEqual(colorMenu.options.map((option) => option.label), ["Color Background", "Color Surface", "Color Accent"]);
     assert.equal(colorMenu.options[2].selected, "true", "The current Accent choice is marked selected");
-    assert.ok(colorMenu.options.every((option) => option.radius >= 16), "Color dropdown choices are also fully rounded");
+    assert.ok(colorMenu.options.every((option) => option.radius >= 8), "Color dropdown choices are also rounded");
     assert.ok(colorMenu.bounds.left >= 0 && colorMenu.bounds.right <= colorMenu.viewport.width, "Color dropdown stays within the phone viewport");
     await tap('button[aria-label="Color Surface"]');
     const chosenColor = await evaluate(() => ({
@@ -763,13 +767,18 @@ async function main() {
     await clickMouse('[role="listbox"][aria-label="GSM options"] [role="option"][aria-label="GSM 240 GSM"]');
     assert.equal(await evaluate(() => document.querySelector("[data-editor-price]").textContent.trim()), "Price 31,500 Ks", "Choosing a higher GSM updates the price at once");
     await clickMouse('[data-editor-box="Size"]');
-    const desktopSizeMenu = await evaluate(() => ({
-      exists: Boolean(document.querySelector('[role="listbox"][aria-label="Size options"]')),
-      radius: Number.parseFloat(getComputedStyle(document.querySelector('[role="listbox"][aria-label="Size options"]')).borderTopLeftRadius),
-      options: [...document.querySelectorAll('[role="listbox"][aria-label="Size options"] [role="option"]')].map((option) => option.getAttribute("aria-label")),
-    }));
+    const desktopSizeMenu = await evaluate(() => {
+      const menu = document.querySelector('[role="listbox"][aria-label="Size options"]');
+      const rect = menu.getBoundingClientRect();
+      return {
+        exists: Boolean(menu),
+        radius: Number.parseFloat(getComputedStyle(menu).borderTopLeftRadius),
+        height: Math.round(rect.height),
+        options: [...menu.querySelectorAll('[role="option"]')].map((option) => option.getAttribute("aria-label")),
+      };
+    });
     assert.equal(desktopSizeMenu.exists, true, "Desktop opens the same rounded Size dropdown");
-    assert.ok(desktopSizeMenu.radius >= 100, "Desktop Size dropdown is fully rounded");
+    assert.ok(desktopSizeMenu.radius >= 12 && desktopSizeMenu.radius < desktopSizeMenu.height / 2, "Desktop Size dropdown is a rounded rectangle, not a capsule");
     assert.deepEqual(desktopSizeMenu.options, ["Size XS", "Size S", "Size M", "Size L", "Size XL", "Size 2XL", "Size 3XL"]);
     await clickMouse('[role="listbox"][aria-label="Size options"] [role="option"][aria-label="Size 3XL"]');
     assert.equal(await evaluate(() => document.querySelector("[data-editor-price]").textContent.trim()), "Price 36,500 Ks", "Choosing a larger Size updates the price at once");

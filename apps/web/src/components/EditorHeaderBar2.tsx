@@ -22,11 +22,12 @@ const FIELD_BOX =
   "h-8 w-20 shrink-0 rounded-full border border-accent bg-accent text-[10px] font-semibold text-accent-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11";
 const TRIGGER_BOX = `${FIELD_BOX} inline-flex items-center justify-center gap-1.5 px-2 disabled:cursor-not-allowed disabled:opacity-100`;
 const ACTION_BOX = `${FIELD_BOX} inline-flex items-center justify-center px-1 disabled:cursor-default disabled:opacity-100`;
-// Every dropdown opens the same fully rounded green panel, matching the boxes.
+// Every dropdown opens the same green panel, matching the boxes: a rounded
+// rectangle (not rounded-full, which clamps a tall panel into a capsule).
 const MENU_BOX =
-  "fixed z-[100] flex flex-col gap-0.5 rounded-full border border-accent bg-accent p-1.5 text-accent-foreground shadow-xl";
+  "fixed z-[100] flex flex-col gap-0.5 rounded-3xl border border-accent bg-accent p-1.5 text-accent-foreground shadow-xl";
 const MENU_OPTION =
-  "flex min-h-9 w-full items-center gap-2 rounded-full px-3 text-left text-[10px] font-semibold text-accent-foreground outline-none transition-colors hover:bg-accent-foreground/10 focus-visible:ring-2 focus-visible:ring-accent-foreground disabled:opacity-40 [@media(pointer:coarse)]:min-h-11";
+  "flex min-h-9 w-full items-center gap-2 rounded-2xl px-3 text-left text-[10px] font-semibold text-accent-foreground outline-none transition-colors hover:bg-accent-foreground/10 focus-visible:ring-2 focus-visible:ring-accent-foreground disabled:opacity-40 [@media(pointer:coarse)]:min-h-11";
 
 function FieldLabel({ children }: { children: string }) {
   return (
@@ -45,7 +46,7 @@ type DropdownOption = {
 };
 
 // The single dropdown used by every Header Bar 2 selector. The trigger keeps
-// the shared box geometry; the popup is a fully rounded green panel mounted in
+// the shared box geometry; the popup is a rounded green panel mounted in
 // a portal so the horizontally scrollable bar can never clip it.
 function BoxDropdown({
   label,
