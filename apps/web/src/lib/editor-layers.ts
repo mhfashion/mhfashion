@@ -248,8 +248,8 @@ function fallbackTextLineMetrics(text: EditorTextContent, line: string): EditorT
   const glyphs = Math.max(1, line.length);
   return {
     width: glyphs * text.fontSize * 0.58 + Math.max(0, glyphs - 1) * (text.letterSpacing ?? 0),
-    ascent: text.fontSize * 0.82,
-    descent: text.fontSize * 0.26,
+    ascent: text.fontSize * 0.9,
+    descent: text.fontSize * 0.24,
   };
 }
 
@@ -270,10 +270,23 @@ export function editorTextLineMetrics(text: EditorTextContent, line: string): Ed
   context.font = `${text.fontStyle ?? "normal"} ${text.fontWeight ?? 700} ${text.fontSize}px ${text.fontFamily ?? EDITOR_TEXT_FONT_FAMILY}`;
   const measured = context.measureText(line);
   const width = measured.width + Math.max(0, line.length - 1) * (text.letterSpacing ?? 0);
+  // The transform box must hug the same line box SVG paints, so prefer the font's own
+  // ascent/descent over the ink box (actualBoundingBox), which is cap-height only and
+  // would leave the box short at the top for all-caps text.
+  const ascent = measured.fontBoundingBoxAscent > 0
+    ? measured.fontBoundingBoxAscent
+    : measured.actualBoundingBoxAscent > 0
+      ? measured.actualBoundingBoxAscent
+      : fallback.ascent;
+  const descent = measured.fontBoundingBoxDescent > 0
+    ? measured.fontBoundingBoxDescent
+    : measured.actualBoundingBoxDescent > 0
+      ? measured.actualBoundingBoxDescent
+      : fallback.descent;
   return {
     width: Number.isFinite(width) && width > 0 ? width : fallback.width,
-    ascent: measured.actualBoundingBoxAscent > 0 ? measured.actualBoundingBoxAscent : fallback.ascent,
-    descent: measured.actualBoundingBoxDescent > 0 ? measured.actualBoundingBoxDescent : fallback.descent,
+    ascent,
+    descent,
   };
 }
 
@@ -286,26 +299,31 @@ export function editorTextMetrics(text: EditorTextContent) {
   const lineHeight = editorTextLineHeight(text);
   const lineMetrics = lines.map((line) => editorTextLineMetrics(text, line));
   const widths = lineMetrics.map((metrics) => metrics.width);
-  const ascent = Math.max(text.fontSize * 0.5, ...lineMetrics.map((metrics) => metrics.ascent));
-  const descent = Math.max(text.fontSize * 0.1, ...lineMetrics.map((metrics) => metrics.descent));
+  const ascent = Math.max(...lineMetrics.map((metrics) => metrics.ascent));
+  const descent = Math.max(...lineMetrics.map((metrics) => metrics.descent));
   return {
     lines,
     lineHeight,
     widths,
     ascent,
     descent,
-    width: Math.max(text.fontSize, ...widths),
+    width: Math.max(1, ...widths),
     height: (lines.length - 1) * lineHeight + ascent + descent,
   };
 }
 
+/**
+ * The Free Transform box for a text layer, matching the SVG `<text>` box: `y` is the
+ * first-line baseline, so the box starts one ascent above it and ends one descent below
+ * the last line. No extra floor or padding is added here — the canvas pads uniformly.
+ */
 export function editorTextCanvasBounds(text: EditorTextContent): { x: number; y: number; width: number; height: number } {
   const { lines, lineHeight, width, ascent, descent } = editorTextMetrics(text);
   const align = text.textAlign ?? "center";
   const left = align === "left" ? text.x : align === "right" ? text.x - width : text.x - width / 2;
   const top = text.y - ascent;
-  const bottom = text.y + (lines.length - 1) * lineHeight + descent;
-  return { x: left, y: top, width, height: Math.max(text.fontSize, bottom - top) };
+  const height = (lines.length - 1) * lineHeight + ascent + descent;
+  return { x: left, y: top, width, height };
 }
 
 export type EditorShapePath = {

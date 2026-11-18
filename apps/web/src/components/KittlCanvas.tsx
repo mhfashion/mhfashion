@@ -36,6 +36,7 @@ import {
   duplicateEditorLayer,
   editorGradientFromToolSettings,
   editorTextCanvasBounds,
+  editorTextMetrics,
   EDITOR_TEXT_FONT_FAMILY,
   groupEditorLayers,
   linkEditorLayers,
@@ -216,6 +217,7 @@ function ArtworkOverlay({
   selectedLayerIds,
   selectionBounds,
   drawingStroke = false,
+  transformControlsHidden = false,
   layerScales,
   layerOrigins,
   onMoveStart,
@@ -243,6 +245,8 @@ function ArtworkOverlay({
   selectionBounds: CanvasBounds | null;
   /** Hide the Free Transform box while a freehand stroke is being drawn. */
   drawingStroke?: boolean;
+  /** Hide the Free Transform box entirely (e.g. while the inline text editor is open). */
+  transformControlsHidden?: boolean;
   layerScales: Record<string, Point>;
   layerOrigins: Record<string, Point>;
   onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
@@ -261,6 +265,17 @@ function ArtworkOverlay({
 }) {
   const editingText = editingTextLayer?.text ?? null;
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null);
+  // Re-entering an existing text layer puts the caret at the end, so typing continues
+  // after the last glyph (and Enter adds a line below) instead of overwriting the start.
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const editingTextLayerIdForCaret = editingTextLayer?.id ?? null;
+  useEffect(() => {
+    if (!editingTextLayerIdForCaret) return;
+    const element = textAreaRef.current;
+    if (!element) return;
+    const end = element.value.length;
+    element.setSelectionRange(end, end);
+  }, [editingTextLayerIdForCaret]);
   // Free-transform handles keep a constant on-screen size (like Kittl/Photoshop) even though
   // the artwork SVG is drawn in a 1000x1200 unit space that is scaled to fit its container.
   const svgRef = useRef<SVGSVGElement>(null);
@@ -308,61 +323,78 @@ function ArtworkOverlay({
           layerOrigins={layerOrigins}
           layerRotations={layerRotations}
         />
-        {editingText && (
-          // Typing goes straight onto the print canvas: the focused field shares the
-          // layer's font size and centre, so the caret sits where the text is drawn.
-          <foreignObject
-            x={editingText.x - TEXT_EDIT_BOX_WIDTH / 2}
-            y={editingText.y - editingText.fontSize - 72}
-            width={TEXT_EDIT_BOX_WIDTH}
-            height={editingText.value.split("\n").length * editingText.fontSize * (editingText.lineHeight ?? 1.2) + 72}
-            pointerEvents="auto"
-            data-editor-text-editor="true"
-          >
-            <div className="flex h-full flex-col items-center gap-2">
-              <div className="flex h-10 items-center gap-2 rounded-md bg-white/95 px-2 shadow-md">
-                <label className="text-[11px] text-[#202124]">Font size
-                  <input type="number" min="24" max="260" value={editingText.fontSize} aria-label="Text font size" onChange={(event) => onEditingTextStyle?.({ fontSize: Number(event.target.value) })} onPointerDown={(event) => event.stopPropagation()} className="ml-1 w-14 rounded border border-[#b8b8b8] px-1 py-1 text-[11px]" />
-                </label>
-                <label className="flex items-center gap-1 text-[11px] text-[#202124]">Color
-                  <input type="color" value={editingText.color} aria-label="Text color" onChange={(event) => onEditingTextStyle?.({ color: event.target.value })} onPointerDown={(event) => event.stopPropagation()} className="h-6 w-7" />
-                </label>
+        {editingText && (() => {
+          // Typing goes straight onto the print canvas. The textarea's line box is aligned
+          // with the drawn SVG text so the caret sits exactly where the glyphs land, and its
+          // height grows with every line so the caret never scrolls out of view.
+          const lines = editingText.value.split("\n").length;
+          const lineHeight = editingText.fontSize * (editingText.lineHeight ?? 1.2);
+          const { ascent, descent } = editorTextMetrics(editingText);
+          const halfLeading = (lineHeight - (ascent + descent)) / 2;
+          const editorTop = editingText.y - ascent - halfLeading;
+          // Matches the toolbar's `h-10` (40px) so the textarea's first baseline lands
+          // exactly on the drawn text's baseline.
+          const TOOLBAR_HEIGHT = 40;
+          return (
+            <foreignObject
+              x={editingText.x - TEXT_EDIT_BOX_WIDTH / 2}
+              y={editorTop - TOOLBAR_HEIGHT}
+              width={TEXT_EDIT_BOX_WIDTH}
+              height={TOOLBAR_HEIGHT + lines * lineHeight + 12}
+              pointerEvents="auto"
+              data-editor-text-editor="true"
+            >
+              <div className="flex h-full flex-col items-center">
+                <div className="flex h-10 items-center gap-2 rounded-md bg-white/95 px-2 shadow-md">
+                  <label className="text-[11px] text-[#202124]">Font size
+                    <input type="number" min="24" max="260" value={editingText.fontSize} aria-label="Text font size" onChange={(event) => onEditingTextStyle?.({ fontSize: Number(event.target.value) })} onPointerDown={(event) => event.stopPropagation()} className="ml-1 w-14 rounded border border-[#b8b8b8] px-1 py-1 text-[11px]" />
+                  </label>
+                  <label className="flex items-center gap-1 text-[11px] text-[#202124]">Color
+                    <input type="color" value={editingText.color} aria-label="Text color" onChange={(event) => onEditingTextStyle?.({ color: event.target.value })} onPointerDown={(event) => event.stopPropagation()} className="h-6 w-7" />
+                  </label>
+                </div>
+                <textarea
+                  ref={textAreaRef}
+                  autoFocus
+                  value={editingText.value}
+                  aria-label="Type text on the canvas"
+                  placeholder="Type your text"
+                  onChange={(event) => onEditingTextChange?.(event.target.value)}
+                  onBlur={(event) => {
+                    // Tapping the inline Font size / Color controls moves focus inside this
+                    // editor, so keep it open; only a focus move outside commits.
+                    const next = event.relatedTarget;
+                    if (next instanceof Node && event.currentTarget.closest("[data-editor-text-editor]")?.contains(next)) return;
+                    onEditingTextCommit?.();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") event.currentTarget.blur();
+                  }}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  className="w-full resize-none border-0 bg-transparent p-0 outline-none placeholder:text-[#9aa0a6]"
+                  style={{
+                    height: `${lines * lineHeight + 4}px`,
+                    lineHeight: `${lineHeight}px`,
+                    fontSize: `${editingText.fontSize}px`,
+                    color: editingText.color,
+                    caretColor: editingText.color,
+                    fontFamily: editingText.fontFamily ?? EDITOR_TEXT_FONT_FAMILY,
+                    fontWeight: editingText.fontWeight ?? 700,
+                    fontStyle: editingText.fontStyle ?? "normal",
+                    textAlign: editingText.textAlign ?? "center",
+                    textDecoration: editingText.underline ? "underline" : "none",
+                    letterSpacing: `${editingText.letterSpacing ?? 0}px`,
+                    outline: "2px dashed rgba(76, 157, 22, 0.7)",
+                    outlineOffset: "6px",
+                  }}
+                />
               </div>
-              <textarea
-                autoFocus
-                value={editingText.value}
-                aria-label="Type text on the canvas"
-                placeholder="Type your text"
-                rows={editingText.value.split("\n").length}
-                onChange={(event) => onEditingTextChange?.(event.target.value)}
-                onBlur={() => onEditingTextCommit?.()}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") event.currentTarget.blur();
-                }}
-                onPointerDown={(event) => event.stopPropagation()}
-                className="w-full resize-none border-0 bg-transparent outline-none placeholder:text-[#9aa0a6]"
-                style={{
-                  height: `${editingText.value.split("\n").length * editingText.fontSize * (editingText.lineHeight ?? 1.2) + 8}px`,
-                  lineHeight: `${editingText.fontSize * (editingText.lineHeight ?? 1.2)}px`,
-                  fontSize: `${editingText.fontSize}px`,
-                  color: editingText.color,
-                  caretColor: editingText.color,
-                  fontFamily: editingText.fontFamily ?? EDITOR_TEXT_FONT_FAMILY,
-                  fontWeight: editingText.fontWeight ?? 700,
-                  fontStyle: editingText.fontStyle ?? "normal",
-                  textAlign: editingText.textAlign ?? "center",
-                  textDecoration: editingText.underline ? "underline" : "none",
-                  letterSpacing: `${editingText.letterSpacing ?? 0}px`,
-                  outline: "2px dashed rgba(76, 157, 22, 0.7)",
-                  outlineOffset: "6px",
-                }}
-              />
-            </div>
-          </foreignObject>
-        )}
+            </foreignObject>
+          );
+        })()}
       </g>
       {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
-      {selectedLayerIds.length > 0 && selectionBounds && !editingText && !drawingStroke && (
+      {selectedLayerIds.length > 0 && selectionBounds && !editingText && !drawingStroke && !transformControlsHidden && (
         <g pointerEvents="none" data-editor-transform-controls="true" transform={`rotate(${transformRotation} ${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height / 2})`}>
           <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
           {resizeHandles.map((handle) => (
@@ -2119,6 +2151,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   selectedLayerIds={selectedLayerIds}
                   selectionBounds={selectionBounds}
                   drawingStroke={isDrawingStroke}
+                  transformControlsHidden={activeTool === "text"}
                   layerScales={canvasLayerScales}
                   layerOrigins={canvasLayerOrigins}
                   layerRotations={canvasLayerRotations}

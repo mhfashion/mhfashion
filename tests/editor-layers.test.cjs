@@ -656,7 +656,7 @@ test("text bounds hug the glyphs, respect alignment, and grow with extra lines",
 
   const metrics = editorTextMetrics({ ...single, value: "one\ntwo\nthree" });
   assert.equal(metrics.lines.length, 3);
-  assert.equal(metrics.width, Math.max(single.fontSize, ...metrics.widths));
+  assert.equal(metrics.width, Math.max(1, ...metrics.widths));
 });
 
 test("text bounds measure the real font when a browser canvas is available", () => {
@@ -672,6 +672,8 @@ test("text bounds measure the real font when a browser canvas is available", () 
         font: "",
         measureText: (line) => ({
           width: line.length * 90,
+          fontBoundingBoxAscent: 90,
+          fontBoundingBoxDescent: 24,
           actualBoundingBoxAscent: 74,
           actualBoundingBoxDescent: 21,
         }),
@@ -683,8 +685,10 @@ test("text bounds measure the real font when a browser canvas is available", () 
     assert.ok(measured.width > fallback.width, "real measurement widens the box beyond the estimate");
     assert.equal(measured.width, 6 * 90, "the box uses the measured advance width");
     assert.ok(measured.x < 500 && measured.x + measured.width > 500, "centred text still straddles its origin");
-    // Height follows the measured ascent+descent, floored at the font size.
-    assert.equal(measured.height, Math.max(single.fontSize, 74 + 21), "height follows the measured ascent and descent");
+    // The box hugs the SVG line box: one font ascent above the baseline and one font
+    // descent below the last line, with no extra floor or padding.
+    assert.equal(measured.height, 90 + 24, "height follows the font ascent and descent");
+    assert.equal(measured.y, single.y - 90, "the box starts one ascent above the baseline");
   } finally {
     if (previousDocument === undefined) delete globalThis.document;
     else globalThis.document = previousDocument;

@@ -685,6 +685,17 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   // Enter inserts a new line, and the artwork renders one tspan per line.
   assert.match(source, /<textarea[\s\S]*?aria-label="Type text on the canvas"/);
   assert.match(source, /if \(event\.key === "Escape"\) event\.currentTarget\.blur\(\)/);
+  // Tapping the inline Font size / Color controls keeps the editor open; only a focus
+  // move outside the editor commits, so those controls are usable while typing.
+  assert.match(source, /const next = event\.relatedTarget;/);
+  assert.match(source, /closest\("\[data-editor-text-editor\]"\)\?\.contains\(next\)\) return;/);
+  // The textarea line box is aligned with the drawn SVG text so the caret sits on the glyphs.
+  assert.match(source, /const \{ ascent, descent \} = editorTextMetrics\(editingText\);/);
+  assert.match(source, /const editorTop = editingText\.y - ascent - halfLeading;/);
+  // The Free Transform box is hidden while the Text tool is active, so its handles never
+  // cover the glyphs and block re-entering the inline editor.
+  assert.match(source, /transformControlsHidden=\{activeTool === "text"\}/);
+  assert.match(source, /!drawingStroke && !transformControlsHidden && \(/);
   assert.match(layerPreview, /text\.value\.split\("\\n"\)/);
   assert.match(layerPreview, /<tspan key=\{index\} x=\{text\.x\} dy=\{index === 0 \? 0 : lineHeight\}>/);
   // A Text layer stays text-only: drawing and shapes are refused, not appended.
@@ -812,8 +823,9 @@ test("Free Transform box hides while a Brush/Pencil stroke is being drawn", () =
   assert.match(source, /const \[isDrawingStroke, setIsDrawingStroke\] = useState\(false\)/);
   assert.match(source, /setIsDrawingStroke\(true\)/);
   assert.match(source, /setIsDrawingStroke\(false\)/);
-  // The transform overlay only renders when no stroke is in progress.
-  assert.match(source, /selectionBounds && !editingText && !drawingStroke && \(/);
+  // The transform overlay only renders when no stroke is in progress and the box is not
+  // otherwise hidden (e.g. while the Text tool is active).
+  assert.match(source, /selectionBounds && !editingText && !drawingStroke && !transformControlsHidden && \(/);
   assert.match(source, /drawingStroke\?: boolean/);
   assert.match(source, /drawingStroke=\{isDrawingStroke\}/);
 });
