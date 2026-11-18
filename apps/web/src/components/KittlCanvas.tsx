@@ -49,6 +49,7 @@ import {
 } from "@/lib/editor-layers";
 import type { EditorBrushShape, EditorToolOptions } from "@/lib/editor-layers";
 import {
+  cornerEditorPenAnchor,
   draggedEditorPenAnchor,
   editorPenPathData,
   insertEditorPenAnchor,
@@ -119,7 +120,9 @@ function editorToolCursor(tool: EditorTool) {
     gradient: '<circle cx="15" cy="9" r="7"/><circle cx="9" cy="15" r="7"/>',
   };
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#202124" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${drawings[tool] ?? drawings.move}</svg>`;
-  const hotspot = tool === "pen" ? "12 14" : "2 2";
+  // The hotspot sits on the nib (the icon's bottom tip), so a click places an
+  // anchor exactly where the pen point is, matching Photoshop.
+  const hotspot = tool === "pen" ? "15 22" : "2 2";
   const fallbackCursor = tool === "pen" ? "crosshair" : "auto";
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspot}, ${fallbackCursor}`;
 }
@@ -128,7 +131,7 @@ type PanStart = { pointerId: number; startX: number; startY: number; panX: numbe
 type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
-type PenAnchorDrag = { pointerId: number; index: number; point: Point };
+type PenAnchorDrag = { pointerId: number; index: number; point: Point; corner: boolean };
 type PenEditDrag = { pointerId: number; layerId: string; pathIndex: number; index: number; kind: "anchor" | "handle-in" | "handle-out"; start: Point; origin: EditorPenAnchor };
 type CanvasBounds = { x: number; y: number; width: number; height: number };
 type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
@@ -501,6 +504,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const penAnchorDragRef = useRef<PenAnchorDrag | null>(null);
   const penEditDragRef = useRef<PenEditDrag | null>(null);
   const penEditWindowHandlersRef = useRef<{ move: (event: PointerEvent) => void; end: (event: PointerEvent) => void } | null>(null);
+  const penKeyHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  const finishPenPathRef = useRef<(close?: boolean) => void>(() => {});
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget } | null>(null);
   const canvasArtworkDragRef = useRef<CanvasArtworkDrag | null>(null);
   const canvasLayerResizeRef = useRef<CanvasLayerResizeDrag | null>(null);
@@ -531,6 +536,37 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     window.removeEventListener("pointercancel", handlers.end, true);
     penEditWindowHandlersRef.current = null;
     penEditDragRef.current = null;
+  }, []);
+
+  // Keep the latest finish handler reachable from the key listener without
+  // re-subscribing the window listener on every render.
+  useEffect(() => {
+    finishPenPathRef.current = finishPenPath;
+  });
+
+  // Photoshop keys: Enter (or Return) commits the open path, Escape discards it.
+  useEffect(() => {
+    penKeyHandlerRef.current = (event: KeyboardEvent) => {
+      if (activeTool !== "pen" || penAnchors.length === 0) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName))) return;
+      if (event.key === "Enter") {
+        event.preventDefault();
+        finishPenPathRef.current(false);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        penAnchorDragRef.current = null;
+        setPenAnchors([]);
+        setPenHoverPoint(null);
+        setPenHoverCloseTarget(false);
+      }
+    };
+  }, [activeTool, penAnchors]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => penKeyHandlerRef.current(event);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   useEffect(() => {
@@ -926,6 +962,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     return Math.hypot(clientX - startX, clientY - startY) <= 16;
   }
 
+  function isNearPenEnd(clientX: number, clientY: number) {
+    const last = penAnchors[penAnchors.length - 1];
+    const rect = canvasNodeRef.current?.getBoundingClientRect();
+    if (!last || penAnchors.length < 2 || !rect) return false;
+    const endX = rect.left + last.x * rect.width;
+    const endY = rect.top + last.y * rect.height;
+    return Math.hypot(clientX - endX, clientY - endY) <= 16;
+  }
+
   function finishPenPath(close = false) {
     if (penAnchors.length < 2) {
       setPenAnchors([]);
@@ -972,6 +1017,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       finishPenPath(true);
       return;
     }
+    // Photoshop: clicking the last point again ends the path as an open path.
+    if (isNearPenEnd(event.clientX, event.clientY)) {
+      finishPenPath(false);
+      return;
+    }
     const previous = penAnchors[penAnchors.length - 1];
     const point = event.shiftKey && previous ? snapEditorPenPoint(rawPoint, previous) : rawPoint;
     const index = penAnchors.length;
@@ -979,7 +1029,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setPenHoverPoint(point);
     setPenHoverCloseTarget(false);
     event.currentTarget.setPointerCapture(event.pointerId);
-    penAnchorDragRef.current = { pointerId: event.pointerId, index, point };
+    penAnchorDragRef.current = { pointerId: event.pointerId, index, point, corner: event.altKey };
   }
 
   function startShapeDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
@@ -1269,7 +1319,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         const moved = rect ? Math.hypot((point.x - drag.point.x) * rect.width, (point.y - drag.point.y) * rect.height) > 3 : false;
         if (moved) {
           setPenAnchors((current) => current.map((anchor, index) => index === drag.index
-            ? draggedEditorPenAnchor(drag.point, point)
+            ? (drag.corner ? cornerEditorPenAnchor(drag.point, point) : draggedEditorPenAnchor(drag.point, point))
             : anchor));
         }
       }
@@ -1900,6 +1950,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                 )}
                 {activeTool === "pen" && penAnchors.length > 0 && (
                   <div aria-label="Pen tool actions" className="absolute left-1/2 top-2 z-40 flex max-w-[calc(100%-16px)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-xl border border-border bg-bg-surface/95 px-2 py-1 text-[10px] text-text-primary shadow-lg">
+                    <span className="hidden px-1 sm:inline">Click anchors · drag for curves · Alt-drag for corners · Enter finish · Esc cancel</span>
                     <button type="button" onClick={() => finishPenPath(false)} disabled={penAnchors.length < 2} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Finish</button>
                     <button type="button" onClick={() => finishPenPath(true)} disabled={penAnchors.length < 3} className="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Close path</button>
                     <button type="button" onClick={() => { setPenAnchors([]); setPenHoverPoint(null); setPenHoverCloseTarget(false); penAnchorDragRef.current = null; }} className="rounded-lg border border-border px-2 py-1">Cancel</button>

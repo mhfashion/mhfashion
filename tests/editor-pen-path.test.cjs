@@ -13,6 +13,7 @@ const compiled = ts.transpileModule(source, {
 const penGeometry = { exports: {} };
 new Function("module", "exports", compiled)(penGeometry, penGeometry.exports);
 const {
+  cornerEditorPenAnchor,
   draggedEditorPenAnchor,
   editorPenPathData,
   insertEditorPenAnchor,
@@ -49,6 +50,21 @@ test("drag-created nodes keep paired handles and Shift snaps to 45-degree segmen
   const dx = (snapped.x - 0.1) * 1000;
   const dy = (snapped.y - 0.1) * 1200;
   assert.ok(Math.abs(dx - dy) < 0.001, "the snapped segment should be exactly 45 degrees in artwork coordinates");
+});
+
+test("Alt-drag breaks a smooth node into a corner with a single outgoing handle", () => {
+  const corner = cornerEditorPenAnchor({ x: 0.5, y: 0.5 }, { x: 0.6, y: 0.4 });
+  assert.ok(Math.abs(corner.handleOut.x - 0.1) < 1e-9);
+  assert.ok(Math.abs(corner.handleOut.y + 0.1) < 1e-9);
+  assert.equal(corner.handleIn, null);
+
+  // Only the outgoing handle is emitted, so the incoming side stays a straight segment.
+  const d = editorPenPathData({ anchors: [
+    { x: 0.1, y: 0.5 },
+    corner,
+    { x: 0.9, y: 0.5 },
+  ], closed: false });
+  assert.equal(d, "M 100 600 L 500 600 C 600 480 900 600 900 600");
 });
 
 test("nodes can be inserted on straight and curved segments without losing curve handles", () => {

@@ -156,7 +156,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /activeToolCursorStyle/);
   const finishPenPathSource = source.slice(source.indexOf("function finishPenPath"), source.indexOf("function addPenAnchor"));
   assert.doesNotMatch(finishPenPathSource, /setActiveTool\("move"\)/, "Finishing a path keeps the Pen tool active");
-  assert.match(source, /const hotspot = tool === "pen" \? "12 14" : "2 2"/);
+  assert.match(source, /const hotspot = tool === "pen" \? "15 22" : "2 2"/);
   assert.match(source, /const fallbackCursor = tool === "pen" \? "crosshair" : "auto"/);
   assert.match(source, /style=\{\{ touchAction: "none", cursor: activeTool === "pen" \? activeToolCursorStyle : undefined \}\}/);
   assert.match(source, /className=\{activeTool === "pen" \? "" : "cursor-crosshair"\}/);
@@ -164,6 +164,13 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /draggedEditorPenAnchor/);
   assert.match(source, /snapEditorPenPoint/);
   assert.match(source, /isNearPenStart/);
+  assert.match(source, /isNearPenEnd/);
+  assert.match(source, /cornerEditorPenAnchor/);
+  assert.match(source, /drag\.corner \? cornerEditorPenAnchor\(drag\.point, point\) : draggedEditorPenAnchor\(drag\.point, point\)/);
+  assert.match(source, /corner: event\.altKey/);
+  assert.match(source, /event\.key === "Enter"/);
+  assert.match(source, /event\.key === "Escape"/);
+  assert.match(source, /penKeyHandlerRef/);
   assert.match(source, /data-pen-close-target/);
   assert.match(source, /aria-label="Pen path point controls"/);
   assert.match(source, /r="38" fill="transparent" stroke="transparent" pointerEvents="all"/);

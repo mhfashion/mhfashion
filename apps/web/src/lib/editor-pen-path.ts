@@ -102,6 +102,15 @@ export function draggedEditorPenAnchor(point: EditorPenPoint, handleTip: EditorP
   };
 }
 
+/** Alt-drag while placing breaks the smooth node into a corner: only the outgoing handle stays. */
+export function cornerEditorPenAnchor(point: EditorPenPoint, handleTip: EditorPenPoint): EditorPenAnchor {
+  return {
+    ...point,
+    handleOut: { x: handleTip.x - point.x, y: handleTip.y - point.y },
+    handleIn: null,
+  };
+}
+
 function cubicPoint(start: SpacePoint, control1: SpacePoint, control2: SpacePoint, end: SpacePoint, t: number): SpacePoint {
   const inverse = 1 - t;
   const a = inverse * inverse * inverse;

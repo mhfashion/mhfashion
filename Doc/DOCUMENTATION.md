@@ -17,6 +17,17 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-18 — Pen tool: nib-tip cursor, Alt-drag corners, Enter/Escape keys, click-last-anchor finish
+
+- Moved the Pen cursor hotspot from `12 14` to the nib tip (`15 22`) so a click places an anchor exactly under the pen point, matching Photoshop. The tool-shaped cursor still matches the Tools Bar icon.
+- Added `cornerEditorPenAnchor` to `apps/web/src/lib/editor-pen-path.ts`: an Alt-drag while placing an anchor now breaks the smooth node into a corner with only the outgoing handle, instead of the mirrored pair from a plain drag. `PenAnchorDrag` carries a `corner` flag recorded from `event.altKey`.
+- Added Photoshop keys while a Pen path is active: Enter/Return finishes the path, Escape discards it. Both are ignored while typing in an input, textarea, select, or contenteditable, and are routed through a ref so the window listener is not re-subscribed on every render.
+- Clicking the last placed anchor now finishes the path as an open path (previously only the first anchor closed it).
+- Added the key hints to the Pen actions bar text: “Click anchors · drag for curves · Alt-drag for corners · Enter finish · Esc cancel”.
+- Files: `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-pen-path.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-pen-path.test.cjs`.
+- Validation: TypeScript passed; ESLint **0 errors** (25 pre-existing warnings, none in the changed files); Next.js production build passed; all Node suites passed (canvas-shell **20/20**, editor-pen-path **6/6**, editor-layers **20/20**, photo-adjustments **18/18**, editor-price **4/4**). Headless-Chromium CDP against a fresh production build on port 3000 passed **10/10** desktop checks (nib-tip cursor, click-places-anchors, actions bar, hint text, Escape cancel, Enter finish, click-last-anchor finish, committed SVG paths, plain-drag paired handles, Alt-drag single outgoing handle) and **3/3** phone checks at 390×844 with touch emulation (touch taps place anchors, actions bar present with the hint hidden on narrow, Escape cancels).
+- Limitation: still a step-by-step Photoshop-like subset, not full Photoshop parity; no anchor snapping to unrelated objects and no dash/opacity/advanced cap-join properties yet.
+
 ### 2026-11-18 — Per-tool options for brush, pencil, eraser, and pen
 
 - Added a `Tool Options` section to the Adjustments panel that changes with the active tool, and the panel now opens on that section. Selecting Brush, Pencil, Eraser, or Pen shows only that tool's controls.
