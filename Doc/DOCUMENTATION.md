@@ -17,6 +17,19 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-18 — Per-tool options for brush, pencil, eraser, and pen
+
+- Added a `Tool Options` section to the Adjustments panel that changes with the active tool, and the panel now opens on that section. Selecting Brush, Pencil, Eraser, or Pen shows only that tool's controls.
+- Brush and Pencil expose tip shape (round/square), size, opacity, and softness/feather. Eraser exposes its radius. Pen exposes stroke width and cap.
+- Wired the values into the canvas instead of the old fixed constants. The eraser now uses `toolOptions.eraser.size` for its hit radius (previously a hard-coded `radiusPx = 180`), and committed Pen paths use `toolOptions.pen.width` (previously a fixed `strokeWidth: 5`).
+- Each brush/pencil stroke now stores its own `width`, `opacity`, `shape`, and `softness` on `ArtworkStroke`, so different strokes in one layer can look different. Legacy strokes with no stored values keep the previous brush look (52px / 0.68 opacity) through `artworkStrokeWidth`/`artworkStrokeOpacity` fallbacks.
+- Square tips render with `stroke-linecap: butt`; softness above zero applies a Gaussian-blur filter.
+- The Free Transform box is now hidden while a freehand stroke is in progress (`drawingStroke` on `ArtworkOverlay`), so the selection outline no longer sits under the pointer mid-stroke.
+- The bottom Layers action strip's Adjustments button is enabled even with no selected layer, so tool options stay reachable.
+- Files: `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`.
+- Validation: TypeScript passed; ESLint clean (exit 0) on the five changed files; all repository Node tests passed **64/64** against a production server on port 3000; Next.js production build passed. Headless Chromium against the production server confirmed the per-tool `Tool Options · <Tool>` heading, the Brush controls (shape/size/opacity/softness/feather), the Eraser size control, the Pen width/cap controls, a committed stroke carrying `stroke-width="88"`, `stroke-opacity="0.68"`, `data-editor-stroke-shape="square"`, `stroke-linecap="butt"`, and the transform box absent during both a first and a second stroke and present again after release.
+- Limitation: tool options live in page memory only; they are not persisted to a draft or account, matching the rest of the editor's current state handling.
+
 ### 2026-11-18 — Free-transform handles: bigger, constant-size, with hover arrows
 
 - Enlarged the Free Transform handles and gave them a constant on-screen size. The artwork SVG is drawn in a 1000×1200 unit space that shrinks to fit its container (about 0.29 units-to-pixel at desktop), so the old fixed-unit handle drew only ~3px on screen. A `ResizeObserver` now measures the SVG scale and sizes each handle to about 10px on screen regardless of zoom, so the corners and edge handles are noticeably bigger as the owner asked.
