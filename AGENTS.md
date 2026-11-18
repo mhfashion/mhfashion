@@ -17,14 +17,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
 
 ## Testing notes
-- `node --test tests/*.test.cjs` reports 107 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
+- `node --test tests/*.test.cjs` reports 108 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
 - `tests/editor-touch.cjs` has a known pre-existing failure in its phone **Edit sidebar** section (a `null` `getBoundingClientRect`); it is unrelated to the Editor Header Bar 2 work. Assertions that run earlier in the file still execute.
 - Production-UI checks can be driven headlessly with Chromium + CDP:
   `chromium --headless=new --no-sandbox --remote-debugging-port=9222 about:blank`,
   then connect to `http://127.0.0.1:9222/json` over the Node 22 `WebSocket`.
   Note `Emulation.setTouchEmulationEnabled` requires `maxTouchPoints` between 1 and 16.
-- Text-layer geometry: the Free Transform box comes from `editorTextCanvasBounds` in `editor-layers.ts`. It must match the SVG `<text>` box (`y = baseline − ascent`, one font ascent above the first baseline), so it prefers `fontBoundingBoxAscent`/`Descent` over the cap-height `actualBoundingBox*`. `layerCanvasBounds` then adds a uniform 18-unit selection margin to every layer kind. To check it, compare the `[data-transform-outline]` rect to the `[data-editor-text-content]` `getBoundingClientRect()` — the padding should be equal on all four sides.
+- Text-layer geometry: the Free Transform box comes from `editorTextCanvasBounds` in `editor-layers.ts`. It must hug the painted **glyph ink**, not the font line box: `editorTextLineMetrics` measures the ink box (`actualBoundingBoxAscent`/`Descent`) alongside the font line box, and `editorTextMetrics` unions each line's ink box around its own baseline (ignoring blank lines). Using `fontBoundingBoxAscent`/`Descent` instead makes the box ~44 units taller than the capitals at the 110px default. `layerCanvasBounds` then adds a uniform 18-unit selection margin to every layer kind, so the outline padding should be equal on all four sides (~5px on screen). To check it, compare the `[data-transform-outline]` rect to the `[data-editor-text-content]` `getBoundingClientRect()`.
 - Re-entering an existing text layer must place the caret at the end (the overlay's `textAreaRef` effect); otherwise Enter inserts a line above the text and typing overwrites the start.
+- Pushing to GitHub from this environment is blocked: the injected `GITHUB_TOKEN` authenticates as the `mhfashion` user and can read the repo, but every write path (`git push`, `POST /git/refs`, `gh api`) returns `403 Resource not accessible by integration`. The commits are prepared locally on the branch; a human or a token with `contents: write` must push them.
 
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.
