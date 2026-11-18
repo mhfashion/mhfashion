@@ -192,10 +192,13 @@ function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   if (!points.length) return null;
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
-  const minX = Math.max(0, Math.min(...xs) - 18);
-  const minY = Math.max(0, Math.min(...ys) - 18);
-  const maxX = Math.min(1000, Math.max(...xs) + 18);
-  const maxY = Math.min(1200, Math.max(...ys) + 18);
+  // Keep true workspace coordinates. Clamping these to the artboard would make
+  // a layer that is completely outside look like a tiny edge intersection and
+  // would incorrectly leak it into the mockup.
+  const minX = Math.min(...xs) - 18;
+  const minY = Math.min(...ys) - 18;
+  const maxX = Math.max(...xs) + 18;
+  const maxY = Math.max(...ys) + 18;
   return { x: minX, y: minY, width: Math.max(24, maxX - minX), height: Math.max(24, maxY - minY) };
 }
 

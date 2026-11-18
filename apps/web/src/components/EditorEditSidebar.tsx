@@ -40,7 +40,7 @@ const SIDEBAR_TOOLS: { label: SidebarSection; Icon: typeof LayoutTemplate }[] = 
 const CARD_BUTTON =
   "group overflow-hidden rounded-xl border border-border/70 bg-bg/80 text-left shadow-sm outline-none transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg hover:shadow-accent/10 focus-visible:ring-2 focus-visible:ring-accent";
 const CARD_FRAME =
-  "relative flex aspect-square items-center justify-center overflow-hidden border-b border-border/70 bg-[radial-gradient(circle_at_35%_25%,rgba(212,255,63,.16),transparent_35%),linear-gradient(135deg,#172126,#0c1215)]";
+  "relative flex aspect-square items-center justify-center overflow-hidden border-b border-border/70 bg-bg-surface";
 
 function ArtworkFrame({ children }: { children: React.ReactNode }) {
   return (

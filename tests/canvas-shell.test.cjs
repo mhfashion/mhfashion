@@ -712,6 +712,8 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /editorTextCanvasBounds\(layer\.text\)/);
   assert.match(source, /if \(layer\.kind === "text" && textBounds\) return textBounds/);
   assert.match(source, /editingText\.value\.split\("\\n"\)\.length/);
+  assert.match(source, /Keep true workspace coordinates/);
+  assert.match(source, /return maxX > 0 && minX < 1000 && maxY > 0 && minY < 1200/);
   // The mockup preview uses the same measured bounds, not the old per-character estimate.
   assert.match(mockupSource, /editorTextCanvasBounds\(layer\.text\)/);
   assert.doesNotMatch(mockupSource, /layer\.text\.value\.length \* layer\.text\.fontSize \* 0\.58/);
@@ -747,6 +749,8 @@ test("Sidebar catalogs come from the MH Fashion design library and uploads honou
   assert.match(layerPreview, /data-editor-text-content="true"/);
   assert.match(layerPreview, /data-editor-shape-path="true"/);
   assert.match(layerPreview, /data-editor-image-content="true"/);
+  assert.match(editSidebar, /const CARD_FRAME =\n\s+"[^\n]*bg-bg-surface/);
+  assert.doesNotMatch(editSidebar, /linear-gradient\(135deg,#172126,#0c1215\)/);
 });
 
 test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {
