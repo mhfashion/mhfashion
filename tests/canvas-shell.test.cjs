@@ -392,7 +392,25 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.doesNotMatch(source, /<line x1=\{\(selectionBounds\.x \+ selectionBounds\.width \/ 2\)\}/);
   assert.match(source, /data-rotation-angle="true"/);
   assert.match(source, /\{displayRotation\}°/);
-  assert.match(source, /r="22" fill="transparent" pointerEvents="auto"/);
+  assert.match(source, /r=\{handleHitRadius\} fill="transparent" pointerEvents="auto"/);
+  // Handles are a little bigger, keep a constant on-screen size, and reveal a
+  // double-headed arrow glyph on hover.
+  assert.match(source, /data-resize-glyph="true"/);
+  assert.match(source, /function resizeHandleGlyphPath\(angle: number\)/);
+  assert.match(source, /const RESIZE_GLYPH_PATHS = \{/);
+  assert.match(source, /const handleHitRadius = 15 \/ unitScale/);
+  assert.match(source, /const rotateHitRadius = 17 \/ unitScale/);
+  assert.match(source, /scale\(\$\{handleBoxScale\}\)/);
+  // Every tool shows the matching resize cursor while hovering a handle.
+  assert.match(source, /cursor: "cursor-nwse-resize"/);
+  assert.match(source, /cursor: "cursor-nesw-resize"/);
+  assert.match(source, /cursor: "cursor-ns-resize"/);
+  assert.match(source, /cursor: "cursor-ew-resize"/);
+  assert.match(source, /className=\{handle\.cursor\}/);
+  assert.match(source, /onPointerEnter=\{\(\) => setHoveredHandle\(handle\.key\)\}/);
+  assert.match(source, /const \[hoveredHandle, setHoveredHandle\] = useState<string \| null>\(null\)/);
+  // The rotate handle keeps its own distinct glyph and a grab cursor.
+  assert.match(source, /r=\{rotateHitRadius\} fill="transparent" pointerEvents="auto" onPointerDown=\{onRotateStart\} className="cursor-grab"/);
   assert.match(source, /function startCanvasLayerRotate/);
   assert.match(source, /layerRotations/);
   assert.match(source, /freeScale:\s*event\.shiftKey/);

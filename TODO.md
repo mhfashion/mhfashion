@@ -4,6 +4,8 @@ The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN
 
 ## Current direct owner request — 2026-11-18
 
+- [x] **Free-transform handles: bigger, constant-size, hover arrows (2026-11-18).** Handles keep a ~10px on-screen size (measured via `ResizeObserver`) instead of shrinking with the fitted canvas; hovering a handle shows the two-sided resize glyph on its axis and the matching resize cursor on any active tool, while the rotate handle keeps its own circular-arrow glyph and a grab cursor. Implemented in `KittlCanvas.tsx`; measured live at ~14px on desktop and phone.
+
 - [x] **Shape tools: compact Kittl-style picker beside the chip (2026-11-18).** The Shape chip shows the selected shape's icon; clicking it opens a small icon-only three-column picker beside the chip (28px desktop / 40px touch options, no hint line, shape names kept as tooltip/`aria-label`). Choosing an option closes the box, keeps Shape active for immediate drawing, and updates the chip icon. The picker is closed on load. Implemented in `EditorToolsBar.tsx`; measured live at 106x106 desktop and 142x142 phone.
 
 - [x] **Photoshop-style layer creation for Text (confirmed rule, 2026-11-18).** The Text tool must not create a layer on every click. Confirmed behavior, exactly like Photoshop:

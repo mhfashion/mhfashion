@@ -84,6 +84,21 @@ const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
 const DEFAULT_TEXT_FONT_SIZE = 110;
 const TEXT_EDIT_BOX_WIDTH = 900;
 
+// Inline SVG paths for the double-headed arrows shown while hovering a resize handle.
+// Each path is centred on the handle and points along that handle's own axis: corners use
+// the diagonal arrow, edge handles use the straight arrow.
+const RESIZE_GLYPH_PATHS = {
+  diagonal: "M-3.6 -3.6 3.6 3.6M-3.6 -3.6h2.5M-3.6 -3.6v2.5M3.6 3.6h-2.5M3.6 3.6v-2.5",
+  horizontal: "M-4.2 0h8.4M-4.2 0l2.3-1.7M-4.2 0l2.3 1.7M4.2 0l-2.3-1.7M4.2 0l-2.3 1.7",
+  vertical: "M0 -4.2v8.4M0 -4.2l-1.7 2.3M0 -4.2l1.7 2.3M0 4.2l-1.7-2.3M0 4.2l1.7-2.3",
+} as const;
+
+function resizeHandleGlyphPath(angle: number) {
+  if (angle === 90) return RESIZE_GLYPH_PATHS.vertical;
+  if (angle === 0) return RESIZE_GLYPH_PATHS.horizontal;
+  return RESIZE_GLYPH_PATHS.diagonal;
+}
+
 function editorToolCursor(tool: EditorTool) {
   const drawings: Record<string, string> = {
     pen: '<path d="M15.707 21.293a1 1 0 0 1-1.414 0l-1.586-1.586a1 1 0 0 1 0-1.414l5.586-5.586a1 1 0 0 1 1.414 0l1.586 1.586a1 1 0 0 1 0 1.414z"/><path d="m18 13-1.375-6.874a1 1 0 0 0-.746-.776L3.235 2.028a1 1 0 0 0-1.207 1.207L5.35 15.879a1 1 0 0 0 .776.746L13 18"/><path d="m2.3 2.3 7.286 7.286"/><circle cx="11" cy="11" r="2"/>',
@@ -207,21 +222,43 @@ function ArtworkOverlay({
   onRotateEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
 }) {
   const editingText = editingTextLayer?.text ?? null;
+  const [hoveredHandle, setHoveredHandle] = useState<string | null>(null);
+  // Free-transform handles keep a constant on-screen size (like Kittl/Photoshop) even though
+  // the artwork SVG is drawn in a 1000x1200 unit space that is scaled to fit its container.
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [unitScale, setUnitScale] = useState(1);
+  useEffect(() => {
+    const element = svgRef.current;
+    if (!element) return;
+    const updateScale = () => {
+      const rect = element.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      setUnitScale(Math.min(rect.width / 1000, rect.height / 1200) || 1);
+    };
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const handleHitRadius = 15 / unitScale;
+  const handleBoxScale = 10 / unitScale / 12;
+  const rotateHitRadius = 17 / unitScale;
+  const rotateBoxScale = 11 / unitScale / 20;
   const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
   const transformRotation = selectedLayerIds.length === 1 ? layerRotations[selectedLayerIds[0]] ?? 0 : 0;
   const displayRotation = Math.round(((transformRotation % 360) + 360) % 360);
   const resizeHandles = [
-    { key: "top-left", x: selectionBounds?.x ?? 0, y: selectionBounds?.y ?? 0 },
-    { key: "top-center", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0) / 2, y: selectionBounds?.y ?? 0 },
-    { key: "top-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: selectionBounds?.y ?? 0 },
-    { key: "middle-left", x: selectionBounds?.x ?? 0, y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) / 2 },
-    { key: "middle-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) / 2 },
-    { key: "bottom-left", x: selectionBounds?.x ?? 0, y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) },
-    { key: "bottom-center", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0) / 2, y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) },
-    { key: "bottom-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) },
+    { key: "top-left", x: selectionBounds?.x ?? 0, y: selectionBounds?.y ?? 0, cursor: "cursor-nwse-resize", angle: 45 },
+    { key: "top-center", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0) / 2, y: selectionBounds?.y ?? 0, cursor: "cursor-ns-resize", angle: 90 },
+    { key: "top-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: selectionBounds?.y ?? 0, cursor: "cursor-nesw-resize", angle: -45 },
+    { key: "middle-left", x: selectionBounds?.x ?? 0, y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) / 2, cursor: "cursor-ew-resize", angle: 0 },
+    { key: "middle-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0) / 2, cursor: "cursor-ew-resize", angle: 0 },
+    { key: "bottom-left", x: selectionBounds?.x ?? 0, y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0), cursor: "cursor-nesw-resize", angle: -45 },
+    { key: "bottom-center", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0) / 2, y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0), cursor: "cursor-ns-resize", angle: 90 },
+    { key: "bottom-right", x: (selectionBounds?.x ?? 0) + (selectionBounds?.width ?? 0), y: (selectionBounds?.y ?? 0) + (selectionBounds?.height ?? 0), cursor: "cursor-nwse-resize", angle: 45 },
   ];
   return (
-    <svg viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={(event) => { onMove(event); onResize(event); onRotate(event); }} onPointerUp={(event) => { onMoveEnd(event); onResizeEnd(event); onRotateEnd(event); }} onPointerCancel={(event) => { onMoveEnd(event); onResizeEnd(event); onRotateEnd(event); }} onLostPointerCapture={(event) => { onMoveEnd(event); onResizeEnd(event); onRotateEnd(event); }} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
+    <svg ref={svgRef} viewBox="0 0 1000 1200" preserveAspectRatio="xMidYMid meet" onPointerMove={(event) => { onMove(event); onResize(event); onRotate(event); }} onPointerUp={(event) => { onMoveEnd(event); onResizeEnd(event); onRotateEnd(event); }} onPointerCancel={(event) => { onMoveEnd(event); onResizeEnd(event); onRotateEnd(event); }} onLostPointerCapture={(event) => { onMoveEnd(event); onResizeEnd(event); onRotateEnd(event); }} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible">
       <g transform={`translate(${500 + transform.x} ${600 + transform.y}) translate(-500 -600)`}>
         <EditorArtworkLayers
           layers={layers}
@@ -290,14 +327,25 @@ function ArtworkOverlay({
         <g pointerEvents="none" data-editor-transform-controls="true" transform={`rotate(${transformRotation} ${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height / 2})`}>
           <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
           {resizeHandles.map((handle) => (
-            <g key={handle.key} data-resize-handle={handle.key}>
-              <circle cx={handle.x} cy={handle.y} r="22" fill="transparent" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} aria-description="Drag to resize. Hold Shift to stretch freely; hold Alt or Option to scale from the center." />
-              <rect x={handle.x - 4} y={handle.y - 4} width="8" height="8" rx="1" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" pointerEvents="none" />
+            <g
+              key={handle.key}
+              data-resize-handle={handle.key}
+              className={handle.cursor}
+              onPointerEnter={() => setHoveredHandle(handle.key)}
+              onPointerLeave={() => setHoveredHandle((current) => (current === handle.key ? null : current))}
+            >
+              <circle cx={handle.x} cy={handle.y} r={handleHitRadius} fill="transparent" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} aria-description="Drag to resize. Hold Shift to stretch freely; hold Alt or Option to scale from the center." />
+              <g transform={`translate(${handle.x} ${handle.y}) rotate(${handle.angle}) scale(${handleBoxScale})`} pointerEvents="none">
+                <rect x="-6" y="-6" width="12" height="12" rx="2.5" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+                {hoveredHandle === handle.key && (
+                  <path d={resizeHandleGlyphPath(handle.angle)} fill="none" stroke="#202124" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" data-resize-glyph="true" />
+                )}
+              </g>
             </g>
           ))}
-          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r="24" fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} aria-label="Rotate selected layer" aria-description="Drag to rotate. Hold Shift to snap to 15-degree increments." />
-          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height + 58})`} pointerEvents="none" data-rotate-handle="true">
-            <circle r="8" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
+          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r={rotateHitRadius} fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} className="cursor-grab" aria-label="Rotate selected layer" aria-description="Drag to rotate. Hold Shift to snap to 15-degree increments." />
+          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height + 58}) scale(${rotateBoxScale})`} pointerEvents="none" data-rotate-handle="true">
+            <circle r="10" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
             <path d="M2-5a5 5 0 1 0 3 7M2-5v3m0-3h3" fill="none" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" data-rotate-glyph="true" />
           </g>
           <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2 - 22} ${selectionBounds.y + selectionBounds.height + 78})`} data-rotation-angle="true">

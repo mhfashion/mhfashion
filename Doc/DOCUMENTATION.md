@@ -17,6 +17,14 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-18 — Free-transform handles: bigger, constant-size, with hover arrows
+
+- Enlarged the Free Transform handles and gave them a constant on-screen size. The artwork SVG is drawn in a 1000×1200 unit space that shrinks to fit its container (about 0.29 units-to-pixel at desktop), so the old fixed-unit handle drew only ~3px on screen. A `ResizeObserver` now measures the SVG scale and sizes each handle to about 10px on screen regardless of zoom, so the corners and edge handles are noticeably bigger as the owner asked.
+- Hovering any resize handle now reveals a double-headed arrow glyph inside the handle that points along that handle's axis (diagonal on corners, straight on edges), and the pointer becomes the matching resize cursor — `nwse`, `nesw`, `ns`, or `ew` — no matter which tool is active. The handle's transparent hit circle was widened too, so the cursor and glyph appear as soon as the pointer reaches the handle.
+- The rotate handle keeps its own distinct circular-arrow glyph, is enlarged to the same constant size, and shows a grab cursor. The angle read-out beside it is unchanged.
+- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Validation: Next.js production build passed; TypeScript passed; ESLint clean (exit 0) on the changed file; all repository Node tests passed **61/61**; `git diff --check` passed. Focused production Chromium at desktop 1280×900 and phone 390×844 confirmed eight resize handles sized about 14px on screen (up from about 3px), a double-headed arrow glyph appearing only on hover, the matching resize cursor on the hovered handle, and the rotate handle keeping its own glyph and grab cursor.
+
 ### 2026-11-18 — Shape tool opens a compact Kittl-style picker beside its chip
 
 - Reworked the Shape tool to match the owner's Kittl-style request: it no longer raises a large labelled box, and the picker is not permanently shown. The Shape chip in the tools bar now shows the currently selected shape's icon; clicking it activates the Shape tool and opens a small picker right beside the chip.
