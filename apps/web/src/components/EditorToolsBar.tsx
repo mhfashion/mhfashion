@@ -37,6 +37,7 @@ type Props = {
   foregroundColor: string;
   backgroundColor: string;
   selectedShape: EditorShapePreset;
+  drawingToolsDisabled?: boolean;
   onSelect: (tool: EditorTool) => void;
   onSelectShape: (shape: EditorShapePreset) => void;
   onForegroundColorChange: (color: string) => void;
@@ -81,6 +82,7 @@ export default function EditorToolsBar({
   foregroundColor,
   backgroundColor,
   selectedShape,
+  drawingToolsDisabled = false,
   onSelect,
   onSelectShape,
   onForegroundColorChange,
@@ -106,6 +108,7 @@ export default function EditorToolsBar({
         {!collapsed && (
           <div className="flex max-w-full flex-wrap items-center justify-center gap-0.5">
             {tools.map(({ id, label, Icon }) => {
+              const disabled = drawingToolsDisabled && (id === "brush" || id === "pencil" || id === "pen" || id === "shape" || id === "gradient" || id === "eraser");
               if (id === "shape") {
                 // Shape tool: a chip beside the bar opens the Kittl-style picker. The chip
                 // shows the selected shape's icon, and picking an option closes the box.
@@ -117,12 +120,13 @@ export default function EditorToolsBar({
                       aria-pressed={activeTool === id}
                       aria-haspopup="true"
                       aria-expanded={shapeMenuOpen}
-                      title={label}
+                      disabled={disabled}
+                      title={disabled ? "Drawing tools are off for photo layers" : label}
                       onClick={() => {
                         onSelect(id);
                         setShapeMenuOpen((open) => !open);
                       }}
-                      className={`flex h-7 w-7 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
+                      className={`flex h-7 w-7 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
                     >
                       <SelectedShapeIcon size={14} strokeWidth={1.9} aria-hidden="true" />
                     </button>
@@ -158,9 +162,10 @@ export default function EditorToolsBar({
                   type="button"
                   aria-label={label}
                   aria-pressed={activeTool === id}
-                  title={id === "hand" ? "Hand tool" : label}
+                  disabled={disabled}
+                  title={disabled ? "Drawing tools are off for photo layers" : id === "hand" ? "Hand tool" : label}
                   onClick={() => onSelect(id)}
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
                 >
                   <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
                 </button>

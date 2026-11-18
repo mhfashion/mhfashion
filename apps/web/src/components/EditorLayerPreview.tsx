@@ -130,10 +130,11 @@ export default function EditorLayerPreview({
                   color, and RGB mix combined into one matrix. */}
               <feColorMatrix type="matrix" values={colorValues} />
             </filter>
-            {/* Split toning: warm highlights and cool shadows by default weight. */}
+            {/* Split toning: warm highlights and cool shadows by default weight.
+                Balance slides the midtone stop so the grade leans to one end. */}
             <linearGradient id={imageGradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={bands?.highlights.color ?? "#000"} stopOpacity={bands?.highlights.opacity ?? 0} />
-              <stop offset="50%" stopColor={bands?.midtones.color ?? "#000"} stopOpacity={bands?.midtones.opacity ?? 0} />
+              <stop offset={`${50 - (bands?.balance ?? 0) * 25}%`} stopColor={bands?.midtones.color ?? "#000"} stopOpacity={bands?.midtones.opacity ?? 0} />
               <stop offset="100%" stopColor={bands?.shadows.color ?? "#000"} stopOpacity={bands?.shadows.opacity ?? 0} />
             </linearGradient>
             <filter id={imageGrainId}>

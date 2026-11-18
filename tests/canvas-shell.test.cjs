@@ -246,6 +246,21 @@ test("Shape tool exposes selectable presets, previews gestures, and appends path
   assert.doesNotMatch(source, /Shape Tool is ready for the upcoming vector-shape pipeline/);
 });
 
+test("drawing tools are inert on photo layers and the tools bar disables them", () => {
+  // Canvas guard: a selected photo layer blocks paint/pen/shape/gradient/eraser.
+  assert.match(source, /const DRAWING_TOOLS: EditorTool\[\] = \["brush", "pencil", "pen", "shape", "gradient", "eraser"\]/);
+  assert.match(source, /if \(activeLayer\?\.kind === "image" && DRAWING_TOOLS\.includes\(activeTool\)\)/);
+  assert.match(source, /Photo layers are adjusted in the Photo Adjustments panel; drawing tools are off for photos\./);
+  // Tool selection also falls back to Move for a photo layer.
+  assert.match(source, /if \(selected\?\.kind === "image" && DRAWING_TOOLS\.includes\(tool\)\) \{\n\s+setActiveTool\("move"\)/);
+  // Tools bar greys out the drawing tools and passes the flag through.
+  assert.match(source, /drawingToolsDisabled=\{selectedLayer\?\.kind === "image"\}/);
+  assert.match(toolsBar, /drawingToolsDisabled\?: boolean/);
+  assert.match(toolsBar, /const disabled = drawingToolsDisabled && \(id === "brush"/);
+  assert.match(toolsBar, /disabled=\{disabled\}/);
+  assert.match(toolsBar, /Drawing tools are off for photo layers/);
+});
+
 test("artwork on each Mockup can be moved and resized as one object", () => {
   assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?layers=\{layers\}[\s\S]*?maxArtworkEdgePx=/);
   assert.match(mockupArtwork, /aria-label=\{`Move \$\{side\} artwork`\}/);
@@ -457,7 +472,7 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(adjustmentsPanel, /<EditorPhotoAdjustments image=\{image\} selectedLayer=\{selectedLayer\}/);
   assert.match(adjustmentsPanel, /onUpdateImage: \(update: PhotoAdjustmentUpdate\) => void/);
   // Camera Raw groups and their live controls.
-  for (const group of ["White Balance", "Light", "Presence", "Tone Curve", "Levels", "Color Mixer", "Color Grading", "Selective Color", "Channel Mixer", "Effects", "Detail"]) {
+  for (const group of ["Basic", "Tone Curve", "Color Mixer", "Color Grading", "Levels", "Selective Color", "Channel Mixer", "Detail", "Effects", "Optics", "Calibration"]) {
     assert.match(photoAdjustments, new RegExp(`title="${group}`));
   }
   assert.match(photoAdjustments, /aria-label="Auto photo adjustments"/);
@@ -483,9 +498,19 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(photoAdjustments, /ariaLabel="Selective color magenta"/);
   assert.match(photoAdjustments, /ariaLabel="Selective color yellow"/);
   assert.match(photoAdjustments, /ariaLabel="Selective color black"/);
-  assert.match(photoAdjustments, /ariaLabel="HSL hue"/);
-  assert.match(photoAdjustments, /ariaLabel="HSL saturation"/);
-  assert.match(photoAdjustments, /ariaLabel="HSL lightness"/);
+  assert.match(photoAdjustments, /Color mixer mode/);
+  assert.match(photoAdjustments, /Color mixer \$\{band\} \$\{mixerMode/);
+  assert.match(photoAdjustments, /ariaLabel="Tone curve highlights"/);
+  assert.match(photoAdjustments, /ariaLabel="Tone curve lights"/);
+  assert.match(photoAdjustments, /ariaLabel="Tone curve darks"/);
+  assert.match(photoAdjustments, /ariaLabel="Tone curve shadows"/);
+  assert.match(photoAdjustments, /ariaLabel="Grading blending"/);
+  assert.match(photoAdjustments, /ariaLabel="Photo color noise reduction"/);
+  assert.match(photoAdjustments, /ariaLabel="Remove chromatic aberration"/);
+  assert.match(photoAdjustments, /ariaLabel="Lens corrections"/);
+  assert.match(photoAdjustments, /primary hue/);
+  assert.match(photoAdjustments, /primary saturation/);
+  assert.match(photoAdjustments, /aria-label="Photo services"/);
   assert.match(photoAdjustments, /ariaLabel="Grading highlights hue"/);
   assert.match(photoAdjustments, /ariaLabel="Grading midtones hue"/);
   assert.match(photoAdjustments, /ariaLabel="Grading shadows hue"/);

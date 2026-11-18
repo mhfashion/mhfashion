@@ -87,6 +87,10 @@ const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
 const DEFAULT_TEXT_FONT_SIZE = 110;
 const TEXT_EDIT_BOX_WIDTH = 900;
 
+// Tools that paint onto a layer. A photo layer is edited only through the Photo
+// Adjustments panel, so these are disabled while a photo layer is selected.
+const DRAWING_TOOLS: EditorTool[] = ["brush", "pencil", "pen", "shape", "gradient", "eraser"];
+
 // Inline SVG paths for the double-headed arrows shown while hovering a resize handle.
 // Each path is centred on the handle and points along that handle's own axis: corners use
 // the diagonal arrow, edge handles use the straight arrow.
@@ -1151,6 +1155,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
     if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
     if (activeTool === "move" || activeTool === "hand") return;
+    const activeLayer = layers.find((layer) => layer.id === selectedLayerId);
+    // Photo layers are edited through the Photo Adjustments panel only: the
+    // paint, pen, shape, gradient, and eraser tools are inert on them.
+    if (activeLayer?.kind === "image" && DRAWING_TOOLS.includes(activeTool)) {
+      event.preventDefault();
+      event.stopPropagation();
+      setToolNotice("Photo layers are adjusted in the Photo Adjustments panel; drawing tools are off for photos.");
+      return;
+    }
     if (activeTool === "pen") {
       addPenAnchor(event);
       return;
@@ -1338,6 +1351,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function chooseTool(tool: EditorTool) {
+    const selected = layers.find((layer) => layer.id === selectedLayerId);
+    // A photo layer has no paint target: selecting any drawing tool just keeps
+    // Move active so the photo stays adjustable, never drawable.
+    if (selected?.kind === "image" && DRAWING_TOOLS.includes(tool)) {
+      setActiveTool("move");
+      setSelectedTarget("artwork");
+      setToolNotice("Photo layers are adjusted in the Photo Adjustments panel; drawing tools are off for photos.");
+      return;
+    }
     if (editingPenPathLayerId) {
       setEditingPenPathLayerId(null);
       setEditingPenPathIndex(null);
@@ -1661,6 +1683,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     viewportRef.current?.scrollTo({ top: 0, left: 0 });
   }
 
+  const selectedLayer = layers.find((layer) => layer.id === selectedLayerId) ?? null;
   const selectedPenLayer = layers.find((layer) => layer.id === selectedLayerId && !layer.locked && layer.shape?.paths.some((path) => path.penPath));
   const selectedPenPaths = selectedPenLayer?.shape?.paths.flatMap((path, index) => path.penPath ? [{ path, index }] : []) ?? [];
   const activeEditingPenPathIndex = editingPenPathIndex ?? 0;
@@ -2020,7 +2043,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         {adjustmentsOpen && <EditorAdjustmentsPanel
           open={adjustmentsOpen}
           onToggle={closeAdjustments}
-          selectedLayer={layers.find((layer) => layer.id === selectedLayerId) ?? null}
+          selectedLayer={selectedLayer}
           activeTool={activeTool}
           toolOptions={toolOptions}
           onUpdateToolOptions={updateToolOptions}
@@ -2068,6 +2091,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         foregroundColor={foregroundColor}
         backgroundColor={backgroundColor}
         selectedShape={selectedShape}
+        drawingToolsDisabled={selectedLayer?.kind === "image"}
         onSelect={chooseTool}
         onSelectShape={setSelectedShape}
         onForegroundColorChange={setForegroundColor}

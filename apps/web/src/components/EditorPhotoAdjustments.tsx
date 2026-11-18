@@ -2,17 +2,23 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { EditorArtworkLayer, EditorImageContent, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
-import { autoPhotoAdjustments, neutralPhotoAdjustments } from "@/lib/photo-adjustments";
+import { autoPhotoAdjustments, MIXER_BANDS, MIXER_BAND_COLORS, neutralPhotoAdjustments } from "@/lib/photo-adjustments";
 
 // Photoshop Camera Raw's Basic panel is the reference: grouped, collapsible
 // controls, 0 as neutral for every presence/tone slider, Exposure in stops, and
 // Temp/Tint on the white-balance axis. Values stay on the image layer as
 // instructions, so every edit is non-destructive and re-renderable.
 
-type GroupKey = "wb" | "light" | "presence" | "curve" | "levels" | "hsl" | "grading" | "selective" | "channel" | "effects" | "detail" | "smart" | "services";
+type GroupKey = "basic" | "curve" | "mixer" | "grading" | "levels" | "selective" | "channel" | "detail" | "effects" | "optics" | "calibration";
+type MixerMode = "Hue" | "Saturation" | "Luminance";
+type Primary = "Red" | "Green" | "Blue";
 
-const CURVE_CHANNELS = ["RGB", "Red", "Green", "Blue"] as const;
-type CurveChannel = (typeof CURVE_CHANNELS)[number];
+const MIXER_MODES: MixerMode[] = ["Hue", "Saturation", "Luminance"];
+const PRIMARY_LABELS: Record<Primary, { hue: "redPrimaryHue" | "greenPrimaryHue" | "bluePrimaryHue"; saturation: "redPrimarySaturation" | "greenPrimarySaturation" | "bluePrimarySaturation"; color: string }> = {
+  Red: { hue: "redPrimaryHue", saturation: "redPrimarySaturation", color: "#e23b3b" },
+  Green: { hue: "greenPrimaryHue", saturation: "greenPrimarySaturation", color: "#4caf50" },
+  Blue: { hue: "bluePrimaryHue", saturation: "bluePrimarySaturation", color: "#3b6fe2" },
+};
 
 function Group({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
   return (
@@ -43,12 +49,11 @@ function Toggle({ label, pressed, ariaLabel, onClick }: { label: string; pressed
 // A live transfer-curve graph. Editing a point moves the matching stored value;
 // the input tone is plotted on X and the rendered tone on Y, matching the tone
 // stage the preview filter applies.
-function CurveGraph({ points, onChange, channel }: { points: number[]; onChange: (index: number, value: number) => void; channel: CurveChannel }) {
+function CurveGraph({ points, onChange }: { points: number[]; onChange: (index: number, value: number) => void }) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const coords = points.map((point, index) => ({ x: (index / (points.length - 1)) * 100, y: 100 - point }));
   const path = coords.map((point, index) => `${index === 0 ? "M" : "L"}${point.x} ${point.y}`).join(" ");
-  const channelColor = channel === "Red" ? "#ef4444" : channel === "Green" ? "#22c55e" : channel === "Blue" ? "#3b82f6" : "#d4ff3f";
 
   function valueFromEvent(event: React.PointerEvent<SVGSVGElement>, index: number) {
     const rect = svgRef.current?.getBoundingClientRect();
@@ -71,7 +76,7 @@ function CurveGraph({ points, onChange, channel }: { points: number[]; onChange:
       <path d="M0 100 L100 0" stroke="#6b7280" strokeWidth="0.5" strokeDasharray="2 2" fill="none" />
       {[25, 50, 75].map((grid) => <line key={grid} x1="0" y1={grid} x2="100" y2={grid} stroke="#2a333a" strokeWidth="0.4" />)}
       {[25, 50, 75].map((grid) => <line key={`v${grid}`} x1={grid} y1="0" x2={grid} y2="100" stroke="#2a333a" strokeWidth="0.4" />)}
-      <path d={path} fill="none" stroke={channelColor} strokeWidth="1.6" />
+      <path d={path} fill="none" stroke="#d4ff3f" strokeWidth="1.6" />
       {coords.map((point, index) => (
         <circle
           key={index}
@@ -79,7 +84,7 @@ function CurveGraph({ points, onChange, channel }: { points: number[]; onChange:
           cy={point.y}
           r={dragging === index ? 3.2 : 2.4}
           fill="#151c20"
-          stroke={channelColor}
+          stroke="#d4ff3f"
           strokeWidth="1.2"
           className="cursor-pointer"
           onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDragging(index); }}
@@ -97,8 +102,8 @@ export default function EditorPhotoAdjustments({ image, selectedLayer, onUpdateI
   onRemoveMask: (id: string) => void;
   onSelectMask: () => void;
 }) {
-  const [openGroups, setOpenGroups] = useState<GroupKey[]>(["light"]);
-  const [curveChannel, setCurveChannel] = useState<CurveChannel>("RGB");
+  const [openGroups, setOpenGroups] = useState<GroupKey[]>(["basic"]);
+  const [mixerMode, setMixerMode] = useState<MixerMode>("Hue");
   const toggleGroup = (key: GroupKey) => setOpenGroups((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
   const isOpen = (key: GroupKey) => openGroups.includes(key);
   const curves = useMemo(() => image.curves && image.curves.length >= 2 ? image.curves : [0, 25, 50, 75, 100], [image.curves]);
@@ -110,6 +115,14 @@ export default function EditorPhotoAdjustments({ image, selectedLayer, onUpdateI
     onUpdateImage({ curves: next });
   };
 
+  const mixerField = mixerMode === "Hue" ? "mixerHue" : mixerMode === "Saturation" ? "mixerSaturation" : "mixerLuminance";
+  const mixerValues = image[mixerField] ?? [0, 0, 0, 0, 0, 0, 0, 0];
+  const setMixerBand = (index: number, value: number) => {
+    const next = [...mixerValues];
+    next[index] = value;
+    onUpdateImage({ [mixerField]: next } as PhotoAdjustmentUpdate);
+  };
+
   return (
     <div className="space-y-2.5">
       <div className="flex items-center gap-2">
@@ -117,63 +130,68 @@ export default function EditorPhotoAdjustments({ image, selectedLayer, onUpdateI
         <button type="button" aria-label="Reset photo adjustments" onClick={() => onUpdateImage(neutralPhotoAdjustments())} className="min-h-9 flex-1 rounded-lg border border-border px-2 text-[10px] font-bold text-text-primary transition hover:border-rose-400 [@media(pointer:coarse)]:min-h-11">Reset</button>
       </div>
 
-      <Group title="White Balance" open={isOpen("wb")} onToggle={() => toggleGroup("wb")}>
+      <Group title="Basic" open={isOpen("basic")} onToggle={() => toggleGroup("basic")}>
         <Slider label="Temperature" value={image.temperature ?? 0} min={-100} max={100} ariaLabel="Photo temperature" onChange={(temperature) => onUpdateImage({ temperature })} />
         <p className="-mt-1 text-[8px] uppercase tracking-wide text-text-muted">Blue · Neutral · Yellow</p>
         <Slider label="Tint" value={image.tint ?? 0} min={-100} max={100} ariaLabel="Photo tint" onChange={(tint) => onUpdateImage({ tint })} />
         <p className="-mt-1 text-[8px] uppercase tracking-wide text-text-muted">Green · Neutral · Magenta</p>
-      </Group>
-
-      <Group title="Light" open={isOpen("light")} onToggle={() => toggleGroup("light")}>
         <Slider label="Exposure" value={image.exposure ?? 0} min={-5} max={5} step={0.05} suffix=" EV" ariaLabel="Photo exposure" onChange={(exposure) => onUpdateImage({ exposure })} />
         <Slider label="Contrast" value={image.contrast ?? 0} min={-100} max={100} ariaLabel="Photo contrast" onChange={(contrast) => onUpdateImage({ contrast })} />
         <Slider label="Highlights" value={image.highlights ?? 0} min={-100} max={100} ariaLabel="Photo highlights" onChange={(highlights) => onUpdateImage({ highlights })} />
         <Slider label="Shadows" value={image.shadows ?? 0} min={-100} max={100} ariaLabel="Photo shadows" onChange={(shadows) => onUpdateImage({ shadows })} />
         <Slider label="Whites" value={image.whites ?? 0} min={-100} max={100} ariaLabel="Photo whites" onChange={(whites) => onUpdateImage({ whites })} />
         <Slider label="Blacks" value={image.blacks ?? 0} min={-100} max={100} ariaLabel="Photo blacks" onChange={(blacks) => onUpdateImage({ blacks })} />
-      </Group>
-
-      <Group title="Presence" open={isOpen("presence")} onToggle={() => toggleGroup("presence")}>
         <Slider label="Texture" value={image.texture ?? 0} min={-100} max={100} ariaLabel="Photo texture" onChange={(texture) => onUpdateImage({ texture })} />
         <Slider label="Clarity" value={image.clarity ?? 0} min={-100} max={100} ariaLabel="Photo clarity" onChange={(clarity) => onUpdateImage({ clarity })} />
         <Slider label="Dehaze" value={image.dehaze ?? 0} min={-100} max={100} ariaLabel="Photo dehaze" onChange={(dehaze) => onUpdateImage({ dehaze })} />
         <Slider label="Vibrance" value={image.vibrance ?? 0} min={-100} max={100} ariaLabel="Photo vibrance" onChange={(vibrance) => onUpdateImage({ vibrance })} />
         <Slider label="Saturation" value={image.saturation ?? 0} min={-100} max={100} ariaLabel="Photo saturation" onChange={(saturation) => onUpdateImage({ saturation })} />
-        <Slider label="Hue" value={image.hue ?? 0} min={-180} max={180} suffix="°" ariaLabel="Photo hue" onChange={(hue) => onUpdateImage({ hue })} />
       </Group>
 
       <Group title="Tone Curve" open={isOpen("curve")} onToggle={() => toggleGroup("curve")}>
-        <div role="group" aria-label="Curve channel" className="flex gap-1">
-          {CURVE_CHANNELS.map((channel) => <button key={channel} type="button" aria-label={`Curve channel ${channel}`} aria-pressed={curveChannel === channel} onClick={() => setCurveChannel(channel)} className="flex-1 rounded-lg border border-border px-1 py-1 text-[9px] font-semibold aria-pressed:border-accent aria-pressed:bg-accent/15">{channel}</button>)}
-        </div>
-        <CurveGraph points={curves} channel={curveChannel} onChange={setCurvePoint} />
+        <Slider label="Highlights" value={image.curveHighlights ?? 0} min={-100} max={100} ariaLabel="Tone curve highlights" onChange={(curveHighlights) => onUpdateImage({ curveHighlights })} />
+        <Slider label="Lights" value={image.curveLights ?? 0} min={-100} max={100} ariaLabel="Tone curve lights" onChange={(curveLights) => onUpdateImage({ curveLights })} />
+        <Slider label="Darks" value={image.curveDarks ?? 0} min={-100} max={100} ariaLabel="Tone curve darks" onChange={(curveDarks) => onUpdateImage({ curveDarks })} />
+        <Slider label="Shadows" value={image.curveShadows ?? 0} min={-100} max={100} ariaLabel="Tone curve shadows" onChange={(curveShadows) => onUpdateImage({ curveShadows })} />
+        <CurveGraph points={curves} onChange={setCurvePoint} />
         <div className="space-y-1">{curves.map((point, index) => <label key={index} className="block text-[9px] text-text-secondary">Point {index + 1}<input aria-label={`Photo curve point ${index + 1}`} type="range" min="0" max="100" value={point} onChange={(event) => setCurvePoint(index, Number(event.target.value))} className="ml-2 inline-block h-1.5 w-[calc(100%-3.5rem)] cursor-pointer align-middle accent-[var(--accent)]" /></label>)}</div>
-        <button type="button" aria-label="Reset photo curves" onClick={() => onUpdateImage({ curves: [0, 25, 50, 75, 100] })} className="min-h-8 w-full rounded-lg border border-border text-[9px] font-semibold transition hover:border-accent">Linear reset</button>
+        <button type="button" aria-label="Reset photo curves" onClick={() => onUpdateImage({ curves: [0, 25, 50, 75, 100], curveShadows: 0, curveDarks: 0, curveLights: 0, curveHighlights: 0 })} className="min-h-8 w-full rounded-lg border border-border text-[9px] font-semibold transition hover:border-accent">Linear reset</button>
+      </Group>
+
+      <Group title="Color Mixer" open={isOpen("mixer")} onToggle={() => toggleGroup("mixer")}>
+        <div role="group" aria-label="Color mixer mode" className="flex gap-1">
+          {MIXER_MODES.map((mode) => <button key={mode} type="button" aria-label={`Color mixer ${mode}`} aria-pressed={mixerMode === mode} onClick={() => setMixerMode(mode)} className="flex-1 rounded-lg border border-border px-1 py-1 text-[9px] font-semibold aria-pressed:border-accent aria-pressed:bg-accent/15">{mode}</button>)}
+        </div>
+        <div className="space-y-1.5">
+          {MIXER_BANDS.map((band, index) => (
+            <label key={band} className="flex items-center gap-2 text-[10px] text-text-secondary">
+              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: MIXER_BAND_COLORS[index] }} aria-hidden="true" />
+              <span className="w-14 capitalize">{band}</span>
+              <input aria-label={`Color mixer ${band} ${mixerMode.toLowerCase()}`} type="range" min={-100} max={100} value={mixerValues[index] ?? 0} onChange={(event) => setMixerBand(index, Number(event.target.value))} className="h-1.5 flex-1 cursor-pointer accent-[var(--accent)]" />
+              <span className="w-8 text-right font-semibold text-text-primary">{mixerValues[index] ?? 0}</span>
+            </label>
+          ))}
+        </div>
+      </Group>
+
+      <Group title="Color Grading" open={isOpen("grading")} onToggle={() => toggleGroup("grading")}>
+        <p className="text-[9px] font-semibold text-text-primary">Shadows</p>
+        <Slider label="Hue" value={image.splitShadowHue ?? 220} min={0} max={360} suffix="°" ariaLabel="Grading shadows hue" onChange={(splitShadowHue) => onUpdateImage({ splitShadowHue })} />
+        <Slider label="Saturation" value={image.splitShadowSat ?? 0} min={0} max={100} ariaLabel="Grading shadows saturation" onChange={(splitShadowSat) => onUpdateImage({ splitShadowSat })} />
+        <p className="text-[9px] font-semibold text-text-primary">Midtones</p>
+        <Slider label="Hue" value={image.splitMidHue ?? 0} min={0} max={360} suffix="°" ariaLabel="Grading midtones hue" onChange={(splitMidHue) => onUpdateImage({ splitMidHue })} />
+        <Slider label="Saturation" value={image.splitMidSat ?? 0} min={0} max={100} ariaLabel="Grading midtones saturation" onChange={(splitMidSat) => onUpdateImage({ splitMidSat })} />
+        <p className="text-[9px] font-semibold text-text-primary">Highlights</p>
+        <Slider label="Hue" value={image.splitHighlightHue ?? 45} min={0} max={360} suffix="°" ariaLabel="Grading highlights hue" onChange={(splitHighlightHue) => onUpdateImage({ splitHighlightHue })} />
+        <Slider label="Saturation" value={image.splitHighlightSat ?? 0} min={0} max={100} ariaLabel="Grading highlights saturation" onChange={(splitHighlightSat) => onUpdateImage({ splitHighlightSat })} />
+        <Slider label="Blending" value={image.splitBlending ?? 50} min={0} max={100} ariaLabel="Grading blending" onChange={(splitBlending) => onUpdateImage({ splitBlending })} />
+        <Slider label="Balance" value={image.splitBalance ?? 0} min={-100} max={100} ariaLabel="Grading balance" onChange={(splitBalance) => onUpdateImage({ splitBalance })} />
       </Group>
 
       <Group title="Levels" open={isOpen("levels")} onToggle={() => toggleGroup("levels")}>
         <Slider label="Black point" value={image.levelsBlack ?? 0} min={0} max={100} ariaLabel="Photo levels black point" onChange={(levelsBlack) => onUpdateImage({ levelsBlack })} />
         <Slider label="White point" value={image.levelsWhite ?? 100} min={0} max={100} ariaLabel="Photo levels white point" onChange={(levelsWhite) => onUpdateImage({ levelsWhite })} />
         <Slider label="Gamma" value={image.levelsGamma ?? 1} min={0.1} max={3} step={0.05} ariaLabel="Photo levels gamma" onChange={(levelsGamma) => onUpdateImage({ levelsGamma })} />
-      </Group>
-
-      <Group title="Color Mixer · HSL" open={isOpen("hsl")} onToggle={() => toggleGroup("hsl")}>
-        <Slider label="Hue" value={image.hslHue ?? 0} min={-180} max={180} suffix="°" ariaLabel="HSL hue" onChange={(hslHue) => onUpdateImage({ hslHue })} />
-        <Slider label="Saturation" value={image.hslSaturation ?? 0} min={-100} max={100} ariaLabel="HSL saturation" onChange={(hslSaturation) => onUpdateImage({ hslSaturation })} />
-        <Slider label="Luminance" value={image.hslLightness ?? 0} min={-100} max={100} ariaLabel="HSL lightness" onChange={(hslLightness) => onUpdateImage({ hslLightness })} />
-      </Group>
-
-      <Group title="Color Grading" open={isOpen("grading")} onToggle={() => toggleGroup("grading")}>
-        <p className="text-[9px] font-semibold text-text-primary">Highlights</p>
-        <Slider label="Hue" value={image.splitHighlightHue ?? 45} min={0} max={360} suffix="°" ariaLabel="Grading highlights hue" onChange={(splitHighlightHue) => onUpdateImage({ splitHighlightHue })} />
-        <Slider label="Saturation" value={image.splitHighlightSat ?? 0} min={0} max={100} ariaLabel="Grading highlights saturation" onChange={(splitHighlightSat) => onUpdateImage({ splitHighlightSat })} />
-        <p className="text-[9px] font-semibold text-text-primary">Midtones</p>
-        <Slider label="Hue" value={image.splitMidHue ?? 0} min={0} max={360} suffix="°" ariaLabel="Grading midtones hue" onChange={(splitMidHue) => onUpdateImage({ splitMidHue })} />
-        <Slider label="Saturation" value={image.splitMidSat ?? 0} min={0} max={100} ariaLabel="Grading midtones saturation" onChange={(splitMidSat) => onUpdateImage({ splitMidSat })} />
-        <p className="text-[9px] font-semibold text-text-primary">Shadows</p>
-        <Slider label="Hue" value={image.splitShadowHue ?? 220} min={0} max={360} suffix="°" ariaLabel="Grading shadows hue" onChange={(splitShadowHue) => onUpdateImage({ splitShadowHue })} />
-        <Slider label="Saturation" value={image.splitShadowSat ?? 0} min={0} max={100} ariaLabel="Grading shadows saturation" onChange={(splitShadowSat) => onUpdateImage({ splitShadowSat })} />
-        <Slider label="Balance" value={image.splitBalance ?? 0} min={-100} max={100} ariaLabel="Grading balance" onChange={(splitBalance) => onUpdateImage({ splitBalance })} />
       </Group>
 
       <Group title="Selective Color" open={isOpen("selective")} onToggle={() => toggleGroup("selective")}>
@@ -184,9 +202,17 @@ export default function EditorPhotoAdjustments({ image, selectedLayer, onUpdateI
       </Group>
 
       <Group title="Channel Mixer" open={isOpen("channel")} onToggle={() => toggleGroup("channel")}>
+        <Slider label="Hue" value={image.hue ?? 0} min={-180} max={180} suffix="°" ariaLabel="Photo hue" onChange={(hue) => onUpdateImage({ hue })} />
         <Slider label="Red" value={image.red ?? 100} min={0} max={200} suffix="%" ariaLabel="Photo red channel" onChange={(red) => onUpdateImage({ red })} />
         <Slider label="Green" value={image.green ?? 100} min={0} max={200} suffix="%" ariaLabel="Photo green channel" onChange={(green) => onUpdateImage({ green })} />
         <Slider label="Blue" value={image.blue ?? 100} min={0} max={200} suffix="%" ariaLabel="Photo blue channel" onChange={(blue) => onUpdateImage({ blue })} />
+      </Group>
+
+      <Group title="Detail" open={isOpen("detail")} onToggle={() => toggleGroup("detail")}>
+        <Slider label="Sharpening" value={image.sharpen ?? 0} min={0} max={100} ariaLabel="Photo sharpening" onChange={(sharpen) => onUpdateImage({ sharpen })} />
+        <Slider label="Noise Reduction" value={image.noiseReduction ?? 0} min={0} max={100} ariaLabel="Photo noise reduction" onChange={(noiseReduction) => onUpdateImage({ noiseReduction })} />
+        <Slider label="Color Noise Reduction" value={image.colorNoiseReduction ?? 0} min={0} max={100} ariaLabel="Photo color noise reduction" onChange={(colorNoiseReduction) => onUpdateImage({ colorNoiseReduction })} />
+        <Slider label="Blur" value={image.blur ?? 0} min={0} max={20} suffix="px" ariaLabel="Photo blur" onChange={(blur) => onUpdateImage({ blur })} />
       </Group>
 
       <Group title="Effects" open={isOpen("effects")} onToggle={() => toggleGroup("effects")}>
@@ -196,31 +222,40 @@ export default function EditorPhotoAdjustments({ image, selectedLayer, onUpdateI
         {(vignetteOn || grainOn) && <button type="button" aria-label="Clear photo effects" onClick={() => onUpdateImage({ vignette: 0, grain: 0 })} className="min-h-8 w-full rounded-lg border border-border text-[9px] font-semibold transition hover:border-rose-400">Clear effects</button>}
       </Group>
 
-      <Group title="Detail" open={isOpen("detail")} onToggle={() => toggleGroup("detail")}>
-        <Slider label="Sharpen" value={image.sharpen ?? 0} min={0} max={100} ariaLabel="Photo sharpen" onChange={(sharpen) => onUpdateImage({ sharpen })} />
-        <Slider label="Noise reduction" value={image.noiseReduction ?? 0} min={0} max={100} ariaLabel="Photo noise reduction" onChange={(noiseReduction) => onUpdateImage({ noiseReduction })} />
-        <Slider label="Blur" value={image.blur ?? 0} min={0} max={20} suffix="px" ariaLabel="Photo blur" onChange={(blur) => onUpdateImage({ blur })} />
+      <Group title="Optics" open={isOpen("optics")} onToggle={() => toggleGroup("optics")}>
+        <Toggle label={image.removeChromaticAberration ? "Chromatic aberration removed" : "Remove Chromatic Aberration"} pressed={image.removeChromaticAberration === true} ariaLabel="Remove chromatic aberration" onClick={() => onUpdateImage({ removeChromaticAberration: !image.removeChromaticAberration })} />
+        <Toggle label={image.lensCorrections ? "Lens corrections on" : "Lens Corrections"} pressed={image.lensCorrections === true} ariaLabel="Lens corrections" onClick={() => onUpdateImage({ lensCorrections: !image.lensCorrections })} />
       </Group>
 
-      <Group title="Smart &amp; AI" open={isOpen("smart")} onToggle={() => toggleGroup("smart")}>
+      <Group title="Calibration" open={isOpen("calibration")} onToggle={() => toggleGroup("calibration")}>
+        {(Object.keys(PRIMARY_LABELS) as Primary[]).map((primary) => {
+          const config = PRIMARY_LABELS[primary];
+          return <div key={primary} className="space-y-1.5">
+            <p className="flex items-center gap-1.5 text-[9px] font-semibold text-text-primary"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: config.color }} aria-hidden="true" />{primary} Primary</p>
+            <Slider label="Hue" value={image[config.hue] ?? 0} min={-100} max={100} ariaLabel={`${primary} primary hue`} onChange={(value) => onUpdateImage({ [config.hue]: value } as PhotoAdjustmentUpdate)} />
+            <Slider label="Saturation" value={image[config.saturation] ?? 0} min={-100} max={100} ariaLabel={`${primary} primary saturation`} onChange={(value) => onUpdateImage({ [config.saturation]: value } as PhotoAdjustmentUpdate)} />
+          </div>;
+        })}
+      </Group>
+
+      {/* Separate service box, kept outside the adjustment sections. */}
+      <section aria-label="Photo services" className="space-y-2 rounded-lg border border-accent/40 bg-accent/[0.06] p-2.5">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-text-primary">AI &amp; Services</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          <Toggle label={image.backgroundRemoved ? "Background removed" : "Remove background"} pressed={image.backgroundRemoved === true} ariaLabel="Remove background" onClick={() => onUpdateImage({ backgroundRemoved: !image.backgroundRemoved })} />
+          <Toggle label={image.upscaled ? "Upscaled" : "Upscale"} pressed={image.upscaled === true} ariaLabel="Upscale photo" onClick={() => onUpdateImage({ upscaled: !image.upscaled })} />
+        </div>
         <div className="grid grid-cols-2 gap-1.5">
           <Toggle label={image.aiEnhanced ? "AI Enhanced" : "AI Enhance"} pressed={image.aiEnhanced === true} ariaLabel="AI Enhance photo" onClick={() => onUpdateImage({ aiEnhanced: !image.aiEnhanced })} />
           <label className="flex min-h-11 flex-col justify-center rounded-lg border border-border px-2 py-1 text-[10px] font-semibold">Smart Filter<select aria-label="Smart filter" value={image.smartFilter ?? "none"} onChange={(event) => onUpdateImage({ smartFilter: event.target.value as NonNullable<EditorImageContent["smartFilter"]> })} className="mt-1 rounded border border-border bg-bg px-1 py-1 text-[10px] font-normal"><option value="none">None</option><option value="clarity">Clarity</option><option value="cinematic">Cinematic</option><option value="vintage">Vintage</option><option value="bw">B&amp;W</option><option value="warm">Warm</option><option value="cool">Cool</option></select></label>
         </div>
         {(image.smartFilter ?? "none") !== "none" && <Slider label="Filter intensity" value={image.smartFilterIntensity ?? 100} min={0} max={100} suffix="%" ariaLabel="Smart filter intensity" onChange={(smartFilterIntensity) => onUpdateImage({ smartFilterIntensity })} />}
-      </Group>
-
-      <Group title="Layer Mask" open={isOpen("services")} onToggle={() => toggleGroup("services")}>
         <div className="grid grid-cols-2 gap-1.5">
           <button type="button" aria-label={selectedLayer.mask ? "Edit photo layer mask" : "Add photo layer mask"} onClick={() => selectedLayer.mask ? onSelectMask() : onAddMask(selectedLayer.id)} className="min-h-11 rounded-lg border border-border px-2 py-2 text-[10px] font-semibold transition hover:border-accent">{selectedLayer.mask ? "Edit Layer Mask" : "Add Layer Mask"}</button>
           {selectedLayer.mask && <button type="button" aria-label="Remove photo layer mask" onClick={() => onRemoveMask(selectedLayer.id)} className="min-h-11 rounded-lg border border-border px-2 py-2 text-[10px] font-semibold transition hover:border-rose-400">Remove Mask</button>}
         </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          <Toggle label={image.backgroundRemoved ? "Background removed" : "Remove background"} pressed={image.backgroundRemoved === true} ariaLabel="Remove background" onClick={() => onUpdateImage({ backgroundRemoved: !image.backgroundRemoved })} />
-          <Toggle label={image.upscaled ? "Upscaled" : "Upscale"} pressed={image.upscaled === true} ariaLabel="Upscale photo" onClick={() => onUpdateImage({ upscaled: !image.upscaled })} />
-        </div>
-        <p className="text-[9px] leading-relaxed text-text-muted">Edits render live and stay non-destructive. Background removal and upscale are ready for the connected image service.</p>
-      </Group>
+        <p className="text-[9px] leading-relaxed text-text-muted">Background removal and upscale are ready for the connected image service.</p>
+      </section>
     </div>
   );
 }

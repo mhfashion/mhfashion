@@ -271,6 +271,25 @@ export type EditorImageContent = {
   splitShadowHue?: number;
   splitShadowSat?: number;
   splitBalance?: number;
+  splitBlending?: number;
+  /** Per-color HSL mixer, eight bands in red→orange→yellow→green→aqua→blue→purple→magenta order. */
+  mixerHue?: number[];
+  mixerSaturation?: number[];
+  mixerLuminance?: number[];
+  /** Parametric tone-curve regions: shadows, darks, lights, highlights. */
+  curveShadows?: number;
+  curveDarks?: number;
+  curveLights?: number;
+  curveHighlights?: number;
+  colorNoiseReduction?: number;
+  removeChromaticAberration?: boolean;
+  lensCorrections?: boolean;
+  redPrimaryHue?: number;
+  redPrimarySaturation?: number;
+  greenPrimaryHue?: number;
+  greenPrimarySaturation?: number;
+  bluePrimaryHue?: number;
+  bluePrimarySaturation?: number;
   aiEnhanced?: boolean;
   smartFilter?: "none" | "clarity" | "cinematic" | "vintage" | "bw" | "warm" | "cool";
   smartFilterIntensity?: number;
@@ -290,7 +309,13 @@ export type PhotoAdjustmentKey =
   | "hslHue" | "hslSaturation" | "hslLightness"
   | "splitHighlightHue" | "splitHighlightSat"
   | "splitMidHue" | "splitMidSat"
-  | "splitShadowHue" | "splitShadowSat" | "splitBalance"
+  | "splitShadowHue" | "splitShadowSat" | "splitBalance" | "splitBlending"
+  | "mixerHue" | "mixerSaturation" | "mixerLuminance"
+  | "curveShadows" | "curveDarks" | "curveLights" | "curveHighlights"
+  | "colorNoiseReduction" | "removeChromaticAberration" | "lensCorrections"
+  | "redPrimaryHue" | "redPrimarySaturation"
+  | "greenPrimaryHue" | "greenPrimarySaturation"
+  | "bluePrimaryHue" | "bluePrimarySaturation"
   | "aiEnhanced" | "smartFilter" | "smartFilterIntensity"
   | "backgroundRemoved" | "upscaled";
 

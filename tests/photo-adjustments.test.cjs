@@ -155,3 +155,56 @@ test("auto produces a balanced, non-destructive starting point", () => {
   assert.ok(auto.shadows > 0);
   assert.equal(hasPhotoAdjustments(image(auto)), true);
 });
+
+test("parametric tone-curve regions lift their own tonal zone only", () => {
+  const base = tableOf(buildToneTable(image()));
+  const lifted = tableOf(buildToneTable(image({ curveShadows: 60 })));
+  // The shadow sample (near black) rises; the highlight sample barely moves.
+  assert.ok(lifted[2] > base[2]);
+  assert.ok(Math.abs(lifted[30] - base[30]) < 0.02);
+  const highlights = tableOf(buildToneTable(image({ curveHighlights: 60 })));
+  assert.ok(highlights[30] > base[30]);
+  assert.ok(Math.abs(highlights[2] - base[2]) < 0.02);
+});
+
+test("Color Mixer bands fold into the colour matrix", () => {
+  const neutral = colorMatrixValues(image());
+  const shifted = colorMatrixValues(image({ mixerHue: [0, 0, 0, 40, 0, 0, 0, 0] }));
+  assert.notEqual(neutral, shifted);
+  const saturated = colorMatrixValues(image({ mixerSaturation: [50, 50, 50, 50, 50, 50, 50, 50] }));
+  assert.notEqual(neutral, saturated);
+  // Per-band values are averaged, so a single band still changes the result.
+  const oneBand = colorMatrixValues(image({ mixerSaturation: [100, 0, 0, 0, 0, 0, 0, 0] }));
+  assert.notEqual(neutral, oneBand);
+  assert.notEqual(saturated, oneBand);
+});
+
+test("Color Grading blending and balance change the split-tone weights", () => {
+  const low = splitToneBands(image({ splitHighlightSat: 60, splitBlending: 0 }));
+  const high = splitToneBands(image({ splitHighlightSat: 60, splitBlending: 100 }));
+  assert.ok(high.highlights.opacity > low.highlights.opacity);
+  const balanced = splitToneBands(image({ splitBalance: 80 }));
+  assert.equal(balanced.balance, 0.8);
+});
+
+test("Calibration, Optics, and Color Noise Reduction feed the render", () => {
+  const neutral = colorMatrixValues(image());
+  assert.notEqual(colorMatrixValues(image({ redPrimarySaturation: 50 })), neutral);
+  assert.notEqual(colorMatrixValues(image({ redPrimaryHue: 40 })), neutral);
+  assert.notEqual(colorMatrixValues(image({ removeChromaticAberration: true })), neutral);
+  assert.notEqual(colorMatrixValues(image({ lensCorrections: true })), neutral);
+  assert.match(photoFilterCss(image({ colorNoiseReduction: 60 })), /blur\(/);
+});
+
+test("the reset clears the new Camera Raw fields", () => {
+  const reset = neutralPhotoAdjustments();
+  assert.equal(reset.splitBlending, 50);
+  assert.deepEqual(reset.mixerHue, [0, 0, 0, 0, 0, 0, 0, 0]);
+  assert.equal(reset.curveLights, 0);
+  assert.equal(reset.colorNoiseReduction, 0);
+  assert.equal(reset.removeChromaticAberration, false);
+  assert.equal(reset.lensCorrections, false);
+  assert.equal(reset.redPrimaryHue, 0);
+  assert.equal(hasPhotoAdjustments(image(reset)), false);
+  assert.equal(hasPhotoAdjustments(image({ mixerHue: [0, 0, 10, 0, 0, 0, 0, 0] })), true);
+});

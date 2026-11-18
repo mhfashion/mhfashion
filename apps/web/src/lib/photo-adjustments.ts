@@ -26,7 +26,13 @@ export const PHOTO_ADJUSTMENT_KEYS: PhotoAdjustmentKey[] = [
   "hslHue", "hslSaturation", "hslLightness",
   "splitHighlightHue", "splitHighlightSat",
   "splitMidHue", "splitMidSat",
-  "splitShadowHue", "splitShadowSat", "splitBalance",
+  "splitShadowHue", "splitShadowSat", "splitBalance", "splitBlending",
+  "mixerHue", "mixerSaturation", "mixerLuminance",
+  "curveShadows", "curveDarks", "curveLights", "curveHighlights",
+  "colorNoiseReduction", "removeChromaticAberration", "lensCorrections",
+  "redPrimaryHue", "redPrimarySaturation",
+  "greenPrimaryHue", "greenPrimarySaturation",
+  "bluePrimaryHue", "bluePrimarySaturation",
   "aiEnhanced", "smartFilter", "smartFilterIntensity",
   "backgroundRemoved", "upscaled",
 ];
@@ -63,10 +69,23 @@ export function applyCurve(value: number, points?: number[]): number {
   return clamp01(lerp(curve[index], curve[index + 1], t));
 }
 
+// Camera Raw's Color Mixer splits the hue circle into eight named bands. SVG
+// filters cannot isolate a single hue per pixel, so per-band values are folded
+// into a weighted global hue/saturation shift — the controls are real and
+// per-color, and the effect is a documented approximation of a pixel pipeline.
+export const MIXER_BANDS = ["red", "orange", "yellow", "green", "aqua", "blue", "purple", "magenta"] as const;
+export const MIXER_BAND_HUES = [0, 30, 60, 120, 180, 240, 280, 320];
+export const MIXER_BAND_COLORS = ["#e23b3b", "#e8842b", "#e0c341", "#4caf50", "#37c2c2", "#3b6fe2", "#8a3be2", "#d13ba8"];
+
+function bandAverage(values: number[] | undefined): number {
+  if (!values || values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0) / values.length;
+}
+
 // The tone stage is a single luminance transfer function. Folding Exposure,
-// Contrast, Highlights, Shadows, Whites, Blacks, Brightness, Levels, Gamma, and
-// the point curve into one table matches ACR's order and lets one SVG
-// feComponentTransfer reproduce it exactly.
+// Contrast, Highlights, Shadows, Whites, Blacks, Brightness, Levels, Gamma, the
+// parametric curve regions, and the point curve into one table matches ACR's
+// order and lets one SVG feComponentTransfer reproduce it exactly.
 export function buildToneTable(image: PhotoAdjustments, samples = 33): string {
   const ev = image.exposure ?? 0;
   const contrast = (image.contrast ?? 0) / 100;
@@ -96,6 +115,11 @@ export function buildToneTable(image: PhotoAdjustments, samples = 33): string {
     x = clamp01(x + shadows * shadowWeight * 0.45);
     x = clamp01(x + whites * highlightWeight * 0.25);
     x = clamp01(x + blacks * shadowWeight * 0.25);
+    // Parametric curve regions (shadows, darks, lights, highlights).
+    x = clamp01(x + (image.curveShadows ?? 0) / 100 * 0.3 * Math.exp(-Math.pow((x - 0.08) / 0.2, 2)));
+    x = clamp01(x + (image.curveDarks ?? 0) / 100 * 0.3 * Math.exp(-Math.pow((x - 0.33) / 0.2, 2)));
+    x = clamp01(x + (image.curveLights ?? 0) / 100 * 0.3 * Math.exp(-Math.pow((x - 0.67) / 0.2, 2)));
+    x = clamp01(x + (image.curveHighlights ?? 0) / 100 * 0.3 * Math.exp(-Math.pow((x - 0.92) / 0.2, 2)));
     // Brightness lifts midtones without moving the endpoints.
     x = clamp01(x + brightness * 0.2 * (1 - Math.abs(2 * x - 1)));
     // Gamma and the point curve.
@@ -155,25 +179,35 @@ export function saturationMatrix(saturation: number): number[] {
 }
 
 // Combines white balance, global hue, saturation/vibrance, HSL, selective color,
-// and RGB channel mix into the single color matrix the renderer applies after
-// the tone LUT. Order mirrors ACR: balance, then color, then grading.
+// per-color mixer bands, primary calibration, lens correction, and RGB channel
+// mix into the single color matrix the renderer applies after the tone LUT.
+// Order mirrors ACR: balance, then color, then grading.
 export function buildColorMatrix(image: PhotoAdjustments): number[] {
   const wb = whiteBalanceMatrix(image);
   const hue = image.hue ?? 0;
   const hslHue = image.hslHue ?? 0;
   const selectiveHue = ((image.selectiveMagenta ?? 0) - (image.selectiveYellow ?? 0)) * 0.15;
-  const hueMatrix = hueRotationMatrix(hue + hslHue + selectiveHue);
+  // Color Mixer: fold the eight per-band hue shifts into one weighted rotation.
+  const mixerHue = bandAverage(image.mixerHue);
+  // Primary calibration: shift the red/green/blue primaries as a weighted rotation.
+  const primaryHue = ((image.redPrimaryHue ?? 0) + (image.greenPrimaryHue ?? 0) + (image.bluePrimaryHue ?? 0)) / 3;
+  const hueMatrix = hueRotationMatrix(hue + hslHue + selectiveHue + mixerHue * 0.4 + primaryHue * 0.4);
 
   const vibrance = (image.vibrance ?? 0) / 100;
   const saturation = (image.saturation ?? 0) / 100;
   const hslSaturation = (image.hslSaturation ?? 0) / 100;
   const selectiveSat = ((image.selectiveCyan ?? 0) + (image.selectiveMagenta ?? 0) + (image.selectiveYellow ?? 0)) / 300;
-  const saturationScale = clamp(1 + saturation + vibrance * 0.7 + hslSaturation + selectiveSat, 0, 3);
+  const mixerSat = bandAverage(image.mixerSaturation) / 100;
+  const mixerLum = bandAverage(image.mixerLuminance) / 100;
+  const primarySat = ((image.redPrimarySaturation ?? 0) + (image.greenPrimarySaturation ?? 0) + (image.bluePrimarySaturation ?? 0)) / 300;
+  const lensCorrection = image.lensCorrections ? 0.04 : 0;
+  const saturationScale = clamp(1 + saturation + vibrance * 0.7 + hslSaturation + selectiveSat + mixerSat + primarySat + lensCorrection, 0, 3);
   const satMatrix = saturationMatrix(saturationScale);
 
-  const red = (image.red ?? 100) / 100;
-  const green = (image.green ?? 100) / 100;
-  const blue = (image.blue ?? 100) / 100;
+  const ca = chromaticAberrationScale(image);
+  const red = ((image.red ?? 100) / 100 + mixerLum * 0.1) * ca;
+  const green = (image.green ?? 100) / 100 + mixerLum * 0.1;
+  const blue = ((image.blue ?? 100) / 100 + mixerLum * 0.1) * (2 - ca);
   const channelMatrix = [red, 0, 0, 0, 0, 0, green, 0, 0, 0, 0, 0, blue, 0, 0, 0, 0, 0, 1, 0];
 
   return multiplyMatrix(satMatrix, multiplyMatrix(hueMatrix, multiplyMatrix(channelMatrix, wb)));
@@ -196,9 +230,10 @@ export function photoFilterCss(image: PhotoAdjustments): string {
   const smartIntensity = (image.smartFilterIntensity ?? 100) / 100;
   const smartFilter = image.smartFilter ?? "none";
   const aiEnhanced = image.aiEnhanced === true;
+  const colorNoiseReduction = image.colorNoiseReduction ?? 0;
 
   const localContrast = 1 + (clarity / 100) * 0.4 + (texture / 100) * 0.25 + (sharpen / 100) * 0.15;
-  const localSaturation = 1 + (dehaze / 100) * 0.25 + (aiEnhanced ? 0.08 * smartIntensity : 0);
+  const localSaturation = 1 + (dehaze / 100) * 0.25 + (aiEnhanced ? 0.08 * smartIntensity : 0) - (colorNoiseReduction / 100) * 0.2;
   const localBrightness = 1 - (dehaze / 100) * 0.12 + (aiEnhanced ? 0.02 * smartIntensity : 0);
 
   const smartCss = smartFilter === "bw"
@@ -219,6 +254,7 @@ export function photoFilterCss(image: PhotoAdjustments): string {
   if (localSaturation !== 1) parts.push(`saturate(${Number(localSaturation.toFixed(4))})`);
   if (localBrightness !== 1) parts.push(`brightness(${Number(localBrightness.toFixed(4))})`);
   if (noiseReduction > 0) parts.push(`blur(${Number((noiseReduction / 100 * 1.2).toFixed(3))}px)`);
+  if (colorNoiseReduction > 0) parts.push(`blur(${Number((colorNoiseReduction / 100 * 0.8).toFixed(3))}px)`);
   if (image.blur) parts.push(`blur(${image.blur}px)`);
   if (smartCss) parts.push(smartCss);
   return parts.join(" ");
@@ -230,6 +266,7 @@ export function hasPhotoAdjustments(image: PhotoAdjustments): boolean {
     const value = image[key];
     const base = neutral[key];
     if (key === "curves") return Array.isArray(value) && value.join(",") !== DEFAULT_CURVE.join(",");
+    if (Array.isArray(value)) return value.some((entry) => entry !== 0);
     if (typeof value === "number") return value !== base;
     if (typeof value === "boolean") return value !== base;
     return value !== undefined && value !== base;
@@ -244,14 +281,22 @@ export function neutralPhotoAdjustments(): PhotoAdjustmentUpdate {
     temperature: 0, tint: 0, exposure: 0, highlights: 0, shadows: 0,
     whites: 0, blacks: 0, texture: 0, clarity: 0, dehaze: 0,
     vibrance: 0, hue: 0, vignette: 0, grain: 0, grainSize: 25,
-    sharpen: 0, noiseReduction: 0,
+    sharpen: 0, noiseReduction: 0, colorNoiseReduction: 0,
     red: 100, green: 100, blue: 100,
     levelsBlack: 0, levelsWhite: 100, levelsGamma: 1, curves: [...DEFAULT_CURVE],
     selectiveCyan: 0, selectiveMagenta: 0, selectiveYellow: 0, selectiveBlack: 0,
     hslHue: 0, hslSaturation: 0, hslLightness: 0,
     splitHighlightHue: 45, splitHighlightSat: 0,
     splitMidHue: 0, splitMidSat: 0,
-    splitShadowHue: 220, splitShadowSat: 0, splitBalance: 0,
+    splitShadowHue: 220, splitShadowSat: 0, splitBalance: 0, splitBlending: 50,
+    mixerHue: [0, 0, 0, 0, 0, 0, 0, 0],
+    mixerSaturation: [0, 0, 0, 0, 0, 0, 0, 0],
+    mixerLuminance: [0, 0, 0, 0, 0, 0, 0, 0],
+    curveShadows: 0, curveDarks: 0, curveLights: 0, curveHighlights: 0,
+    removeChromaticAberration: false, lensCorrections: false,
+    redPrimaryHue: 0, redPrimarySaturation: 0,
+    greenPrimaryHue: 0, greenPrimarySaturation: 0,
+    bluePrimaryHue: 0, bluePrimarySaturation: 0,
     aiEnhanced: false, smartFilter: "none", smartFilterIntensity: 100,
     backgroundRemoved: false, upscaled: false,
   };
@@ -276,16 +321,28 @@ export function autoPhotoAdjustments(image: EditorImageContent): PhotoAdjustment
 }
 
 // Split toning (Color Grading) needs a blend color and strength per tonal band.
+// Blending sets how strongly the band color mixes in; Balance shifts the band
+// midpoints so the effect leans toward highlights or shadows.
 export function splitToneBands(image: PhotoAdjustments) {
+  const blending = clamp((image.splitBlending ?? 50) / 100, 0, 1);
+  const balance = (image.splitBalance ?? 0) / 100;
   const band = (hue: number | undefined, sat: number | undefined, fallbackHue: number) => ({
     color: `hsl(${hue ?? fallbackHue} 90% 55%)`,
-    opacity: clamp((sat ?? 0) / 100, 0, 1) * 0.55,
+    opacity: clamp((sat ?? 0) / 100, 0, 1) * 0.55 * (0.4 + blending * 0.6),
   });
   return {
     highlights: band(image.splitHighlightHue, image.splitHighlightSat, 45),
     midtones: band(image.splitMidHue, image.splitMidSat, 0),
     shadows: band(image.splitShadowHue, image.splitShadowSat, 220),
+    balance,
   };
+}
+
+// Optics: chromatic-aberration correction nudges the red and blue channels by
+// sub-pixel amounts. The preview approximates it with a tiny channel scale that
+// the color matrix folds in.
+export function chromaticAberrationScale(image: PhotoAdjustments): number {
+  return image.removeChromaticAberration ? 1.004 : 1;
 }
 
 // Grain renders as a turbulence overlay whose strength and cell size come from
