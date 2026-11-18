@@ -601,10 +601,15 @@ test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and 
   assert.match(headerBar2, /aria-label=\{label\}[\s\S]*?data-editor-box=\{label\}/);
   assert.match(headerBar2, /aria-haspopup="listbox"[\s\S]*?aria-expanded=\{open\}/);
   assert.match(headerBar2, /data-color-swatch=\{selectedColor\.value\}/);
-  // The popup is a rounded green panel like the boxes, on every field.
-  assert.match(headerBar2, /const MENU_BOX =[\s\S]*?rounded-3xl[\s\S]*?border-accent bg-accent/);
+  // The popup is a compact green panel, no wider than the box it opens from.
+  assert.match(headerBar2, /const MENU_BOX =[\s\S]*?rounded-2xl[\s\S]*?border-accent bg-accent/);
   assert.doesNotMatch(headerBar2, /const MENU_BOX =[^;]*rounded-full/, "Menu panel must not use rounded-full, which clamps into a capsule");
-  assert.match(headerBar2, /const MENU_OPTION =[\s\S]*?rounded-2xl/);
+  assert.match(headerBar2, /const MENU_OPTION =[\s\S]*?rounded-full/);
+  assert.match(headerBar2, /const width = Math\.min\(Math\.round\(rect\.width\), window\.innerWidth - 16\)/, "Menu width follows the trigger box width");
+  // The chevron is pinned to the right edge on every field box.
+  assert.match(headerBar2, /absolute right-1\.5 top-1\/2 -translate-y-1\/2/);
+  // The colour swatch reads as a rounded square box, not a small dot.
+  assert.match(headerBar2, /const COLOR_SWATCH = "h-5 w-5 shrink-0 rounded-md border border-accent-foreground\/50"/);
   assert.match(headerBar2, /role="listbox"[\s\S]*?className=\{MENU_BOX\}/);
   assert.match(headerBar2, /role="option"[\s\S]*?aria-selected=\{value === option\.value\}/);
   assert.match(headerBar2, /createPortal/);

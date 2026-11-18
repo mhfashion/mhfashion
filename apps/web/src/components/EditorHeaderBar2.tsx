@@ -19,15 +19,19 @@ const COLOR_OPTIONS = [
 // One shared geometry for every Header Bar 2 control so the Product, GSM,
 // Color, Size, Save, and Buy boxes read as one uniform set.
 const FIELD_BOX =
-  "h-8 w-20 shrink-0 rounded-full border border-accent bg-accent text-[10px] font-semibold text-accent-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11";
-const TRIGGER_BOX = `${FIELD_BOX} inline-flex items-center justify-center gap-1.5 px-2 disabled:cursor-not-allowed disabled:opacity-100`;
+  "relative h-8 w-20 shrink-0 overflow-hidden rounded-full border border-accent bg-accent text-[10px] font-semibold text-accent-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11";
+// The chevron is pinned to the right edge so its position is identical on every
+// field box; the content stays centred in the remaining space.
+const TRIGGER_BOX = `${FIELD_BOX} inline-flex items-center justify-center pl-2 pr-5 disabled:cursor-not-allowed disabled:opacity-100`;
 const ACTION_BOX = `${FIELD_BOX} inline-flex items-center justify-center px-1 disabled:cursor-default disabled:opacity-100`;
-// Every dropdown opens the same green panel, matching the boxes: a rounded
-// rectangle (not rounded-full, which clamps a tall panel into a capsule).
+// Every dropdown opens a compact green panel the same width as its box, so the
+// opened menu lines up with the control above it instead of a wide overlay.
 const MENU_BOX =
-  "fixed z-[100] flex flex-col gap-0.5 rounded-3xl border border-accent bg-accent p-1.5 text-accent-foreground shadow-xl";
+  "fixed z-[100] flex flex-col gap-1 rounded-2xl border border-accent bg-accent p-1 text-accent-foreground shadow-xl";
 const MENU_OPTION =
-  "flex min-h-9 w-full items-center gap-2 rounded-2xl px-3 text-left text-[10px] font-semibold text-accent-foreground outline-none transition-colors hover:bg-accent-foreground/10 focus-visible:ring-2 focus-visible:ring-accent-foreground disabled:opacity-40 [@media(pointer:coarse)]:min-h-11";
+  "flex h-8 w-full items-center justify-between gap-1 rounded-full px-2 text-left text-[10px] font-semibold text-accent-foreground outline-none transition-colors hover:bg-accent-foreground/10 focus-visible:ring-2 focus-visible:ring-accent-foreground disabled:opacity-40 [@media(pointer:coarse)]:h-11";
+// The selected colour reads as a small box (rounded square), not a dot.
+const COLOR_SWATCH = "h-5 w-5 shrink-0 rounded-md border border-accent-foreground/50";
 
 function FieldLabel({ children }: { children: string }) {
   return (
@@ -66,7 +70,7 @@ function BoxDropdown({
   triggerTestId?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ left: 8, top: 8, width: 176 });
+  const [position, setPosition] = useState({ left: 8, top: 8, width: 80 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = `editor-header-bar2-${label.toLowerCase()}-options`;
@@ -78,8 +82,10 @@ function BoxDropdown({
       const trigger = triggerRef.current;
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
-      const width = Math.min(176, window.innerWidth - 16);
-      const height = Math.min(options.length * 44 + 12, 320);
+      // The panel is as wide as the box it opens from, clamped to the viewport.
+      const width = Math.min(Math.round(rect.width), window.innerWidth - 16);
+      const optionHeight = window.matchMedia("(pointer: coarse)").matches ? 44 : 32;
+      const height = Math.min(options.length * (optionHeight + 4) + 8, window.innerHeight - 16);
       const left = Math.max(8, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 8));
       const top = window.innerHeight - rect.bottom >= height + 8
         ? rect.bottom + 6
@@ -149,7 +155,11 @@ function BoxDropdown({
         className={TRIGGER_BOX}
       >
         {triggerContent}
-        <ChevronDown size={12} aria-hidden="true" className={`transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          size={12}
+          aria-hidden="true"
+          className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
       {open && createPortal(
         <div
@@ -178,11 +188,13 @@ function BoxDropdown({
               }}
               className={MENU_OPTION}
             >
-              {option.swatch && (
-                <span aria-hidden="true" className={`h-3.5 w-3.5 rounded-full border border-accent-foreground/50 ${option.swatch}`} />
-              )}
-              <span>{option.label}</span>
-              {value === option.value && <span className="ml-auto" aria-hidden="true">✓</span>}
+              <span className="flex min-w-0 items-center gap-1.5">
+                {option.swatch && (
+                  <span aria-hidden="true" className={`${COLOR_SWATCH} ${option.swatch}`} />
+                )}
+                <span className="truncate">{option.label}</span>
+              </span>
+              {value === option.value && <span className="shrink-0" aria-hidden="true">✓</span>}
             </button>
           ))}
         </div>,
@@ -237,7 +249,7 @@ function ColorBox({ value, onChange }: { value: string; onChange: (value: string
         <span
           aria-hidden="true"
           data-color-swatch={selectedColor.value}
-          className={`h-3.5 w-3.5 rounded-full border border-accent-foreground/50 ${selectedColor.swatch}`}
+          className={`${COLOR_SWATCH} ${selectedColor.swatch}`}
         />
       }
     />

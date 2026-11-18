@@ -280,6 +280,8 @@ async function main() {
       const rect = menu.getBoundingClientRect();
       return {
         radius: Number.parseFloat(getComputedStyle(menu).borderTopLeftRadius),
+        width: Math.round(rect.width),
+        triggerWidth: Math.round(document.querySelector('button[aria-label="Product"]').getBoundingClientRect().width),
         height: Math.round(rect.height),
         background: getComputedStyle(menu).backgroundColor,
         accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
@@ -295,6 +297,7 @@ async function main() {
     });
     assert.ok(productMenu.radius >= 12, "Product dropdown container is rounded like the boxes");
     assert.ok(productMenu.radius < productMenu.height / 2, "Product dropdown keeps straight sides instead of clamping into a capsule");
+    assert.equal(productMenu.width, productMenu.triggerWidth, "Product dropdown is as wide as the box above it, not oversized");
     assert.equal(productMenu.background, `rgb(${productMenu.accent})`, "Product dropdown uses the app's green accent");
     assert.deepEqual(productMenu.options.map((option) => option.label), ["Product T-Shirt", "Product Phone", "Product Hoodie", "Product Cup", "Product Kids", "Product Bag"]);
     assert.equal(productMenu.options[0].selected, "true", "The current T-Shirt choice is marked selected");
@@ -753,10 +756,35 @@ async function main() {
         priceLeftOfSave: toolbar.querySelector("[data-editor-price]").getBoundingClientRect().right <= toolbar.querySelector('button[aria-label="Save"]').getBoundingClientRect().left,
         boxColors: boxes.map((box) => getComputedStyle(box).backgroundColor),
         accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
+        chevrons: ["Product", "GSM", "Color", "Size"].map((name) => {
+          const box = toolbar.querySelector(`[data-editor-box="${name}"]`);
+          const svg = box.querySelector("svg");
+          const boxRect = box.getBoundingClientRect();
+          const svgRect = svg.getBoundingClientRect();
+          return {
+            fromRight: Math.round(boxRect.right - svgRect.right),
+            centerY: Math.round(svgRect.top + svgRect.height / 2 - boxRect.top),
+            boxHeight: Math.round(boxRect.height),
+          };
+        }),
+        swatch: (() => {
+          const swatch = toolbar.querySelector('button[aria-label="Color"] [data-color-swatch]');
+          const swatchRect = swatch.getBoundingClientRect();
+          return {
+            width: Math.round(swatchRect.width),
+            height: Math.round(swatchRect.height),
+            radius: Number.parseFloat(getComputedStyle(swatch).borderTopLeftRadius),
+          };
+        })(),
       };
     });
     assert.deepEqual(bar2DesktopBoxes.names, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
     assert.ok(bar2DesktopBoxes.metrics.every((box) => box.width === 80 && box.height === 32 && box.radius >= 16), "Every desktop Bar 2 box shares the same compact pill geometry");
+    assert.ok(bar2DesktopBoxes.chevrons.every((chevron) => chevron.fromRight === 6), "Every box pins its chevron the same distance from the right edge");
+    assert.ok(bar2DesktopBoxes.chevrons.every((chevron) => Math.abs(chevron.centerY - chevron.boxHeight / 2) <= 1), "Every chevron is vertically centred in its box");
+    assert.equal(bar2DesktopBoxes.swatch.width, 20, "The Color swatch is a 20px box, not a small dot");
+    assert.equal(bar2DesktopBoxes.swatch.height, 20);
+    assert.ok(bar2DesktopBoxes.swatch.radius >= 4 && bar2DesktopBoxes.swatch.radius < 20, "The Color swatch is a rounded square, not a circle");
     assert.equal(bar2DesktopBoxes.labelsVisible, true, "Desktop shows Product/GSM/Color/Size labels");
     assert.equal(bar2DesktopBoxes.priceVisible, true, "Desktop shows the Save-adjacent price field");
     assert.equal(bar2DesktopBoxes.priceLeftOfSave, true, "Desktop Price appears immediately to the left of Save");
