@@ -15,6 +15,7 @@
     "test:canvas-shell": "node --test tests/canvas-shell.test.cjs",
     "test:editor-layers": "node --test tests/editor-layers.test.cjs",
     "test:editor-pen-path": "node --test tests/editor-pen-path.test.cjs",
+    "test:editor-price": "node --test tests/editor-price.test.cjs",
     "test:guide:http": "node --test tests/guide-http.test.cjs"
   }
 }
