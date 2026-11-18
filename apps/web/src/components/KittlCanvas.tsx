@@ -516,6 +516,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const penKeyHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
   const finishPenPathRef = useRef<(close?: boolean) => void>(() => {});
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget; points: Point[] } | null>(null);
+  const [eraserCursor, setEraserCursor] = useState<Point | null>(null);
   const canvasArtworkDragRef = useRef<CanvasArtworkDrag | null>(null);
   const canvasLayerResizeRef = useRef<CanvasLayerResizeDrag | null>(null);
   const canvasLayerRotateRef = useRef<CanvasLayerRotateDrag | null>(null);
@@ -1387,6 +1388,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }
 
   function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (activeTool === "eraser") setEraserCursor(toCanvasPoint(event.clientX, event.clientY));
     const shapeDrag = activeShapeDragRef.current;
     if (shapeDrag?.pointerId === event.pointerId) {
       event.preventDefault();
@@ -1908,6 +1910,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   onPointerMove={moveArtworkStroke}
                   onPointerUp={endArtworkStroke}
                   onPointerCancel={endArtworkStroke}
+                  onPointerLeave={() => setEraserCursor(null)}
                   onLostPointerCapture={endArtworkStroke}
                   onDoubleClick={() => activeTool === "pen" && finishPenPath(false)}
                   className={`block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)] ${activeTool === "shape" ? "cursor-crosshair" : ""}`}
@@ -1916,8 +1919,39 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",
                     backgroundSize: "32px 32px",
                     backgroundPosition: "0 0, 0 16px, 16px -16px, -16px 0",
+                    cursor: activeTool === "eraser" ? "none" : undefined,
                   }}
                 />
+                {activeTool === "eraser" && eraserCursor && (
+                  <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-hidden="true" className="pointer-events-none absolute inset-0 z-40 h-full w-full overflow-visible">
+                    <g data-editor-eraser-cursor="true">
+                      {toolOptions.eraser.shape === "square" ? (
+                        <rect
+                          x={eraserCursor.x * 1000 - toolOptions.eraser.size / 2}
+                          y={eraserCursor.y * 1200 - toolOptions.eraser.size / 2}
+                          width={toolOptions.eraser.size}
+                          height={toolOptions.eraser.size}
+                          rx={(toolOptions.eraser.roundness / 100) * toolOptions.eraser.size / 2}
+                          transform={`rotate(${toolOptions.eraser.angle} ${eraserCursor.x * 1000} ${eraserCursor.y * 1200})`}
+                          fill="rgba(255,255,255,0.16)"
+                          stroke="#111827"
+                          strokeWidth="1.5"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      ) : (
+                        <circle
+                          cx={eraserCursor.x * 1000}
+                          cy={eraserCursor.y * 1200}
+                          r={toolOptions.eraser.size / 2}
+                          fill="rgba(255,255,255,0.16)"
+                          stroke="#111827"
+                          strokeWidth="1.5"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      )}
+                    </g>
+                  </svg>
+                )}
                 {showGrid && (
                   <div
                     aria-hidden="true"

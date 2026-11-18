@@ -806,6 +806,10 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
   assert.match(adjustmentsPanel, /ariaLabel="Eraser mode"/);
   assert.match(adjustmentsPanel, /ariaLabel="Eraser nib"/);
   assert.match(adjustmentsPanel, /aria-label="Clear erasures on this layer"/);
+  // The eraser shows a live, size-accurate nib so increasing the size is visible.
+  assert.match(source, /data-editor-eraser-cursor="true"/);
+  assert.match(source, /const \[eraserCursor, setEraserCursor\]/);
+  assert.match(source, /activeTool === "eraser" \? "none" : undefined/);
   assert.match(adjustmentsPanel, /activeTool === "pen"/);
   assert.match(adjustmentsPanel, /aria-label="Pen path width"/);
   assert.match(adjustmentsPanel, /aria-label=\{`Pen cap \$\{cap\}`\}/);
