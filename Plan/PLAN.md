@@ -2598,6 +2598,10 @@ Add Curves and Levels to Photo Adjustments. Levels must provide Black point, Whi
 
 Add Selective Color and HSL controls to Photo Adjustments, including per-component color sliders and HSL Hue/Saturation/Lightness. Add AI Enhance and Smart Filters with intensity/preset controls. Keep the behavior non-destructive and live on the photo layer, with the AI actions ready for a future connected service.
 
+## 2026-11-18 Directive Update — Photoshop Camera Raw-style Photo Adjustments
+
+The owner asked for a real Photoshop Camera Raw-style Photo Adjustment set rather than a flat slider list. Photo Adjustments now mirrors the Camera Raw/Develop module as collapsible groups: White Balance, Light (Exposure in EV plus Contrast/Highlights/Shadows/Whites/Blacks), Presence (Texture/Clarity/Dehaze/Vibrance/Saturation/Hue), Tone Curve, Levels, Color Mixer (HSL), Color Grading, Selective Color, Channel Mixer, Effects (Vignette/Grain), Detail (Sharpen/Noise reduction/Blur), and Smart & AI, with Auto and Reset. All control math lives in the pure `photo-adjustments.ts` module: exposure in stops, Adobe-documented tonal zones for Highlights/Shadows/Whites/Blacks, one luminance transfer table for the tone stage, one `feColorMatrix` for the color stage, and gradient/turbulence overlays for split toning, vignette, and grain. Values remain immutable instructions on the image layer so previews, mockups, and the print canvas stay identical and non-destructive. Controls must remain usable on Desktop and Phone/Mobile.
+
 ## 2026-11-18 Directive Update — Photo Layer Mask and Blend Modes
 
 Photo layers must expose Add/Edit/Remove Layer Mask controls and Blend Modes in the editing workflow. Reuse the existing non-destructive black-hide/white-reveal mask brush system and apply Blend Modes to the photo rendering group. Keep the controls available on Desktop and Phone/Mobile.

@@ -58,12 +58,12 @@ import {
 import type { EditorPenAnchor, EditorPenPath } from "@/lib/editor-pen-path";
 import type {
   EditorArtworkLayer,
-  EditorImageContent,
   EditorLayerAppearance,
   EditorShapePreset,
   EditorTextContent,
   LayerEditTarget,
   MaskBrushMode,
+  PhotoAdjustmentUpdate,
 } from "@/lib/editor-layers";
 import {
   designLayerToEditorLayer,
@@ -1526,7 +1526,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setLayers((current) => updateEditorLayerTextStyle(current, selectedLayerId, update));
   }
 
-  function updateSelectedImage(update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "temperature" | "tint" | "exposure" | "highlights" | "shadows" | "vibrance" | "vignette" | "hue" | "red" | "green" | "blue" | "levelsBlack" | "levelsWhite" | "levelsGamma" | "curves" | "selectiveCyan" | "selectiveMagenta" | "selectiveYellow" | "selectiveBlack" | "hslHue" | "hslSaturation" | "hslLightness" | "aiEnhanced" | "smartFilter" | "smartFilterIntensity" | "backgroundRemoved" | "upscaled">>) {
+  function updateSelectedImage(update: PhotoAdjustmentUpdate) {
     if (!selectedLayerId) return;
     setLayers((current) => updateEditorImageAdjustments(current, selectedLayerId, update));
   }

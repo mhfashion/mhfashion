@@ -238,8 +238,17 @@ export type EditorImageContent = {
   exposure?: number;
   highlights?: number;
   shadows?: number;
+  whites?: number;
+  blacks?: number;
+  texture?: number;
+  clarity?: number;
+  dehaze?: number;
   vibrance?: number;
   vignette?: number;
+  grain?: number;
+  grainSize?: number;
+  sharpen?: number;
+  noiseReduction?: number;
   hue?: number;
   red?: number;
   green?: number;
@@ -255,12 +264,37 @@ export type EditorImageContent = {
   hslHue?: number;
   hslSaturation?: number;
   hslLightness?: number;
+  splitHighlightHue?: number;
+  splitHighlightSat?: number;
+  splitMidHue?: number;
+  splitMidSat?: number;
+  splitShadowHue?: number;
+  splitShadowSat?: number;
+  splitBalance?: number;
   aiEnhanced?: boolean;
   smartFilter?: "none" | "clarity" | "cinematic" | "vintage" | "bw" | "warm" | "cool";
   smartFilterIntensity?: number;
   backgroundRemoved?: boolean;
   upscaled?: boolean;
 };
+
+export type PhotoAdjustmentKey =
+  | "brightness" | "contrast" | "saturation" | "blur"
+  | "temperature" | "tint" | "exposure" | "highlights" | "shadows"
+  | "whites" | "blacks" | "texture" | "clarity" | "dehaze"
+  | "vibrance" | "hue" | "vignette" | "grain" | "grainSize"
+  | "sharpen" | "noiseReduction"
+  | "red" | "green" | "blue"
+  | "levelsBlack" | "levelsWhite" | "levelsGamma" | "curves"
+  | "selectiveCyan" | "selectiveMagenta" | "selectiveYellow" | "selectiveBlack"
+  | "hslHue" | "hslSaturation" | "hslLightness"
+  | "splitHighlightHue" | "splitHighlightSat"
+  | "splitMidHue" | "splitMidSat"
+  | "splitShadowHue" | "splitShadowSat" | "splitBalance"
+  | "aiEnhanced" | "smartFilter" | "smartFilterIntensity"
+  | "backgroundRemoved" | "upscaled";
+
+export type PhotoAdjustmentUpdate = Partial<Pick<EditorImageContent, PhotoAdjustmentKey>>;
 
 export type EditorArtworkLayer = {
   id: string;
@@ -376,7 +410,7 @@ export function createEditorImageLayer(
 export function updateEditorImageAdjustments(
   layers: EditorArtworkLayer[],
   layerId: string,
-  update: Partial<Pick<EditorImageContent, "brightness" | "contrast" | "saturation" | "blur" | "temperature" | "tint" | "exposure" | "highlights" | "shadows" | "vibrance" | "vignette" | "hue" | "red" | "green" | "blue" | "levelsBlack" | "levelsWhite" | "levelsGamma" | "curves" | "selectiveCyan" | "selectiveMagenta" | "selectiveYellow" | "selectiveBlack" | "hslHue" | "hslSaturation" | "hslLightness" | "aiEnhanced" | "smartFilter" | "smartFilterIntensity" | "backgroundRemoved" | "upscaled">>,
+  update: PhotoAdjustmentUpdate,
 ): EditorArtworkLayer[] {
   return layers.map((layer) => layer.id === layerId && layer.image
     ? { ...layer, image: { ...layer.image, ...update } }
