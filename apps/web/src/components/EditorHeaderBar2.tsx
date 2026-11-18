@@ -10,28 +10,42 @@ const PRODUCT_OPTIONS = ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"] as 
 const FUTURE_PRODUCTS = ["Hoodie", "Cup", "Kids", "Bag"] as const;
 const GSM_OPTIONS = [DEFAULT_EDITOR_GSM, "180 GSM", "200 GSM", "240 GSM"] as const;
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "2XL", "3XL"] as const;
+// Real garment colours, so the swatch is the colour the customer actually
+// picks rather than a theme token.
 const COLOR_OPTIONS = [
-  { value: "background", label: "Background", swatch: "bg-bg" },
-  { value: "surface", label: "Surface", swatch: "bg-bg-surface" },
-  { value: "accent", label: "Accent", swatch: "bg-accent" },
+  { value: "white", label: "White", hex: "#ffffff" },
+  { value: "black", label: "Black", hex: "#111111" },
+  { value: "navy", label: "Navy", hex: "#1e3a5f" },
+  { value: "red", label: "Red", hex: "#dc2626" },
+  { value: "blue", label: "Blue", hex: "#2563eb" },
+  { value: "green", label: "Green", hex: "#16a34a" },
+  { value: "yellow", label: "Yellow", hex: "#facc15" },
+  { value: "grey", label: "Grey", hex: "#6b7280" },
 ] as const;
 
-// One shared geometry for every Header Bar 2 control so the Product, GSM,
-// Color, Size, Save, and Buy boxes read as one uniform set.
-const FIELD_BOX =
-  "relative h-8 w-20 shrink-0 overflow-hidden rounded-full border border-accent bg-accent text-[10px] font-semibold text-accent-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11";
+// One shared shape for every Header Bar 2 control so the Product, GSM,
+// Color, Size, Save, and Buy boxes read as one uniform, compact set.
+const FIELD_BOX_SHAPE =
+  "relative h-7 w-[4.5rem] shrink-0 overflow-hidden rounded-full border text-[9px] font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11";
+const FIELD_BOX = `${FIELD_BOX_SHAPE} border-accent bg-accent text-accent-foreground`;
 // The chevron is pinned to the right edge so its position is identical on every
 // field box; the content stays centred in the remaining space.
-const TRIGGER_BOX = `${FIELD_BOX} inline-flex items-center justify-center pl-2 pr-5 disabled:cursor-not-allowed disabled:opacity-100`;
+const TRIGGER_BOX = `${FIELD_BOX} inline-flex items-center justify-center pl-1.5 pr-4 disabled:cursor-not-allowed disabled:opacity-100`;
+// The Color trigger keeps only a green outline (no green fill), so the selected
+// colour reads clearly instead of blending into the box.
+const OUTLINE_TRIGGER_BOX = `${FIELD_BOX_SHAPE} border-accent bg-transparent text-accent inline-flex items-center justify-center pl-1.5 pr-4 disabled:cursor-not-allowed disabled:opacity-100`;
 const ACTION_BOX = `${FIELD_BOX} inline-flex items-center justify-center px-1 disabled:cursor-default disabled:opacity-100`;
 // Every dropdown opens a compact green panel the same width as its box, so the
 // opened menu lines up with the control above it instead of a wide overlay.
 const MENU_BOX =
   "fixed z-[100] flex flex-col gap-1 rounded-2xl border border-accent bg-accent p-1 text-accent-foreground shadow-xl";
 const MENU_OPTION =
-  "flex h-8 w-full items-center justify-between gap-1 rounded-full px-2 text-left text-[10px] font-semibold text-accent-foreground outline-none transition-colors hover:bg-accent-foreground/10 focus-visible:ring-2 focus-visible:ring-accent-foreground disabled:opacity-40 [@media(pointer:coarse)]:h-11";
-// The selected colour reads as a small box (rounded square), not a dot.
-const COLOR_SWATCH = "h-5 w-5 shrink-0 rounded-md border border-accent-foreground/50";
+  "flex h-7 w-full items-center justify-between gap-1 rounded-full px-2 text-left text-[9px] font-semibold text-accent-foreground outline-none transition-colors hover:bg-accent-foreground/10 focus-visible:ring-2 focus-visible:ring-accent-foreground disabled:opacity-40 [@media(pointer:coarse)]:h-11";
+// The selected colour reads as a box (rounded square), not a dot.
+const COLOR_SWATCH = "h-5 w-5 shrink-0 rounded-md border border-border";
+// The trigger swatch is wider than the option swatches so the current colour
+// stands out in the outlined box.
+const COLOR_TRIGGER_SWATCH = "h-[18px] w-10 shrink-0 rounded-md border border-border";
 
 function FieldLabel({ children }: { children: string }) {
   return (
@@ -45,7 +59,7 @@ type DropdownOption = {
   value: string;
   label: string;
   disabled?: boolean;
-  swatch?: string;
+  hex?: string;
   ariaLabel?: string;
 };
 
@@ -60,6 +74,7 @@ function BoxDropdown({
   disabled = false,
   triggerContent,
   triggerTestId,
+  triggerClassName,
 }: {
   label: string;
   value: string;
@@ -68,6 +83,7 @@ function BoxDropdown({
   disabled?: boolean;
   triggerContent: React.ReactNode;
   triggerTestId?: string;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 8, top: 8, width: 80 });
@@ -152,7 +168,7 @@ function BoxDropdown({
         aria-controls={menuId}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
-        className={TRIGGER_BOX}
+        className={triggerClassName ?? TRIGGER_BOX}
       >
         {triggerContent}
         <ChevronDown
@@ -189,8 +205,12 @@ function BoxDropdown({
               className={MENU_OPTION}
             >
               <span className="flex min-w-0 items-center gap-1.5">
-                {option.swatch && (
-                  <span aria-hidden="true" className={`${COLOR_SWATCH} ${option.swatch}`} />
+                {option.hex && (
+                  <span
+                    aria-hidden="true"
+                    className={COLOR_SWATCH}
+                    style={{ backgroundColor: option.hex }}
+                  />
                 )}
                 <span className="truncate">{option.label}</span>
               </span>
@@ -232,7 +252,7 @@ function SelectBox({
 }
 
 function ColorBox({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const selectedColor = COLOR_OPTIONS.find((color) => color.value === value) ?? COLOR_OPTIONS[2];
+  const selectedColor = COLOR_OPTIONS.find((color) => color.value === value) ?? COLOR_OPTIONS[0];
   return (
     <BoxDropdown
       label="Color"
@@ -240,16 +260,19 @@ function ColorBox({ value, onChange }: { value: string; onChange: (value: string
       options={COLOR_OPTIONS.map((color) => ({
         value: color.value,
         label: color.label,
-        swatch: color.swatch,
+        hex: color.hex,
         ariaLabel: `Color ${color.label}`,
       }))}
       onChange={onChange}
       triggerTestId="header-bar2-color-trigger"
+      triggerClassName={OUTLINE_TRIGGER_BOX}
       triggerContent={
         <span
           aria-hidden="true"
           data-color-swatch={selectedColor.value}
-          className={`${COLOR_SWATCH} ${selectedColor.swatch}`}
+          data-color-hex={selectedColor.hex}
+          className={COLOR_TRIGGER_SWATCH}
+          style={{ backgroundColor: selectedColor.hex }}
         />
       }
     />
@@ -271,7 +294,7 @@ export default function EditorHeaderBar2({
   gsm: string;
   onGsmChange: (gsm: string) => void;
 }) {
-  const [selectedColor, setSelectedColor] = useState("accent");
+  const [selectedColor, setSelectedColor] = useState("white");
   const [selectedSize, setSelectedSize] = useState("XL");
 
   function changeProduct(value: string) {

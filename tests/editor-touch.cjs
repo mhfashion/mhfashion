@@ -261,15 +261,18 @@ async function main() {
     assert.equal(initial.selectedProduct, "T-Shirt");
     assert.equal(initial.selectedGsm, "160 GSM", "The first GSM is selected by default");
     assert.equal(initial.size, "XL", "Size defaults to XL");
-    assert.ok(initial.boxMetrics.every((box) => box.width === 80 && box.height === 44), "All mobile boxes share equal width and touch height");
+    assert.ok(initial.boxMetrics.every((box) => box.width === 72 && box.height === 44), "All mobile boxes share equal width and touch height");
     assert.equal(initial.visibleFieldLabels, 0, "Mobile keeps only the field/action boxes, not separate field labels");
     assert.equal(initial.priceVisible, false, "Mobile hides the separate price text");
     assert.equal(initial.colorExpanded, "false", "Color starts as a closed dropdown");
-    assert.equal(initial.colorCurrent, "accent", "Color shows its selected theme swatch in the box");
+    assert.equal(initial.colorCurrent, "white", "Color shows the selected garment colour in the box");
     assert.equal(initial.colorArrow, true, "Color uses the same down-arrow affordance as the other selectors");
     assert.equal(initial.colorMenuOpen, false, "Color choices are tucked into the dropdown until opened");
-    assert.ok(initial.boxColors.every((color) => color === `rgb(${initial.accent})`), "Every control box uses the app's green accent fill");
-    assert.ok(initial.productBoxWidth <= 80, "Product selector stays compact");
+    // Product/GSM/Size/Save/Buy keep the green fill; the Color box is outlined
+    // only, so the selected colour reads clearly instead of a green box.
+    assert.ok(initial.boxColors.filter((_, index) => index !== 2).every((color) => color === `rgb(${initial.accent})`), "Every non-color control box uses the app's green accent fill");
+    assert.equal(initial.boxColors[2], "rgba(0, 0, 0, 0)", "The Color box is a green outline with no green fill");
+    assert.ok(initial.productBoxWidth <= 72, "Product selector stays compact");
     assert.equal(initial.productCanChange, true, "T-Shirt and Phone are selectable");
     assert.ok(initial.saveBuyDisabled, "Save and Buy remain placeholders while Color and Size are usable selectors");
 
@@ -330,16 +333,22 @@ async function main() {
     assert.ok(colorMenu.radius >= 12, "Color dropdown container is rounded");
     assert.ok(colorMenu.radius < colorMenu.height / 2, "Color dropdown keeps straight sides instead of clamping into a capsule");
     assert.equal(colorMenu.background, `rgb(${colorMenu.accent})`, "Color dropdown uses the app's green accent");
-    assert.deepEqual(colorMenu.options.map((option) => option.label), ["Color Background", "Color Surface", "Color Accent"]);
-    assert.equal(colorMenu.options[2].selected, "true", "The current Accent choice is marked selected");
+    assert.deepEqual(
+      colorMenu.options.map((option) => option.label),
+      ["Color White", "Color Black", "Color Navy", "Color Red", "Color Blue", "Color Green", "Color Yellow", "Color Grey"],
+      "Color dropdown lists real garment colours",
+    );
+    assert.equal(colorMenu.options[0].selected, "true", "The current White choice is marked selected");
     assert.ok(colorMenu.options.every((option) => option.radius >= 8), "Color dropdown choices are also rounded");
     assert.ok(colorMenu.bounds.left >= 0 && colorMenu.bounds.right <= colorMenu.viewport.width, "Color dropdown stays within the phone viewport");
-    await tap('button[aria-label="Color Surface"]');
+    await tap('button[aria-label="Color Black"]');
     const chosenColor = await evaluate(() => ({
       value: document.querySelector('button[aria-label="Color"] [data-color-swatch]')?.getAttribute("data-color-swatch"),
+      hex: document.querySelector('button[aria-label="Color"] [data-color-swatch]')?.getAttribute("data-color-hex"),
       expanded: document.querySelector('button[aria-label="Color"]')?.getAttribute("aria-expanded"),
     }));
-    assert.equal(chosenColor.value, "surface", "Choosing a dropdown swatch updates the Color box");
+    assert.equal(chosenColor.value, "black", "Choosing a dropdown swatch updates the Color box");
+    assert.equal(chosenColor.hex, "#111111", "The trigger swatch paints the real chosen colour");
     assert.equal(chosenColor.expanded, "false", "Choosing a swatch closes the dropdown");
     if (width === 390) assert.equal(await chooseBox("GSM", "GSM 200 GSM"), "200 GSM");
     assert.ok(initial.mainBottom <= initial.navTop + 1, "Editor stays above mobile navigation");
@@ -607,10 +616,10 @@ async function main() {
       };
     });
     assert.deepEqual(phoneState.boxNames, ["Product", "Brand", "Model", "Color", "Save", "Buy"]);
-    assert.ok(phoneState.boxMetrics.every((box) => box.width === 80 && box.height === 44 && box.radius >= 16), "All mobile controls have matching pill geometry and 44px touch height");
+    assert.ok(phoneState.boxMetrics.every((box) => box.width === 72 && box.height === 44 && box.radius >= 16), "All mobile controls have matching pill geometry and 44px touch height");
     assert.equal(phoneState.visibleFieldLabels, 0, "Phone viewport shows the selector boxes without their text labels");
     assert.equal(phoneState.priceVisible, false, "Phone viewport keeps only boxes, hiding the separate price text");
-    assert.equal(phoneState.colorSelected, "surface", "The selected Color swatch remains visible for Phone");
+    assert.equal(phoneState.colorSelected, "black", "The selected Color swatch remains visible for Phone");
     assert.equal(phoneState.colorExpanded, "false", "Color dropdown is closed after selection");
     assert.equal(phoneState.gsmExists, false, "Phone product keeps GSM hidden");
     assert.equal(phoneState.sizeExists, false, "Phone product keeps Size hidden");
@@ -637,7 +646,7 @@ async function main() {
     assert.equal(apparelState.size, "XL", "Size defaults to XL without a Choose option");
     assert.ok(sizeOptions.includes("Size 2XL"), "Size offers standard extended sizes");
     assert.equal(apparelState.color, true);
-    assert.equal(apparelState.selectedColor, "surface", "Selected Color remains while switching product categories");
+    assert.equal(apparelState.selectedColor, "black", "Selected Color remains while switching product categories");
     assert.equal(apparelState.backVisible, true, "T-Shirt restores its Back Mockup");
     assert.equal(apparelState.addBackInMockupBox, 0, "Mockup boxes carry no add control");
     assert.deepEqual(await canvasMenuItems(), ["Show Grid", "Add Front Mockup", "Add Back Mockup"], "Apparel exposes both mockup sides");
@@ -774,22 +783,26 @@ async function main() {
             width: Math.round(swatchRect.width),
             height: Math.round(swatchRect.height),
             radius: Number.parseFloat(getComputedStyle(swatch).borderTopLeftRadius),
+            background: getComputedStyle(swatch).backgroundColor,
           };
         })(),
       };
     });
     assert.deepEqual(bar2DesktopBoxes.names, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
-    assert.ok(bar2DesktopBoxes.metrics.every((box) => box.width === 80 && box.height === 32 && box.radius >= 16), "Every desktop Bar 2 box shares the same compact pill geometry");
-    assert.ok(bar2DesktopBoxes.chevrons.every((chevron) => chevron.fromRight === 6), "Every box pins its chevron the same distance from the right edge");
+    assert.ok(bar2DesktopBoxes.metrics.every((box) => box.width === 72 && box.height === 28 && box.radius >= 14), "Every desktop Bar 2 box shares the same compact pill geometry");
+    assert.ok(bar2DesktopBoxes.chevrons.every((chevron) => chevron.fromRight >= 4 && chevron.fromRight <= 9), "Every box pins its chevron near the same distance from the right edge");
+    assert.equal(new Set(bar2DesktopBoxes.chevrons.map((chevron) => chevron.fromRight)).size, 1, "Every box pins its chevron the same distance from the right edge");
     assert.ok(bar2DesktopBoxes.chevrons.every((chevron) => Math.abs(chevron.centerY - chevron.boxHeight / 2) <= 1), "Every chevron is vertically centred in its box");
-    assert.equal(bar2DesktopBoxes.swatch.width, 20, "The Color swatch is a 20px box, not a small dot");
-    assert.equal(bar2DesktopBoxes.swatch.height, 20);
-    assert.ok(bar2DesktopBoxes.swatch.radius >= 4 && bar2DesktopBoxes.swatch.radius < 20, "The Color swatch is a rounded square, not a circle");
+    assert.equal(bar2DesktopBoxes.swatch.width, 40, "The Color trigger shows a wide colour box, not a small dot");
+    assert.equal(bar2DesktopBoxes.swatch.height, 18);
+    assert.ok(bar2DesktopBoxes.swatch.radius >= 4 && bar2DesktopBoxes.swatch.radius < 18, "The Color swatch is a rounded square, not a circle");
+    assert.equal(bar2DesktopBoxes.swatch.background, "rgb(255, 255, 255)", "The trigger swatch paints the real selected colour (White by default)");
     assert.equal(bar2DesktopBoxes.labelsVisible, true, "Desktop shows Product/GSM/Color/Size labels");
     assert.equal(bar2DesktopBoxes.priceVisible, true, "Desktop shows the Save-adjacent price field");
     assert.equal(bar2DesktopBoxes.priceLeftOfSave, true, "Desktop Price appears immediately to the left of Save");
     assert.equal(bar2DesktopBoxes.priceText, "Price 28,000 Ks", "Price shows the selected T-Shirt + 160 GSM + XL combination");
-    assert.ok(bar2DesktopBoxes.boxColors.every((color) => color === `rgb(${bar2DesktopBoxes.accent})`), "Every desktop control box uses the green app accent fill");
+    assert.ok(bar2DesktopBoxes.boxColors.filter((_, index) => index !== 2).every((color) => color === `rgb(${bar2DesktopBoxes.accent})`), "Every non-color desktop control box uses the green app accent fill");
+    assert.equal(bar2DesktopBoxes.boxColors[2], "rgba(0, 0, 0, 0)", "The Color box is a green outline with no green fill");
     // Selecting a different option updates the price immediately.
     await clickMouse('[data-editor-box="GSM"]');
     await clickMouse('[role="listbox"][aria-label="GSM options"] [role="option"][aria-label="GSM 240 GSM"]');
@@ -846,7 +859,7 @@ async function main() {
         shell: getComputedStyle(document.querySelector("main")).backgroundColor,
         bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
         productBox: getComputedStyle(document.querySelector('[data-editor-box="Product"]')).backgroundColor,
-        colorAccentSwatch: getComputedStyle(document.querySelector('button[aria-label="Color Accent"] span')).backgroundColor,
+        colorBoxBorder: getComputedStyle(document.querySelector('[data-editor-box="Color"]')).borderTopColor,
         layersPanel: getComputedStyle(document.querySelector('aside[aria-label="Layers panel"]')).backgroundColor,
         layersToggle: getComputedStyle(document.querySelector('button[aria-label="Collapse Layers panel"]')).backgroundColor,
         accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
@@ -869,7 +882,7 @@ async function main() {
       shell: getComputedStyle(document.querySelector("main")).backgroundColor,
       bar: getComputedStyle(document.querySelector('[aria-label="Header Bar 2"]')).backgroundColor,
       productBox: getComputedStyle(document.querySelector('[data-editor-box="Product"]')).backgroundColor,
-      colorAccentSwatch: getComputedStyle(document.querySelector('button[aria-label="Color Accent"] span')).backgroundColor,
+      colorBoxBorder: getComputedStyle(document.querySelector('[data-editor-box="Color"]')).borderTopColor,
       layersPanel: getComputedStyle(document.querySelector('aside[aria-label="Layers panel"]')).backgroundColor,
       layersToggle: getComputedStyle(document.querySelector('button[aria-label="Collapse Layers panel"]')).backgroundColor,
       accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
@@ -878,9 +891,9 @@ async function main() {
     assert.notEqual(themeAfter.shell, themeBefore.shell, "Editor workspace responds to Header theme toggle");
     assert.notEqual(themeAfter.bar, themeBefore.bar, "Header Bar 2 responds to Header theme toggle");
     assert.notEqual(themeAfter.productBox, themeBefore.productBox, "Product box responds to Header theme toggle");
-    assert.notEqual(themeAfter.colorAccentSwatch, themeBefore.colorAccentSwatch, "Color swatches respond to Header theme toggle");
-    assert.equal(themeBefore.colorAccentSwatch, `rgb(${themeBefore.accent})`, "Color Accent swatch uses the active app theme token");
-    assert.equal(themeAfter.colorAccentSwatch, `rgb(${themeAfter.accent})`, "Color Accent swatch follows the toggled app theme token");
+    assert.notEqual(themeAfter.colorBoxBorder, themeBefore.colorBoxBorder, "Color box outline responds to Header theme toggle");
+    assert.equal(themeBefore.colorBoxBorder, `rgb(${themeBefore.accent})`, "Color box outline uses the active app theme token");
+    assert.equal(themeAfter.colorBoxBorder, `rgb(${themeAfter.accent})`, "Color box outline follows the toggled app theme token");
     assert.notEqual(themeAfter.layersPanel, themeBefore.layersPanel, "Photoshop-style Layers dock responds to Header theme toggle");
     assert.notEqual(themeAfter.layersToggle, themeBefore.layersToggle, "Round Layers toggle follows the app accent theme color");
     assert.equal(themeAfter.layersToggle, `rgb(${themeAfter.accent})`, "Toggled button color matches the active theme accent token");
