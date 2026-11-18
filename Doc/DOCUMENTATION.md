@@ -17,6 +17,15 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-18 — Text tool follows the Photoshop layer rule
+
+- Fixed the Text tool so it stops creating a layer on every canvas click. Previously `startArtworkStroke` called `addCanvasTextLayer(undefined, …)` for every click regardless of the selection, so each click spawned a new `Text N` layer.
+- Confirmed rule (owner): if the selected layer is a text layer, the Text tool edits that layer's own text in place and creates no layer; if the selected layer is not a text layer (artwork/shape/image) or nothing is selected, it creates exactly one new text layer and types into it. This matches how Pen and Shape already append to the selected layer.
+- Implementation: the `activeTool === "text"` branch in `apps/web/src/components/KittlCanvas.tsx` now looks up the selected layer, reopens the existing in-place editor (`setEditingTextLayerId`) when it is a text layer, warns when that layer is locked, and only falls through to `addCanvasTextLayer` for a missing or non-text selection.
+- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Validation: Next.js production build passed; TypeScript passed; ESLint clean (exit 0) on the changed file; all repository Node tests passed **61/61**; `git diff --check` passed. Focused production Chromium at desktop 1280×900 and phone 390×844 confirmed both branches: with a selected text layer the Text tool opened the in-place editor and the layer count stayed at 2; with a selected non-text artwork layer it created exactly one new text layer (3 → 4) and opened its editor.
+- Limitation: the Sidebar `Add Text` button and each Text/Element card still add one layer per action (that is the explicit insertion action, not the Text tool); only the canvas-click Text tool was changed.
+
 ### 2026-11-18 — Header Bar 2 uniform boxes, shared rounded dropdown, and live price
 
 - Made every Header Bar 2 control share one box shape. Product, GSM, Color, and Size now render through a single `BoxDropdown` component built on the same `FIELD_BOX`/`TRIGGER_BOX` geometry as the Save/Buy `ACTION_BOX` boxes; the native `<select>` elements are gone, so all six boxes use identical fully rounded `80×32px` desktop / `80×44px` coarse-pointer geometry and green `bg-accent` fill.

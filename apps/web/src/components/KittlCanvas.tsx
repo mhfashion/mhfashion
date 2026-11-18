@@ -1109,6 +1109,19 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (activeTool === "text") {
       event.preventDefault();
       event.stopPropagation();
+      const selected = layers.find((layer) => layer.id === selectedLayerId);
+      // Photoshop rule: typing on an existing text layer edits that layer in place
+      // and never spawns another one. A new text layer is created only when the
+      // selection is empty or is not a text layer.
+      if (selected?.kind === "text") {
+        if (selected.locked) {
+          setToolNotice("Unlock this text layer before editing its text.");
+          return;
+        }
+        setEditingTextLayerId(selected.id);
+        setSelectedTarget("artwork");
+        return;
+      }
       addCanvasTextLayer(undefined, { x: point.x * 1000, y: point.y * 1200 });
       return;
     }

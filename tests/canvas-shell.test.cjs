@@ -185,6 +185,9 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /activeTool === "pen" && penAnchors.length > 0 && \(/);
   assert.doesNotMatch(source, /Click: corner · drag: curve · Shift: snap · click start: close/);
   assert.match(source, /activeTool === "text"/);
+  // Photoshop rule: the Text tool edits the selected text layer in place and only
+  // creates a new text layer when the selection is missing or is not a text layer.
+  assert.match(source, /if \(selected\?\.kind === "text"\) \{\n\s+if \(selected\.locked\) \{\n\s+setToolNotice\("Unlock this text layer before editing its text\."\);\n\s+return;\n\s+\}\n\s+setEditingTextLayerId\(selected\.id\);/);
   assert.match(source, /addCanvasTextLayer\(undefined, \{ x: point\.x \* 1000, y: point\.y \* 1200 \}\)/);
   assert.match(editSidebar, /Add Text/);
   assert.match(toolsBar, /role="group" aria-label="Color switch tool"/);

@@ -2,6 +2,14 @@
 
 The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN.md#historical-todo). Use the current project plan for active priorities and `Doc/DOCUMENTATION.md#work-log` for completed website work.
 
+## Current direct owner request — 2026-11-18
+
+- [x] **Photoshop-style layer creation for Text (confirmed rule, 2026-11-18).** The Text tool must not create a layer on every click. Confirmed behavior, exactly like Photoshop:
+  - If the **selected layer is a text layer**: the Text tool edits that layer's own text in place. No new layer is created.
+  - If the **selected layer is not a text layer** (artwork / shape / image), or nothing is selected: the Text tool creates **one** new text layer and types into it.
+  Current code (`KittlCanvas.tsx` `startArtworkStroke`) calls `addCanvasTextLayer(undefined, …)` on every canvas click regardless of the selected layer's kind, so each click spawns a new `Text N` layer; the Sidebar `Add Text` button and each Text/Element card also call `addCanvasTextLayer` and auto-open the Layers panel via `revealLayersStack`. Pen and Shape already follow the correct rule by appending to the selected layer (`appendEditorShapePaths(current, selectedLayer.id, …)`). Fix: make the Text tool branch check `selectedLayer.kind === "text"` and open the in-place editor on that layer instead of creating a new one; only fall through to creating a text layer when the selection is missing or is not a text layer. Keep the explicit `Add Layer` action as the only other way to add a layer.
+  Implementation plan: edit the `activeTool === "text"` branch in `KittlCanvas.tsx` (around `startArtworkStroke`), reuse the existing `editingTextLayerId` in-place editor, add a canvas-shell test for both branches, then build / typecheck / lint / run `node --test tests/*.test.cjs`, and verify Web + Phone with headless Chromium. Implemented 2026-11-18 in `KittlCanvas.tsx`; verified on desktop 1280×900 and phone 390×844 (selected text layer → in-place edit, no new layer; selected non-text layer → one new text layer). See `Doc/DOCUMENTATION.md#work-log`.
+
 ## Current direct owner request — 2026-11-17
 
 - [x] Header Bar 2 fields: keep the no-`Choose` Product selector defaulted to `T-Shirt` and the no-`Choose` GSM selector defaulted to `160 GSM`; Product/GSM/Color/Size/Save/Buy boxes use the same fully rounded `80×32px` desktop / `80×44px` touch proportions and green app-accent fill. The `Color` box shows its selected theme swatch with a down-arrow; clicking the arrow opens a fully rounded green dropdown with Background/Surface/Accent choices. The `Size` box defaults to `XL` and offers `XS` through `3XL`. Place `Price —` immediately to the left of `Save`. On phones, hide field labels and separate price text so only the horizontally scrollable boxes remain; retain accessible names and selections. `Save`/`Buy` remain placeholders because `/create` has no connected price source or save/checkout handler.
