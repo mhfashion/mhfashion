@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { DEFAULT_EDITOR_GSM, type EditorProduct } from "@/lib/editor-product";
+import { calculateEditorPriceKs } from "@/lib/editor-price";
 
 const PRODUCT_OPTIONS = ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"] as const;
 const FUTURE_PRODUCTS = ["Hoodie", "Cup", "Kids", "Bag"] as const;
@@ -15,10 +16,17 @@ const COLOR_OPTIONS = [
   { value: "accent", label: "Accent", swatch: "bg-accent" },
 ] as const;
 
+// One shared geometry for every Header Bar 2 control so the Product, GSM,
+// Color, Size, Save, and Buy boxes read as one uniform set.
 const FIELD_BOX =
-  "h-8 w-20 rounded-full border border-accent bg-accent text-[10px] font-semibold text-accent-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11";
-const ACTION_BOX =
-  "inline-flex h-8 w-20 shrink-0 items-center justify-center rounded-full border border-accent bg-accent px-1 text-[10px] font-semibold text-accent-foreground transition-colors [@media(pointer:coarse)]:h-11 disabled:cursor-default disabled:opacity-100";
+  "h-8 w-20 shrink-0 rounded-full border border-accent bg-accent text-[10px] font-semibold text-accent-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11";
+const TRIGGER_BOX = `${FIELD_BOX} inline-flex items-center justify-center gap-1.5 px-2 disabled:cursor-not-allowed disabled:opacity-100`;
+const ACTION_BOX = `${FIELD_BOX} inline-flex items-center justify-center px-1 disabled:cursor-default disabled:opacity-100`;
+// Every dropdown opens the same fully rounded green panel, matching the boxes.
+const MENU_BOX =
+  "fixed z-[100] flex flex-col gap-0.5 rounded-full border border-accent bg-accent p-1.5 text-accent-foreground shadow-xl";
+const MENU_OPTION =
+  "flex min-h-9 w-full items-center gap-2 rounded-full px-3 text-left text-[10px] font-semibold text-accent-foreground outline-none transition-colors hover:bg-accent-foreground/10 focus-visible:ring-2 focus-visible:ring-accent-foreground disabled:opacity-40 [@media(pointer:coarse)]:min-h-11";
 
 function FieldLabel({ children }: { children: string }) {
   return (
@@ -28,55 +36,39 @@ function FieldLabel({ children }: { children: string }) {
   );
 }
 
-function CompactSelect({
+type DropdownOption = {
+  value: string;
+  label: string;
+  disabled?: boolean;
+  swatch?: string;
+  ariaLabel?: string;
+};
+
+// The single dropdown used by every Header Bar 2 selector. The trigger keeps
+// the shared box geometry; the popup is a fully rounded green panel mounted in
+// a portal so the horizontally scrollable bar can never clip it.
+function BoxDropdown({
   label,
   value,
   options,
   onChange,
   disabled = false,
-  disabledOptions = [],
+  triggerContent,
+  triggerTestId,
 }: {
   label: string;
   value: string;
-  options: readonly string[];
+  options: readonly DropdownOption[];
   onChange?: (value: string) => void;
   disabled?: boolean;
-  disabledOptions?: readonly string[];
+  triggerContent: React.ReactNode;
+  triggerTestId?: string;
 }) {
-  return (
-    <label className="flex shrink-0 items-center gap-1.5">
-      <FieldLabel>{label}</FieldLabel>
-      <span className="relative flex shrink-0 items-center">
-        <select
-          aria-label={label}
-          data-editor-box={label}
-          value={value}
-          disabled={disabled}
-          onChange={(event) => onChange?.(event.target.value)}
-          className={`${FIELD_BOX} appearance-none pl-2 pr-5 disabled:cursor-not-allowed disabled:opacity-100`}
-        >
-          {options.map((option) => (
-            <option key={option} value={option} disabled={disabledOptions.includes(option)}>
-              {option}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          size={10}
-          aria-hidden="true"
-          className="pointer-events-none absolute right-1 text-accent-foreground"
-        />
-      </span>
-    </label>
-  );
-}
-
-function ColorField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 8, top: 8, width: 176 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const selectedColor = COLOR_OPTIONS.find((color) => color.value === value) ?? COLOR_OPTIONS[2];
+  const menuId = `editor-header-bar2-${label.toLowerCase()}-options`;
 
   useEffect(() => {
     if (!open) return;
@@ -86,7 +78,7 @@ function ColorField({ value, onChange }: { value: string; onChange: (value: stri
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
       const width = Math.min(176, window.innerWidth - 16);
-      const height = 160;
+      const height = Math.min(options.length * 44 + 12, 320);
       const left = Math.max(8, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 8));
       const top = window.innerHeight - rect.bottom >= height + 8
         ? rect.bottom + 6
@@ -115,58 +107,81 @@ function ColorField({ value, onChange }: { value: string; onChange: (value: stri
       document.removeEventListener("pointerdown", closeOnOutsidePointer);
       document.removeEventListener("keydown", closeOnEscape);
     };
+  }, [open, options.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    const selected = menuRef.current?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
+    const first = menuRef.current?.querySelector<HTMLElement>('[role="option"]:not([disabled])');
+    (selected ?? first)?.focus();
   }, [open]);
+
+  const onMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]:not([disabled])') ?? []);
+    if (items.length === 0) return;
+    const current = items.findIndex((item) => item === document.activeElement);
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      const next = current === -1 ? 0 : (current + step + items.length) % items.length;
+      items[next].focus();
+    } else if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      items[event.key === "Home" ? 0 : items.length - 1].focus();
+    }
+  };
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
-      <FieldLabel>Color</FieldLabel>
+      <FieldLabel>{label}</FieldLabel>
       <button
         ref={triggerRef}
         type="button"
-        aria-label="Color"
+        aria-label={label}
+        data-editor-box={label}
+        data-testid={triggerTestId}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls="editor-header-bar2-color-options"
-        data-editor-box="Color"
-        data-testid="header-bar2-color-trigger"
+        aria-controls={menuId}
+        disabled={disabled}
         onClick={() => setOpen((current) => !current)}
-        className={`${FIELD_BOX} inline-flex items-center justify-center gap-2 px-2`}
+        className={TRIGGER_BOX}
       >
-        <span
-          aria-hidden="true"
-          data-color-swatch={selectedColor.value}
-          className={`h-3.5 w-3.5 rounded-full border border-accent-foreground/50 ${selectedColor.swatch}`}
-        />
+        {triggerContent}
         <ChevronDown size={12} aria-hidden="true" className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && createPortal(
         <div
           ref={menuRef}
-          id="editor-header-bar2-color-options"
+          id={menuId}
           role="listbox"
-          aria-label="Color options"
-          data-testid="header-bar2-color-options"
-          className="fixed z-[100] flex flex-col gap-0.5 rounded-full border border-accent bg-accent p-1.5 text-accent-foreground shadow-xl"
+          aria-label={`${label} options`}
+          data-testid={`editor-header-bar2-${label.toLowerCase()}-options`}
+          onKeyDown={onMenuKeyDown}
+          className={MENU_BOX}
           style={{ left: position.left, top: position.top, width: position.width }}
         >
-          {COLOR_OPTIONS.map((color) => (
+          {options.map((option) => (
             <button
-              key={color.value}
+              key={option.value}
               type="button"
               role="option"
-              aria-label={`Color ${color.label}`}
-              aria-selected={value === color.value}
-              title={color.label}
+              aria-label={option.ariaLabel ?? `${label} ${option.label}`}
+              aria-selected={value === option.value}
+              disabled={option.disabled}
+              title={option.label}
               onClick={() => {
-                onChange(color.value);
+                onChange?.(option.value);
                 setOpen(false);
                 triggerRef.current?.focus();
               }}
-              className="flex min-h-9 w-full items-center gap-2 rounded-full px-3 text-left text-[10px] font-semibold text-accent-foreground outline-none transition-colors hover:bg-accent-foreground/10 focus-visible:ring-2 focus-visible:ring-accent-foreground [@media(pointer:coarse)]:min-h-11"
+              className={MENU_OPTION}
             >
-              <span aria-hidden="true" className={`h-3.5 w-3.5 rounded-full border border-accent-foreground/50 ${color.swatch}`} />
-              <span>{color.label}</span>
-              {value === color.value && <span className="ml-auto" aria-hidden="true">✓</span>}
+              {option.swatch && (
+                <span aria-hidden="true" className={`h-3.5 w-3.5 rounded-full border border-accent-foreground/50 ${option.swatch}`} />
+              )}
+              <span>{option.label}</span>
+              {value === option.value && <span className="ml-auto" aria-hidden="true">✓</span>}
             </button>
           ))}
         </div>,
@@ -176,8 +191,60 @@ function ColorField({ value, onChange }: { value: string; onChange: (value: stri
   );
 }
 
+function SelectBox({
+  label,
+  value,
+  options,
+  onChange,
+  disabled = false,
+  disabledOptions = [],
+}: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange?: (value: string) => void;
+  disabled?: boolean;
+  disabledOptions?: readonly string[];
+}) {
+  return (
+    <BoxDropdown
+      label={label}
+      value={value}
+      options={options.map((option) => ({ value: option, label: option, disabled: disabledOptions.includes(option) }))}
+      onChange={onChange}
+      disabled={disabled}
+      triggerContent={<span className="truncate">{value}</span>}
+    />
+  );
+}
+
+function ColorBox({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const selectedColor = COLOR_OPTIONS.find((color) => color.value === value) ?? COLOR_OPTIONS[2];
+  return (
+    <BoxDropdown
+      label="Color"
+      value={value}
+      options={COLOR_OPTIONS.map((color) => ({
+        value: color.value,
+        label: color.label,
+        swatch: color.swatch,
+        ariaLabel: `Color ${color.label}`,
+      }))}
+      onChange={onChange}
+      triggerTestId="header-bar2-color-trigger"
+      triggerContent={
+        <span
+          aria-hidden="true"
+          data-color-swatch={selectedColor.value}
+          className={`h-3.5 w-3.5 rounded-full border border-accent-foreground/50 ${selectedColor.swatch}`}
+        />
+      }
+    />
+  );
+}
+
 function PendingSelect({ label }: { label: string }) {
-  return <CompactSelect label={label} value="—" options={["—"]} disabled />;
+  return <SelectBox label={label} value="—" options={["—"]} disabled />;
 }
 
 export default function EditorHeaderBar2({
@@ -198,6 +265,11 @@ export default function EditorHeaderBar2({
     if (value === "T-Shirt" || value === "Phone") onProductChange(value);
   }
 
+  // Provisional client-side price, matching the storefront's variant model
+  // until a real pricing source is connected to /create.
+  const priceKs = calculateEditorPriceKs({ product, gsm, size: selectedSize });
+  const priceLabel = priceKs === null ? "Price —" : `Price ${priceKs.toLocaleString("en-US")} Ks`;
+
   return (
     <div
       role="region"
@@ -206,7 +278,7 @@ export default function EditorHeaderBar2({
     >
       <div className="flex h-full w-max min-w-full items-center justify-between gap-2.5">
         <div className="flex shrink-0 items-center gap-2">
-          <CompactSelect
+          <SelectBox
             label="Product"
             value={product}
             options={PRODUCT_OPTIONS}
@@ -215,41 +287,31 @@ export default function EditorHeaderBar2({
           />
           {product === "T-Shirt" ? (
             <>
-              <CompactSelect label="GSM" value={gsm} options={GSM_OPTIONS} onChange={onGsmChange} />
-              <ColorField value={selectedColor} onChange={setSelectedColor} />
-              <CompactSelect
-                label="Size"
-                value={selectedSize}
-                options={SIZE_OPTIONS}
-                onChange={setSelectedSize}
-              />
+              <SelectBox label="GSM" value={gsm} options={GSM_OPTIONS} onChange={onGsmChange} />
+              <ColorBox value={selectedColor} onChange={setSelectedColor} />
+              <SelectBox label="Size" value={selectedSize} options={SIZE_OPTIONS} onChange={setSelectedSize} />
             </>
           ) : (
             <>
               <PendingSelect label="Brand" />
               <PendingSelect label="Model" />
-              <ColorField value={selectedColor} onChange={setSelectedColor} />
+              <ColorBox value={selectedColor} onChange={setSelectedColor} />
             </>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <span
-            aria-label="Price unavailable"
+            aria-label={priceKs === null ? "Price unavailable" : priceLabel}
             data-editor-price
+            data-editor-price-ks={priceKs ?? ""}
             className="hidden shrink-0 whitespace-nowrap text-xs font-semibold tabular-nums text-text-secondary sm:inline"
           >
-            Price —
+            {priceLabel}
           </span>
           <button type="button" aria-label="Save" data-editor-box="Save" disabled className={ACTION_BOX}>
             Save
           </button>
-          <button
-            type="button"
-            aria-label="Buy"
-            data-editor-box="Buy"
-            disabled
-            className={ACTION_BOX}
-          >
+          <button type="button" aria-label="Buy" data-editor-box="Buy" disabled className={ACTION_BOX}>
             Buy
           </button>
         </div>
