@@ -98,6 +98,9 @@ import type { EditorProduct } from "@/lib/editor-product";
 
 // The shared artwork space is 1000 x 1200 units; new text starts centred on it.
 const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
+// How far (in artwork units) a layer may be dragged past the print area. Large enough to
+// place artwork off-canvas and bring it back, small enough that it never leaves the workspace.
+const CANVAS_LAYER_TRAVEL_LIMIT = 2400;
 const DEFAULT_TEXT_FONT_SIZE = 110;
 const TEXT_EDIT_BOX_WIDTH = 900;
 
@@ -190,10 +193,12 @@ function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   if (!points.length) return null;
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
-  const minX = Math.max(0, Math.min(...xs) - 18);
-  const minY = Math.max(0, Math.min(...ys) - 18);
-  const maxX = Math.min(1000, Math.max(...xs) + 18);
-  const maxY = Math.min(1200, Math.max(...ys) + 18);
+  // The box hugs the layer wherever it is, including past the print area, so the outline
+  // stays on the artwork while it is parked off-canvas.
+  const minX = Math.min(...xs) - 18;
+  const minY = Math.min(...ys) - 18;
+  const maxX = Math.max(...xs) + 18;
+  const maxY = Math.max(...ys) + 18;
   return { x: minX, y: minY, width: Math.max(24, maxX - minX), height: Math.max(24, maxY - minY) };
 }
 
@@ -397,6 +402,7 @@ function ArtworkOverlay({
       {selectedLayerIds.length > 0 && selectionBounds && !editingText && !drawingStroke && !transformControlsHidden && (
         <g pointerEvents="none" data-editor-transform-controls="true" transform={`rotate(${transformRotation} ${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height / 2})`}>
           <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
+          {moveEnabled && <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="transparent" pointerEvents="auto" className="cursor-move touch-none" onPointerDown={onMoveStart} aria-label="Move selected layer" />}
           {resizeHandles.map((handle) => (
             <g
               key={handle.key}
@@ -823,12 +829,24 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     return clientX - rect.left <= edge || rect.right - clientX <= edge || clientY - rect.top <= edge || rect.bottom - clientY <= edge;
   }
 
+  // Drawing tools stay inside the print area, so their pointer mapping is clamped to it.
   function toCanvasPoint(clientX: number, clientY: number): Point {
     const rect = canvasNodeRef.current?.getBoundingClientRect();
     if (!rect) return { x: 0, y: 0 };
     return {
       x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
       y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+    };
+  }
+
+  // Move/resize/rotate map the pointer without clamping to the print area, so a layer can be
+  // dragged past the canvas edge (and back) instead of stalling at the border.
+  function toCanvasPointUnclamped(clientX: number, clientY: number): Point {
+    const rect = canvasNodeRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return {
+      x: (clientX - rect.left) / rect.width,
+      y: (clientY - rect.top) / rect.height,
     };
   }
 
@@ -948,7 +966,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       return !!layer && !layer.locked;
     });
     if (movableIds.length === 0) return;
-    const start = toCanvasPoint(event.clientX, event.clientY);
+    const start = toCanvasPointUnclamped(event.clientX, event.clientY);
     (event.currentTarget.ownerSVGElement ?? event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
     const origin = Object.fromEntries(movableIds.map((id) => [id, canvasLayerTransforms[id] ?? { x: 0, y: 0 }]));
     canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin };
@@ -957,11 +975,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasArtworkDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const point = toCanvasPoint(event.clientX, event.clientY);
+    const point = toCanvasPointUnclamped(event.clientX, event.clientY);
     const delta = { x: (point.x - drag.start.x) * 1000, y: (point.y - drag.start.y) * 1200 };
+    // A layer may be dragged well past the print area (and back). The limit is generous, just
+    // wide enough to keep a layer reachable rather than letting it be flung out of sight.
+    const limit = CANVAS_LAYER_TRAVEL_LIMIT;
     setCanvasLayerTransforms((current) => ({ ...current, ...Object.fromEntries(Object.entries(drag.origin).map(([id, origin]) => [id, {
-      x: Math.max(-420, Math.min(420, origin.x + delta.x)),
-      y: Math.max(-520, Math.min(520, origin.y + delta.y)),
+      x: Math.max(-limit, Math.min(limit, origin.x + delta.x)),
+      y: Math.max(-limit, Math.min(limit, origin.y + delta.y)),
     }])) }));
   }
   function endCanvasArtworkMove(event: React.PointerEvent<SVGSVGElement>) {
@@ -974,7 +995,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     event.stopPropagation();
     const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
     if (!ids.length || !selectionBounds) return;
-    const startNormalized = toCanvasPoint(event.clientX, event.clientY);
+    const startNormalized = toCanvasPointUnclamped(event.clientX, event.clientY);
     const pointerStart = { x: startNormalized.x * 1000, y: startNormalized.y * 1200 };
     const rawHandle = event.currentTarget.parentElement?.getAttribute("data-resize-handle") ?? "bottom-right";
     const handle = rawHandle as TransformHandle;
@@ -999,7 +1020,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasLayerResizeRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const normalized = toCanvasPointUnclamped(event.clientX, event.clientY);
     const pointerCurrent = { x: normalized.x * 1000, y: normalized.y * 1200 };
     const factors = getFreeTransformResizeFactors({
       bounds: drag.bounds,
@@ -1041,7 +1062,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
     if (!ids.length) return;
     const center = { x: selectionBounds.x + selectionBounds.width / 2, y: selectionBounds.y + selectionBounds.height / 2 };
-    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const normalized = toCanvasPointUnclamped(event.clientX, event.clientY);
     const start = { x: normalized.x * 1000, y: normalized.y * 1200 };
     event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
     canvasLayerRotateRef.current = {
@@ -1061,7 +1082,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasLayerRotateRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const normalized = toCanvasPointUnclamped(event.clientX, event.clientY);
     const point = { x: normalized.x * 1000, y: normalized.y * 1200 };
     const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x) * (180 / Math.PI);
     let delta = angle - drag.startAngle;
@@ -2395,6 +2416,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   <MockupArtwork
                     side={side}
                     layers={layers}
+                    layerOffsets={canvasLayerTransforms}
+                    layerScales={canvasLayerScales}
+                    layerOrigins={canvasLayerOrigins}
+                    layerRotations={canvasLayerRotations}
                     selectedMaskLayerId={selectedTarget === "mask" ? selectedLayerId : null}
                     maskBrushMode={maskBrushMode}
                     maxArtworkEdgePx={getArtworkMaxEdgePx(side, activeLargeArtworkTierOwner)}

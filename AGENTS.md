@@ -38,3 +38,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The chevron is absolutely positioned at `right-1.5` and vertically centred so it sits in the same place on every box.
 - The Color swatch is a 20x20px rounded square (`rounded-md`), used in both the trigger and the dropdown options.
 - Selecting an option updates the price immediately (`data-editor-price`).
+
+## Editor layers outside the print canvas
+- Move/resize/rotate on the print canvas use `toCanvasPointUnclamped` in `KittlCanvas.tsx`; the drawing tools keep using the clamped `toCanvasPoint`, so strokes stay on the canvas.
+- A transparent `<rect aria-label="Move selected layer">` overlays the selection outline so a layer parked off-canvas is still grabbable (the artwork itself renders `pointerEvents="none"`).
+- `CANVAS_LAYER_TRAVEL_LIMIT` (2400 artwork units) bounds how far a layer can be dragged, so it stays reachable.
+- `MockupArtwork` now receives `layerOffsets`/`layerScales`/`layerOrigins`/`layerRotations` and mirrors the canvas, then clips the artwork to the print area with a `clipPath` in overlay coordinates (`printScale = BASE_ARTWORK_SCALE * safeTransform.scale`). A layer dragged off-canvas therefore disappears from the mockup exactly as it would print.
+
+## Testing pitfalls
+- `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.
+- When measuring on-screen glyph ink against the transform box, hide `[data-editor-transform-controls="true"]` first; the resize-handle squares otherwise pollute the dark-pixel bbox.
+- In CDP drag tests, check the target point is not covered by another panel (e.g. the mockup panel on the right of the canvas). Use `document.elementFromPoint` to confirm.

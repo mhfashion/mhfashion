@@ -106,7 +106,8 @@ test("canvas strokes are stored on selected layers and shared with equal-size mo
   assert.match(source, /<MockupArtwork[\s\S]*?layers=\{layers\}/);
   assert.match(source, /className=\{`relative z-10 w-\[min\(18\.25rem,78vw\)\] shrink-0/);
   assert.doesNotMatch(source, /Back Mockup" \? "w-\[min\(14rem/);
-  assert.match(mockupArtwork, /scale\(\$\{BASE_ARTWORK_SCALE \* safeTransform\.scale\}\)/);
+  assert.match(mockupArtwork, /const printScale = BASE_ARTWORK_SCALE \* safeTransform\.scale;/);
+  assert.match(mockupArtwork, /scale\(\$\{printScale\}\)/);
   assert.match(source, /largeArtworkTierOwner/);
   assert.match(source, /maxArtworkEdgePx=\{getArtworkMaxEdgePx\(side, activeLargeArtworkTierOwner\)\}/);
   assert.match(source, /onLargeTierRequested=\{handleLargeTierRequested\}/);
@@ -347,6 +348,38 @@ test("artwork on each Mockup can be moved and resized as one object", () => {
   assert.match(mockupArtwork, /maxEdgePx \/ originalEdgePx/);
   assert.match(mockupArtwork, /displayedWidthPx = Math\.round\(frame\.width \* PIXELS_PER_VIEWBOX_UNIT\)/);
   assert.match(mockupArtwork, /data-artwork-max-edge-px=\{maxArtworkEdgePx\}/);
+});
+
+test("a layer can be dragged outside the print canvas and back inside", () => {
+  // Move, resize and rotate map the pointer without clamping to the print area, so a layer
+  // is not stuck at the canvas edge.
+  assert.match(source, /function toCanvasPointUnclamped\([\s\S]*?x: \(clientX - rect\.left\) \/ rect\.width,[\s\S]*?y: \(clientY - rect\.top\) \/ rect\.height,/);
+  assert.match(source, /function startCanvasArtworkMove[\s\S]*?const start = toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
+  assert.match(source, /function moveCanvasArtwork[\s\S]*?const point = toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
+  assert.match(source, /function startCanvasLayerResize[\s\S]*?toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
+  assert.match(source, /function resizeCanvasLayer[\s\S]*?toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
+  assert.match(source, /function startCanvasLayerRotate[\s\S]*?toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
+  assert.match(source, /function rotateCanvasLayer[\s\S]*?toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
+  // The clamped mapping is still what the drawing tools use, so strokes stay on the canvas.
+  assert.match(source, /function startArtworkStroke[\s\S]*?toCanvasPoint\(event\.clientX, event\.clientY\)/);
+  // A generous travel limit keeps a parked layer reachable instead of flinging it out of sight.
+  assert.match(source, /const CANVAS_LAYER_TRAVEL_LIMIT = \d+;/);
+  assert.match(source, /const limit = CANVAS_LAYER_TRAVEL_LIMIT;[\s\S]*?Math\.max\(-limit, Math\.min\(limit, origin\.x \+ delta\.x\)\)[\s\S]*?Math\.max\(-limit, Math\.min\(limit, origin\.y \+ delta\.y\)\)/);
+  // The selection outline itself is draggable, so a layer parked off-canvas can be grabbed.
+  assert.match(source, /data-transform-outline="true" \/>\s*\{moveEnabled && <rect[^>]*onPointerDown=\{onMoveStart\}[^>]*aria-label="Move selected layer"/);
+  // The Free Transform box hugs the layer wherever it is, not clamped to the print area.
+  assert.match(source, /function layerCanvasBounds[\s\S]*?const minX = Math\.min\(\.\.\.xs\) - 18;[\s\S]*?const maxX = Math\.max\(\.\.\.xs\) \+ 18;/);
+});
+
+test("the mockup mirrors per-layer canvas transforms and clips them to the print area", () => {
+  // The mockup receives the same per-layer offsets/scales/rotations as the print canvas...
+  assert.match(source, /<MockupArtwork[\s\S]*?layerOffsets=\{canvasLayerTransforms\}[\s\S]*?layerScales=\{canvasLayerScales\}[\s\S]*?layerOrigins=\{canvasLayerOrigins\}[\s\S]*?layerRotations=\{canvasLayerRotations\}/);
+  assert.match(mockupArtwork, /layerOffsets: Record<string, Point>;[\s\S]*?layerScales: Record<string, Point>;[\s\S]*?layerOrigins: Record<string, Point>;[\s\S]*?layerRotations: Record<string, number>;/);
+  assert.match(mockupArtwork, /<EditorArtworkLayers[\s\S]*?layerOffsets=\{layerOffsets\}[\s\S]*?layerScales=\{layerScales\}[\s\S]*?layerOrigins=\{layerOrigins\}[\s\S]*?layerRotations=\{layerRotations\}/);
+  // ...and clips the artwork to the print area, so a layer parked off-canvas is hidden.
+  assert.match(mockupArtwork, /<clipPath id=\{clipId\} clipPathUnits="userSpaceOnUse">/);
+  assert.match(mockupArtwork, /width=\{1000 \* printScale\}[\s\S]*?height=\{1200 \* printScale\}/);
+  assert.match(mockupArtwork, /<g clipPath=\{`url\(#\$\{clipId\}\)`\}>/);
 });
 
 test("the large artwork tier transfers between Front and Back and is released at 1500 px", () => {

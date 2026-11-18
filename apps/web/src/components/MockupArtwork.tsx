@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
 import { LARGE_ARTWORK_EDGE_PX, SMALL_ARTWORK_EDGE_PX } from "@/lib/editor-artwork-tiers";
 import { editorTextCanvasBounds, type EditorArtworkLayer, type MaskBrushMode } from "@/lib/editor-layers";
@@ -115,6 +115,10 @@ function toViewBoxPoint(svg: SVGSVGElement, clientX: number, clientY: number): P
 export default function MockupArtwork({
   side,
   layers,
+  layerOffsets,
+  layerScales,
+  layerOrigins,
+  layerRotations,
   selectedMaskLayerId,
   maskBrushMode,
   maxArtworkEdgePx,
@@ -124,6 +128,10 @@ export default function MockupArtwork({
 }: {
   side: MockupSide;
   layers: EditorArtworkLayer[];
+  layerOffsets: Record<string, Point>;
+  layerScales: Record<string, Point>;
+  layerOrigins: Record<string, Point>;
+  layerRotations: Record<string, number>;
   selectedMaskLayerId: string | null;
   maskBrushMode: MaskBrushMode;
   maxArtworkEdgePx: number;
@@ -133,6 +141,7 @@ export default function MockupArtwork({
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
+  const clipId = `mockup-artwork-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const renderableLayers = useMemo(() => layers.filter((layer) => layer.visible && (
     layer.strokes.length > 0 || Boolean(layer.text?.value) || Boolean(layer.image) || Boolean(layer.shape?.paths.length) || Boolean(layer.gradient)
   )), [layers]);
@@ -142,6 +151,7 @@ export default function MockupArtwork({
   const [selected, setSelected] = useState(false);
   const [touchHitRadius, setTouchHitRadius] = useState(92);
   const safeTransform = transform.scale > maxArtworkScale ? scaleAroundCenter(bounds, transform, maxArtworkScale) : transform;
+  const printScale = BASE_ARTWORK_SCALE * safeTransform.scale;
   const frame = getDisplayedBounds(bounds, safeTransform);
   const displayedWidthPx = Math.round(frame.width * PIXELS_PER_VIEWBOX_UNIT);
   const displayedHeightPx = Math.round(frame.height * PIXELS_PER_VIEWBOX_UNIT);
@@ -269,12 +279,30 @@ export default function MockupArtwork({
       onLostPointerCapture={endTransform}
       className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible touch-none"
     >
-      <g transform={`translate(${500 + safeTransform.x} ${600 + safeTransform.y}) scale(${BASE_ARTWORK_SCALE * safeTransform.scale}) translate(-500 -600)`}>
-        <EditorArtworkLayers
-          layers={layers}
-          selectedMaskLayerId={selectedMaskLayerId}
-          maskBrushMode={maskBrushMode}
-        />
+      <defs>
+        <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
+          {/* The print area in overlay coordinates. A layer parked past the canvas edge is
+              therefore hidden on the mockup, exactly as it would print. */}
+          <rect
+            x={500 + safeTransform.x - 500 * printScale}
+            y={600 + safeTransform.y - 600 * printScale}
+            width={1000 * printScale}
+            height={1200 * printScale}
+          />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${clipId})`}>
+        <g transform={`translate(${500 + safeTransform.x} ${600 + safeTransform.y}) scale(${printScale}) translate(-500 -600)`}>
+          <EditorArtworkLayers
+            layers={layers}
+            layerOffsets={layerOffsets}
+            layerScales={layerScales}
+            layerOrigins={layerOrigins}
+            layerRotations={layerRotations}
+            selectedMaskLayerId={selectedMaskLayerId}
+            maskBrushMode={maskBrushMode}
+          />
+        </g>
       </g>
       <rect
         data-artwork-move-touch-target
