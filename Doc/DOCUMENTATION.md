@@ -17,6 +17,14 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
+### 2026-11-18 — Eraser: live size-accurate nib cursor and precise brush-mode erasing
+
+- The eraser now shows a live nib outline on the print canvas that matches the current `size`, `shape`, `angle`, and `roundness`, and hides the tiny fixed system cursor (`cursor: none`) while the eraser is active. The nib follows the pointer and scales with the Size control, so raising the size visibly enlarges the eraser. Round nibs draw a circle; square nibs draw a rotated rounded rect; both use `vectorEffect="non-scaling-stroke"` so the outline stays a crisp 1.5px at any zoom.
+- Erasing precision: Brush mode (the default) is non-destructive — it paints an erasure mask over only the touched spot and leaves the artwork intact. Stroke mode remains the opt-in whole-stroke erase. Measured erased width grows with size (≈15px at size 40, ≈66px at 160, ≈156px at 400).
+- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`.
+- Validation: TypeScript passed; ESLint **0 errors / 25 warnings** (unchanged); Next.js production build passed; Node suites passed (editor-layers **33/33**, canvas-shell **21/21**, and the rest unchanged). Headless-Chromium CDP against the production server on port 12000 passed **11/11** checks across two passes: the nib appears on hover, scales with size (r 60 at size 120 to r 200 at size 400), tracks the pointer, and renders square nibs; and both eraser modes behave (brush adds an erasure mask and keeps the stroke; stroke mode removes the whole stroke), with no runtime exceptions.
+- Limitation: the nib is a pointer-position outline (mouse hover and drag); on coarse-pointer touch it follows the finger during a drag but is not shown while merely hovering, since touch has no hover.
+
 ### 2026-11-18 — Brush tool: Photoshop/Kittl brush engine, adjustments, presets, and eraser accuracy
 
 - **Brush engine.** `ArtworkStroke` and `EditorBrushSettings` gained `spacing`, `flow`, `smoothing`, `sizeJitter`, `opacityJitter`, `jitterMinimum`, `angle`, `roundness`, `scatter`, `angleJitter`, `roundnessJitter`, `fadeOut`, and a dab `blend` (`normal`/`multiply`/`screen`). `brushDabPoints` resamples the pointer path into spaced nib dabs along a `smoothBrushPoints` stabilized path, applies deterministic hashed jitter (size, opacity, angle, roundness, scatter) so a re-render never shimmers, and caps the dab count so a long dense drag stays responsive. `brushDabBlurRadius` scales edge softness with nib size.
