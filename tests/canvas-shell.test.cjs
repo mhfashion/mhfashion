@@ -222,8 +222,14 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
 test("Shape tool exposes selectable presets, previews gestures, and appends paths to the active layer", () => {
   assert.match(toolsBar, /data-testid="editor-shape-picker"/);
   assert.match(toolsBar, /role="group" aria-label="Shape options"/);
-  // Kittl-style compact popover: a small icon-only flyout, not a large labelled box.
-  assert.match(toolsBar, /data-testid="editor-shape-picker"[\s\S]*?w-fit[\s\S]*?grid-cols-3/);
+  // Kittl-style: the Shape chip beside the bar opens a compact icon-only popover;
+  // choosing an option closes the box and the chip keeps the chosen shape's icon.
+  assert.match(toolsBar, /const \[shapeMenuOpen, setShapeMenuOpen\] = useState\(false\)/);
+  assert.match(toolsBar, /aria-expanded=\{shapeMenuOpen\}/);
+  assert.match(toolsBar, /const SelectedShapeIcon = shapeIcons\[selectedShape\]/);
+  assert.match(toolsBar, /<SelectedShapeIcon size=\{14\}/);
+  assert.match(toolsBar, /onSelectShape\(preset\);\n\s+setShapeMenuOpen\(false\);/);
+  assert.match(toolsBar, /data-testid="editor-shape-picker"[\s\S]*?w-max[\s\S]*?grid-cols-3/);
   assert.match(toolsBar, /title=\{EDITOR_SHAPE_LABELS\[preset\]\}/);
   assert.doesNotMatch(toolsBar, /Choose a shape, then drag on the canvas/);
   for (const label of ["Rectangle", "Rounded rectangle", "Ellipse", "Triangle", "Diamond", "Line", "Arrow", "Star", "Hexagon"]) {

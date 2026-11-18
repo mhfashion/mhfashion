@@ -23,7 +23,7 @@ import {
   Type,
   Undo2,
 } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, type EditorShapePreset } from "@/lib/editor-layers";
 
 export type EditorTool = "move" | "hand" | "pencil" | "pen" | "text" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
@@ -93,6 +93,8 @@ export default function EditorToolsBar({
 }: Props) {
   const foregroundInputRef = useRef<HTMLInputElement>(null);
   const backgroundInputRef = useRef<HTMLInputElement>(null);
+  const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+  const SelectedShapeIcon = shapeIcons[selectedShape];
 
   return (
     <div className={`pointer-events-none absolute inset-x-0 bottom-2 z-50 flex justify-center px-2 md:bottom-3 ${hideOnMobile ? "max-md:hidden" : ""}`} data-testid="editor-tools-positioner">
@@ -101,31 +103,69 @@ export default function EditorToolsBar({
         data-testid="editor-tools-bar"
         className="pointer-events-auto relative flex w-fit max-w-[calc(100vw-16px)] items-center gap-1 rounded-2xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-lg backdrop-blur"
       >
-        {!collapsed && activeTool === "shape" && (
-          <div role="group" aria-label="Shape options" data-testid="editor-shape-picker" className="absolute bottom-full left-1/2 z-30 mb-2 grid w-fit -translate-x-1/2 grid-cols-3 gap-1 rounded-xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-xl backdrop-blur">
-            {EDITOR_SHAPE_PRESETS.map((preset) => {
-              const Icon = shapeIcons[preset];
-              return <button key={preset} type="button" aria-label={`Select ${EDITOR_SHAPE_LABELS[preset]} shape`} aria-pressed={selectedShape === preset} title={EDITOR_SHAPE_LABELS[preset]} onClick={() => onSelectShape(preset)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-text-secondary outline-none transition hover:border-accent/40 hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent aria-pressed:border-accent aria-pressed:bg-accent/15 aria-pressed:text-accent [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10">
-                <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
-              </button>;
-            })}
-          </div>
-        )}
         {!collapsed && (
           <div className="flex max-w-full flex-wrap items-center justify-center gap-0.5">
-            {tools.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                aria-label={label}
-                aria-pressed={activeTool === id}
-                title={id === "hand" ? "Hand tool" : label}
-                onClick={() => onSelect(id)}
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
-              >
-                <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
-              </button>
-            ))}
+            {tools.map(({ id, label, Icon }) => {
+              if (id === "shape") {
+                // Shape tool: a chip beside the bar opens the Kittl-style picker. The chip
+                // shows the selected shape's icon, and picking an option closes the box.
+                return (
+                  <div key={id} className="relative shrink-0">
+                    <button
+                      type="button"
+                      aria-label={label}
+                      aria-pressed={activeTool === id}
+                      aria-haspopup="true"
+                      aria-expanded={shapeMenuOpen}
+                      title={label}
+                      onClick={() => {
+                        onSelect(id);
+                        setShapeMenuOpen((open) => !open);
+                      }}
+                      className={`flex h-7 w-7 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
+                    >
+                      <SelectedShapeIcon size={14} strokeWidth={1.9} aria-hidden="true" />
+                    </button>
+                    {shapeMenuOpen && (
+                      <div role="group" aria-label="Shape options" data-testid="editor-shape-picker" className="absolute bottom-full left-1/2 z-30 mb-2 grid w-max -translate-x-1/2 grid-cols-3 gap-1 rounded-xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-xl backdrop-blur">
+                        {EDITOR_SHAPE_PRESETS.map((preset) => {
+                          const Icon = shapeIcons[preset];
+                          return (
+                            <button
+                              key={preset}
+                              type="button"
+                              aria-label={`Select ${EDITOR_SHAPE_LABELS[preset]} shape`}
+                              aria-pressed={selectedShape === preset}
+                              title={EDITOR_SHAPE_LABELS[preset]}
+                              onClick={() => {
+                                onSelectShape(preset);
+                                setShapeMenuOpen(false);
+                              }}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-text-secondary outline-none transition hover:border-accent/40 hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent aria-pressed:border-accent aria-pressed:bg-accent/15 aria-pressed:text-accent [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10"
+                            >
+                              <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={activeTool === id}
+                  title={id === "hand" ? "Hand tool" : label}
+                  onClick={() => onSelect(id)}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
+                >
+                  <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
+                </button>
+              );
+            })}
             <div role="group" aria-label="Color switch tool" title="Color switch tool" className="relative h-9 w-11 shrink-0">
               <input
                 ref={foregroundInputRef}

@@ -17,12 +17,13 @@ This file consolidates the website work log, code audit, Guide content maintenan
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
-### 2026-11-18 — Shape tool flyout is a compact Kittl-style popover
+### 2026-11-18 — Shape tool opens a compact Kittl-style picker beside its chip
 
-- Replaced the large Shape options box with a compact icon-only flyout, matching the owner's Kittl-style request. The picker used to open as a 288px-wide three-column panel with a "Choose a shape, then drag on the canvas" hint line and a text label under every icon.
-- It is now a small `w-fit` three-column grid of icon buttons only: the hint line is removed, each option shows just its icon with the shape name kept as `title`/`aria-label` for tooltip and accessibility, and the buttons are 28px square on desktop and 40px square on coarse pointers so touch targets stay finger-sized.
+- Reworked the Shape tool to match the owner's Kittl-style request: it no longer raises a large labelled box, and the picker is not permanently shown. The Shape chip in the tools bar now shows the currently selected shape's icon; clicking it activates the Shape tool and opens a small picker right beside the chip.
+- Choosing an option closes the box, keeps the Shape tool active so the user can draw immediately, and the chip's icon switches to the chosen shape. Options are icon-only (shape names kept as `title`/`aria-label`), laid out in a three-column popover, 28px square on desktop and 40px square on coarse pointers so touch targets stay finger-sized.
+- Removed the previous always-open-on-tool-select picker and the "Choose a shape, then drag on the canvas" hint line. The picker also stays closed on page load.
 - Files: `apps/web/src/components/EditorToolsBar.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
-- Validation: Next.js production build passed; TypeScript passed; ESLint clean (exit 0) on the changed file; all repository Node tests passed **61/61**; `git diff --check` passed. Focused production Chromium measured the open flyout at desktop 1280×900 as **106×106px** with nine icon buttons (28×28px each, no hint text) and at phone 390×844 as **142×142px** with nine 40×40px buttons, down from the previous 288px-wide labelled panel.
+- Validation: Next.js production build passed; TypeScript passed; ESLint clean (exit 0) on the changed file; all repository Node tests passed **61/61**; `git diff --check` passed. Focused production Chromium at desktop 1280×900 and phone 390×844 confirmed the picker is absent on load, opens beside the chip at **106×106px** (nine 28px icons) on desktop and **142×142px** (nine 40px icons) on phone, closes after a choice, and the chip's icon changes to the chosen shape.
 
 ### 2026-11-18 — Text tool follows the Photoshop layer rule
 
