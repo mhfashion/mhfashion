@@ -845,6 +845,17 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     };
   }
 
+  // Drawing stays inside the print area, but transforms must continue past the
+  // artboard like an infinite Kittl workspace. Do not clamp this point.
+  function toWorkspaceCanvasPoint(clientX: number, clientY: number): Point {
+    const rect = canvasNodeRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return {
+      x: (clientX - rect.left) / rect.width,
+      y: (clientY - rect.top) / rect.height,
+    };
+  }
+
   function rememberLayerSnapshot() {
     setUndoStack((current) => [...current.slice(-29), layers]);
     setRedoStack([]);
@@ -961,7 +972,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       return !!layer && !layer.locked;
     });
     if (movableIds.length === 0) return;
-    const start = toCanvasPoint(event.clientX, event.clientY);
+    const start = toWorkspaceCanvasPoint(event.clientX, event.clientY);
     (event.currentTarget.ownerSVGElement ?? event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
     const origin = Object.fromEntries(movableIds.map((id) => [id, canvasLayerTransforms[id] ?? { x: 0, y: 0 }]));
     canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin };
@@ -970,11 +981,11 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasArtworkDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const point = toCanvasPoint(event.clientX, event.clientY);
+    const point = toWorkspaceCanvasPoint(event.clientX, event.clientY);
     const delta = { x: (point.x - drag.start.x) * 1000, y: (point.y - drag.start.y) * 1200 };
     setCanvasLayerTransforms((current) => ({ ...current, ...Object.fromEntries(Object.entries(drag.origin).map(([id, origin]) => [id, {
-      x: Math.max(-420, Math.min(420, origin.x + delta.x)),
-      y: Math.max(-520, Math.min(520, origin.y + delta.y)),
+      x: origin.x + delta.x,
+      y: origin.y + delta.y,
     }])) }));
   }
   function endCanvasArtworkMove(event: React.PointerEvent<SVGSVGElement>) {
@@ -987,7 +998,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     event.stopPropagation();
     const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
     if (!ids.length || !selectionBounds) return;
-    const startNormalized = toCanvasPoint(event.clientX, event.clientY);
+    const startNormalized = toWorkspaceCanvasPoint(event.clientX, event.clientY);
     const pointerStart = { x: startNormalized.x * 1000, y: startNormalized.y * 1200 };
     const rawHandle = event.currentTarget.parentElement?.getAttribute("data-resize-handle") ?? "bottom-right";
     const handle = rawHandle as TransformHandle;
@@ -1012,7 +1023,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasLayerResizeRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const normalized = toWorkspaceCanvasPoint(event.clientX, event.clientY);
     const pointerCurrent = { x: normalized.x * 1000, y: normalized.y * 1200 };
     const factors = getFreeTransformResizeFactors({
       bounds: drag.bounds,
@@ -1054,7 +1065,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
     if (!ids.length) return;
     const center = { x: selectionBounds.x + selectionBounds.width / 2, y: selectionBounds.y + selectionBounds.height / 2 };
-    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const normalized = toWorkspaceCanvasPoint(event.clientX, event.clientY);
     const start = { x: normalized.x * 1000, y: normalized.y * 1200 };
     event.currentTarget.parentElement?.setPointerCapture(event.pointerId);
     canvasLayerRotateRef.current = {
@@ -1074,7 +1085,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const drag = canvasLayerRotateRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const normalized = toCanvasPoint(event.clientX, event.clientY);
+    const normalized = toWorkspaceCanvasPoint(event.clientX, event.clientY);
     const point = { x: normalized.x * 1000, y: normalized.y * 1200 };
     const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x) * (180 / Math.PI);
     let delta = angle - drag.startAngle;

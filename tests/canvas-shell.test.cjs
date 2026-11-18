@@ -727,6 +727,10 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /canvasLayerTransforms/);
   assert.match(source, /Move canvas artwork/);
   assert.match(source, /startCanvasArtworkMove/);
+  assert.match(source, /function toWorkspaceCanvasPoint\(/);
+  assert.match(source, /const point = toWorkspaceCanvasPoint\(event\.clientX, event\.clientY\);\n\s+const delta =/);
+  assert.doesNotMatch(source, /Math\.max\(-420, Math\.min\(420/);
+  assert.doesNotMatch(source, /Math\.max\(-520, Math\.min\(520/);
 });
 
 test("Sidebar catalogs come from the MH Fashion design library and uploads honour the size limit", () => {
