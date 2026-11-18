@@ -102,13 +102,11 @@ export default function EditorToolsBar({
         className="pointer-events-auto relative flex w-fit max-w-[calc(100vw-16px)] items-center gap-1 rounded-2xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-lg backdrop-blur"
       >
         {!collapsed && activeTool === "shape" && (
-          <div role="group" aria-label="Shape options" data-testid="editor-shape-picker" className="absolute bottom-full left-1/2 z-30 mb-2 grid w-[min(288px,calc(100vw-24px))] -translate-x-1/2 grid-cols-3 gap-1 rounded-xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-xl backdrop-blur">
-            <span className="col-span-3 px-1 pb-0.5 text-center text-[9px] text-text-muted">Choose a shape, then drag on the canvas</span>
+          <div role="group" aria-label="Shape options" data-testid="editor-shape-picker" className="absolute bottom-full left-1/2 z-30 mb-2 grid w-fit -translate-x-1/2 grid-cols-3 gap-1 rounded-xl border border-border bg-bg-surface/95 p-1.5 text-text-primary shadow-xl backdrop-blur">
             {EDITOR_SHAPE_PRESETS.map((preset) => {
               const Icon = shapeIcons[preset];
-              return <button key={preset} type="button" aria-label={`Select ${EDITOR_SHAPE_LABELS[preset]} shape`} aria-pressed={selectedShape === preset} onClick={() => onSelectShape(preset)} className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-transparent px-1 py-1 text-[9px] leading-tight text-text-secondary outline-none transition hover:border-accent/40 hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent aria-pressed:border-accent aria-pressed:bg-accent/15 aria-pressed:text-accent">
+              return <button key={preset} type="button" aria-label={`Select ${EDITOR_SHAPE_LABELS[preset]} shape`} aria-pressed={selectedShape === preset} title={EDITOR_SHAPE_LABELS[preset]} onClick={() => onSelectShape(preset)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-text-secondary outline-none transition hover:border-accent/40 hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent aria-pressed:border-accent aria-pressed:bg-accent/15 aria-pressed:text-accent [@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:w-10">
                 <Icon size={14} strokeWidth={1.9} aria-hidden="true" />
-                <span className="max-w-full truncate">{EDITOR_SHAPE_LABELS[preset]}</span>
               </button>;
             })}
           </div>

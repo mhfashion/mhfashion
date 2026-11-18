@@ -4,6 +4,8 @@ The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN
 
 ## Current direct owner request — 2026-11-18
 
+- [x] **Shape tools: compact Kittl-style flyout (2026-11-18).** Selecting the Shape tool no longer raises a large labelled box. The picker is now a small icon-only three-column popover above the tools bar (28px desktop / 40px touch options, no hint line, shape names kept as tooltip/`aria-label`). Implemented in `EditorToolsBar.tsx`; measured live at 106x106 desktop and 142x142 phone.
+
 - [x] **Photoshop-style layer creation for Text (confirmed rule, 2026-11-18).** The Text tool must not create a layer on every click. Confirmed behavior, exactly like Photoshop:
   - If the **selected layer is a text layer**: the Text tool edits that layer's own text in place. No new layer is created.
   - If the **selected layer is not a text layer** (artwork / shape / image), or nothing is selected: the Text tool creates **one** new text layer and types into it.

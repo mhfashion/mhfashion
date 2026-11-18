@@ -222,8 +222,10 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
 test("Shape tool exposes selectable presets, previews gestures, and appends paths to the active layer", () => {
   assert.match(toolsBar, /data-testid="editor-shape-picker"/);
   assert.match(toolsBar, /role="group" aria-label="Shape options"/);
-  assert.match(toolsBar, /Choose a shape, then drag on the canvas/);
-  assert.match(toolsBar, /min-h-11/);
+  // Kittl-style compact popover: a small icon-only flyout, not a large labelled box.
+  assert.match(toolsBar, /data-testid="editor-shape-picker"[\s\S]*?w-fit[\s\S]*?grid-cols-3/);
+  assert.match(toolsBar, /title=\{EDITOR_SHAPE_LABELS\[preset\]\}/);
+  assert.doesNotMatch(toolsBar, /Choose a shape, then drag on the canvas/);
   for (const label of ["Rectangle", "Rounded rectangle", "Ellipse", "Triangle", "Diamond", "Line", "Arrow", "Star", "Hexagon"]) {
     assert.ok(layerModelSource.includes(label), `missing shape choice ${label}`);
   }
