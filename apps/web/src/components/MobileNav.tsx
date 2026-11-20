@@ -5,7 +5,8 @@ import {
   Menu,
   Search,
   Heart,
-  DollarSign,
+  Coins,
+  Languages,
   Moon,
   Sun,
 } from "lucide-react";
@@ -77,7 +78,7 @@ export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { currency, toggleCurrency } = useCurrency();
+  const { toggleCurrency } = useCurrency();
   const { locale, setLocale, t } = useI18n();
   const close = () => setOpen(false);
 
@@ -124,12 +125,16 @@ export default function MobileNav() {
           ))}
 
           <div className="flex items-center justify-between border-b border-border/40 px-4 py-2.5 text-xs">
-            <span className="text-text-muted">Language</span>
-            <div className="flex items-center gap-1.5 font-semibold">
-              <button type="button" onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : "text-text-secondary"}>EN</button>
-              <span className="text-border-light">/</span>
-              <button type="button" onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : "text-text-secondary"}>MM</button>
-            </div>
+            <span className="text-text-muted">{t("actions.language")}</span>
+            <button
+              type="button"
+              onClick={() => setLocale(locale === "en" ? "my" : "en")}
+              aria-label={locale === "my" ? t("actions.languageMyanmar") : t("actions.languageEnglish")}
+              className={`flex h-7 w-7 items-center justify-center rounded-full border border-border-light ${locale === "my" ? "text-accent" : "text-text-secondary"}`}
+              data-header-language={locale}
+            >
+              <Languages size={15} />
+            </button>
           </div>
 
           <GroupHeading>Collections</GroupHeading>
@@ -148,7 +153,7 @@ export default function MobileNav() {
             onClick={toggleCurrency}
             className="w-full flex items-center gap-2 px-4 py-2.5 text-left border-b border-border/40"
           >
-            <DollarSign size={15} /> {t("actions.currency")}: {currency}
+            <Coins size={15} /> {t("actions.currency")}
           </button>
           <button
             onClick={toggleTheme}

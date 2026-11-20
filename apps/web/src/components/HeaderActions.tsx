@@ -9,7 +9,8 @@ import {
   Moon,
   Sun,
   Pencil,
-  ChevronDown,
+  Coins,
+  Languages,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
@@ -20,7 +21,7 @@ import CartBox from "./CartBox";
 
 export default function HeaderActions() {
   const { theme, toggleTheme } = useTheme();
-  const { toggleCurrency } = useCurrency();
+  const { currency, toggleCurrency } = useCurrency();
   const { itemCount } = useCart();
   const { locale, setLocale, t } = useI18n();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -76,24 +77,31 @@ export default function HeaderActions() {
       </div>
 
       <div className="flex items-center gap-3.5 text-text-secondary">
-        <div className="flex items-center gap-1 text-[10px] font-semibold border border-border-light rounded-full px-2 py-1" aria-label="Language">
-          <button onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : ""}>EN</button>
-          <span className="text-border-light">/</span>
-          <button onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : ""}>MM</button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setLocale(locale === "en" ? "my" : "en")}
+          aria-label={locale === "my" ? t("actions.languageMyanmar") : t("actions.languageEnglish")}
+          title={locale === "my" ? "မြန်မာ · switch to English" : "English · switch to မြန်မာ"}
+          className={`flex h-7 w-7 items-center justify-center rounded-full border border-border-light transition hover:text-accent ${locale === "my" ? "text-accent" : ""}`}
+          data-header-language={locale}
+        >
+          <Languages size={15} />
+        </button>
         <NotificationBell />
 
         <button aria-label={t("actions.wishlist")}>
           <Heart size={18} />
         </button>
 
-        {/* Currency switcher — Ks/$ toggle, base price stored in Ks */}
+        {/* Currency switcher — icon-only Ks/$ toggle, base price stored in Ks */}
         <button
           onClick={toggleCurrency}
-          aria-label={t("actions.currency")}
-          className="flex items-center gap-1 text-xs font-medium border border-border-light rounded-full px-2.5 py-1"
+          aria-label={currency === "Ks" ? `${t("actions.currency")}: Ks` : `${t("actions.currency")}: $`}
+          title={currency === "Ks" ? "Ks · switch to $" : "$ · switch to Ks"}
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-border-light transition hover:text-accent"
+          data-header-currency={currency}
         >
-          $/Ks <ChevronDown size={12} />
+          <Coins size={15} />
         </button>
 
         <button onClick={toggleTheme} aria-label={t("actions.theme")}>

@@ -824,6 +824,30 @@ test("editor reuses the existing web-app Header Bar above its full-height worksp
   assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
 });
 
+test("header language and currency switchers are icon-only buttons", () => {
+  const actions = readFileSync(path.join(__dirname, "../apps/web/src/components/HeaderActions.tsx"), "utf8");
+  // No text labels: the language control is one Languages icon, the currency control one Coins icon.
+  assert.match(actions, /import \{[^}]*Languages[^}]*\} from "lucide-react"/);
+  assert.match(actions, /import \{[^}]*Coins[^}]*\} from "lucide-react"/);
+  assert.doesNotMatch(actions, />EN</);
+  assert.doesNotMatch(actions, />MM</);
+  assert.doesNotMatch(actions, /\$\/Ks/);
+  assert.match(actions, /data-header-language=\{locale\}/);
+  assert.match(actions, /data-header-currency=\{currency\}/);
+  assert.match(actions, /<Languages size=\{15\} \/>/);
+  assert.match(actions, /<Coins size=\{15\} \/>/);
+  // Both stay reachable for screen readers and keep their toggle behaviour.
+  assert.match(actions, /onClick=\{\(\) => setLocale\(locale === "en" \? "my" : "en"\)\}/);
+  assert.match(actions, /onClick=\{toggleCurrency\}/);
+
+  // The mobile drawer uses the same icon-only language toggle.
+  const mobileNavSource = readFileSync(path.join(__dirname, "../apps/web/src/components/MobileNav.tsx"), "utf8");
+  assert.doesNotMatch(mobileNavSource, />EN</);
+  assert.doesNotMatch(mobileNavSource, />MM</);
+  assert.match(mobileNavSource, /<Languages size=\{15\} \/>/);
+  assert.match(mobileNavSource, /data-header-language=\{locale\}/);
+});
+
 test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and a live price", () => {
   assert.match(createRoute, /import EditorHeaderBar2 from "@\/components\/EditorHeaderBar2"/);
   assert.match(createRoute, /useState<EditorProduct>\(DEFAULT_EDITOR_PRODUCT\)/);
