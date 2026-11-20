@@ -43,7 +43,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 ## Text Free Transform box (`apps/web/src/lib/editor-layers.ts`)
 - `editorTextBounds` / `editorTextCanvasBounds` must contain everything the layer paints, not just the glyph ink. `editorTextPaintPadding(text)` returns how far each painted effect (outline stroke, shadow/echo offset, glow, extrusion) and the strike-through/cut/oblique decoration reaches past the ink; the bounds grow by it on all four sides.
 - `editorTextEffects(text)` resolves the painted effect list (explicit `effects`, else the legacy `textEffect` preset) for both the renderer and the bounds — keep them sharing it, or the box and the paint drift apart again.
-- Verified by frame differencing (hide the text group, diff the two screenshots): plain, letter-spaced, arch/wave/circle presets, all five effects, decoration, scaled, rotated, and dragged-outside-canvas states all leave ≤1.1 px of ink outside the box (sub-pixel antialiasing).
+- `editorTextDecoration(text)` is the same contract for decorations: it returns the painted line/rect geometry in absolute layer units and **both** `EditorLayerPreview` and the padding read it. Never re-derive a decoration's extent from a `fontSize` multiple — a decoration is laid out from the anchor, not the ink edge, so a guessed multiple overshot the real rule by ~50 px a side.
+- Verified by frame differencing (hide the text group, diff the two screenshots) in real Chromium at 1440x900 and 390x844 touch: plain, multi-line, arch/wave/circle presets, all five effects, line/cut/oblique decorations, scaled, rotated, and dragged-outside-canvas states all leave ≤1.1 px of ink outside the box (sub-pixel antialiasing).
+
+## Text typing downward
+- Typing goes into a `foreignObject` textarea whose line box is aligned to the drawn SVG baseline; its height is `lines * lineHeight + 4` so it grows with every line instead of scrolling the caret out of view. Verified to 42 lines.
+- Re-entering an existing text layer with the Text tool focuses the textarea with the caret at the **end** (`selectionStart === value.length`), so Enter appends a line below the last glyph. `commitEditingText` switches the tool back to `move`, so re-entry needs the Text tool picked again.
+- Typing is verified end to end with CDP: `Input.insertText` for text and `Input.dispatchKeyEvent` with `text: "\r"` for Enter (a keyDown without `text` does not insert a newline).
 - Beware pixel probes that scan for "dark" or "lime" pixels: the docked sidebars (uniform `#0c0c0c`) and the t-shirt mockup both produce large false positives. Hide `[data-dock-side]` elements, or diff a frame with the layer hidden.
 
 ## Editor Header Bar 2 (`apps/web/src/components/EditorHeaderBar2.tsx`)

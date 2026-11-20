@@ -2,7 +2,7 @@
 
 import { useId, type SVGProps } from "react";
 import type { EditorGradient, EditorImageContent, EditorShapePath, EditorShapeStyle, EditorTextContent, EditorTextEffect } from "@/lib/editor-layers";
-import { EDITOR_TEXT_FONT_FAMILY, editorTextEffects, editorTextPresetTransform, editorGradientConicWedges, editorGradientDiamondFacets, editorGradientGeometry, roundEditorShapePath, sortEditorGradientStops } from "@/lib/editor-layers";
+import { EDITOR_TEXT_FONT_FAMILY, editorTextDecoration, editorTextEffects, editorTextPresetTransform, editorGradientConicWedges, editorGradientDiamondFacets, editorGradientGeometry, roundEditorShapePath, sortEditorGradientStops } from "@/lib/editor-layers";
 import { buildToneTable, colorMatrixValues, grainParams, photoFilterCss, splitToneBands, vignetteParams } from "@/lib/photo-adjustments";
 
 // The print canvas and every preview share one 1000 x 1200 unit artwork space.
@@ -159,6 +159,7 @@ export default function EditorLayerPreview({
         };
         const transform = editorTextPresetTransform(text);
         const effects = editorTextEffects(text);
+        const decoration = editorTextDecoration(text);
         const lines = text.value.split("\n");
         const lineHeight = text.fontSize * (text.lineHeight ?? 1.2);
         type TextEffectProps = SVGProps<SVGTextElement> & { "data-editor-text-effect"?: string; "data-editor-text-content"?: string };
@@ -212,9 +213,9 @@ export default function EditorLayerPreview({
             })}
             {drawText("base-text", { fill: text.color, stroke: "none", "data-editor-text-content": "true" })}
             {effects.filter((effect) => effect.enabled !== false && effect.kind === "stripe").map((effect) => drawText(`stripe-${effectKey(effect)}`, { fill: `url(#${effectPrefix}-stripe-${effectKey(effect)})`, opacity: Math.max(0.05, Math.min(1, effect.opacity ?? 0.72)), "data-editor-text-effect": effect.kind }))}
-            {text.textDecoration === "line" && <line x1={text.x - text.fontSize * 2.2} y1={text.y + (lines.length - 1) * lineHeight + text.fontSize * 0.28} x2={text.x + text.fontSize * 2.2} y2={text.y + (lines.length - 1) * lineHeight + text.fontSize * 0.28} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={text.decorationWidth ?? 4} strokeLinecap="round" data-editor-text-decoration="line" />}
-            {text.textDecoration === "cut" && <rect x={text.x - text.fontSize * 2.2} y={text.y - text.fontSize * 0.34} width={text.fontSize * 4.4} height={text.decorationWidth ?? 4} fill={text.decorationColor ?? "#d4ff3f"} opacity="0.8" data-editor-text-decoration="cut" />}
-            {text.textDecoration === "oblique" && <line x1={text.x - text.fontSize * 2.1} y1={text.y + text.fontSize * 0.2} x2={text.x - text.fontSize * 1.5} y2={text.y - text.fontSize * 0.1} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={text.decorationWidth ?? 4} data-editor-text-decoration="oblique" />}
+            {decoration?.kind === "line" && <line x1={decoration.x1} y1={decoration.y1} x2={decoration.x2} y2={decoration.y2} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={decoration.width} strokeLinecap="round" data-editor-text-decoration="line" />}
+            {decoration?.kind === "cut" && <rect x={decoration.x} y={decoration.y} width={decoration.width} height={decoration.height} fill={text.decorationColor ?? "#d4ff3f"} opacity="0.8" data-editor-text-decoration="cut" />}
+            {decoration?.kind === "oblique" && <line x1={decoration.x1} y1={decoration.y1} x2={decoration.x2} y2={decoration.y2} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={decoration.width} data-editor-text-decoration="oblique" />}
           </g>
         );
       })()}

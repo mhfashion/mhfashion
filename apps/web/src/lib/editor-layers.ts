@@ -237,6 +237,63 @@ export function editorTextEffects(text: EditorTextContent): EditorTextEffect[] {
 }
 
 /**
+ * Painted decoration geometry in layer units, in the same frame the renderer draws in:
+ * absolute coordinates, where `text.x` is the anchor and `text.y` the first baseline.
+ * The renderer draws from this and the Free Transform box measures it, so a decoration
+ * cannot paint outside its box.
+ */
+export type EditorTextDecorationGeometry =
+  | { kind: "line"; x1: number; y1: number; x2: number; y2: number; width: number }
+  | { kind: "cut"; x: number; y: number; width: number; height: number }
+  | { kind: "oblique"; x1: number; y1: number; x2: number; y2: number; width: number };
+
+export function editorTextDecoration(text: EditorTextContent): EditorTextDecorationGeometry | null {
+  const decoration = text.textDecoration ?? "none";
+  if (decoration === "none") return null;
+  const size = text.fontSize;
+  const width = text.decorationWidth ?? 4;
+  if (decoration === "line") {
+    const y = text.y + (editorTextLines(text).length - 1) * editorTextLineHeight(text) + size * 0.28;
+    return { kind: "line", x1: text.x - size * 2.2, y1: y, x2: text.x + size * 2.2, y2: y, width };
+  }
+  if (decoration === "cut") {
+    return { kind: "cut", x: text.x - size * 2.2, y: text.y - size * 0.34, width: size * 4.4, height: width };
+  }
+  return { kind: "oblique", x1: text.x - size * 2.1, y1: text.y + size * 0.2, x2: text.x - size * 1.5, y2: text.y - size * 0.1, width };
+}
+
+/**
+ * How far the painted decoration reaches past the glyph ink, as `{ left, top, right, bottom }`.
+ * The decoration is laid out from the anchor, not from the ink edge, so it is measured against
+ * the ink box rather than added to it: padding the ink by a guessed `fontSize` multiple (what
+ * this used to do) put the box ~50px past a strike-through rule that the glyphs never reach.
+ */
+function editorTextDecorationPadding(text: EditorTextContent, ink: { left: number; top: number; right: number; bottom: number }) {
+  const geometry = editorTextDecoration(text);
+  if (!geometry) return { left: 0, top: 0, right: 0, bottom: 0 };
+  let box: { left: number; top: number; right: number; bottom: number };
+  if (geometry.kind === "cut") {
+    box = { left: geometry.x, top: geometry.y, right: geometry.x + geometry.width, bottom: geometry.y + geometry.height };
+  } else {
+    // Round and butt caps both stay inside the stroke's half-width halo.
+    const half = geometry.width / 2;
+    box = {
+      left: Math.min(geometry.x1, geometry.x2) - half,
+      top: Math.min(geometry.y1, geometry.y2) - half,
+      right: Math.max(geometry.x1, geometry.x2) + half,
+      bottom: Math.max(geometry.y1, geometry.y2) + half,
+    };
+  }
+  // Geometry is absolute; the ink box is relative to the anchor.
+  return {
+    left: Math.max(0, ink.left - (box.left - text.x)),
+    top: Math.max(0, ink.top - (box.top - text.y)),
+    right: Math.max(0, box.right - text.x - ink.right),
+    bottom: Math.max(0, box.bottom - text.y - ink.bottom),
+  };
+}
+
+/**
  * How far each painted effect reaches past the glyph ink, as `{ left, top, right, bottom }`.
  * One copy of the text is painted per effect and each is offset or stroked, so the outline
  * must cover those copies too; a box that stopped at the base glyphs cut straight through an
@@ -268,15 +325,17 @@ export function editorTextPaintPadding(text: EditorTextContent): { left: number;
       grow(offsetX, offsetY, spread);
     }
   }
-  const decoration = text.textDecoration ?? "none";
-  if (decoration === "line" || decoration === "cut") {
-    const width = text.decorationWidth ?? 4;
-    pad.left = Math.max(pad.left, text.fontSize * 2.2);
-    pad.right = Math.max(pad.right, text.fontSize * 2.2);
-    pad.bottom = Math.max(pad.bottom, text.fontSize * 0.4 + width);
-  } else if (decoration === "oblique") {
-    pad.left = Math.max(pad.left, text.fontSize * 2.1);
-  }
+  const metrics = editorTextMetrics(text);
+  const decoration = editorTextDecorationPadding(text, {
+    left: metrics.inkLeft,
+    top: metrics.inkTop,
+    right: metrics.inkLeft + metrics.inkWidth,
+    bottom: metrics.inkBottom,
+  });
+  pad.left = Math.max(pad.left, decoration.left);
+  pad.top = Math.max(pad.top, decoration.top);
+  pad.right = Math.max(pad.right, decoration.right);
+  pad.bottom = Math.max(pad.bottom, decoration.bottom);
   return pad;
 }
 

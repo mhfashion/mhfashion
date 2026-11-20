@@ -70,6 +70,7 @@ const {
   editorTextLineMetrics,
   editorTextLineWidth,
   editorTextPaintPadding,
+  editorTextDecoration,
   editorTextPresetMatrix,
   editorTextPresetTransform,
   createEditorGradientLayer,
@@ -717,8 +718,30 @@ test("the transform box grows to hold every painted text effect and decoration",
   assert.ok(extruded.right >= 40, "an extrusion reaches along its angle");
   assert.ok(extruded.left < 1, "an extrusion never reaches the opposite side");
 
-  const line = editorTextPaintPadding({ ...base, textDecoration: "line", decorationWidth: 6 });
-  assert.ok(line.left >= base.fontSize * 2 && line.right >= base.fontSize * 2 && line.bottom >= 6, "the strike-through rule is covered");
+  // A decoration is painted from the anchor, not from the ink edge, so the box must contain the
+  // painted rule itself. Padding the ink by a guessed `fontSize` multiple overshot the rule by
+  // ~50px a side; measure against the real geometry instead.
+  for (const decoration of ["line", "cut", "oblique"]) {
+    const style = { ...base, textDecoration: decoration, decorationWidth: 6 };
+    const geometry = editorTextDecoration(style);
+    const box = editorTextCanvasBounds(style);
+    const painted = geometry.kind === "cut"
+      ? { left: geometry.x, top: geometry.y, right: geometry.x + geometry.width, bottom: geometry.y + geometry.height }
+      : {
+        left: Math.min(geometry.x1, geometry.x2) - geometry.width / 2,
+        top: Math.min(geometry.y1, geometry.y2) - geometry.width / 2,
+        right: Math.max(geometry.x1, geometry.x2) + geometry.width / 2,
+        bottom: Math.max(geometry.y1, geometry.y2) + geometry.width / 2,
+      };
+    assert.ok(box.x <= painted.left + 0.001, `${decoration}: the box reaches the decoration's left edge`);
+    assert.ok(box.y <= painted.top + 0.001, `${decoration}: the box reaches the decoration's top edge`);
+    assert.ok(box.x + box.width >= painted.right - 0.001, `${decoration}: the box reaches the decoration's right edge`);
+    assert.ok(box.y + box.height >= painted.bottom - 0.001, `${decoration}: the box reaches the decoration's bottom edge`);
+    // ...and the box does not balloon past the decoration the way the fontSize guess did.
+    const slack = Math.max(box.x - painted.left, box.y - painted.top, painted.right - (box.x + box.width), painted.bottom - (box.y + box.height));
+    assert.ok(slack < 1, `${decoration}: the box hugs the decoration instead of overshooting by ${slack}`);
+  }
+
   assert.equal(editorTextPaintPadding({ ...base, effects: [{ id: "off", kind: "shadow", color: "#fff", enabled: false, offsetX: 90, offsetY: 90 }] }).right, 0, "a disabled effect does not pad the box");
 });
 
