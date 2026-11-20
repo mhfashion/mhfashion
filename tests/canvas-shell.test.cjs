@@ -368,7 +368,30 @@ test("a layer can be dragged outside the print canvas and back inside", () => {
   // The selection outline itself is draggable, so a layer parked off-canvas can be grabbed.
   assert.match(source, /data-transform-outline="true" \/>\s*\{moveEnabled && <rect[^>]*onPointerDown=\{onMoveStart\}[^>]*aria-label="Move selected layer"/);
   // The Free Transform box hugs the layer wherever it is, not clamped to the print area.
-  assert.match(source, /function layerCanvasBounds[\s\S]*?const minX = Math\.min\(\.\.\.xs\) - 18;[\s\S]*?const maxX = Math\.max\(\.\.\.xs\) \+ 18;/);
+  // A text layer's box stops on the glyph ink; only strokes/shapes/images get a grab halo.
+  assert.match(source, /const halo = textOnly \? 0 : 18;/);
+});
+
+test("a parked layer stays reachable instead of hiding under a panel", () => {
+  // Editor panels dock over the viewport and swallow pointer events. A layer dragged under one
+  // could never be grabbed again, so the move is bounded to the unobstructed strip: off-canvas
+  // stays allowed, hidden-behind-a-panel does not.
+  assert.match(source, /function canvasDragClamp\(bounds: CanvasBounds \| null\): CanvasDeltaClamp \| null \{/);
+  assert.match(source, /document\.querySelectorAll<HTMLElement>\("\[data-dock-side\]"\)[\s\S]*?panel\.getAttribute\("data-dock-side"\) === "left"\) left = Math\.max\(left, panelRect\.right\)[\s\S]*?else right = Math\.min\(right, panelRect\.left\)/);
+  // The floating tools bar sits above the panels and covers the same strip.
+  assert.match(source, /'\[data-testid="editor-tools-positioner"\]'[\s\S]*?bottom = Math\.min\(bottom, toolsRect\.top\)/);
+  // The whole selection box is kept inside the strip, not just the pointer.
+  assert.match(source, /minX: toX\(left\) - bounds\.x,[\s\S]*?maxX: toX\(right\) - \(bounds\.x \+ bounds\.width\),[\s\S]*?maxY: toY\(bottom\) - \(bounds\.y \+ bounds\.height\)/);
+  // Dragging starts from the clamp captured at pointer-down and applies it to the delta.
+  assert.match(source, /canvasArtworkDragRef\.current = \{ pointerId: event\.pointerId, start, origin, clamp: canvasDragClamp\(selectionBounds\) \};/);
+  assert.match(source, /const rawDelta = \{ x: \(point\.x - drag\.start\.x\) \* 1000, y: \(point\.y - drag\.start\.y\) \* 1200 \};[\s\S]*?const delta = clampToCanvasDrag\(rawDelta, drag\.clamp\);/);
+  // A panel that opens over a parked layer would cover it, so arrow keys nudge the selection
+  // back out; Shift moves in 10-unit steps.
+  assert.match(source, /ArrowLeft: \{ x: -step, y: 0 \},[\s\S]*?ArrowRight: \{ x: step, y: 0 \},[\s\S]*?ArrowUp: \{ x: 0, y: -step \},[\s\S]*?ArrowDown: \{ x: 0, y: step \},/);
+  assert.match(source, /const step = event\.shiftKey \? 10 : 1;/);
+  // A one-line text box is ~24px tall, so the default 15px handle hit radius covered its
+  // whole interior and a drag resized instead of moving. The radius is capped to the box.
+  assert.match(source, /const handleHitRadiusPx = Math\.min\(15, Math\.max\(5, shortestSide \* 0\.3\)\);/);
 });
 
 test("the mockup mirrors per-layer canvas transforms and clips them to the print area", () => {
@@ -522,8 +545,11 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(source, /data-resize-glyph="true"/);
   assert.match(source, /function resizeHandleGlyphPath\(angle: number\)/);
   assert.match(source, /const RESIZE_GLYPH_PATHS = \{/);
-  assert.match(source, /const handleHitRadius = 15 \/ unitScale/);
-  assert.match(source, /const rotateHitRadius = 17 \/ unitScale/);
+  assert.match(source, /const handleHitRadiusPx = Math\.min\(15, Math\.max\(5, shortestSide \* 0\.3\)\);/);
+  // The rotate circle must not sit on top of the bottom-centre resize handle.
+  assert.match(source, /const rotateOffset = Math\.max\(58, \(handleHitRadiusPx \+ rotateHitRadiusPx \+ 10\) \/ unitScale\);/);
+  assert.match(source, /cy=\{selectionBounds\.y \+ selectionBounds\.height \+ rotateOffset\}/);
+  assert.match(source, /const rotateHitRadiusPx = 17;/);
   assert.match(source, /scale\(\$\{handleBoxScale\}\)/);
   // Every tool shows the matching resize cursor while hovering a handle.
   assert.match(source, /cursor: "cursor-nwse-resize"/);
@@ -722,6 +748,19 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   // move outside the editor commits, so those controls are usable while typing.
   assert.match(source, /const next = event\.relatedTarget;/);
   assert.match(source, /closest\("\[data-editor-text-editor\]"\)\?\.contains\(next\)\) return;/);
+  // Typing past the viewport edge keeps the caret on screen: the pan follows the caret's own
+  // line, not the textarea box (which grows taller than the viewport after a dozen lines).
+  assert.match(source, /const keepTextCaretVisible = useCallback\(\(\) => \{/);
+  assert.match(source, /const caretLine = editor\.value\.slice\(0, editor\.selectionStart\)\.split\("\\n"\)\.length - 1;/);
+  // The editor is rendered inside a scaled SVG `foreignObject`, so line offsets must be
+  // converted from the textarea's CSS pixels to screen pixels before panning.
+  assert.match(source, /const screenScale = cssHeight > 0 \? rect\.height \/ cssHeight : 1;/);
+  assert.match(source, /const lineHeight = \(Number\.parseFloat\(window\.getComputedStyle\(editor\)\.lineHeight\) \|\| cssHeight\) \* screenScale;/);
+  assert.match(source, /const caretTop = rect\.top \+ caretLine \* lineHeight;/);
+  assert.match(source, /if \(caretTop \+ lineHeight > bounds\.bottom - margin\) shift = caretTop \+ lineHeight - \(bounds\.bottom - margin\);/);
+  // One keystroke must not pan twice: the value effect and the caret listeners coalesce.
+  assert.match(source, /if \(caretPanFrameRef\.current !== null\) cancelAnimationFrame\(caretPanFrameRef\.current\);/);
+  assert.doesNotMatch(source, /const caret = editor\.getBoundingClientRect\(\);\n\s*const bounds = viewport\.getBoundingClientRect\(\);/);
   // The textarea line box is aligned with the drawn SVG text so the caret sits on the glyphs.
   assert.match(source, /const \{ ascent, descent \} = editorTextMetrics\(editingText\);/);
   assert.match(source, /const editorTop = editingText\.y - ascent - halfLeading;/);

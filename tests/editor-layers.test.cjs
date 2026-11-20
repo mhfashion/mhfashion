@@ -66,6 +66,7 @@ const {
   updateLayerLastStroke,
   editorTextCanvasBounds,
   editorTextMetrics,
+  resetEditorTextMeasurementCache,
   editorTextLineWidth,
   createEditorGradientLayer,
   defaultEditorGradient,
@@ -737,6 +738,55 @@ test("text bounds hug the painted glyphs, not the taller font line box", () => {
     if (previousDocument === undefined) delete globalThis.document;
     else globalThis.document = previousDocument;
   }
+});
+
+test("a caps-only line has no ink descent, so the box does not leave a gap below it", () => {
+  // Chrome reports an ink descent of exactly 0 for a line with no descender. Treating 0 as
+  // "unmeasured" and substituting the 0.2em estimate left a visible empty band under every
+  // all-caps word, which is the reported Free Transform inaccuracy.
+  const single = { value: "WAVE", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center" };
+  const previousDocument = globalThis.document;
+  globalThis.document = {
+    createElement: () => ({
+      getContext: () => ({
+        font: "",
+        measureText: (line) => ({
+          width: line.length * 90,
+          fontBoundingBoxAscent: 90,
+          fontBoundingBoxDescent: 24,
+          actualBoundingBoxAscent: line.trim() ? 74 : 0,
+          // Only a descender paints below the baseline.
+          actualBoundingBoxDescent: /[gjpqy]/.test(line) ? 21 : 0,
+        }),
+      }),
+    }),
+  };
+  resetEditorTextMeasurementCache();
+  try {
+    const caps = editorTextCanvasBounds(single);
+    assert.equal(caps.y, 600 - 74, "the box still starts on the cap height");
+    assert.equal(caps.height, 74, "no empty band is added below a line with no descender");
+    // A line that does have a descender keeps it.
+    const descender = editorTextCanvasBounds({ ...single, value: "gyp" });
+    assert.ok(descender.height > caps.height, "a descender still extends the box downward");
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+    resetEditorTextMeasurementCache();
+  }
+});
+
+test("a trailing blank line does not stretch the transform box past the last glyph", () => {
+  // Pressing Enter at the end of the text leaves an empty last line. Counting its baseline
+  // offset as ink made the box grow one line per Enter even though nothing was painted.
+  const single = { value: "TOP", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center" };
+  const one = editorTextCanvasBounds(single);
+  const twoBlank = editorTextCanvasBounds({ ...single, value: "TOP\n\n\n" });
+  assert.equal(twoBlank.height, one.height, "blank lines below the text add no height");
+  assert.equal(twoBlank.y, one.y, "blank lines below the text do not move the top");
+  // A blank line between two inked lines still separates them.
+  const spaced = editorTextCanvasBounds({ ...single, value: "TOP\n\nTOP" });
+  assert.ok(spaced.height > one.height, "a blank middle line keeps its own line height");
 });
 
 test("gradient layers hold a Photoshop-style axis, shape, and stops", () => {

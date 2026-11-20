@@ -276,6 +276,11 @@ function editorTextMeasurementContext(): CanvasRenderingContext2D | null {
   return measurementContext;
 }
 
+// Tests swap `document` to stub the canvas metrics, so they need to drop the cached context.
+export function resetEditorTextMeasurementCache() {
+  measurementContext = null;
+}
+
 export function editorTextLineMetrics(text: EditorTextContent, line: string): EditorTextLineMetrics {
   const fallback = fallbackTextLineMetrics(text, line);
   const context = editorTextMeasurementContext();
@@ -298,13 +303,14 @@ export function editorTextLineMetrics(text: EditorTextContent, line: string): Ed
       ? measured.actualBoundingBoxDescent
       : fallback.descent;
   // An empty line paints no ink, so it must not stretch the box above or below the glyphs.
+  // Caps-only text has no descender, so Chrome reports an ink descent of exactly 0. That is
+  // a real measurement, not a missing one: falling back to the 0.2em estimate would leave a
+  // band of empty space under every all-caps line. The font line box only reports non-zero
+  // values on browsers that support the metrics API, so it is the support signal.
   const hasInk = line.trim().length > 0;
-  const inkAscent = hasInk
-    ? measured.actualBoundingBoxAscent > 0 ? measured.actualBoundingBoxAscent : fallback.inkAscent
-    : 0;
-  const inkDescent = hasInk
-    ? measured.actualBoundingBoxDescent > 0 ? measured.actualBoundingBoxDescent : fallback.inkDescent
-    : 0;
+  const supportsFontMetrics = measured.fontBoundingBoxAscent > 0 || measured.fontBoundingBoxDescent > 0;
+  const inkAscent = hasInk ? (supportsFontMetrics ? measured.actualBoundingBoxAscent : fallback.inkAscent) : 0;
+  const inkDescent = hasInk ? (supportsFontMetrics ? measured.actualBoundingBoxDescent : fallback.inkDescent) : 0;
   return {
     width: Number.isFinite(width) && width > 0 ? width : fallback.width,
     ascent,
@@ -326,11 +332,18 @@ export function editorTextMetrics(text: EditorTextContent) {
   const ascent = Math.max(...lineMetrics.map((metrics) => metrics.ascent));
   const descent = Math.max(...lineMetrics.map((metrics) => metrics.descent));
   // The transform box must hug the painted glyphs, so union each line's ink box around its
-  // own baseline (line i sits i line-heights below the first baseline).
-  const inkTops = lineMetrics.map((metrics, index) => index * lineHeight - metrics.inkAscent);
-  const inkBottoms = lineMetrics.map((metrics, index) => index * lineHeight + metrics.inkDescent);
-  const inkTop = Math.min(0, ...inkTops);
-  const inkBottom = Math.max(0, ...inkBottoms);
+  // own baseline (line i sits i line-heights below the first baseline). A blank line paints
+  // nothing, so it is skipped: counting its baseline offset as ink would stretch the box
+  // down to the last empty line instead of stopping at the last glyph.
+  const inked = lineMetrics
+    .map((metrics, index) => ({ metrics, index }))
+    .filter(({ metrics }) => metrics.inkAscent > 0 || metrics.inkDescent > 0);
+  const inkTops = inked.map(({ metrics, index }) => index * lineHeight - metrics.inkAscent);
+  const inkBottoms = inked.map(({ metrics, index }) => index * lineHeight + metrics.inkDescent);
+  // A leading blank line must not pull the top of the box up to the first baseline, so the
+  // extent comes from the inked lines alone; text with no ink at all collapses to zero.
+  const inkTop = inkTops.length ? Math.min(...inkTops) : 0;
+  const inkBottom = inkBottoms.length ? Math.max(...inkBottoms) : 0;
   return {
     lines,
     lineHeight,

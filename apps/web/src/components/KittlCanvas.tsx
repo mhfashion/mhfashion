@@ -151,7 +151,8 @@ type Point = { x: number; y: number };
 type PenAnchorDrag = { pointerId: number; index: number; point: Point; corner: boolean };
 type PenEditDrag = { pointerId: number; layerId: string; pathIndex: number; index: number; kind: "anchor" | "handle-in" | "handle-out"; start: Point; origin: EditorPenAnchor };
 type CanvasBounds = { x: number; y: number; width: number; height: number };
-type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point> };
+type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point>; clamp: CanvasDeltaClamp | null };
+type CanvasDeltaClamp = { minX: number; maxX: number; minY: number; maxY: number };
 type CanvasLayerTransformSnapshot = { scale: Point; offset: Point; rotation: number; pivot: Point };
 type CanvasLayerResizeDrag = { pointerId: number; pointerStart: Point; bounds: CanvasBounds; rotation: number; origin: Record<string, CanvasLayerTransformSnapshot>; handle: TransformHandle };
 type CanvasLayerRotateDrag = { pointerId: number; center: Point; startAngle: number; origin: Record<string, CanvasLayerTransformSnapshot> };
@@ -195,10 +196,15 @@ function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   const ys = points.map((point) => point.y);
   // The box hugs the layer wherever it is, including past the print area, so the outline
   // stays on the artwork while it is parked off-canvas.
-  const minX = Math.min(...xs) - 18;
-  const minY = Math.min(...ys) - 18;
-  const maxX = Math.max(...xs) + 18;
-  const maxY = Math.max(...ys) + 18;
+  // `editorTextCanvasBounds` already stops exactly on the glyph ink, so a pure text layer
+  // gets no extra halo; adding one there is what made the text Free Transform box look too
+  // big. Strokes, shapes and images still need a small grab margin around their edge.
+  const textOnly = textBounds !== null && layer.strokes.length === 0 && layer.image === null && (layer.shape?.paths?.length ?? 0) === 0;
+  const halo = textOnly ? 0 : 18;
+  const minX = Math.min(...xs) - halo;
+  const minY = Math.min(...ys) - halo;
+  const maxX = Math.max(...xs) + halo;
+  const maxY = Math.max(...ys) + halo;
   return { x: minX, y: minY, width: Math.max(24, maxX - minX), height: Math.max(24, maxY - minY) };
 }
 
@@ -281,6 +287,7 @@ function ArtworkOverlay({
     const end = element.value.length;
     element.setSelectionRange(end, end);
   }, [editingTextLayerIdForCaret]);
+
   // Free-transform handles keep a constant on-screen size (like Kittl/Photoshop) even though
   // the artwork SVG is drawn in a 1000x1200 unit space that is scaled to fit its container.
   const svgRef = useRef<SVGSVGElement>(null);
@@ -298,10 +305,21 @@ function ArtworkOverlay({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const handleHitRadius = 15 / unitScale;
+  // Handle hit areas keep a constant screen size, but they must never swallow the middle of
+  // a small selection: a one-line text box is ~24px tall, so a 15px radius on the top and
+  // bottom edge handles covered the whole box and dragging the text resized it instead of
+  // moving it. Cap the radius against the shorter side so a draggable interior always exists.
+  const shortestSide = Math.min(selectionBounds?.width ?? 0, selectionBounds?.height ?? 0) * unitScale;
+  const handleHitRadiusPx = Math.min(15, Math.max(5, shortestSide * 0.3));
+  const handleHitRadius = handleHitRadiusPx / unitScale;
   const handleBoxScale = 10 / unitScale / 12;
-  const rotateHitRadius = 17 / unitScale;
+  const rotateHitRadiusPx = 17;
+  const rotateHitRadius = rotateHitRadiusPx / unitScale;
   const rotateBoxScale = 11 / unitScale / 20;
+  // The rotate handle hangs below the box. On a one-line text box the fixed 58-unit drop
+  // left its 17px hit circle overlapping the bottom-centre resize handle, so that resize
+  // handle could not be grabbed. Keep a 10px screen gap between the two circles.
+  const rotateOffset = Math.max(58, (handleHitRadiusPx + rotateHitRadiusPx + 10) / unitScale);
   const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
   const transformRotation = selectedLayerIds.length === 1 ? layerRotations[selectedLayerIds[0]] ?? 0 : 0;
   const displayRotation = Math.round(((transformRotation % 360) + 360) % 360);
@@ -420,12 +438,12 @@ function ArtworkOverlay({
               </g>
             </g>
           ))}
-          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + 58} r={rotateHitRadius} fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} className="cursor-grab" aria-label="Rotate selected layer" aria-description="Drag to rotate. Hold Shift to snap to 15-degree increments." />
-          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height + 58}) scale(${rotateBoxScale})`} pointerEvents="none" data-rotate-handle="true">
+          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + rotateOffset} r={rotateHitRadius} fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} className="cursor-grab" aria-label="Rotate selected layer" aria-description="Drag to rotate. Hold Shift to snap to 15-degree increments." />
+          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height + rotateOffset}) scale(${rotateBoxScale})`} pointerEvents="none" data-rotate-handle="true">
             <circle r="10" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
             <path d="M2-5a5 5 0 1 0 3 7M2-5v3m0-3h3" fill="none" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" data-rotate-glyph="true" />
           </g>
-          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2 - 22} ${selectionBounds.y + selectionBounds.height + 78})`} data-rotation-angle="true">
+          <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2 - 22} ${selectionBounds.y + selectionBounds.height + rotateOffset + 20})`} data-rotation-angle="true">
             <rect width="44" height="18" rx="9" fill="#ffffff" fillOpacity="0.94" stroke="#4c9dff" strokeWidth="1" vectorEffect="non-scaling-stroke" />
             <text x="22" y="12" textAnchor="middle" fontSize="10" fontFamily="ui-sans-serif, system-ui" fill="#202124">{displayRotation}°</text>
           </g>
@@ -554,6 +572,72 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const [draggingNode, setDraggingNode] = useState<WorkspaceNode | null>(null);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const viewportRef = useRef<HTMLDivElement>(null);
+
+  // The inline text editor grows downward with every new line. Once it passes the viewport
+  // edge the caret is invisible, and the desktop viewport does not scroll
+  // (`md:overflow-hidden`), so typing looked like it had stopped working. Pan the workspace
+  // just enough to keep the caret on screen.
+  //
+  // The textarea itself becomes taller than the viewport after a dozen lines, so its own box
+  // cannot stand in for the caret: following the box made the pan bounce between "line is
+  // below" and "box top is above". Track the caret's line instead, which stays a single
+  // line-height tall no matter how much text there is.
+  const editingTextValueForCaret = editingTextLayer?.text?.value;
+  const caretPanFrameRef = useRef<number | null>(null);
+  const keepTextCaretVisible = useCallback(() => {
+    // A single keystroke can reach this from both the value effect and the caret listeners.
+    // Two shifts in one frame would each measure the pre-shift layout, so the second would
+    // pan again by the same amount and push the caret a whole line past the margin.
+    if (caretPanFrameRef.current !== null) cancelAnimationFrame(caretPanFrameRef.current);
+    caretPanFrameRef.current = requestAnimationFrame(() => {
+      caretPanFrameRef.current = null;
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+      const editor = viewport.querySelector<HTMLTextAreaElement>("[data-editor-text-editor=\"true\"] textarea");
+      if (!editor) return;
+      const rect = editor.getBoundingClientRect();
+      // The editor sits in a `foreignObject` inside the artwork SVG, which is scaled to fit the
+      // viewport (about 0.3x on a phone). `lineHeight` is in the editor's own CSS pixels while
+      // `rect` is already on screen, so the line offsets must be scaled too or the pan
+      // overshoots by the scale factor and throws the caret far off screen.
+      const cssHeight = editor.offsetHeight || rect.height;
+      const screenScale = cssHeight > 0 ? rect.height / cssHeight : 1;
+      const lineHeight = (Number.parseFloat(window.getComputedStyle(editor).lineHeight) || cssHeight) * screenScale;
+      const caretLine = editor.value.slice(0, editor.selectionStart).split("\n").length - 1;
+      const caretTop = rect.top + caretLine * lineHeight;
+      const bounds = viewport.getBoundingClientRect();
+      const margin = 32;
+      let shift = 0;
+      if (caretTop + lineHeight > bounds.bottom - margin) shift = caretTop + lineHeight - (bounds.bottom - margin);
+      else if (caretTop < bounds.top + margin) shift = caretTop - (bounds.top + margin);
+      if (shift) setPan((current) => ({ ...current, y: current.y - shift }));
+    });
+  }, []);
+  useEffect(() => {
+    if (editingTextValueForCaret === undefined) return;
+    keepTextCaretVisible();
+    return () => {
+      if (caretPanFrameRef.current !== null) cancelAnimationFrame(caretPanFrameRef.current);
+      caretPanFrameRef.current = null;
+    };
+  }, [editingTextValueForCaret, keepTextCaretVisible]);
+  // Moving the caret inside existing text (click, arrow keys) has to scroll it into view too.
+  useEffect(() => {
+    if (editingTextValueForCaret === undefined) return;
+    const viewport = viewportRef.current;
+    const editor = viewport?.querySelector<HTMLTextAreaElement>("[data-editor-text-editor=\"true\"] textarea");
+    if (!editor) return;
+    const handler = () => requestAnimationFrame(keepTextCaretVisible);
+    editor.addEventListener("keyup", handler);
+    editor.addEventListener("click", handler);
+    editor.addEventListener("select", handler);
+    return () => {
+      editor.removeEventListener("keyup", handler);
+      editor.removeEventListener("click", handler);
+      editor.removeEventListener("select", handler);
+    };
+  }, [editingTextValueForCaret, keepTextCaretVisible]);
+
   const workspaceRef = useRef<HTMLDivElement>(null);
   const canvasNodeRef = useRef<HTMLCanvasElement>(null);
   const mockupSurfaceRefs = useRef<Partial<Record<MockupSide, HTMLDivElement>>>({});
@@ -632,6 +716,35 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // Arrow keys nudge the selection, which is the one way to recover a layer parked under a
+  // panel: a panel opened after the drag can cover it again, and a covered layer cannot be
+  // clicked. Shift moves in 10-unit steps, otherwise 1.
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (activeTool !== "move" || selectedLayerIds.length === 0) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
+      const step = event.shiftKey ? 10 : 1;
+      const delta = {
+        ArrowLeft: { x: -step, y: 0 },
+        ArrowRight: { x: step, y: 0 },
+        ArrowUp: { x: 0, y: -step },
+        ArrowDown: { x: 0, y: step },
+      }[event.key];
+      if (!delta) return;
+      const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
+      if (ids.length === 0) return;
+      event.preventDefault();
+      setCanvasLayerTransforms((current) => ({ ...current, ...Object.fromEntries(ids.map((id) => {
+        const origin = current[id] ?? { x: 0, y: 0 };
+        return [id, { x: origin.x + delta.x, y: origin.y + delta.y }];
+      })) }));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, layers, selectedLayerIds]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -850,6 +963,52 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     };
   }
 
+  // Panels dock over the viewport (z-30) and the tools bar floats above it (z-50), and both
+  // swallow pointer events, so a layer dragged under either becomes impossible to grab again.
+  // Bound the move to the unobstructed strip instead: off-canvas is allowed, hidden is not.
+  function canvasDragClamp(bounds: CanvasBounds | null): CanvasDeltaClamp | null {
+    if (!bounds) return null;
+    const canvasRect = canvasNodeRef.current?.getBoundingClientRect();
+    const viewportRect = viewportRef.current?.getBoundingClientRect();
+    if (!canvasRect || !viewportRect) return null;
+    let left = viewportRect.left;
+    let right = viewportRect.right;
+    let bottom = viewportRect.bottom;
+    document.querySelectorAll<HTMLElement>("[data-dock-side]").forEach((panel) => {
+      const panelRect = panel.getBoundingClientRect();
+      if (!panelRect.width || !panelRect.height) return;
+      if (panel.getAttribute("data-dock-side") === "left") left = Math.max(left, panelRect.right);
+      else right = Math.min(right, panelRect.left);
+    });
+    const toolsBar = document.querySelector<HTMLElement>('[data-testid="editor-tools-positioner"]');
+    if (toolsBar) {
+      const toolsRect = toolsBar.getBoundingClientRect();
+      if (toolsRect.height > 0) bottom = Math.min(bottom, toolsRect.top);
+    }
+    // A viewport narrower than its own panels leaves no free strip; fall back to all of it.
+    if (left >= right) {
+      left = viewportRect.left;
+      right = viewportRect.right;
+    }
+    const toX = (clientX: number) => ((clientX - canvasRect.left) / canvasRect.width) * 1000;
+    const toY = (clientY: number) => ((clientY - canvasRect.top) / canvasRect.height) * 1200;
+    // The offset is a delta in artwork units, so the whole selection box stays inside the strip.
+    return {
+      minX: toX(left) - bounds.x,
+      maxX: toX(right) - (bounds.x + bounds.width),
+      minY: toY(viewportRect.top) - bounds.y,
+      maxY: toY(bottom) - (bounds.y + bounds.height),
+    };
+  }
+
+  function clampToCanvasDrag(delta: Point, clamp: CanvasDeltaClamp | null): Point {
+    if (!clamp) return delta;
+    // When the selection is larger than the free strip no offset can satisfy both edges, so
+    // leave that axis alone rather than snapping the layer to a single position.
+    const axis = (value: number, min: number, max: number) => min > max ? value : Math.min(Math.max(value, min), max);
+    return { x: axis(delta.x, clamp.minX, clamp.maxX), y: axis(delta.y, clamp.minY, clamp.maxY) };
+  }
+
   function rememberLayerSnapshot() {
     setUndoStack((current) => [...current.slice(-29), layers]);
     setRedoStack([]);
@@ -969,14 +1128,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const start = toCanvasPointUnclamped(event.clientX, event.clientY);
     (event.currentTarget.ownerSVGElement ?? event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
     const origin = Object.fromEntries(movableIds.map((id) => [id, canvasLayerTransforms[id] ?? { x: 0, y: 0 }]));
-    canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin };
+    canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin, clamp: canvasDragClamp(selectionBounds) };
   }
   function moveCanvasArtwork(event: React.PointerEvent<SVGSVGElement>) {
     const drag = canvasArtworkDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
     const point = toCanvasPointUnclamped(event.clientX, event.clientY);
-    const delta = { x: (point.x - drag.start.x) * 1000, y: (point.y - drag.start.y) * 1200 };
+    const rawDelta = { x: (point.x - drag.start.x) * 1000, y: (point.y - drag.start.y) * 1200 };
+    const delta = clampToCanvasDrag(rawDelta, drag.clamp);
     // A layer may be dragged well past the print area (and back). The limit is generous, just
     // wide enough to keep a layer reachable rather than letting it be flung out of sight.
     const limit = CANVAS_LAYER_TRAVEL_LIMIT;
