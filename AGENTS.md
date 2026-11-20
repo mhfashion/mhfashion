@@ -52,6 +52,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Typing is verified end to end with CDP: `Input.insertText` for text and `Input.dispatchKeyEvent` with `text: "\r"` for Enter (a keyDown without `text` does not insert a newline).
 - Beware pixel probes that scan for "dark" or "lime" pixels: the docked sidebars (uniform `#0c0c0c`) and the t-shirt mockup both produce large false positives. Hide `[data-dock-side]` elements, or diff a frame with the layer hidden.
 
+## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`)
+- The language control is a labelled `EN / MM` pill and the currency control a `Ks / $` pill. **Both must show the active option**, by adding `text-accent` to the selected segment; `data-header-language` / `data-header-currency` carry the state for tests.
+- Do not replace them with a single icon (`Languages`, `Coins`): an icon that looks the same in every state reads as decoration, and the user cannot tell which language or currency is selected. That regression shipped once and had to be reverted.
+- The currency pill previously read a static `$/Ks` with a chevron, which never changed either — it now renders `Ks` and `$` separately and highlights the active one.
+
 ## Editor Header Bar 2 (`apps/web/src/components/EditorHeaderBar2.tsx`)
 - Shared geometry constants keep the Product / GSM / Color / Size / Save / Buy boxes uniform: `FIELD_BOX`, `TRIGGER_BOX`, `ACTION_BOX`, `MENU_BOX`, `MENU_OPTION`, `COLOR_SWATCH`.
 - `BoxDropdown` renders its panel through `createPortal` (so the scrollable bar cannot clip it) and sizes the panel to the trigger box width, clamped to the viewport.

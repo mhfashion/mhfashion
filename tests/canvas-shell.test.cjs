@@ -824,28 +824,30 @@ test("editor reuses the existing web-app Header Bar above its full-height worksp
   assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
 });
 
-test("header language and currency switchers are icon-only buttons", () => {
-  const actions = readFileSync(path.join(__dirname, "../apps/web/src/components/HeaderActions.tsx"), "utf8");
-  // No text labels: the language control is one Languages icon, the currency control one Coins icon.
-  assert.match(actions, /import \{[^}]*Languages[^}]*\} from "lucide-react"/);
-  assert.match(actions, /import \{[^}]*Coins[^}]*\} from "lucide-react"/);
-  assert.doesNotMatch(actions, />EN</);
-  assert.doesNotMatch(actions, />MM</);
-  assert.doesNotMatch(actions, /\$\/Ks/);
-  assert.match(actions, /data-header-language=\{locale\}/);
-  assert.match(actions, /data-header-currency=\{currency\}/);
-  assert.match(actions, /<Languages size=\{15\} \/>/);
-  assert.match(actions, /<Coins size=\{15\} \/>/);
-  // Both stay reachable for screen readers and keep their toggle behaviour.
-  assert.match(actions, /onClick=\{\(\) => setLocale\(locale === "en" \? "my" : "en"\)\}/);
-  assert.match(actions, /onClick=\{toggleCurrency\}/);
 
-  // The mobile drawer uses the same icon-only language toggle.
-  const mobileNavSource = readFileSync(path.join(__dirname, "../apps/web/src/components/MobileNav.tsx"), "utf8");
-  assert.doesNotMatch(mobileNavSource, />EN</);
-  assert.doesNotMatch(mobileNavSource, />MM</);
-  assert.match(mobileNavSource, /<Languages size=\{15\} \/>/);
-  assert.match(mobileNavSource, /data-header-language=\{locale\}/);
+test("header language and currency switchers both show which option is active", () => {
+  const actions = readFileSync(path.join(__dirname, "../apps/web/src/components/HeaderActions.tsx"), "utf8");
+
+  // Both are labelled segmented controls, not a single opaque icon: an icon that never changes
+  // reads as decoration, which is exactly how these two were broken before.
+  assert.match(actions, /aria-label="Language"/);
+  assert.match(actions, />EN</);
+  assert.match(actions, />MM</);
+  assert.match(actions, />Ks</);
+  assert.match(actions, />\$</);
+  assert.doesNotMatch(actions, /\$\/Ks/, "the old static label never reflected the current currency");
+
+  // The active option is highlighted, so the header shows the current language and currency.
+  assert.match(actions, /locale === "en" \? "text-accent" : ""/, "EN is highlighted when English is active");
+  assert.match(actions, /locale === "my" \? "text-accent" : ""/, "MM is highlighted when Myanmar is active");
+  assert.match(actions, /currency === "Ks" \? "text-accent" : ""/, "Ks is highlighted when Ks is active");
+  assert.match(actions, /currency === "USD" \? "text-accent" : ""/, "$ is highlighted when USD is active");
+
+  // Both still toggle, and both stay reachable for screen readers.
+  assert.match(actions, /onClick=\{\(\) => setLocale\("en"\)\}/);
+  assert.match(actions, /onClick=\{\(\) => setLocale\("my"\)\}/);
+  assert.match(actions, /onClick=\{toggleCurrency\}/);
+  assert.match(actions, /const \{ currency, toggleCurrency \} = useCurrency\(\)/);
 });
 
 test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and a live price", () => {

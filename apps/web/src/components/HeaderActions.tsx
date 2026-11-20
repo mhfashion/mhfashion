@@ -9,8 +9,6 @@ import {
   Moon,
   Sun,
   Pencil,
-  Coins,
-  Languages,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
@@ -77,31 +75,28 @@ export default function HeaderActions() {
       </div>
 
       <div className="flex items-center gap-3.5 text-text-secondary">
-        <button
-          type="button"
-          onClick={() => setLocale(locale === "en" ? "my" : "en")}
-          aria-label={locale === "my" ? t("actions.languageMyanmar") : t("actions.languageEnglish")}
-          title={locale === "my" ? "မြန်မာ · switch to English" : "English · switch to မြန်မာ"}
-          className={`flex h-7 w-7 items-center justify-center rounded-full border border-border-light transition hover:text-accent ${locale === "my" ? "text-accent" : ""}`}
-          data-header-language={locale}
-        >
-          <Languages size={15} />
-        </button>
+        <div className="flex items-center gap-1 text-[10px] font-semibold border border-border-light rounded-full px-2 py-1" aria-label="Language">
+          <button onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : ""}>EN</button>
+          <span className="text-border-light">/</span>
+          <button onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : ""}>MM</button>
+        </div>
         <NotificationBell />
 
         <button aria-label={t("actions.wishlist")}>
           <Heart size={18} />
         </button>
 
-        {/* Currency switcher — icon-only Ks/$ toggle, base price stored in Ks */}
+        {/* Currency switcher — Ks/$ toggle, base price stored in Ks */}
         <button
           onClick={toggleCurrency}
-          aria-label={currency === "Ks" ? `${t("actions.currency")}: Ks` : `${t("actions.currency")}: $`}
+          aria-label={`${t("actions.currency")}: ${currency}`}
           title={currency === "Ks" ? "Ks · switch to $" : "$ · switch to Ks"}
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-border-light transition hover:text-accent"
+          className="flex items-center gap-1 text-[10px] font-semibold border border-border-light rounded-full px-2 py-1"
           data-header-currency={currency}
         >
-          <Coins size={15} />
+          <span className={currency === "Ks" ? "text-accent" : ""}>Ks</span>
+          <span className="text-border-light">/</span>
+          <span className={currency === "USD" ? "text-accent" : ""}>$</span>
         </button>
 
         <button onClick={toggleTheme} aria-label={t("actions.theme")}>
