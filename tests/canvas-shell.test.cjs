@@ -98,7 +98,7 @@ test("canvas and each mockup are independently draggable with live connector wir
 });
 
 test("canvas strokes are stored on selected layers and shared with equal-size mockup boxes", () => {
-  assert.match(source, /onPointerDown=\{startArtworkStroke\}/);
+  assert.match(source, /onPointerDown=\{activeTool === "move"/);
   assert.match(source, /function startArtworkStroke[\s\S]*?selectedLayer = layers\.find/);
   assert.match(source, /function startArtworkStroke[\s\S]*?appendLayerStroke\(/);
   assert.match(source, /function moveArtworkStroke[\s\S]*?updateLayerLastStroke\(/);
@@ -354,7 +354,7 @@ test("a layer can be dragged outside the print canvas and back inside", () => {
   // Move, resize and rotate map the pointer without clamping to the print area, so a layer
   // is not stuck at the canvas edge.
   assert.match(source, /function toCanvasPointUnclamped\([\s\S]*?x: \(clientX - rect\.left\) \/ rect\.width,[\s\S]*?y: \(clientY - rect\.top\) \/ rect\.height,/);
-  assert.match(source, /function startCanvasArtworkMove[\s\S]*?const start = toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
+  assert.match(source, /function beginLayerDrag[\s\S]*?const start = toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
   assert.match(source, /function moveCanvasArtwork[\s\S]*?const point = toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
   assert.match(source, /function startCanvasLayerResize[\s\S]*?toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
   assert.match(source, /function resizeCanvasLayer[\s\S]*?toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
@@ -369,10 +369,66 @@ test("a layer can be dragged outside the print canvas and back inside", () => {
   assert.match(source, /const CANVAS_LAYER_TRAVEL_LIMIT = \d+;/);
   assert.match(source, /const limit = CANVAS_LAYER_TRAVEL_LIMIT;[\s\S]*?Math\.max\(-limit, Math\.min\(limit, origin\.x \+ delta\.x\)\)[\s\S]*?Math\.max\(-limit, Math\.min\(limit, origin\.y \+ delta\.y\)\)/);
   // The selection outline itself is draggable, so a layer parked off-canvas can be grabbed.
-  assert.match(source, /data-transform-outline="true" \/>\s*\{moveEnabled && <rect[^>]*onPointerDown=\{onMoveStart\}[^>]*aria-label="Move selected layer"/);
+  // Its press handler also hit-tests, so a layer under the box can still be selected.
+  assert.match(source, /data-transform-outline="true" \/>\s*\{moveEnabled && <rect[^>]*onPointerDown=\{onMoveBoxPress\}[^>]*aria-label="Move selected layer"/);
   // The Free Transform box hugs the layer wherever it is, not clamped to the print area.
   // A text layer's box stops on the glyph ink; only strokes/shapes/images get a grab halo.
   assert.match(source, /const halo = textOnly \? 0 : 18;/);
+});
+
+test("the text editor grows downward line by line instead of scrolling sideways", () => {
+  // Enter used to be swallowed, so multi-line text could not be written at all. The editor
+  // is a textarea that grows with its content: each newline adds a line below, and the box
+  // follows the glyph ink rather than the taller font line box.
+  assert.match(layerModelSource, /export function editorTextLines\(/);
+  assert.match(layerModelSource, /export function editorTextMetrics\(/);
+  // Ink extents come from the painted glyphs, not the font line box, so the outline hugs
+  // all-caps text instead of leaving a band of empty space above and below it.
+  assert.match(layerModelSource, /actualBoundingBoxAscent/);
+  assert.match(layerModelSource, /const inkTop = inkTops\.length \? Math\.min\(\.\.\.inkTops\) : 0;/);
+  assert.match(layerModelSource, /const inkBottom = inkBottoms\.length \? Math\.max\(\.\.\.inkBottoms\) : 0;/);
+  // A blank line paints nothing, so it must not stretch the box.
+  assert.match(layerModelSource, /filter\(\(\{ metrics \}\) => metrics\.inkAscent > 0 \|\| metrics\.inkDescent > 0\)/);
+  // The editor's height is driven by its content, so the caret moves down instead of the
+  // text scrolling inside a fixed box. The count must be the *wrapped* line count.
+  assert.match(source, /const paintedLines = editorTextLines\(editingText\);/);
+  assert.match(source, /const lines = paintedLines\.length;/);
+  assert.match(source, /const lineHeight = editingText\.fontSize \* \(editingText\.lineHeight \?\? 1\.2\);/);
+});
+
+test("clicking a layer on the artwork selects it, on or off the canvas", () => {
+  // Pressing the artwork used to only drag whatever was already selected, so the Layers
+  // panel was the single way to pick a different layer. A press now hit-tests the layers
+  // top-first and selects the one under the pointer.
+  assert.match(source, /function hitTestLayerAt\(point: Point\): string \| null \{/);
+  assert.match(source, /for \(const layer of layers\) \{\s*if \(!layer\.visible\) continue;/);
+  // The point is mapped back through the layer's own scale/rotate, so a rotated layer is
+  // still hit exactly rather than through its axis-aligned box.
+  assert.match(source, /function hitTestLayerAt[\s\S]*?rotateTransformPoint\([\s\S]*?-rotation,/);
+  assert.match(source, /function hitTestLayerAt[\s\S]*?unrotated\.x \/ \(scale\.x \|\| 1\) \+ pivot\.x/);
+  // A press picks, then drags: the pick cannot swallow the drag.
+  assert.match(source, /function pickLayerAt\(event: React\.PointerEvent<Element>\) \{/);
+  assert.match(source, /const hitId = hitTestLayerAt\(\{ x: point\.x \* 1000, y: point\.y \* 1200 \}\);/);
+  assert.match(source, /function pickLayerAt[\s\S]*?selectLayer\(hitId, "artwork", event\.shiftKey\)[\s\S]*?beginLayerDrag\(event, ids\);/);
+  assert.match(source, /function startCanvasArtworkPress\(event: React\.PointerEvent<SVGElement>\) \{\s*if \(pickLayerAt\(event\)\) return;\s*startCanvasArtworkMove\(event\);/);
+  // The canvas surface and the Move-tool pasteboard both go through the pick.
+  assert.match(source, /onPointerDown=\{onMovePick\}/);
+  assert.match(source, /onMovePick=\{startCanvasArtworkPress\}/);
+  assert.match(source, /activeTool === "move"[\s\S]{0,320}?\? \(event\) => \{ if \(pickLayerAt\(event\)\) return; \}/);
+  // A layer parked outside the print area stays pickable, so the surface grows to the layers.
+  assert.match(source, /const artworkPickSurface = useMemo\(\(\) => \{/);
+  assert.match(source, /boundsForLayerIds\(layers\.filter\(\(layer\) => layer\.visible\)\.map\(\(layer\) => layer\.id\)\)/);
+  // The Text tool picks the text layer under the pointer so the caret lands on it.
+  assert.match(source, /if \(activeTool === "text"\) \{[\s\S]*?const hitId = hitTestLayerAt\(\{ x: point\.x \* 1000/);
+  // The selected layer's transform box is a solid rect over its whole area. It used to
+  // swallow every press inside it, so a layer under the box could only be picked from the
+  // Layers panel. The box now hit-tests too: a press on a different layer selects it, and a
+  // press on the selection itself still drags it.
+  assert.match(source, /function startSelectionBoxPress\(event: React\.PointerEvent<Element>\) \{/);
+  assert.match(source, /function startSelectionBoxPress[\s\S]*?if \(hitId && !selectedLayerIds\.includes\(hitId\)\) \{\s*pickLayerAt\(event\);\s*return;\s*\}\s*startCanvasArtworkMove\(event\);/);
+  assert.match(source, /onPointerDown=\{onMoveBoxPress\} aria-label="Move selected layer"/);
+  assert.match(source, /onMoveBoxPress=\{startSelectionBoxPress\}/);
+  assert.match(source, /onMoveBoxPress: \(event: React\.PointerEvent<SVGRectElement>\) => void;/);
 });
 
 test("every tool paints outside the print canvas, not just inside it", () => {
@@ -386,9 +442,12 @@ test("every tool paints outside the print canvas, not just inside it", () => {
   assert.match(source, /data-editor-pasteboard="true"/);
   assert.match(source, /aria-label="Artwork pasteboard"/);
   assert.match(source, /CANVAS_OUTSIDE_TOOLS\.includes\(activeTool\)/);
-  assert.match(source, /onPointerDown=\{startArtworkStroke\}\s*onPointerMove=\{moveArtworkStroke\}/);
-  // It must not double as the workspace node drag handle while a drawing tool is active.
-  assert.match(source, /event\.target\.closest\("\[data-editor-pasteboard\]"\) && activeTool !== "move"/);
+  // Move reuses the same surface to pick a layer parked off the canvas, so the handlers are
+  // chosen per tool instead of hard-coded.
+  assert.match(source, /onPointerMove=\{activeTool === "move" \? moveCanvasArtwork : moveArtworkStroke\}/);
+  assert.match(source, /onPointerDown=\{activeTool === "move"[\s\S]*?: startArtworkStroke\}/);
+  // It must not double as the workspace node drag handle.
+  assert.match(source, /event\.target\.closest\("\[data-editor-pasteboard\]"\)\) return;/);
   // Layer masks and erasure masks are clipped to their own region, so a canvas-sized mask
   // stopped erasing anything painted outside the print area.
   assert.match(artworkLayers, /const ARTWORK_MASK_ORIGIN = -\d+;/);
@@ -408,7 +467,9 @@ test("a parked layer stays reachable instead of hiding under a panel", () => {
   // The whole selection box is kept inside the strip, not just the pointer.
   assert.match(source, /minX: toX\(left\) - bounds\.x,[\s\S]*?maxX: toX\(right\) - \(bounds\.x \+ bounds\.width\),[\s\S]*?maxY: toY\(bottom\) - \(bounds\.y \+ bounds\.height\)/);
   // Dragging starts from the clamp captured at pointer-down and applies it to the delta.
-  assert.match(source, /canvasArtworkDragRef\.current = \{ pointerId: event\.pointerId, start, origin, clamp: canvasDragClamp\(selectionBounds\) \};/);
+  // The clamp is measured from the box of the ids actually being dragged, which is the same
+  // set for a plain move and for a click that first switches the selection.
+  assert.match(source, /canvasArtworkDragRef\.current = \{ pointerId: event\.pointerId, start, origin, clamp: canvasDragClamp\(boundsForLayerIds\(ids\)\) \};/);
   assert.match(source, /const rawDelta = \{ x: \(point\.x - drag\.start\.x\) \* 1000, y: \(point\.y - drag\.start\.y\) \* 1200 \};[\s\S]*?const delta = clampToCanvasDrag\(rawDelta, drag\.clamp\);/);
   // A panel that opens over a parked layer would cover it, so arrow keys nudge the selection
   // back out; Shift moves in 10-unit steps.

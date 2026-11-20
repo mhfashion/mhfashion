@@ -239,7 +239,8 @@ function ArtworkOverlay({
   transformControlsHidden = false,
   layerScales,
   layerOrigins,
-  onMoveStart,
+  onMovePick,
+  onMoveBoxPress,
   onMove,
   onMoveEnd,
   onEditingTextChange,
@@ -268,7 +269,10 @@ function ArtworkOverlay({
   transformControlsHidden?: boolean;
   layerScales: Record<string, Point>;
   layerOrigins: Record<string, Point>;
-  onMoveStart: (event: React.PointerEvent<SVGRectElement>) => void;
+  /** Press on the artwork: select the layer under the pointer, then drag it. */
+  onMovePick: (event: React.PointerEvent<SVGRectElement>) => void;
+  /** Press inside the transform box: select a different layer there, else drag the selection. */
+  onMoveBoxPress: (event: React.PointerEvent<SVGRectElement>) => void;
   onMove: (event: React.PointerEvent<SVGSVGElement>) => void;
   onMoveEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
   onEditingTextChange?: (value: string) => void;
@@ -449,11 +453,11 @@ function ArtworkOverlay({
           );
         })()}
       </g>
-      {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMoveStart} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
+      {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMovePick} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
       {selectedLayerIds.length > 0 && selectionBounds && !editingText && !drawingStroke && !transformControlsHidden && (
         <g pointerEvents="none" data-editor-transform-controls="true" transform={`rotate(${transformRotation} ${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height / 2})`}>
           <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
-          {moveEnabled && <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="transparent" pointerEvents="auto" className="cursor-move touch-none" onPointerDown={onMoveStart} aria-label="Move selected layer" />}
+          {moveEnabled && <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="transparent" pointerEvents="auto" className="cursor-move touch-none" onPointerDown={onMoveBoxPress} aria-label="Move selected layer" />}
           {resizeHandles.map((handle) => (
             <g
               key={handle.key}
@@ -549,8 +553,10 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const bounds = layerCanvasBounds(layer);
     return bounds ? [[layer.id, { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }]] : [];
   })), [layers]);
-  const selectionBounds = useMemo(() => {
-    const bounds = selectedLayerIds.flatMap((id) => {
+  // Measures any set of layers in artwork space, including the move/scale/rotate applied to
+  // each one. Used for the transform box and for hit-testing a click on the artwork.
+  const boundsForLayerIds = useCallback((ids: string[]): CanvasBounds | null => {
+    const bounds = ids.flatMap((id) => {
       const layer = layers.find((item) => item.id === id);
       const base = layer ? layerCanvasBounds(layer) : null;
       if (!base) return [];
@@ -565,7 +571,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         { x: base.x, y: base.y + base.height },
       ].map((point) => {
         const scaled = { x: pivot.x + (point.x - pivot.x) * scale.x + offset.x, y: pivot.y + (point.y - pivot.y) * scale.y + offset.y };
-        return selectedLayerIds.length === 1 ? scaled : rotateTransformPoint(scaled, { x: pivot.x + offset.x, y: pivot.y + offset.y }, rotation);
+        return ids.length === 1 ? scaled : rotateTransformPoint(scaled, { x: pivot.x + offset.x, y: pivot.y + offset.y }, rotation);
       });
       const xs = points.map((point) => point.x);
       const ys = points.map((point) => point.y);
@@ -577,7 +583,27 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       }];
     });
     return unionCanvasBounds(bounds);
-  }, [canvasLayerRotations, canvasLayerScales, canvasLayerTransforms, canvasLayerOrigins, layers, selectedLayerIds]);
+  }, [canvasLayerRotations, canvasLayerScales, canvasLayerTransforms, canvasLayerOrigins, layers]);
+  const selectionBounds = useMemo(() => boundsForLayerIds(selectedLayerIds), [boundsForLayerIds, selectedLayerIds]);
+  // A layer may be parked far outside the print area, so the Move tool's pick surface has to
+  // cover every visible layer, not a fixed margin around the canvas. Sized in percentages of
+  // the print area, which is the same box the artwork coordinate space maps onto.
+  const artworkPickSurface = useMemo(() => {
+    const all = boundsForLayerIds(layers.filter((layer) => layer.visible).map((layer) => layer.id));
+    const pad = 24;
+    const left = all ? ((all.x - pad) / 1000) * 100 : 0;
+    const top = all ? ((all.y - pad) / 1200) * 100 : 0;
+    const right = all ? ((all.x + all.width + pad) / 1000) * 100 : 100;
+    const bottom = all ? ((all.y + all.height + pad) / 1200) * 100 : 100;
+    const minLeft = Math.min(0, left);
+    const minTop = Math.min(0, top);
+    return {
+      left: `${minLeft}%`,
+      top: `${minTop}%`,
+      width: `${Math.max(100, right) - minLeft}%`,
+      height: `${Math.max(100, bottom) - minTop}%`,
+    };
+  }, [boundsForLayerIds, layers]);
   function toggleLayersPanel() {
     if (!layersOpen && window.matchMedia("(max-width: 767px)").matches) setEditSidebarOpen(false);
     setLayersOpen((open) => !open);
@@ -1151,21 +1177,98 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     return [...resolved];
   }
 
-  function startCanvasArtworkMove(event: React.PointerEvent<SVGElement>) {
-    if (event.button !== 0 || !event.isPrimary) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const movableIds = resolveLinkedLayerIds(selectedLayerIds).filter((id) => {
+  /**
+   * The topmost visible layer whose artwork covers an artwork-space point. `layers` is ordered
+   * top-first, so the first match wins. The point is mapped back through that layer's own
+   * move/scale/rotate, which keeps the test exact for a rotated layer instead of falling back
+   * to its axis-aligned box.
+   */
+  function hitTestLayerAt(point: Point): string | null {
+    for (const layer of layers) {
+      if (!layer.visible) continue;
+      const base = layerCanvasBounds(layer);
+      if (!base) continue;
+      const scale = canvasLayerScales[layer.id] ?? { x: 1, y: 1 };
+      const offset = canvasLayerTransforms[layer.id] ?? { x: 0, y: 0 };
+      const pivot = canvasLayerOrigins[layer.id] ?? { x: 500, y: 600 };
+      const rotation = canvasLayerRotations[layer.id] ?? 0;
+      const unrotated = rotateTransformPoint(
+        { x: point.x - offset.x - pivot.x, y: point.y - offset.y - pivot.y },
+        { x: 0, y: 0 },
+        -rotation,
+      );
+      const local = {
+        x: unrotated.x / (scale.x || 1) + pivot.x,
+        y: unrotated.y / (scale.y || 1) + pivot.y,
+      };
+      if (local.x >= base.x && local.x <= base.x + base.width && local.y >= base.y && local.y <= base.y + base.height) {
+        return layer.id;
+      }
+    }
+    return null;
+  }
+
+  /** Starts a drag of `ids`, applying the linked-layer and lock rules. */
+  function beginLayerDrag(event: React.PointerEvent<Element>, ids: string[]) {
+    const movableIds = resolveLinkedLayerIds(ids).filter((id) => {
       const layer = layers.find((item) => item.id === id);
       return !!layer && !layer.locked;
     });
     if (movableIds.length === 0) return;
     const start = toCanvasPointUnclamped(event.clientX, event.clientY);
-    (event.currentTarget.ownerSVGElement ?? event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
+    (event.currentTarget as Element).setPointerCapture(event.pointerId);
     const origin = Object.fromEntries(movableIds.map((id) => [id, canvasLayerTransforms[id] ?? { x: 0, y: 0 }]));
-    canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin, clamp: canvasDragClamp(selectionBounds) };
+    canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin, clamp: canvasDragClamp(boundsForLayerIds(ids)) };
   }
-  function moveCanvasArtwork(event: React.PointerEvent<SVGSVGElement>) {
+
+  function startCanvasArtworkMove(event: React.PointerEvent<Element>) {
+    if (event.button !== 0 || !event.isPrimary) return;
+    event.preventDefault();
+    event.stopPropagation();
+    beginLayerDrag(event, selectedLayerIds);
+  }
+
+  /**
+   * A press on the artwork selects the layer under the pointer and starts dragging it. Without
+   * this the whole canvas only ever moved the layer that was already selected, so the only way
+   * to pick a different layer was the Layers panel.
+   */
+  function pickLayerAt(event: React.PointerEvent<Element>) {
+    if (event.button !== 0 || !event.isPrimary) return false;
+    const point = toCanvasPointUnclamped(event.clientX, event.clientY);
+    const hitId = hitTestLayerAt({ x: point.x * 1000, y: point.y * 1200 });
+    if (!hitId) return false;
+    const ids = event.shiftKey ? resolveLinkedLayerIds([...selectedLayerIds, hitId]) : [hitId];
+    selectLayer(hitId, "artwork", event.shiftKey);
+    event.preventDefault();
+    event.stopPropagation();
+    beginLayerDrag(event, ids);
+    return true;
+  }
+
+  /** The canvas surface: pick the layer under the pointer, else drag the current selection. */
+  function startCanvasArtworkPress(event: React.PointerEvent<SVGElement>) {
+    if (pickLayerAt(event)) return;
+    startCanvasArtworkMove(event);
+  }
+
+  /**
+   * A press on the transform box. The box is a solid rect over the whole selected layer, so
+   * without a hit test here it swallowed every press inside its area and the only way to
+   * select a layer that sits under the box was the Layers panel. Pressing a different layer
+   * now selects it; pressing the selection itself still drags it.
+   */
+  function startSelectionBoxPress(event: React.PointerEvent<Element>) {
+    if (event.button !== 0 || !event.isPrimary) return;
+    const point = toCanvasPointUnclamped(event.clientX, event.clientY);
+    const hitId = hitTestLayerAt({ x: point.x * 1000, y: point.y * 1200 });
+    if (hitId && !selectedLayerIds.includes(hitId)) {
+      pickLayerAt(event);
+      return;
+    }
+    startCanvasArtworkMove(event);
+  }
+  function moveCanvasArtwork(event: React.PointerEvent<Element>) {
     const drag = canvasArtworkDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
@@ -1180,7 +1283,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       y: Math.max(-limit, Math.min(limit, origin.y + delta.y)),
     }])) }));
   }
-  function endCanvasArtworkMove(event: React.PointerEvent<SVGSVGElement>) {
+  function endCanvasArtworkMove(event: React.PointerEvent<Element>) {
     if (canvasArtworkDragRef.current?.pointerId === event.pointerId) canvasArtworkDragRef.current = null;
   }
 
@@ -1674,6 +1777,19 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (activeTool === "text") {
       event.preventDefault();
       event.stopPropagation();
+      // Clicking the ink of a text layer selects that layer, so the caret lands where the
+      // pointer is instead of editing whichever layer happened to be selected before.
+      const hitId = hitTestLayerAt({ x: point.x * 1000, y: point.y * 1200 });
+      const hitLayer = hitId ? layers.find((layer) => layer.id === hitId) : null;
+      if (hitLayer?.kind === "text") {
+        if (hitLayer.locked) {
+          setToolNotice("Unlock this text layer before editing its text.");
+          return;
+        }
+        selectLayer(hitLayer.id, "artwork");
+        setEditingTextLayerId(hitLayer.id);
+        return;
+      }
       const selected = layers.find((layer) => layer.id === selectedLayerId);
       // Photoshop rule: typing on an existing text layer edits that layer in place
       // and never spawns another one. A new text layer is created only when the
@@ -1912,8 +2028,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (activeTool === "hand") return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
     if (node === "Print canvas" && event.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture(event.clientX, event.clientY) && activeTool !== "move") return;
-    // The pasteboard belongs to the active drawing tool, so it must not also start a node drag.
-    if (node === "Print canvas" && event.target instanceof Element && event.target.closest("[data-editor-pasteboard]") && activeTool !== "move") return;
+    // The pasteboard belongs to the active tool: a press there must not also start a node drag.
+    if (node === "Print canvas" && event.target instanceof Element && event.target.closest("[data-editor-pasteboard]")) return;
     // A blank mockup swipe scrolls on phones; its header remains the explicit drag surface.
     if (event.pointerType === "touch" && node !== "Print canvas" &&
       !(event.target instanceof Element && event.target.closest("[data-node-drag-handle]"))) return;
@@ -2317,19 +2433,29 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     stays live here, so a stroke or a text box can be placed outside the canvas
                     instead of being clipped at its border. It sits under the transform controls
                     and under the mockups (later siblings), so those still take their own input. */}
-                {CANVAS_OUTSIDE_TOOLS.includes(activeTool) && (
+                {(CANVAS_OUTSIDE_TOOLS.includes(activeTool) || activeTool === "move") && (
                   <div
                     aria-label="Artwork pasteboard"
                     data-editor-pasteboard="true"
-                    onPointerDown={startArtworkStroke}
-                    onPointerMove={moveArtworkStroke}
-                    onPointerUp={endArtworkStroke}
-                    onPointerCancel={endArtworkStroke}
-                    onLostPointerCapture={endArtworkStroke}
+                    onPointerDown={activeTool === "move"
+                      // Move: pick the layer under the pointer so one parked off the canvas can
+                      // be selected and dragged back. A press on empty pasteboard falls through
+                      // to the node drag below.
+                      ? (event) => { if (pickLayerAt(event)) return; }
+                      : startArtworkStroke}
+                    onPointerMove={activeTool === "move" ? moveCanvasArtwork : moveArtworkStroke}
+                    onPointerUp={activeTool === "move" ? endCanvasArtworkMove : endArtworkStroke}
+                    onPointerCancel={activeTool === "move" ? endCanvasArtworkMove : endArtworkStroke}
+                    onLostPointerCapture={activeTool === "move" ? endCanvasArtworkMove : endArtworkStroke}
                     onPointerLeave={() => setEraserCursor(null)}
                     onDoubleClick={() => activeTool === "pen" && finishPenPath(false)}
-                    className="absolute -inset-24 z-10 touch-none"
-                    style={{ cursor: activeTool === "eraser" ? "none" : activeToolCursorStyle }}
+                    // Drawing needs the gesture; Move must not swallow the phone's vertical
+                    // scroll, and a tap still selects because pointerdown fires first.
+                    className={`absolute z-10 ${activeTool === "move" ? "touch-pan-y" : "-inset-24 touch-none"}`}
+                    style={{
+                      ...(activeTool === "move" ? artworkPickSurface : null),
+                      cursor: activeTool === "eraser" ? "none" : activeToolCursorStyle,
+                    }}
                   />
                 )}
                 {activeTool === "eraser" && eraserCursor && (
@@ -2387,7 +2513,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   layerScales={canvasLayerScales}
                   layerOrigins={canvasLayerOrigins}
                   layerRotations={canvasLayerRotations}
-                  onMoveStart={startCanvasArtworkMove}
+                  onMovePick={startCanvasArtworkPress}
+                  onMoveBoxPress={startSelectionBoxPress}
                   onMove={moveCanvasArtwork}
                   onMoveEnd={endCanvasArtworkMove}
                   onEditingTextChange={updateEditingText}

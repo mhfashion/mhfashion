@@ -74,6 +74,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.
 - When measuring on-screen glyph ink against the transform box, hide `[data-editor-transform-controls="true"]` first; the resize-handle squares otherwise pollute the dark-pixel bbox.
 - In CDP drag tests, check the target point is not covered by another panel (e.g. the mockup panel on the right of the canvas). Use `document.elementFromPoint` to confirm.
+- `getBoundingClientRect()` on `[aria-label="Move selected layer"]` returns the **axis-aligned** box of a *rotated* rect, so it is legitimately larger than the ink's own AABB. On a rotated layer assert containment only; tightness is only meaningful at rotation 0.
+- A phone screenshot is in device pixels when `deviceScaleFactor: 2`, so multiply the CSS rects by `screenshotWidth / window.innerWidth` before comparing them with pixel scans.
+- Hide `[data-editor-transform-controls]` in **both** shots of a frame difference, and toggle only the glyph `<text>` elements. Toggling the whole layer group also repaints the Layers-panel thumbnail, and rotating a layer promotes a compositing layer whose anti-aliasing shifts across the entire canvas, either of which swamps the glyph diff.
+- Resize handle names are `top-left` / `top-center` / `top-right` / `middle-left` / `middle-right` / `bottom-left` / `bottom-center` / `bottom-right` on `[data-resize-handle]`; there is no `right-center`.
+- On a phone the Layers dock is closed, so there are no `aria-pressed` rows to read. Identify the selection from the `[aria-label="Move selected layer"]` box geometry instead.
+
+## Layer picking (canvas and pasteboard)
+- A press picks the layer under the pointer, then drags it: `hitTestLayerAt` maps the point back through each layer's own move/scale/rotate (top-first, visible only), and `pickLayerAt` selects then calls `beginLayerDrag`.
+- The transform box is a **solid** `rect` over the selected layer's whole area, so it also intercepts presses. `startSelectionBoxPress` hit-tests on that press too: a hit on a layer that is not already selected re-picks it, anything else drags the current selection. Without this, any layer sitting under the box could only be selected from the Layers panel.
+- Both paths must keep working together. A press on the selection itself has to still drag it, so the box handler only re-picks when `!selectedLayerIds.includes(hitId)`.
 
 ## Text layers: downward writing, wrapping, and the ink-hugging box
 - `editorTextLines(text)` in `apps/web/src/lib/editor-layers.ts` is the single source of painted lines: it splits on `\n` and then soft-wraps each line to `text.wrapWidth`, breaking at spaces and falling back to a per-character split for a word wider than the limit. Fit is measured on `advance` (not ink `width`) so artwork line breaks match the browser's textarea wrapping.
