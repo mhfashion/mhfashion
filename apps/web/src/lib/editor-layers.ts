@@ -228,6 +228,58 @@ export type EditorTextContent = {
   effects?: EditorTextEffect[];
 };
 
+/** Effects actually painted for a layer: the explicit list, else the legacy preset. */
+export function editorTextEffects(text: EditorTextContent): EditorTextEffect[] {
+  if (text.effects) return text.effects;
+  if (text.textEffect === "shadow") return [{ id: "legacy-shadow", kind: "shadow", color: text.effectColor ?? "#000000", offsetX: text.effectOffset ?? 12, offsetY: text.effectOffset ?? 12, blur: text.effectBlur ?? 0 }];
+  if (text.textEffect === "outline") return [{ id: "legacy-outline", kind: "outline", color: text.effectColor ?? "#000000", width: text.outlineWidth ?? 6 }];
+  return [];
+}
+
+/**
+ * How far each painted effect reaches past the glyph ink, as `{ left, top, right, bottom }`.
+ * One copy of the text is painted per effect and each is offset or stroked, so the outline
+ * must cover those copies too; a box that stopped at the base glyphs cut straight through an
+ * outline, a drop shadow, a glow or an extrusion.
+ */
+export function editorTextPaintPadding(text: EditorTextContent): { left: number; top: number; right: number; bottom: number } {
+  const pad = { left: 0, top: 0, right: 0, bottom: 0 };
+  const grow = (x: number, y: number, spread = 0) => {
+    pad.left = Math.max(pad.left, spread - x);
+    pad.right = Math.max(pad.right, x + spread);
+    pad.top = Math.max(pad.top, spread - y);
+    pad.bottom = Math.max(pad.bottom, y + spread);
+  };
+  for (const effect of editorTextEffects(text)) {
+    if (effect.enabled === false || effect.kind === "stripe") continue;
+    const offsetX = effect.offsetX ?? 10;
+    const offsetY = effect.offsetY ?? 10;
+    const stroke = (effect.kind === "outline" ? effect.width ?? 6 : effect.kind === "glow" ? (effect.width ?? 12) * 1.5 : 0) / 2;
+    // Blurred effects bleed roughly three standard deviations past the shape they blur.
+    const blur = effect.blur ?? (effect.kind === "glow" ? 4 : 1);
+    const spread = stroke + (effect.kind === "shadow" || effect.kind === "glow" ? blur * 3 : 0);
+    if (effect.kind === "shadow" || effect.kind === "offset") grow(offsetX, offsetY, spread);
+    else if (effect.kind === "outline" || effect.kind === "glow") grow(0, 0, spread);
+    else if (effect.kind === "extrude") {
+      const reach = effect.distance ?? 18;
+      const angle = (effect.angle ?? 45) * Math.PI / 180;
+      grow(Math.cos(angle) * reach, Math.sin(angle) * reach, spread);
+    } else if (effect.kind === "echo") {
+      grow(offsetX, offsetY, spread);
+    }
+  }
+  const decoration = text.textDecoration ?? "none";
+  if (decoration === "line" || decoration === "cut") {
+    const width = text.decorationWidth ?? 4;
+    pad.left = Math.max(pad.left, text.fontSize * 2.2);
+    pad.right = Math.max(pad.right, text.fontSize * 2.2);
+    pad.bottom = Math.max(pad.bottom, text.fontSize * 0.4 + width);
+  } else if (decoration === "oblique") {
+    pad.left = Math.max(pad.left, text.fontSize * 2.1);
+  }
+  return pad;
+}
+
 export const EDITOR_TEXT_DEFAULT_LINE_HEIGHT = 1.2;
 export const EDITOR_TEXT_FONT_FAMILY = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
 
@@ -240,7 +292,10 @@ export function editorTextLineHeight(text: EditorTextContent): number {
 }
 
 export type EditorTextLineMetrics = {
+  /** Painted ink width: the advance minus the trailing letter-space SVG adds after the last glyph. */
   width: number;
+  /** Layout advance: what `text-anchor` centres or ends on, including that trailing letter-space. */
+  advance: number;
   /** Font line-box ascent: baseline up to the top of the em box. Lays out the inline editor. */
   ascent: number;
   /** Font line-box descent: baseline down to the bottom of the em box. */
@@ -257,8 +312,10 @@ export type EditorTextLineMetrics = {
 function fallbackTextLineMetrics(text: EditorTextContent, line: string): EditorTextLineMetrics {
   const glyphs = Math.max(1, line.length);
   const hasInk = line.trim().length > 0;
+  const spacing = text.letterSpacing ?? 0;
   return {
-    width: glyphs * text.fontSize * 0.58 + Math.max(0, glyphs - 1) * (text.letterSpacing ?? 0),
+    width: glyphs * text.fontSize * 0.58 + Math.max(0, glyphs - 1) * spacing,
+    advance: glyphs * text.fontSize * 0.58 + glyphs * spacing,
     ascent: text.fontSize * 0.9,
     descent: text.fontSize * 0.24,
     inkAscent: hasInk ? text.fontSize * 0.72 : 0,
@@ -287,7 +344,13 @@ export function editorTextLineMetrics(text: EditorTextContent, line: string): Ed
   if (!context) return fallback;
   context.font = `${text.fontStyle ?? "normal"} ${text.fontWeight ?? 700} ${text.fontSize}px ${text.fontFamily ?? EDITOR_TEXT_FONT_FAMILY}`;
   const measured = context.measureText(line);
-  const width = measured.width + Math.max(0, line.length - 1) * (text.letterSpacing ?? 0);
+  // SVG `letter-spacing` adds the gap after *every* glyph, including the last one, so a line
+  // lays out `n * spacing` wide while its painted ink stops at `(n - 1) * spacing`. The
+  // anchor centres/ends that advance, which leaves the ink offset half/full spacing from
+  // `text.x`. Track both numbers so the transform box can follow the ink.
+  const spacing = text.letterSpacing ?? 0;
+  const width = Math.max(0, measured.width + Math.max(0, line.length - 1) * spacing);
+  const advance = measured.width + line.length * spacing;
   // Two different vertical boxes are needed. The font line box (fontBoundingBox) positions
   // the inline editor so its caret sits on the drawn baseline, while the glyph ink box
   // (actualBoundingBox) is what the Free Transform outline must hug. Using the line box for
@@ -313,6 +376,7 @@ export function editorTextLineMetrics(text: EditorTextContent, line: string): Ed
   const inkDescent = hasInk ? (supportsFontMetrics ? measured.actualBoundingBoxDescent : fallback.inkDescent) : 0;
   return {
     width: Number.isFinite(width) && width > 0 ? width : fallback.width,
+    advance: Number.isFinite(advance) && advance > 0 ? advance : fallback.advance,
     ascent,
     descent,
     inkAscent,
@@ -329,6 +393,14 @@ export function editorTextMetrics(text: EditorTextContent) {
   const lineHeight = editorTextLineHeight(text);
   const lineMetrics = lines.map((line) => editorTextLineMetrics(text, line));
   const widths = lineMetrics.map((metrics) => metrics.width);
+  // Each line is anchored on its own advance, so the ink can start left of `text.x` (centred)
+  // or end exactly on it (right-aligned). Only lines with ink matter for the outline.
+  const align = text.textAlign ?? "center";
+  const inkLefts = lineMetrics.map((metrics) => {
+    const anchor = align === "left" ? 0 : align === "right" ? -metrics.advance : -metrics.advance / 2;
+    return anchor;
+  });
+  const inkRights = lineMetrics.map((metrics, index) => inkLefts[index] + metrics.width);
   const ascent = Math.max(...lineMetrics.map((metrics) => metrics.ascent));
   const descent = Math.max(...lineMetrics.map((metrics) => metrics.descent));
   // The transform box must hug the painted glyphs, so union each line's ink box around its
@@ -344,6 +416,10 @@ export function editorTextMetrics(text: EditorTextContent) {
   // extent comes from the inked lines alone; text with no ink at all collapses to zero.
   const inkTop = inkTops.length ? Math.min(...inkTops) : 0;
   const inkBottom = inkBottoms.length ? Math.max(...inkBottoms) : 0;
+  // Blank lines paint nothing, so they must not widen the box either.
+  const inkedIndices = inked.map(({ index }) => index);
+  const left = inkedIndices.length ? Math.min(...inkedIndices.map((index) => inkLefts[index])) : 0;
+  const right = inkedIndices.length ? Math.max(...inkedIndices.map((index) => inkRights[index])) : Math.max(1, ...widths);
   return {
     lines,
     lineHeight,
@@ -352,9 +428,46 @@ export function editorTextMetrics(text: EditorTextContent) {
     descent,
     inkTop,
     inkBottom,
+    inkLeft: left,
+    inkWidth: Math.max(1, right - left),
     width: Math.max(1, ...widths),
     height: inkBottom - inkTop,
   };
+}
+
+/** Affine matrix in SVG order: `[a, b, c, d, e, f]`. */
+export type EditorTextMatrix = [number, number, number, number, number, number];
+
+/**
+ * The preset transform the renderer applies to a text layer. Both the renderer and the
+ * Free Transform box read it from here, so the outline can never drift from the glyphs.
+ * `arch` tilts the line; `wave` shears it. Both pivot on the layer's own anchor point
+ * (`text.x`, `text.y`) so a preset bends the text in place instead of throwing it across
+ * the artwork, which is what an origin-pivoted `skewX` used to do.
+ */
+export function editorTextPresetMatrix(text: EditorTextContent): EditorTextMatrix {
+  const preset = text.textTransform ?? "none";
+  if (preset !== "arch" && preset !== "wave") return [1, 0, 0, 1, 0, 0];
+  const angle = (preset === "arch" ? -6 : -4) * Math.PI / 180;
+  const a = 1;
+  const b = 0;
+  const c = preset === "arch" ? -Math.sin(angle) : Math.tan(angle);
+  const d = preset === "arch" ? Math.cos(angle) : 1;
+  // Pivot the matrix on the anchor: T(anchor) * M * T(-anchor).
+  return [
+    a,
+    b,
+    c,
+    d,
+    text.x - (a * text.x + c * text.y),
+    text.y - (b * text.x + d * text.y),
+  ];
+}
+
+/** The preset transform as an SVG `matrix(...)` string, or `undefined` for no preset. */
+export function editorTextPresetTransform(text: EditorTextContent): string | undefined {
+  if ((text.textTransform ?? "none") === "none" || (text.textTransform ?? "none") === "circle") return undefined;
+  return `matrix(${editorTextPresetMatrix(text).map((value) => Number(value.toFixed(6))).join(" ")})`;
 }
 
 /**
@@ -362,12 +475,30 @@ export function editorTextMetrics(text: EditorTextContent) {
  * alignment, `y` is the top of the ink (highest glyph above the first baseline) and
  * `height` reaches the lowest ink below the last line. The canvas adds its uniform selection
  * margin, so the outline sits evenly around the glyphs instead of the taller font line box.
+ *
+ * A preset (`arch`, `wave`) moves the painted glyphs, so the ink box is pushed through the
+ * same matrix and re-squared; without that the outline stayed on the untilted text.
  */
 export function editorTextCanvasBounds(text: EditorTextContent): { x: number; y: number; width: number; height: number } {
-  const { width, inkTop, inkBottom } = editorTextMetrics(text);
-  const align = text.textAlign ?? "center";
-  const left = align === "left" ? text.x : align === "right" ? text.x - width : text.x - width / 2;
-  return { x: left, y: text.y + inkTop, width, height: Math.max(1, inkBottom - inkTop) };
+  const { inkTop, inkBottom, inkLeft, inkWidth } = editorTextMetrics(text);
+  const paint = editorTextPaintPadding(text);
+  const x = text.x + inkLeft - paint.left;
+  const y = text.y + inkTop - paint.top;
+  const width = inkWidth + paint.left + paint.right;
+  const height = Math.max(1, inkBottom - inkTop + paint.top + paint.bottom);
+  const [a, b, c, d, e, f] = editorTextPresetMatrix(text);
+  if (a === 1 && b === 0 && c === 0 && d === 1 && e === 0 && f === 0) return { x, y, width, height };
+  const corners = [
+    { x, y },
+    { x: x + width, y },
+    { x: x + width, y: y + height },
+    { x, y: y + height },
+  ].map((point) => ({ x: a * point.x + c * point.y + e, y: b * point.x + d * point.y + f }));
+  const xs = corners.map((point) => point.x);
+  const ys = corners.map((point) => point.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  return { x: minX, y: minY, width: Math.max(1, Math.max(...xs) - minX), height: Math.max(1, Math.max(...ys) - minY) };
 }
 
 export type EditorShapePath = {

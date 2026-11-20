@@ -67,7 +67,11 @@ const {
   editorTextCanvasBounds,
   editorTextMetrics,
   resetEditorTextMeasurementCache,
+  editorTextLineMetrics,
   editorTextLineWidth,
+  editorTextPaintPadding,
+  editorTextPresetMatrix,
+  editorTextPresetTransform,
   createEditorGradientLayer,
   defaultEditorGradient,
   normalizeEditorGradient,
@@ -655,9 +659,67 @@ test("text bounds hug the glyphs, respect alignment, and grow with extra lines",
   const spaced = editorTextLineWidth({ ...single, letterSpacing: 10 }, "Hi");
   assert.ok(spaced > editorTextLineWidth(single, "Hi"), "letter spacing widens the measured line");
 
+  // SVG adds the letter-space after the last glyph too, so the layout advance is one spacing
+  // wider than the painted ink. The box must follow the ink, which sits half a spacing left of
+  // a centred anchor and a full spacing left of an end anchor.
+  const spacedText = { ...single, letterSpacing: 10 };
+  const spacedMetrics = editorTextLineMetrics(spacedText, "Hi");
+  assert.ok(Math.abs(spacedMetrics.advance - spacedMetrics.width - 10) < 0.01, "the advance carries one extra letter-space");
+  const centredSpaced = editorTextCanvasBounds(spacedText);
+  assert.ok(Math.abs(centredSpaced.x - (single.x - spacedMetrics.advance / 2)) < 0.01, "a centred box starts at the advance's left edge");
+  assert.ok(Math.abs(centredSpaced.width - spacedMetrics.width) < 0.01, "the box is as wide as the painted ink, not the advance");
+  const endSpaced = editorTextCanvasBounds({ ...spacedText, textAlign: "right" });
+  assert.ok(Math.abs(endSpaced.x + endSpaced.width - (single.x - 10)) < 0.01, "right-aligned spaced ink stops one spacing short of the anchor");
+
   const metrics = editorTextMetrics({ ...single, value: "one\ntwo\nthree" });
   assert.equal(metrics.lines.length, 3);
   assert.equal(metrics.width, Math.max(1, ...metrics.widths));
+});
+
+test("text preset transforms pivot on the text anchor and the box follows the preset", () => {
+  const single = { value: "WAVE", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center" };
+  const plain = editorTextCanvasBounds(single);
+  assert.deepEqual(editorTextCanvasBounds({ ...single, textTransform: "none" }), plain, "no preset leaves the box alone");
+  assert.equal(editorTextPresetTransform(single), undefined, "a plain layer has no preset matrix");
+
+  // A preset must not translate the anchor itself, otherwise the text jumps off the artwork.
+  for (const preset of ["arch", "wave"]) {
+    const [a, b, c, d, e, f] = editorTextPresetMatrix({ ...single, textTransform: preset });
+    const anchorX = a * single.x + c * single.y + e;
+    const anchorY = b * single.x + d * single.y + f;
+    assert.ok(Math.abs(anchorX - single.x) < 0.01 && Math.abs(anchorY - single.y) < 0.01, `${preset} keeps the anchor fixed`);
+  }
+
+  const arch = editorTextCanvasBounds({ ...single, textTransform: "arch" });
+  assert.ok(arch.x < plain.x, "the arch tilt pushes the box left of the untilted ink");
+  assert.ok(Math.abs(arch.y + arch.height / 2 - (plain.y + plain.height / 2)) < plain.height, "the arch box stays on the text");
+  const wave = editorTextCanvasBounds({ ...single, textTransform: "wave" });
+  assert.ok(wave.width > plain.width - 0.01 && wave.x <= plain.x + 0.01, "the wave shear widens the box without moving its left edge left");
+  assert.match(editorTextPresetTransform({ ...single, textTransform: "wave" }), /^matrix\(/, "the renderer receives the same matrix");
+});
+
+test("the transform box grows to hold every painted text effect and decoration", () => {
+  const base = { value: "WAVE", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center" };
+  assert.deepEqual(editorTextPaintPadding(base), { left: 0, top: 0, right: 0, bottom: 0 }, "plain text paints only its glyphs");
+
+  const shadow = editorTextCanvasBounds({ ...base, textEffect: "shadow", effectOffset: 24, effectBlur: 0 });
+  const plain = editorTextCanvasBounds(base);
+  assert.ok(shadow.width > plain.width && shadow.height > plain.height, "a drop shadow widens the box");
+  assert.ok(shadow.x + shadow.width > plain.x + plain.width, "the shadow copy on the right is covered");
+
+  const outline = editorTextCanvasBounds({ ...base, textEffect: "outline", outlineWidth: 20 });
+  assert.ok(outline.x < plain.x && outline.y < plain.y && outline.width > plain.width, "an outline is covered on every side");
+
+  const glow = editorTextPaintPadding({ ...base, effects: [{ id: "g", kind: "glow", color: "#fff", width: 20, blur: 6 }] });
+  assert.ok(glow.left >= 10 && glow.right >= 10, "a glow spreads past both edges");
+
+  const extruded = editorTextPaintPadding({ ...base, effects: [{ id: "e", kind: "extrude", color: "#fff", distance: 40, angle: 0 }] });
+  assert.ok(extruded.right >= 40, "an extrusion reaches along its angle");
+  assert.ok(extruded.left < 1, "an extrusion never reaches the opposite side");
+
+  const line = editorTextPaintPadding({ ...base, textDecoration: "line", decorationWidth: 6 });
+  assert.ok(line.left >= base.fontSize * 2 && line.right >= base.fontSize * 2 && line.bottom >= 6, "the strike-through rule is covered");
+  assert.equal(editorTextPaintPadding({ ...base, effects: [{ id: "off", kind: "shadow", color: "#fff", enabled: false, offsetX: 90, offsetY: 90 }] }).right, 0, "a disabled effect does not pad the box");
 });
 
 test("text bounds measure the real font when a browser canvas is available", () => {
