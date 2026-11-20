@@ -75,7 +75,7 @@ test("grid is optional, and the initial canvas has no visible specification badg
   assert.match(source, /h-1 w-1 rounded-full bg-accent-foreground/);
   assert.doesNotMatch(source, /bg-\[#a58be8\]|hover:bg-\[#8f72d4\]/);
   assert.match(source, /backgroundSize: "10% 10%"/g);
-  assert.match(source, /flex-col items-center justify-start overflow-auto[\s\S]*md:overflow-hidden/);
+  assert.match(source, /flex-col items-center justify-start overflow-auto[\s\S]*md:overflow-visible/);
   assert.match(source, /md:flex-row md:gap-12/);
 });
 
@@ -110,6 +110,9 @@ test("canvas strokes are stored on selected layers and shared with equal-size mo
   assert.match(mockupArtwork, /scale\(\$\{printScale\}\)/);
   assert.match(source, /largeArtworkTierOwner/);
   assert.match(source, /maxArtworkEdgePx=\{getArtworkMaxEdgePx\(side, activeLargeArtworkTierOwner\)\}/);
+  assert.match(source, /const mockupLayers = useMemo\(/);
+  assert.match(source, /layerIntersectsPrintArtboard\(/);
+  assert.match(source, /layers=\{mockupLayers\}/);
   assert.match(source, /onLargeTierRequested=\{handleLargeTierRequested\}/);
   assert.match(source, /onArtworkDisplayedEdgeChange=\{handleArtworkDisplayedEdgeChange\}/);
   assert.match(mockupArtwork, /useEffect\(\(\) => \{[\s\S]*?scaleAroundCenter\(bounds, current, maxArtworkScale\)/);
@@ -338,7 +341,7 @@ test("drawing tools are inert on photo layers and the tools bar disables them", 
 });
 
 test("artwork on each Mockup can be moved and resized as one object", () => {
-  assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?layers=\{layers\}[\s\S]*?maxArtworkEdgePx=/);
+  assert.match(source, /<MockupArtwork[\s\S]*?side=\{side\}[\s\S]*?layers=\{mockupLayers\}[\s\S]*?maxArtworkEdgePx=/);
   assert.match(mockupArtwork, /aria-label=\{`Move \$\{side\} artwork`\}/);
   assert.match(mockupArtwork, /mode === "move"/);
   assert.match(mockupArtwork, /startTransform\("resize", event\)/);
@@ -741,6 +744,7 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(photoAdjustments, /Edit photo layer mask/);
   assert.match(photoAdjustments, /aria-label="Remove photo layer mask"/);
   assert.match(adjustmentsPanel, /Blend mode for \$\{selectedLayer\.name\}/);
+
   assert.match(photoAdjustments, /ariaLabel="Photo vignette"/);
   assert.match(photoAdjustments, /ariaLabel="Photo grain"/);
   assert.match(photoAdjustments, /ariaLabel="Photo levels black point"/);
@@ -752,6 +756,12 @@ test("Adjustment panel groups Kittl-style text controls into compact expandable 
   assert.match(photoAdjustments, /ariaLabel="Upscale photo"/);
   assert.match(layerPreview, /buildToneTable\(image\)/);
   assert.match(layerPreview, /feColorMatrix type="matrix" values=\{colorValues\}/);
+
+  assert.match(adjustmentsPanel, /border-border bg-bg-surface text-text-primary/);
+  assert.match(adjustmentsPanel, /border-border bg-bg px-3 text-text-primary/);
+  assert.match(adjustmentsPanel, /aria-label=\{open \? "Return to Layers" : "Open Adjustments panel"\}/);
+  assert.match(adjustmentsPanel, /title=\{open \? "Return to Layers" : "Open Adjustments panel"\}/);
+  assert.match(adjustmentsPanel, /data-adjustments-return-arrow=\{open \? "true" : "false"\}/);
   assert.match(layerPreview, /data-editor-image-background-removed/);
   assert.match(layerPreview, /data-editor-image-vignette/);
   assert.match(layerPreview, /data-editor-image-split-tone/);
@@ -785,6 +795,8 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /style=\{\{ left: hasPanel \? "calc\(3rem \+ " \+ PANEL_WIDTH \+ "\)" : railVisible \? "3rem" : 0 \}\}/);
   assert.match(editSidebar, /h-7 w-7[^"]*rounded-full[^"]*bg-accent[^"]*text-accent-foreground/);
   assert.match(editSidebar, /aria-label="Edit sidebar rail"/);
+  assert.match(editSidebar, /border-border bg-bg-surface\/95 py-2 text-text-primary/);
+  assert.match(editSidebar, /border-border bg-bg px-3 text-text-primary/);
   assert.match(editSidebar, /"Open " \+ label \+ " in Edit sidebar"/);
   assert.match(editSidebar, /setActiveSection\(section\)/);
   for (const label of ["Designs", "Elements", "Text", "Upload", "Image Create"]) {
@@ -807,6 +819,9 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /aria-label="Design elements" className="grid grid-cols-2 gap-2"/);
   assert.match(editSidebar, /function ElementCard/);
   assert.match(editSidebar, /<ArtworkFrame>/);
+  assert.doesNotMatch(editSidebar, /block truncate px-2 py-1\.5 text-\[10px\] font-semibold text-text-primary/);
+  assert.doesNotMatch(editSidebar, /block truncate px-2 pb-1\.5 text-\[9px\] text-text-muted/);
+  assert.doesNotMatch(editSidebar, /layer\.image \? formatByteSize\(layer\.image\.byteSize\)/);
   // Image Create has no search field.
   assert.doesNotMatch(editSidebar, /Search image ideas/);
   assert.doesNotMatch(editSidebar, /Search uploads/);
@@ -877,6 +892,14 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   // The transform box hugs the text instead of spanning the artwork like an image.
   assert.match(layerModelSource, /export function editorTextCanvasBounds/);
   assert.match(source, /editorTextCanvasBounds\(layer\.text\)/);
+  assert.match(source, /if \(layer\.kind === "text" && textBounds\) return textBounds/);
+  // The inline editor is sized from the wrapped line count, not the number of `\n`s:
+  // sizing it from newlines clipped soft-wrapped text and looked like typing had stopped.
+  assert.match(source, /const paintedLines = editorTextLines\(editingText\);/);
+  assert.match(source, /height=\{TOOLBAR_HEIGHT \+ lines \* lineHeight \+ 12\}/);
+  assert.doesNotMatch(source, /editingText\.value\.split\("\\n"\)\.length/);
+  assert.match(source, /Keep true workspace coordinates/);
+  assert.match(source, /return maxX > 0 && minX < 1000 && maxY > 0 && minY < 1200/);
   // The mockup preview uses the same measured bounds, not the old per-character estimate.
   assert.match(mockupSource, /editorTextCanvasBounds\(layer\.text\)/);
   assert.doesNotMatch(mockupSource, /layer\.text\.value\.length \* layer\.text\.fontSize \* 0\.58/);
@@ -890,6 +913,10 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /canvasLayerTransforms/);
   assert.match(source, /Move canvas artwork/);
   assert.match(source, /startCanvasArtworkMove/);
+  assert.match(source, /function toCanvasPointUnclamped\(/);
+  assert.match(source, /const point = toCanvasPointUnclamped\(event\.clientX, event\.clientY\);/);
+  assert.doesNotMatch(source, /Math\.max\(-420, Math\.min\(420/);
+  assert.doesNotMatch(source, /Math\.max\(-520, Math\.min\(520/);
 });
 
 test("Sidebar catalogs come from the MH Fashion design library and uploads honour the size limit", () => {
@@ -912,6 +939,8 @@ test("Sidebar catalogs come from the MH Fashion design library and uploads honou
   assert.match(layerPreview, /data-editor-text-content="true"/);
   assert.match(layerPreview, /data-editor-shape-path="true"/);
   assert.match(layerPreview, /data-editor-image-content="true"/);
+  assert.match(editSidebar, /const CARD_FRAME =\n\s+"[^\n]*bg-bg-surface/);
+  assert.doesNotMatch(editSidebar, /linear-gradient\(135deg,#172126,#0c1215\)/);
 });
 
 test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {

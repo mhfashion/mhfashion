@@ -40,7 +40,7 @@ const SIDEBAR_TOOLS: { label: SidebarSection; Icon: typeof LayoutTemplate }[] = 
 const CARD_BUTTON =
   "group overflow-hidden rounded-xl border border-border/70 bg-bg/80 text-left shadow-sm outline-none transition duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg hover:shadow-accent/10 focus-visible:ring-2 focus-visible:ring-accent";
 const CARD_FRAME =
-  "relative flex aspect-square items-center justify-center overflow-hidden border-b border-border/70 bg-[radial-gradient(circle_at_35%_25%,rgba(212,255,63,.16),transparent_35%),linear-gradient(135deg,#172126,#0c1215)]";
+  "relative flex aspect-square items-center justify-center overflow-hidden border-b border-border/70 bg-bg-surface";
 
 function ArtworkFrame({ children }: { children: React.ReactNode }) {
   return (
@@ -60,7 +60,6 @@ function DesignCard({ design, onAdd }: { design: DesignLibraryEntry; onAdd: () =
           <EditorLayerPreview key={layer.id} paths={layer.paths} text={layer.text} />
         ))}
       </ArtworkFrame>
-      <span className="block truncate px-2 py-1.5 text-[10px] font-semibold text-text-primary">{design.name}</span>
     </button>
   );
 }
@@ -71,8 +70,6 @@ function ElementCard({ layer, onAdd }: { layer: DesignLibraryLayer; onAdd: () =>
       <ArtworkFrame>
         <EditorLayerPreview paths={layer.paths} text={layer.text} />
       </ArtworkFrame>
-      <span className="block truncate px-2 py-1.5 text-[10px] font-semibold text-text-primary">{layer.name}</span>
-      <span className="block truncate px-2 pb-1.5 text-[9px] text-text-muted">{layer.designName}</span>
     </button>
   );
 }
@@ -206,10 +203,6 @@ function PanelContent({
                   <ArtworkFrame>
                     <EditorLayerPreview image={layer.image} />
                   </ArtworkFrame>
-                  <span className="block truncate px-2 py-1.5 text-[10px] font-semibold text-text-primary">{layer.name}</span>
-                  <span className="block px-2 pb-1.5 text-[9px] text-text-muted">
-                    {layer.image ? formatByteSize(layer.image.byteSize) : ""}
-                  </span>
                 </div>
               ))}
             </div>
@@ -284,7 +277,7 @@ export default function EditorEditSidebar({
   return (
     <>
       {railVisible && (
-        <aside aria-label="Edit sidebar rail" data-dock-side="left" className="absolute inset-y-0 left-0 z-30 flex w-12 flex-col items-center border-r border-white/10 bg-[#101518]/90 py-2 text-text-primary shadow-2xl backdrop-blur-xl">
+        <aside aria-label="Edit sidebar rail" data-dock-side="left" className="absolute inset-y-0 left-0 z-30 flex w-12 flex-col items-center border-r border-border bg-bg-surface/95 py-2 text-text-primary shadow-2xl backdrop-blur-xl">
           <div className="flex flex-col gap-1">
             {SIDEBAR_TOOLS.map(({ label, Icon }) => (
               <button
@@ -294,7 +287,7 @@ export default function EditorEditSidebar({
                 title={label}
                 aria-pressed={hasPanel && activeSection === label}
                 onClick={() => chooseSection(label)}
-                className={"flex h-10 w-10 items-center justify-center rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 " + (hasPanel && activeSection === label ? "bg-accent text-accent-foreground shadow-[0_0_18px_rgba(212,255,63,.24)]" : "text-text-secondary hover:bg-white/[0.08] hover:text-text-primary")}
+                className={"flex h-10 w-10 items-center justify-center rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 " + (hasPanel && activeSection === label ? "bg-accent text-accent-foreground shadow-[0_0_18px_rgba(212,255,63,.24)]" : "text-text-secondary hover:bg-bg hover:text-text-primary")}
               >
                 <Icon size={17} aria-hidden="true" />
               </button>
@@ -307,10 +300,10 @@ export default function EditorEditSidebar({
           id="editor-edit-sidebar"
           aria-label={activeSection + " editor sidebar"}
           data-dock-side="left"
-          className="absolute inset-y-0 left-12 z-30 flex min-h-0 flex-col overflow-hidden border-r border-white/10 bg-bg-surface/95 text-text-primary shadow-2xl backdrop-blur-xl"
+          className="absolute inset-y-0 left-12 z-30 flex min-h-0 flex-col overflow-hidden border-r border-border bg-bg-surface/95 text-text-primary shadow-2xl backdrop-blur-xl"
           style={{ width: PANEL_WIDTH }}
         >
-          <div aria-label="Edit sidebar title" className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#1d2429] via-[#252f35] to-[#303b41] px-3 text-white [@media(pointer:coarse)]:h-12">
+          <div aria-label="Edit sidebar title" className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-bg px-3 text-text-primary [@media(pointer:coarse)]:h-12">
             <span role="heading" aria-level={2} className="text-[12px] font-semibold tracking-tight">{activeSection}</span>
             <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">Create</span>
           </div>
@@ -335,6 +328,7 @@ export default function EditorEditSidebar({
           else showRail();
         }}
         className="absolute top-2 z-40 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+        title={hasPanel ? "Collapse Edit sidebar" : railVisible ? "Hide Edit sidebar" : "Expand Edit sidebar"}
         style={{ left: hasPanel ? "calc(3rem + " + PANEL_WIDTH + ")" : railVisible ? "3rem" : 0 }}
       >
         {hasPanel ? <ChevronLeft size={17} aria-hidden="true" /> : <ChevronRight size={17} aria-hidden="true" />}

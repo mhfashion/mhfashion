@@ -188,6 +188,9 @@ type ActiveGradientDrag = { pointerId: number; layerId: string | null; start: Po
 
 function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   const textBounds = layer.text ? editorTextCanvasBounds(layer.text) : null;
+  // A text-only layer should hug its measured glyph block. The safety inset used
+  // by artwork/shape layers makes text transforms visibly larger than the copy.
+  if (layer.kind === "text" && textBounds) return textBounds;
   // A gradient layer fills the whole artwork, so its box is the full canvas.
   if (layer.gradient) return { x: 0, y: 0, width: 1000, height: 1200 };
   const points = [
@@ -202,11 +205,12 @@ function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   if (!points.length) return null;
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
-  // The box hugs the layer wherever it is, including past the print area, so the outline
-  // stays on the artwork while it is parked off-canvas.
-  // `editorTextCanvasBounds` already stops exactly on the glyph ink, so a pure text layer
-  // gets no extra halo; adding one there is what made the text Free Transform box look too
-  // big. Strokes, shapes and images still need a small grab margin around their edge.
+  // Keep true workspace coordinates. Clamping these to the artboard would make
+  // a layer that is completely outside look like a tiny edge intersection and
+  // would incorrectly leak it into the mockup. The box also hugs the layer wherever
+  // it is, including past the print area, so the outline stays on the artwork.
+  // `editorTextCanvasBounds` already stops exactly on the glyph ink, so a layer made
+  // only of text gets no extra halo; strokes, shapes and images need a grab margin.
   const textOnly = textBounds !== null && layer.strokes.length === 0 && layer.image === null && (layer.shape?.paths?.length ?? 0) === 0;
   const halo = textOnly ? 0 : 18;
   const minX = Math.min(...xs) - halo;
@@ -214,6 +218,38 @@ function layerCanvasBounds(layer: EditorArtworkLayer): CanvasBounds | null {
   const maxX = Math.max(...xs) + halo;
   const maxY = Math.max(...ys) + halo;
   return { x: minX, y: minY, width: Math.max(24, maxX - minX), height: Math.max(24, maxY - minY) };
+}
+
+function layerIntersectsPrintArtboard(
+  layer: EditorArtworkLayer,
+  scales: Record<string, Point>,
+  offsets: Record<string, Point>,
+  origins: Record<string, Point>,
+  rotations: Record<string, number>,
+) {
+  const bounds = layerCanvasBounds(layer);
+  if (!bounds) return false;
+  const scale = scales[layer.id] ?? { x: 1, y: 1 };
+  const offset = offsets[layer.id] ?? { x: 0, y: 0 };
+  const pivot = origins[layer.id] ?? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+  const rotation = rotations[layer.id] ?? 0;
+  const corners = [
+    { x: bounds.x, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    { x: bounds.x, y: bounds.y + bounds.height },
+  ].map((point) => {
+    const scaled = {
+      x: pivot.x + (point.x - pivot.x) * scale.x + offset.x,
+      y: pivot.y + (point.y - pivot.y) * scale.y + offset.y,
+    };
+    return rotateTransformPoint(scaled, { x: pivot.x + offset.x, y: pivot.y + offset.y }, rotation);
+  });
+  const minX = Math.min(...corners.map((point) => point.x));
+  const maxX = Math.max(...corners.map((point) => point.x));
+  const minY = Math.min(...corners.map((point) => point.y));
+  const maxY = Math.max(...corners.map((point) => point.y));
+  return maxX > 0 && minX < 1000 && maxY > 0 && minY < 1200;
 }
 
 function unionCanvasBounds(bounds: CanvasBounds[]): CanvasBounds | null {
@@ -553,6 +589,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     const bounds = layerCanvasBounds(layer);
     return bounds ? [[layer.id, { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }]] : [];
   })), [layers]);
+  // The workspace can show layers outside the print artboard, but mockups only
+  // receive layers that still intersect the artboard. This keeps off-artboard
+  // workspace items editable without letting them leak into product previews.
+  const mockupLayers = useMemo(
+    () => layers.filter((layer) => layerIntersectsPrintArtboard(layer, canvasLayerScales, canvasLayerTransforms, canvasLayerOrigins, canvasLayerRotations)),
+    [canvasLayerOrigins, canvasLayerRotations, canvasLayerScales, canvasLayerTransforms, layers],
+  );
   // Measures any set of layers in artwork space, including the move/scale/rotate applied to
   // each one. Used for the transform box and for hit-testing a click on the artwork.
   const boundsForLayerIds = useCallback((ids: string[]): CanvasBounds | null => {
@@ -1216,7 +1259,12 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     });
     if (movableIds.length === 0) return;
     const start = toCanvasPointUnclamped(event.clientX, event.clientY);
-    (event.currentTarget as Element).setPointerCapture(event.pointerId);
+    // Capture on the SVG root so a press that starts on the selection box still tracks moves
+    // after the pointer leaves the box.
+    const captureTarget = event.currentTarget instanceof SVGElement
+      ? event.currentTarget.ownerSVGElement ?? event.currentTarget
+      : event.currentTarget;
+    captureTarget.setPointerCapture(event.pointerId);
     const origin = Object.fromEntries(movableIds.map((id) => [id, canvasLayerTransforms[id] ?? { x: 0, y: 0 }]));
     canvasArtworkDragRef.current = { pointerId: event.pointerId, start, origin, clamp: canvasDragClamp(boundsForLayerIds(ids)) };
   }
@@ -2378,7 +2426,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
           data-pan-mode={(touchPanEnabled || activeTool === "hand") ? "hand" : "scroll"}
           data-active-tool={activeTool}
           style={{ cursor: isPanning ? "grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "grab" : activeToolCursorStyle }}
-          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-hidden sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : activeToolCursor}`}
+          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-visible sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : activeToolCursor}`}
         >
           <div
             ref={workspaceRef}
@@ -2753,7 +2801,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   )}
                   <MockupArtwork
                     side={side}
-                    layers={layers}
+                    layers={mockupLayers}
                     layerOffsets={canvasLayerTransforms}
                     layerScales={canvasLayerScales}
                     layerOrigins={canvasLayerOrigins}
