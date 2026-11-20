@@ -36,6 +36,7 @@ import {
   duplicateEditorLayer,
   editorGradientFromToolSettings,
   editorTextCanvasBounds,
+  editorTextLines,
   editorTextMetrics,
   EDITOR_TEXT_FONT_FAMILY,
   groupEditorLayers,
@@ -103,10 +104,17 @@ const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
 const CANVAS_LAYER_TRAVEL_LIMIT = 2400;
 const DEFAULT_TEXT_FONT_SIZE = 110;
 const TEXT_EDIT_BOX_WIDTH = 900;
+// New text wraps at the print area width so a long line flows downward instead of
+// running past the canvas edge. Typed lines stay inside the artwork they print on.
+const DEFAULT_TEXT_WRAP_WIDTH = 880;
 
 // Tools that paint onto a layer. A photo layer is edited only through the Photo
 // Adjustments panel, so these are disabled while a photo layer is selected.
 const DRAWING_TOOLS: EditorTool[] = ["brush", "pencil", "pen", "shape", "gradient", "eraser"];
+// Every tool that puts marks on the artwork, including text. These get a drawing surface that
+// reaches past the print area, so a stroke or a text box can be placed outside the canvas
+// instead of stopping dead at its border.
+const CANVAS_OUTSIDE_TOOLS: EditorTool[] = [...DRAWING_TOOLS, "text"];
 
 // Inline SVG paths for the double-headed arrows shown while hovering a resize handle.
 // Each path is centred on the handle and points along that handle's own axis: corners use
@@ -321,6 +329,17 @@ function ArtworkOverlay({
   // handle could not be grabbed. Keep a 10px screen gap between the two circles.
   const rotateOffset = Math.max(58, (handleHitRadiusPx + rotateHitRadiusPx + 10) / unitScale);
   const editingTextLayerId = editingTextLayer?.text ? editingTextLayer.id : null;
+  // The artwork layers apply their own move/scale/rotate transform, so anything drawn beside
+  // them (the inline text editor) has to apply the identical transform to line up.
+  const editingTextLayerTransform = editingTextLayerId && editingTextLayer
+    ? (() => {
+        const offset = layerOffsets[editingTextLayerId] ?? { x: 0, y: 0 };
+        const scale = layerScales[editingTextLayerId] ?? { x: 1, y: 1 };
+        const pivot = layerOrigins[editingTextLayerId] ?? { x: 500, y: 600 };
+        const rotation = layerRotations[editingTextLayerId] ?? 0;
+        return `translate(${offset.x} ${offset.y}) translate(${pivot.x} ${pivot.y}) rotate(${rotation}) scale(${scale.x} ${scale.y}) translate(${-pivot.x} ${-pivot.y})`;
+      })()
+    : undefined;
   const transformRotation = selectedLayerIds.length === 1 ? layerRotations[selectedLayerIds[0]] ?? 0 : 0;
   const displayRotation = Math.round(((transformRotation % 360) + 360) % 360);
   const resizeHandles = [
@@ -350,69 +369,83 @@ function ArtworkOverlay({
           // Typing goes straight onto the print canvas. The textarea's line box is aligned
           // with the drawn SVG text so the caret sits exactly where the glyphs land, and its
           // height grows with every line so the caret never scrolls out of view.
-          const lines = editingText.value.split("\n").length;
+          //
+          // The count must be the *wrapped* line count, not the number of `\n`s: a long line
+          // soft-wraps inside the textarea, and sizing the box from the newline count left the
+          // wrapped lines clipped below its edge, which looked like typing had stopped.
+          const paintedLines = editorTextLines(editingText);
+          const lines = paintedLines.length;
           const lineHeight = editingText.fontSize * (editingText.lineHeight ?? 1.2);
+          // The textarea must wrap at the same width the artwork does, or the editor breaks
+          // lines in different places from the glyphs and the caret drifts off the ink.
+          const editorBoxWidth = editingText.wrapWidth ?? TEXT_EDIT_BOX_WIDTH;
           const { ascent, descent } = editorTextMetrics(editingText);
           const halfLeading = (lineHeight - (ascent + descent)) / 2;
           const editorTop = editingText.y - ascent - halfLeading;
           // Matches the toolbar's `h-10` (40px) so the textarea's first baseline lands
           // exactly on the drawn text's baseline.
           const TOOLBAR_HEIGHT = 40;
+          // The editor is a sibling of the artwork layers, so it must carry the layer's own
+          // move/scale/rotate transform. Without it, re-opening a text layer that had been
+          // moved or resized put the caret box back at the untransformed anchor, far from the
+          // glyphs it was editing.
           return (
-            <foreignObject
-              x={editingText.x - TEXT_EDIT_BOX_WIDTH / 2}
-              y={editorTop - TOOLBAR_HEIGHT}
-              width={TEXT_EDIT_BOX_WIDTH}
-              height={TOOLBAR_HEIGHT + lines * lineHeight + 12}
-              pointerEvents="auto"
-              data-editor-text-editor="true"
-            >
-              <div className="flex h-full flex-col items-center">
-                <div className="flex h-10 items-center gap-2 rounded-md bg-white/95 px-2 shadow-md">
-                  <label className="text-[11px] text-[#202124]">Font size
-                    <input type="number" min="24" max="260" value={editingText.fontSize} aria-label="Text font size" onChange={(event) => onEditingTextStyle?.({ fontSize: Number(event.target.value) })} onPointerDown={(event) => event.stopPropagation()} className="ml-1 w-14 rounded border border-[#b8b8b8] px-1 py-1 text-[11px]" />
-                  </label>
-                  <label className="flex items-center gap-1 text-[11px] text-[#202124]">Color
-                    <input type="color" value={editingText.color} aria-label="Text color" onChange={(event) => onEditingTextStyle?.({ color: event.target.value })} onPointerDown={(event) => event.stopPropagation()} className="h-6 w-7" />
-                  </label>
+            <g transform={editingTextLayerTransform}>
+              <foreignObject
+                x={editingText.x - editorBoxWidth / 2}
+                y={editorTop - TOOLBAR_HEIGHT}
+                width={editorBoxWidth}
+                height={TOOLBAR_HEIGHT + lines * lineHeight + 12}
+                pointerEvents="auto"
+                data-editor-text-editor="true"
+              >
+                <div className="flex h-full flex-col items-center">
+                  <div className="flex h-10 items-center gap-2 rounded-md bg-white/95 px-2 shadow-md">
+                    <label className="text-[11px] text-[#202124]">Font size
+                      <input type="number" min="24" max="260" value={editingText.fontSize} aria-label="Text font size" onChange={(event) => onEditingTextStyle?.({ fontSize: Number(event.target.value) })} onPointerDown={(event) => event.stopPropagation()} className="ml-1 w-14 rounded border border-[#b8b8b8] px-1 py-1 text-[11px]" />
+                    </label>
+                    <label className="flex items-center gap-1 text-[11px] text-[#202124]">Color
+                      <input type="color" value={editingText.color} aria-label="Text color" onChange={(event) => onEditingTextStyle?.({ color: event.target.value })} onPointerDown={(event) => event.stopPropagation()} className="h-6 w-7" />
+                    </label>
+                  </div>
+                  <textarea
+                    ref={textAreaRef}
+                    autoFocus
+                    value={editingText.value}
+                    aria-label="Type text on the canvas"
+                    placeholder="Type your text"
+                    onChange={(event) => onEditingTextChange?.(event.target.value)}
+                    onBlur={(event) => {
+                      // Tapping the inline Font size / Color controls moves focus inside this
+                      // editor, so keep it open; only a focus move outside commits.
+                      const next = event.relatedTarget;
+                      if (next instanceof Node && event.currentTarget.closest("[data-editor-text-editor]")?.contains(next)) return;
+                      onEditingTextCommit?.();
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") event.currentTarget.blur();
+                    }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    className="w-full resize-none border-0 bg-transparent p-0 outline-none placeholder:text-[#9aa0a6]"
+                    style={{
+                      height: `${lines * lineHeight + 4}px`,
+                      lineHeight: `${lineHeight}px`,
+                      fontSize: `${editingText.fontSize}px`,
+                      color: editingText.color,
+                      caretColor: editingText.color,
+                      fontFamily: editingText.fontFamily ?? EDITOR_TEXT_FONT_FAMILY,
+                      fontWeight: editingText.fontWeight ?? 700,
+                      fontStyle: editingText.fontStyle ?? "normal",
+                      textAlign: editingText.textAlign ?? "center",
+                      textDecoration: editingText.underline ? "underline" : "none",
+                      letterSpacing: `${editingText.letterSpacing ?? 0}px`,
+                      outline: "2px dashed rgba(76, 157, 22, 0.7)",
+                      outlineOffset: "6px",
+                    }}
+                  />
                 </div>
-                <textarea
-                  ref={textAreaRef}
-                  autoFocus
-                  value={editingText.value}
-                  aria-label="Type text on the canvas"
-                  placeholder="Type your text"
-                  onChange={(event) => onEditingTextChange?.(event.target.value)}
-                  onBlur={(event) => {
-                    // Tapping the inline Font size / Color controls moves focus inside this
-                    // editor, so keep it open; only a focus move outside commits.
-                    const next = event.relatedTarget;
-                    if (next instanceof Node && event.currentTarget.closest("[data-editor-text-editor]")?.contains(next)) return;
-                    onEditingTextCommit?.();
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") event.currentTarget.blur();
-                  }}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  className="w-full resize-none border-0 bg-transparent p-0 outline-none placeholder:text-[#9aa0a6]"
-                  style={{
-                    height: `${lines * lineHeight + 4}px`,
-                    lineHeight: `${lineHeight}px`,
-                    fontSize: `${editingText.fontSize}px`,
-                    color: editingText.color,
-                    caretColor: editingText.color,
-                    fontFamily: editingText.fontFamily ?? EDITOR_TEXT_FONT_FAMILY,
-                    fontWeight: editingText.fontWeight ?? 700,
-                    fontStyle: editingText.fontStyle ?? "normal",
-                    textAlign: editingText.textAlign ?? "center",
-                    textDecoration: editingText.underline ? "underline" : "none",
-                    letterSpacing: `${editingText.letterSpacing ?? 0}px`,
-                    outline: "2px dashed rgba(76, 157, 22, 0.7)",
-                    outlineOffset: "6px",
-                  }}
-                />
-              </div>
-            </foreignObject>
+              </foreignObject>
+            </g>
           );
         })()}
       </g>
@@ -942,13 +975,15 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     return clientX - rect.left <= edge || rect.right - clientX <= edge || clientY - rect.top <= edge || rect.bottom - clientY <= edge;
   }
 
-  // Drawing tools stay inside the print area, so their pointer mapping is clamped to it.
+  // Artwork space is anchored on the print canvas but is not limited to it: every tool may
+  // paint on the pasteboard around the canvas, so the mapping never clamps. Values outside
+  // 0..1 simply sit outside the print area.
   function toCanvasPoint(clientX: number, clientY: number): Point {
     const rect = canvasNodeRef.current?.getBoundingClientRect();
     if (!rect) return { x: 0, y: 0 };
     return {
-      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+      x: (clientX - rect.left) / rect.width,
+      y: (clientY - rect.top) / rect.height,
     };
   }
 
@@ -1323,8 +1358,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setToolNotice(`Pen path added to ${selectedLayer.name}. Pen remains active; switch to Move and double-click a path to edit points.`);
   }
 
-  function addPenAnchor(event: React.PointerEvent<HTMLCanvasElement>) {
-    if (event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+  function addPenAnchor(event: React.PointerEvent<HTMLElement>) {
+    if (event.button !== 0 || !event.isPrimary) return;
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
     const rejection = textLayerRejection(selectedLayer);
     if (rejection) {
@@ -1359,8 +1394,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     penAnchorDragRef.current = { pointerId: event.pointerId, index, point, corner: event.altKey };
   }
 
-  function startShapeDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
-    if (activeShapeDragRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+  function startShapeDrawing(event: React.PointerEvent<HTMLElement>) {
+    if (activeShapeDragRef.current || event.button !== 0 || !event.isPrimary) return;
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
     const rejection = textLayerRejection(selectedLayer);
     if (rejection) {
@@ -1387,8 +1422,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   // The Gradient tool paints a full-canvas fill. Photoshop-like: if a gradient layer is
   // selected the drag re-aims that layer's axis; otherwise it drops a new gradient layer.
   // A tap (or a tiny drag) still works, dropping the default axis through the point.
-  function startGradientDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
-    if (activeGradientDragRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+  function startGradientDrawing(event: React.PointerEvent<HTMLElement>) {
+    if (activeGradientDragRef.current || event.button !== 0 || !event.isPrimary) return;
     const selectedLayer = layers.find((layer) => layer.id === selectedLayerId);
     const rejection = textLayerRejection(selectedLayer);
     if (rejection) {
@@ -1426,7 +1461,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     return { ...drag.gradient, x1: drag.start.x, y1: drag.start.y, x2: end.x, y2: end.y };
   }
 
-  function endGradientDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
+  function endGradientDrawing(event: React.PointerEvent<HTMLElement>) {
     const drag = activeGradientDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     activeGradientDragRef.current = null;
@@ -1605,8 +1640,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     removePenNode(editingPenPathLayerId, editingPenPathIndex ?? 0, selectedPenAnchorIndex);
   }
 
-  function startArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
-    if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary || isCanvasEdgeGesture(event.clientX, event.clientY)) return;
+  function startArtworkStroke(event: React.PointerEvent<HTMLElement>) {
+    if (activeArtworkStrokeRef.current || event.button !== 0 || !event.isPrimary) return;
     if (activeTool === "move" || activeTool === "hand") return;
     const activeLayer = layers.find((layer) => layer.id === selectedLayerId);
     // Photo layers are edited through the Photo Adjustments panel only: the
@@ -1725,7 +1760,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     ));
   }
 
-  function moveArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+  function moveArtworkStroke(event: React.PointerEvent<HTMLElement>) {
     if (activeTool === "eraser") setEraserCursor(toCanvasPoint(event.clientX, event.clientY));
     const gradientDrag = activeGradientDragRef.current;
     if (gradientDrag?.pointerId === event.pointerId) {
@@ -1792,7 +1827,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     ));
   }
 
-  function endArtworkStroke(event: React.PointerEvent<HTMLCanvasElement>) {
+  function endArtworkStroke(event: React.PointerEvent<HTMLElement>) {
     if (activeGradientDragRef.current?.pointerId === event.pointerId) {
       endGradientDrawing(event);
       return;
@@ -1877,6 +1912,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     if (activeTool === "hand") return;
     if (event.target instanceof Element && event.target.closest("button, input, textarea, select")) return;
     if (node === "Print canvas" && event.target instanceof HTMLCanvasElement && !isCanvasEdgeGesture(event.clientX, event.clientY) && activeTool !== "move") return;
+    // The pasteboard belongs to the active drawing tool, so it must not also start a node drag.
+    if (node === "Print canvas" && event.target instanceof Element && event.target.closest("[data-editor-pasteboard]") && activeTool !== "move") return;
     // A blank mockup swipe scrolls on phones; its header remains the explicit drag surface.
     if (event.pointerType === "touch" && node !== "Print canvas" &&
       !(event.target instanceof Element && event.target.closest("[data-node-drag-handle]"))) return;
@@ -1960,6 +1997,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       y: position?.y ?? source?.y ?? CANVAS_ARTWORK_CENTER.y,
       fontSize: source?.fontSize ?? DEFAULT_TEXT_FONT_SIZE,
       color: source?.color ?? foregroundColor,
+      wrapWidth: DEFAULT_TEXT_WRAP_WIDTH,
     };
     setLayers((current) => [
       createEditorTextLayer(id, `Text ${label}`, content),
@@ -2265,12 +2303,6 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   data-export-format={PRINT_CANVAS_SPEC.exportFormat}
                   data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
                   aria-label="Blank print canvas"
-                  onPointerDown={startArtworkStroke}
-                  onPointerMove={moveArtworkStroke}
-                  onPointerUp={endArtworkStroke}
-                  onPointerCancel={endArtworkStroke}
-                  onPointerLeave={() => setEraserCursor(null)}
-                  onLostPointerCapture={endArtworkStroke}
                   onDoubleClick={() => activeTool === "pen" && finishPenPath(false)}
                   className={`block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)] ${activeTool === "shape" ? "cursor-crosshair" : ""}`}
                   style={{
@@ -2281,6 +2313,25 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     cursor: activeTool === "eraser" ? "none" : undefined,
                   }}
                 />
+                {/* The pasteboard: artwork space around the print area. A drawing or text tool
+                    stays live here, so a stroke or a text box can be placed outside the canvas
+                    instead of being clipped at its border. It sits under the transform controls
+                    and under the mockups (later siblings), so those still take their own input. */}
+                {CANVAS_OUTSIDE_TOOLS.includes(activeTool) && (
+                  <div
+                    aria-label="Artwork pasteboard"
+                    data-editor-pasteboard="true"
+                    onPointerDown={startArtworkStroke}
+                    onPointerMove={moveArtworkStroke}
+                    onPointerUp={endArtworkStroke}
+                    onPointerCancel={endArtworkStroke}
+                    onLostPointerCapture={endArtworkStroke}
+                    onPointerLeave={() => setEraserCursor(null)}
+                    onDoubleClick={() => activeTool === "pen" && finishPenPath(false)}
+                    className="absolute -inset-24 z-10 touch-none"
+                    style={{ cursor: activeTool === "eraser" ? "none" : activeToolCursorStyle }}
+                  />
+                )}
                 {activeTool === "eraser" && eraserCursor && (
                   <svg viewBox="0 0 1000 1200" preserveAspectRatio="none" aria-hidden="true" className="pointer-events-none absolute inset-0 z-40 h-full w-full overflow-visible">
                     <g data-editor-eraser-cursor="true">

@@ -74,3 +74,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.
 - When measuring on-screen glyph ink against the transform box, hide `[data-editor-transform-controls="true"]` first; the resize-handle squares otherwise pollute the dark-pixel bbox.
 - In CDP drag tests, check the target point is not covered by another panel (e.g. the mockup panel on the right of the canvas). Use `document.elementFromPoint` to confirm.
+
+## Text layers: downward writing, wrapping, and the ink-hugging box
+- `editorTextLines(text)` in `apps/web/src/lib/editor-layers.ts` is the single source of painted lines: it splits on `\n` and then soft-wraps each line to `text.wrapWidth`, breaking at spaces and falling back to a per-character split for a word wider than the limit. Fit is measured on `advance` (not ink `width`) so artwork line breaks match the browser's textarea wrapping.
+- Every renderer must use it: `EditorLayerPreview.tsx` and the inline editor in `KittlCanvas.tsx` both do. Do **not** reintroduce `text.value.split("\n")` — that paints a long line as one unbroken run straight off the canvas.
+- New text gets `wrapWidth: DEFAULT_TEXT_WRAP_WIDTH` (880) from `addCanvasTextLayer`. Older layers have no `wrapWidth` and stay unwrapped, so existing artwork is not reflowed.
+- The inline editor's `foreignObject` height uses the wrapped line count and its width uses `wrapWidth ?? TEXT_EDIT_BOX_WIDTH`. Sizing from the newline count clipped soft-wrapped lines below the box, which read as "typing stopped working".
+- The inline editor is wrapped in `<g transform={editingTextLayerTransform}>` because it is a sibling of the artwork layers and must carry the same move/scale/rotate.
+- `editorTextCanvasBounds` composes wrapping with effects (`editorTextPaintPadding`) and decorations (`editorTextDecoration`), so shadows/outlines stay inside the transform box.
+
+## Testing notes (headless CDP pixel checks)
+- Measure ink against the **white print canvas only**: the page around it is near-black, so any padding in the screenshot clip is read as ink and inflates the box.
+- Load a fresh page per measured layer; leftover layers from an earlier step join the measured ink.
+- The editor has no tap-empty-space-to-deselect gesture (it never did), so do not assert it.

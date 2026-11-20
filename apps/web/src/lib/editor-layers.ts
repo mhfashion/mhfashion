@@ -216,6 +216,8 @@ export type EditorTextContent = {
   underline?: boolean;
   letterSpacing?: number;
   lineHeight?: number;
+  /** Width in artwork units that long lines wrap at. Omitted means no wrapping. */
+  wrapWidth?: number;
   textTransform?: "none" | "arch" | "wave" | "circle";
   textEffect?: "none" | "shadow" | "outline";
   effectColor?: string;
@@ -342,8 +344,50 @@ export function editorTextPaintPadding(text: EditorTextContent): { left: number;
 export const EDITOR_TEXT_DEFAULT_LINE_HEIGHT = 1.2;
 export const EDITOR_TEXT_FONT_FAMILY = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
 
+/**
+ * Lines actually painted, after soft-wrapping each hard line to `wrapWidth`.
+ * Typing ran off the side of the canvas because a long line was painted as one
+ * unbroken run: the glyphs continued past the print area instead of flowing
+ * downward. Words break at spaces; a single word wider than the limit is split
+ * by character so it can never overflow either.
+ */
 export function editorTextLines(text: EditorTextContent): string[] {
-  return text.value.split("\n");
+  const limit = text.wrapWidth ?? 0;
+  const hardLines = text.value.split("\n");
+  if (!(limit > 0)) return hardLines;
+  const wrapped: string[] = [];
+  for (const hardLine of hardLines) {
+    if (!hardLine) {
+      wrapped.push("");
+      continue;
+    }
+    // Fit on the layout advance, not the ink width: the browser wraps a textarea on the
+    // advance, so matching it keeps the editor's line breaks on the same words the artwork
+    // paints. The two differ only when letter spacing adds a trailing gap.
+    const fits = (candidate: string) => editorTextLineMetrics(text, candidate).advance <= limit;
+    let current = "";
+    for (const word of hardLine.split(" ")) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (fits(candidate)) {
+        current = candidate;
+        continue;
+      }
+      if (current) wrapped.push(current);
+      // A single word longer than the limit is broken by character.
+      let piece = "";
+      for (const char of word) {
+        if (piece && !fits(piece + char)) {
+          wrapped.push(piece);
+          piece = char;
+        } else {
+          piece += char;
+        }
+      }
+      current = piece;
+    }
+    wrapped.push(current);
+  }
+  return wrapped;
 }
 
 export function editorTextLineHeight(text: EditorTextContent): number {

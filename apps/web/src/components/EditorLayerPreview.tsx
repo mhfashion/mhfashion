@@ -2,7 +2,7 @@
 
 import { useId, type SVGProps } from "react";
 import type { EditorGradient, EditorImageContent, EditorShapePath, EditorShapeStyle, EditorTextContent, EditorTextEffect } from "@/lib/editor-layers";
-import { EDITOR_TEXT_FONT_FAMILY, editorTextDecoration, editorTextEffects, editorTextPresetTransform, editorGradientConicWedges, editorGradientDiamondFacets, editorGradientGeometry, roundEditorShapePath, sortEditorGradientStops } from "@/lib/editor-layers";
+import { EDITOR_TEXT_FONT_FAMILY, editorTextDecoration, editorTextEffects, editorTextLines, editorTextPresetTransform, editorGradientConicWedges, editorGradientDiamondFacets, editorGradientGeometry, roundEditorShapePath, sortEditorGradientStops } from "@/lib/editor-layers";
 import { buildToneTable, colorMatrixValues, grainParams, photoFilterCss, splitToneBands, vignetteParams } from "@/lib/photo-adjustments";
 
 // The print canvas and every preview share one 1000 x 1200 unit artwork space.
@@ -160,7 +160,7 @@ export default function EditorLayerPreview({
         const transform = editorTextPresetTransform(text);
         const effects = editorTextEffects(text);
         const decoration = editorTextDecoration(text);
-        const lines = text.value.split("\n");
+        const lines = editorTextLines(text);
         const lineHeight = text.fontSize * (text.lineHeight ?? 1.2);
         type TextEffectProps = SVGProps<SVGTextElement> & { "data-editor-text-effect"?: string; "data-editor-text-content"?: string };
         const drawText = (key: string, props: TextEffectProps = {}) => (

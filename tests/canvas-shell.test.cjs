@@ -294,7 +294,7 @@ test("shape adjustments expose Photoshop/Kittl fill, stroke, radius, and effects
 
 test("the Gradient tool draws, re-aims, and edits gradient layers", () => {
   // The drag handler creates or re-aims a gradient layer and holds the tool preset.
-  assert.match(source, /function startGradientDrawing\(event: React\.PointerEvent<HTMLCanvasElement>\)/);
+  assert.match(source, /function startGradientDrawing\(event: React\.PointerEvent<HTMLElement>\)/);
   assert.match(source, /createEditorGradientLayer\(id, `Gradient \$\{label\}`, gradient\)/);
   assert.match(source, /setEditorLayerGradient\(current, drag\.layerId!, gradient\)/);
   assert.match(source, /editorGradientFromToolSettings\(toolOptions\.gradient\)/);
@@ -360,8 +360,11 @@ test("a layer can be dragged outside the print canvas and back inside", () => {
   assert.match(source, /function resizeCanvasLayer[\s\S]*?toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
   assert.match(source, /function startCanvasLayerRotate[\s\S]*?toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
   assert.match(source, /function rotateCanvasLayer[\s\S]*?toCanvasPointUnclamped\(event\.clientX, event\.clientY\)/);
-  // The clamped mapping is still what the drawing tools use, so strokes stay on the canvas.
+  // The drawing tools map the pointer unclamped too, so a stroke can be painted on the
+  // pasteboard outside the print area and is not cut off at its border.
+  assert.match(source, /function toCanvasPoint\([\s\S]*?x: \(clientX - rect\.left\) \/ rect\.width,[\s\S]*?y: \(clientY - rect\.top\) \/ rect\.height,/);
   assert.match(source, /function startArtworkStroke[\s\S]*?toCanvasPoint\(event\.clientX, event\.clientY\)/);
+  assert.doesNotMatch(source, /function toCanvasPoint\([\s\S]{0,400}?Math\.min\(1,/);
   // A generous travel limit keeps a parked layer reachable instead of flinging it out of sight.
   assert.match(source, /const CANVAS_LAYER_TRAVEL_LIMIT = \d+;/);
   assert.match(source, /const limit = CANVAS_LAYER_TRAVEL_LIMIT;[\s\S]*?Math\.max\(-limit, Math\.min\(limit, origin\.x \+ delta\.x\)\)[\s\S]*?Math\.max\(-limit, Math\.min\(limit, origin\.y \+ delta\.y\)\)/);
@@ -370,6 +373,28 @@ test("a layer can be dragged outside the print canvas and back inside", () => {
   // The Free Transform box hugs the layer wherever it is, not clamped to the print area.
   // A text layer's box stops on the glyph ink; only strokes/shapes/images get a grab halo.
   assert.match(source, /const halo = textOnly \? 0 : 18;/);
+});
+
+test("every tool paints outside the print canvas, not just inside it", () => {
+  // The drawing tools used to clamp their pointer to the print area, so a stroke started
+  // outside the canvas was either ignored (edge-gesture guard) or snapped onto the border.
+  // Artwork space now extends onto the pasteboard around the canvas.
+  assert.match(source, /const CANVAS_OUTSIDE_TOOLS: EditorTool\[\] = \[\.\.\.DRAWING_TOOLS, "text"\];/);
+  assert.doesNotMatch(source, /isCanvasEdgeGesture\(event\.clientX, event\.clientY\)\) return;/);
+  // A transparent pasteboard sits behind the canvas and carries the drawing handlers, so a
+  // stroke or text click that starts outside the print area still reaches the tool.
+  assert.match(source, /data-editor-pasteboard="true"/);
+  assert.match(source, /aria-label="Artwork pasteboard"/);
+  assert.match(source, /CANVAS_OUTSIDE_TOOLS\.includes\(activeTool\)/);
+  assert.match(source, /onPointerDown=\{startArtworkStroke\}\s*onPointerMove=\{moveArtworkStroke\}/);
+  // It must not double as the workspace node drag handle while a drawing tool is active.
+  assert.match(source, /event\.target\.closest\("\[data-editor-pasteboard\]"\) && activeTool !== "move"/);
+  // Layer masks and erasure masks are clipped to their own region, so a canvas-sized mask
+  // stopped erasing anything painted outside the print area.
+  assert.match(artworkLayers, /const ARTWORK_MASK_ORIGIN = -\d+;/);
+  assert.match(artworkLayers, /const ARTWORK_MASK_SIZE = \d+;/);
+  assert.match(artworkLayers, /<mask[\s\S]*?x=\{ARTWORK_MASK_ORIGIN\}[\s\S]*?width=\{ARTWORK_MASK_SIZE\}/);
+  assert.doesNotMatch(artworkLayers, /<rect x="0" y="0" width="1000" height="1200" fill="white" \/>/);
 });
 
 test("a parked layer stays reachable instead of hiding under a panel", () => {
@@ -737,6 +762,11 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /setEditingTextLayerId\(id\)/);
   assert.match(source, /data-editor-text-editor="true"/);
   assert.match(source, /aria-label="Type text on the canvas"/);
+  // The editor is a sibling of the artwork layers, so it must repeat the layer's own
+  // move/scale/rotate transform. Otherwise re-opening a moved or resized text layer put the
+  // caret box back at the untransformed anchor, nowhere near the glyphs it edits.
+  assert.match(source, /const editingTextLayerTransform = editingTextLayerId && editingTextLayer/);
+  assert.match(source, /<g transform=\{editingTextLayerTransform\}>\s*<foreignObject/);
   assert.match(source, /onEditingTextChange\?\.\(event\.target\.value\)/);
   assert.match(source, /setEditorLayerText\(current, editingTextLayerId, value\)/);
   assert.match(source, /editingTextLayer=\{editingTextLayer\}/);
@@ -763,12 +793,20 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.doesNotMatch(source, /const caret = editor\.getBoundingClientRect\(\);\n\s*const bounds = viewport\.getBoundingClientRect\(\);/);
   // The textarea line box is aligned with the drawn SVG text so the caret sits on the glyphs.
   assert.match(source, /const \{ ascent, descent \} = editorTextMetrics\(editingText\);/);
+  // The inline editor sizes itself from the painted (wrapped) line count and wraps at the
+  // same width the artwork does, so soft-wrapped lines are never clipped out of view and the
+  // caret cannot drift onto a different word than the one the glyphs break at.
+  assert.match(source, /const paintedLines = editorTextLines\(editingText\);/);
+  assert.match(source, /const lines = paintedLines\.length;/);
+  assert.match(source, /const editorBoxWidth = editingText\.wrapWidth \?\? TEXT_EDIT_BOX_WIDTH;/);
   assert.match(source, /const editorTop = editingText\.y - ascent - halfLeading;/);
   // The Free Transform box is hidden while the Text tool is active, so its handles never
   // cover the glyphs and block re-entering the inline editor.
   assert.match(source, /transformControlsHidden=\{activeTool === "text"\}/);
   assert.match(source, /!drawingStroke && !transformControlsHidden && \(/);
-  assert.match(layerPreview, /text\.value\.split\("\\n"\)/);
+  // Painted lines come from `editorTextLines`, which also applies soft wrapping, so a long
+  // line flows downward inside the print area instead of running off the side of the canvas.
+  assert.match(layerPreview, /const lines = editorTextLines\(text\);/);
   assert.match(layerPreview, /<tspan key=\{index\} x=\{text\.x\} dy=\{index === 0 \? 0 : lineHeight\}>/);
   // A Text layer stays text-only: drawing and shapes are refused, not appended.
   assert.match(source, /function textLayerRejection\(layer: EditorArtworkLayer \| undefined\)/);

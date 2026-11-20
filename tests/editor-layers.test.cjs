@@ -65,6 +65,7 @@ const {
   updateEditorPenPath,
   updateLayerLastStroke,
   editorTextCanvasBounds,
+  editorTextLines,
   editorTextMetrics,
   resetEditorTextMeasurementCache,
   editorTextLineMetrics,
@@ -675,6 +676,57 @@ test("text bounds hug the glyphs, respect alignment, and grow with extra lines",
   const metrics = editorTextMetrics({ ...single, value: "one\ntwo\nthree" });
   assert.equal(metrics.lines.length, 3);
   assert.equal(metrics.width, Math.max(1, ...metrics.widths));
+});
+
+test("effects and decorations still expand the box around wrapped text", () => {
+  const base = { value: "one two three four five six", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center", wrapWidth: 900 };
+  const plain = editorTextCanvasBounds(base);
+
+  const shadow = editorTextCanvasBounds({ ...base, effects: [{ id: "s1", kind: "shadow", color: "#000000", offsetX: 20, offsetY: 20, blur: 0 }] });
+  assert.ok(shadow.width >= plain.width && shadow.height >= plain.height, "a shadow never shrinks the box");
+  assert.ok(shadow.x + shadow.width > plain.x + plain.width + 1, "an offset shadow widens the box past the ink");
+
+  const outline = editorTextCanvasBounds({ ...base, effects: [{ id: "o1", kind: "outline", color: "#000000", width: 8 }] });
+  assert.ok(outline.x < plain.x && outline.width > plain.width, "an outline pads every side of the wrapped ink");
+
+  const decoration = editorTextCanvasBounds({ ...base, textDecoration: "line", decorationWidth: 6 });
+  assert.ok(decoration.height >= plain.height, "a decoration never shrinks the box");
+
+  // Wrapping must not lose the effect padding: both compose.
+  const unwrappedShadow = editorTextCanvasBounds({ ...base, wrapWidth: undefined, effects: [{ id: "s1", kind: "shadow", color: "#000000", offsetX: 20, offsetY: 20, blur: 0 }] });
+  assert.ok(shadow.width < unwrappedShadow.width, "the wrapped shadow box is narrower than the unwrapped one");
+});
+
+test("long text soft-wraps at the layer wrap width so it flows downward", () => {
+  const base = { value: "one two three four five six", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center" };
+  assert.deepEqual(editorTextLines(base), ["one two three four five six"], "no wrap width paints one long line");
+
+  // Wrap at roughly three words: the line breaks where the measured width would overflow.
+  const wrapped = editorTextLines({ ...base, wrapWidth: 900 });
+  assert.ok(wrapped.length > 1, "a long line breaks into several painted lines");
+  assert.equal(wrapped.join(" "), base.value, "wrapping only inserts breaks, it never loses text");
+  assert.ok(wrapped.every((line) => editorTextLineWidth({ ...base, wrapWidth: 900 }, line) <= 900), "no painted line exceeds the wrap width");
+
+  // A single word wider than the limit is split by character, so it cannot overflow either.
+  const longWord = { ...base, value: "Supercalifragilisticexpialidocious", wrapWidth: 300 };
+  const pieces = editorTextLines(longWord);
+  assert.ok(pieces.length > 1, "an oversized word is broken up");
+  assert.equal(pieces.join(""), longWord.value, "the character split keeps every letter");
+  assert.ok(pieces.every((line) => editorTextLineWidth(longWord, line) <= 300), "no piece exceeds the limit");
+
+  // Hard newlines are preserved, and each is wrapped independently.
+  const mixed = editorTextLines({ ...base, value: "short\none two three four five six", wrapWidth: 900 });
+  assert.equal(mixed[0], "short", "an explicit newline still starts a new line");
+  assert.ok(mixed.length > 2, "the long second line wraps as well");
+
+  // Blank lines survive so paragraph spacing does not collapse.
+  assert.deepEqual(editorTextLines({ ...base, value: "a\n\nb", wrapWidth: 900 }), ["a", "", "b"]);
+
+  // The box must grow downward with the wrapped lines, not the newline count.
+  const unwrappedBox = editorTextCanvasBounds({ ...base, value: "one two three four five six" });
+  const wrappedBox = editorTextCanvasBounds({ ...base, value: "one two three four five six", wrapWidth: 900 });
+  assert.ok(wrappedBox.height > unwrappedBox.height, "wrapping makes the painted text taller");
+  assert.ok(wrappedBox.width < unwrappedBox.width, "and narrower than the single long line");
 });
 
 test("text preset transforms pivot on the text anchor and the box follows the preset", () => {

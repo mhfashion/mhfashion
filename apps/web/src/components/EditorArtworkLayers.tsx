@@ -5,6 +5,12 @@ import type { ArtworkStroke, EditorArtworkLayer, EditorErasure, MaskBrushMode } 
 import EditorLayerPreview from "@/components/EditorLayerPreview";
 import { EDITOR_TOOL_OPTIONS_DEFAULT, brushDabBlurRadius, brushDabPoints, eraserDabBlurRadius, eraserDabPoints, resolveEditorShapeStyle } from "@/lib/editor-layers";
 
+// A mask's own region clips what it can paint into, and artwork may now sit on the pasteboard
+// around the 1000x1200 print area. A canvas-sized mask silently stopped erasing (and masking)
+// anything painted outside the print area, so the mask covers the artwork space plus a margin.
+const ARTWORK_MASK_ORIGIN = -1200;
+const ARTWORK_MASK_SIZE = 3400;
+
 function pathFor(stroke: ArtworkStroke) {
   return stroke.points
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x * 1000} ${point.y * 1200}`)
@@ -237,14 +243,14 @@ export default function EditorArtworkLayers({
               <defs>
                 <mask
                   id={maskId}
-                  x="0"
-                  y="0"
-                  width="1000"
-                  height="1200"
+                  x={ARTWORK_MASK_ORIGIN}
+                  y={ARTWORK_MASK_ORIGIN}
+                  width={ARTWORK_MASK_SIZE}
+                  height={ARTWORK_MASK_SIZE}
                   maskUnits="userSpaceOnUse"
                   maskContentUnits="userSpaceOnUse"
                 >
-                  <rect x="0" y="0" width="1000" height="1200" fill="white" />
+                  <rect x={ARTWORK_MASK_ORIGIN} y={ARTWORK_MASK_ORIGIN} width={ARTWORK_MASK_SIZE} height={ARTWORK_MASK_SIZE} fill="white" />
                   {layer.mask.map((stroke, index) => (
                     <StrokeShape
                       key={index}
@@ -260,14 +266,14 @@ export default function EditorArtworkLayers({
               <defs>
                 <mask
                   id={erasureMaskId}
-                  x="0"
-                  y="0"
-                  width="1000"
-                  height="1200"
+                  x={ARTWORK_MASK_ORIGIN}
+                  y={ARTWORK_MASK_ORIGIN}
+                  width={ARTWORK_MASK_SIZE}
+                  height={ARTWORK_MASK_SIZE}
                   maskUnits="userSpaceOnUse"
                   maskContentUnits="userSpaceOnUse"
                 >
-                  <rect x="0" y="0" width="1000" height="1200" fill="white" />
+                  <rect x={ARTWORK_MASK_ORIGIN} y={ARTWORK_MASK_ORIGIN} width={ARTWORK_MASK_SIZE} height={ARTWORK_MASK_SIZE} fill="white" />
                   {layer.erasures.map((erasure, index) => (
                     <ErasureShape key={index} erasure={erasure} blurId={`${erasureBlurId}-${index}`} />
                   ))}
