@@ -57,6 +57,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Do not replace them with a single icon (`Languages`, `Coins`): an icon that looks the same in every state reads as decoration, and the user cannot tell which language or currency is selected. That regression shipped once and had to be reverted.
 - The currency pill previously read a static `$/Ks` with a chevron, which never changed either — it now renders `Ks` and `$` separately and highlights the active one.
 
+## Pushing from this workspace (important)
+- The `GITHUB_TOKEN` and the git credential helper token are the **same GitHub App
+  installation token** (`x-oauth-client-id: Iv23lizrrwLGm04hszl7`), and it has **read-only
+  Contents**. `git push` fails with `403 ... denied to mhfashion`, and the REST write
+  endpoints (`POST /git/refs`) also return `403 Resource not accessible by integration`.
+- `git fetch` and the read APIs work fine, so local branches can be kept current with
+  `origin/main`, but a push needs a token with `Contents: write` (or a human pushing).
+
 ## Editor Header Bar 2 (`apps/web/src/components/EditorHeaderBar2.tsx`)
 - Shared geometry constants keep the Product / GSM / Color / Size / Save / Buy boxes uniform: `FIELD_BOX`, `TRIGGER_BOX`, `ACTION_BOX`, `MENU_BOX`, `MENU_OPTION`, `COLOR_SWATCH`.
 - `BoxDropdown` renders its panel through `createPortal` (so the scrollable bar cannot clip it) and sizes the panel to the trigger box width, clamped to the viewport.
