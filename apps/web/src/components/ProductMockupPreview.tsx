@@ -140,7 +140,7 @@ export default function ProductMockupPreview({
 }: Props) {
   const { color, fit, sleeve } = selection;
   const candidates = useMemo(
-    () => mockupCandidates(slug, { color, fit, sleeve }, { fallback: imageUrl ?? null }),
+    () => mockupCandidates(slug, { color, fit, sleeve }, { set: "product", fallback: imageUrl ?? null }),
     [slug, color, fit, sleeve, imageUrl],
   );
   const { src, advance, imgRef } = useFallbackImage(candidates);
@@ -175,7 +175,7 @@ export default function ProductMockupPreview({
   const thumbs = colours.map((colour) => ({
     name: colour.name,
     className: colour.className,
-    candidates: mockupCandidates(slug, { color: colour.name, fit, sleeve }, { includeDefault: false }),
+    candidates: mockupCandidates(slug, { color: colour.name, fit, sleeve }, { set: "product", includeDefault: false }),
   }));
   const activeColour = colours.find((colour) => colour.name === color) ?? null;
 

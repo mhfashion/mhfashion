@@ -1,6 +1,11 @@
 // Product mockups live in Cloudflare R2 once the bucket is live. The public bucket origin
-// goes in NEXT_PUBLIC_R2_PUBLIC_URL and each object sits at
-// `mockups/<product-slug>/<look>.<ext>`.
+// goes in NEXT_PUBLIC_R2_PUBLIC_URL.
+//
+// There are two independent mockup sets, because the two places show the garment differently:
+//   mockups/product/<product-slug>/<look>.<ext>  — catalogue photos (styled, 4:5 portrait)
+//   mockups/editor/<product-slug>/<look>.<ext>   — editor panel photos (flat, 1:1 square)
+// The flat `mockups/<product-slug>/<look>.<ext>` layout is still tried after the product set so
+// photos uploaded before the split keep working.
 //
 // A look is the colour plus whatever changes the silhouette: fit and sleeve. Size is left
 // out on purpose — the photo of a black oversized tee is the same for M and XL — so the
@@ -9,6 +14,15 @@
 export const R2_MOCKUP_BASE = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
 
 export const MOCKUP_EXTENSIONS = ["webp", "png", "jpg"] as const;
+
+/** Where a mockup is shown: the catalogue or the editor panel. */
+export type MockupSet = "editor" | "product";
+
+export const MOCKUP_SETS: readonly MockupSet[] = ["product", "editor"] as const;
+
+export function mockupSetFolder(set: MockupSet): string {
+  return `mockups/${set}`;
+}
 
 // Where the design sits on the mockup, as a fraction of the image box.
 export const PRODUCT_PRINT_AREA = { left: 0.3, top: 0.22, width: 0.4, height: 0.46 } as const;
@@ -48,14 +62,56 @@ export function mockupKeys(slug: string, selection: ProductSelection): string[] 
   return [...new Set(keys)];
 }
 
+/**
+ * Editor look keys. The editor panel is one square garment seen straight on, so the look is the
+ * colour plus the fabric weight (GSM changes the drape, not the silhouette) — never the fit or
+ * the sleeve, which the editor does not choose.
+ */
+export function editorMockupKeys(slug: string, selection: { color?: string | null; gsm?: string | null }): string[] {
+  const product = mockupSegment(slug);
+  if (!product) return [];
+  const color = mockupSegment(selection.color);
+  const gsm = mockupSegment(selection.gsm);
+  const keys: string[] = [];
+  if (color && gsm) keys.push(`${color}-${gsm}`);
+  if (color) keys.push(color);
+  if (gsm) keys.push(gsm);
+  keys.push("default");
+  return [...new Set(keys)];
+}
+
+export function editorMockupCandidates(
+  slug: string,
+  selection: { color?: string | null; gsm?: string | null },
+  options: { base?: string; extensions?: readonly string[] } = {},
+): string[] {
+  const base = (options.base ?? R2_MOCKUP_BASE).replace(/\/+$/, "");
+  const product = mockupSegment(slug);
+  const extensions = options.extensions ?? MOCKUP_EXTENSIONS;
+  if (!base || !product) return [];
+  const urls = editorMockupKeys(product, selection).flatMap((key) =>
+    extensions.map((extension) => `${base}/${mockupSetFolder("editor")}/${product}/${key}.${extension}`),
+  );
+  return [...new Set(urls)];
+}
+
 export function mockupCandidates(
   slug: string,
   selection: ProductSelection,
-  options: { base?: string; extensions?: readonly string[]; fallback?: string | null; includeDefault?: boolean } = {},
+  options: {
+    base?: string;
+    extensions?: readonly string[];
+    fallback?: string | null;
+    includeDefault?: boolean;
+    set?: MockupSet;
+    /** Also try the pre-split `mockups/<slug>/...` layout (catalogue only). */
+    legacy?: boolean;
+  } = {},
 ): string[] {
   const base = (options.base ?? R2_MOCKUP_BASE).replace(/\/+$/, "");
   const extensions = options.extensions ?? MOCKUP_EXTENSIONS;
   const product = mockupSegment(slug);
+  const set = options.set ?? "product";
   const urls: string[] = [];
   if (base && product) {
     const keys = mockupKeys(product, selection);
@@ -63,7 +119,12 @@ export function mockupCandidates(
     // colour with the same photo, which reads as a duplicate rather than a colour.
     const visible = options.includeDefault === false ? keys.filter((key) => key !== "default") : keys;
     for (const key of visible) {
-      for (const extension of extensions) urls.push(`${base}/mockups/${product}/${key}.${extension}`);
+      for (const extension of extensions) urls.push(`${base}/${mockupSetFolder(set)}/${product}/${key}.${extension}`);
+    }
+    if (set === "product" && options.legacy !== false) {
+      for (const key of visible) {
+        for (const extension of extensions) urls.push(`${base}/mockups/${product}/${key}.${extension}`);
+      }
     }
   }
   if (options.fallback) urls.push(options.fallback);

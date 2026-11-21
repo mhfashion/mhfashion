@@ -50,6 +50,13 @@ test("candidates are R2 URLs, then the catalog image", () => {
     fallback: "https://catalog.example.com/chaos.jpg",
   });
   assert.deepEqual(urls, [
+    "https://cdn.example.com/mockups/product/chaos-theory/black-oversized.webp",
+    "https://cdn.example.com/mockups/product/chaos-theory/black-oversized.png",
+    "https://cdn.example.com/mockups/product/chaos-theory/black.webp",
+    "https://cdn.example.com/mockups/product/chaos-theory/black.png",
+    "https://cdn.example.com/mockups/product/chaos-theory/default.webp",
+    "https://cdn.example.com/mockups/product/chaos-theory/default.png",
+    // photos uploaded before the product/editor split
     "https://cdn.example.com/mockups/chaos-theory/black-oversized.webp",
     "https://cdn.example.com/mockups/chaos-theory/black-oversized.png",
     "https://cdn.example.com/mockups/chaos-theory/black.webp",
@@ -143,12 +150,44 @@ test("the editor keeps its open design so the product page can preview it", () =
 });
 
 test("colour thumbnails skip the generic default look", () => {
-  const all = mockup.mockupCandidates("chaos-theory", { color: "Navy" }, { base: "https://cdn.test", extensions: ["webp"] });
-  assert.deepEqual(all, ["https://cdn.test/mockups/chaos-theory/navy.webp", "https://cdn.test/mockups/chaos-theory/default.webp"]);
+  const all = mockup.mockupCandidates("chaos-theory", { color: "Navy" }, { base: "https://cdn.test", extensions: ["webp"], legacy: false });
+  assert.deepEqual(all, ["https://cdn.test/mockups/product/chaos-theory/navy.webp", "https://cdn.test/mockups/product/chaos-theory/default.webp"]);
 
-  const thumbs = mockup.mockupCandidates("chaos-theory", { color: "Navy" }, { base: "https://cdn.test", extensions: ["webp"], includeDefault: false });
-  assert.deepEqual(thumbs, ["https://cdn.test/mockups/chaos-theory/navy.webp"]);
+  const thumbs = mockup.mockupCandidates("chaos-theory", { color: "Navy" }, { base: "https://cdn.test", extensions: ["webp"], includeDefault: false, legacy: false });
+  assert.deepEqual(thumbs, ["https://cdn.test/mockups/product/chaos-theory/navy.webp"]);
 
-  const unknown = mockup.mockupCandidates("chaos-theory", { color: "Purple" }, { base: "https://cdn.test", extensions: ["webp"], includeDefault: false });
-  assert.deepEqual(unknown, ["https://cdn.test/mockups/chaos-theory/purple.webp"], "no default look to mask the miss");
+  const unknown = mockup.mockupCandidates("chaos-theory", { color: "Purple" }, { base: "https://cdn.test", extensions: ["webp"], includeDefault: false, legacy: false });
+  assert.deepEqual(unknown, ["https://cdn.test/mockups/product/chaos-theory/purple.webp"], "no default look to mask the miss");
+});
+
+test("the editor and the catalogue read different mockup folders", () => {
+  const product = mockup.mockupCandidates("chaos-theory", { color: "Black" }, { base: "https://cdn.test", extensions: ["webp"], legacy: false });
+  assert.deepEqual(product, [
+    "https://cdn.test/mockups/product/chaos-theory/black.webp",
+    "https://cdn.test/mockups/product/chaos-theory/default.webp",
+  ]);
+
+  const editor = mockup.editorMockupCandidates("chaos-theory", { color: "Black", gsm: "180 GSM" }, { base: "https://cdn.test", extensions: ["webp"] });
+  assert.deepEqual(editor, [
+    "https://cdn.test/mockups/editor/chaos-theory/black-180-gsm.webp",
+    "https://cdn.test/mockups/editor/chaos-theory/black.webp",
+    "https://cdn.test/mockups/editor/chaos-theory/180-gsm.webp",
+    "https://cdn.test/mockups/editor/chaos-theory/default.webp",
+  ]);
+
+  // The editor never falls back to the catalogue layout: a 4:5 photo does not fit a square panel.
+  assert.equal(editor.some((url) => /\/mockups\/chaos-theory\//.test(url)), false);
+});
+
+test("editor look keys ignore fit and sleeve", () => {
+  assert.deepEqual(
+    mockup.editorMockupKeys("tee", { color: "White", gsm: "160 GSM" }),
+    ["white-160-gsm", "white", "160-gsm", "default"],
+  );
+  assert.deepEqual(mockup.editorMockupKeys("tee", {}), ["default"]);
+  assert.deepEqual(mockup.editorMockupKeys("", { color: "White" }), []);
+});
+
+test("without a bucket the editor asks for nothing", () => {
+  assert.deepEqual(mockup.editorMockupCandidates("tee", { color: "White" }, { base: "" }), []);
 });

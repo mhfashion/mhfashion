@@ -41,17 +41,24 @@ NEXT_PUBLIC_R2_PUBLIC_URL = https://assets.mhfashionmm.com
 
 ```
 mh-fashion-assets/
-├── mockups/<product-slug>/<look>.<webp|png|jpg>     ← product photos per colour/fit/sleeve
-├── designs/<design-slug>.svg                        ← design library source files
-├── posts/<post-slug>.svg                            ← T-shirt post artwork
-└── orders/<order-id>/<file>.svg                     ← copies of what the press received
+├── mockups/
+│   ├── product/<product-slug>/<look>.<webp|png|jpg>   ← catalogue photos (product page, cards)
+│   └── editor/<garment-slug>/<look>.<webp|png|jpg>    ← editor panel photos (square, flat)
+├── designs/<design-slug>.svg                          ← design library source files
+├── posts/<post-slug>.svg                              ← T-shirt post artwork
+└── orders/<order-id>/<file>.svg                       ← copies of what the press received
 ```
 
-### 3.1 Mockups — `mockups/<product-slug>/<look>.webp`
+The two mockup sets are separate on purpose: the catalogue shows a styled 4:5 photo, the editor
+panel shows one flat, straight-on garment in a square. Uploading a catalogue photo into the
+editor folder (or the other way round) makes the garment sit at the wrong scale.
 
-`<look>` is built from the colour, the fit and the sleeve; **size is deliberately left out**
-(the same photo covers M and XL). The app looks for the most specific name first and falls
-back step by step, so you only upload what differs:
+### 3.1 Catalogue mockups — `mockups/product/<product-slug>/<look>.webp`
+
+`<product-slug>` is the catalogue slug (`chaos-theory`). `<look>` is the colour plus whatever
+changes the silhouette — fit and sleeve. **Size is deliberately left out** (the photo of a black
+oversized tee is the same for M and XL), so you only upload what actually differs. The lookup
+walks from the most specific name down to `default`:
 
 | Selection | Files tried, in order |
 |---|---|
@@ -63,25 +70,34 @@ Naming rules (from `mockupSegment()` in `apps/web/src/lib/product-mockup.ts`):
 
 - lowercase, spaces and symbols collapse to `-`, leading/trailing `-` stripped
 - extensions are tried in this order: `webp`, `png`, `jpg`
-- the slug is the catalogue `slug`, e.g. `chaos-theory`
 
-Example:
+Photo spec: portrait **4:5** (1200 × 1500), WebP ≤ 200 KB, garment flat and centred on a plain
+light background, printable chest inside **30% left / 22% top / 40% wide / 46% tall**
+(`PRODUCT_PRINT_AREA`).
 
-```
-mockups/chaos-theory/default.webp
-mockups/chaos-theory/black.webp
-mockups/chaos-theory/black-oversized-short-sleeve.webp
-mockups/chaos-theory/white-oversized-short-sleeve.webp
-mockups/chaos-theory/green.webp
-mockups/hoodie-x/default.webp
-```
+### 3.1b Editor mockups — `mockups/editor/<garment-slug>/<look>.webp`
 
-Photo spec:
+`<garment-slug>` is the **garment the editor is working on**, not a catalogue design: `t-shirt`,
+`phone`. `<look>` is the colour plus the fabric weight, because GSM changes the drape:
 
-- portrait **4:5** (e.g. 1200 × 1500 px), WebP, ≤ 200 KB
-- garment flat and centred, plain light background
-- the printable area sits at **30% from the left, 22% from the top, 40% wide, 46% tall**
-  (`PRODUCT_PRINT_AREA`) — keep the chest inside that band or the artwork will land off-garment
+| Editor state | Files tried, in order |
+|---|---|
+| Black · 180 GSM | `black-180-gsm`, `black`, `180-gsm`, `default` |
+| White, GSM not chosen | `white`, `default` |
+| Nothing chosen | `default` |
+
+Photo spec: **square 1:1** (1200 × 1200), WebP ≤ 200 KB, one garment shot straight on, no model,
+no props, even light, transparent or plain background. The print frame the editor draws sits in
+the middle of the panel, so keep the chest clear there.
+
+`editorMockupCandidates()` in `apps/web/src/lib/product-mockup.ts` builds these URLs; the editor
+never falls back to the catalogue layout because a 4:5 photo does not fit a square panel.
+
+### 3.1c Older flat layout
+
+Photos uploaded before the split live at `mockups/<product-slug>/<look>.webp`. The catalogue
+still tries that path after `mockups/product/...`, so nothing breaks — move the files into
+`mockups/product/` when convenient. The editor does not read the flat layout.
 
 ### 3.2 Designs — `designs/<design-slug>.svg`
 
@@ -110,8 +126,11 @@ R2 → `mh-fashion-assets` → **Upload** → drag the folders in. Keep the fold
 ### CLI (single file)
 
 ```bash
-npx wrangler r2 object put "mh-fashion-assets/mockups/chaos-theory/black.webp" \
-  --file ./assets/mockups/chaos-theory/black.webp --content-type image/webp
+npx wrangler r2 object put "mh-fashion-assets/mockups/product/chaos-theory/black.webp" \
+  --file ./assets/mockups/product/chaos-theory/black.webp --content-type image/webp
+
+npx wrangler r2 object put "mh-fashion-assets/mockups/editor/t-shirt/black-180-gsm.webp" \
+  --file ./assets/mockups/editor/t-shirt/black-180-gsm.webp --content-type image/webp
 ```
 
 ### Bulk sync
@@ -125,13 +144,14 @@ aws s3 sync ./assets s3://mh-fashion-assets \
   --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 ```
 
-`assets/` mirrors the layout above, so `assets/mockups/chaos-theory/black.webp` lands in
-`mockups/chaos-theory/black.webp`.
+`assets/` mirrors the layout above, so `assets/mockups/product/chaos-theory/black.webp` lands in
+`mockups/product/chaos-theory/black.webp`.
 
 ## 5. Check it
 
 ```bash
-curl -I https://assets.mhfashionmm.com/mockups/chaos-theory/black.webp
+curl -I https://assets.mhfashionmm.com/mockups/product/chaos-theory/black.webp
+curl -I https://assets.mhfashionmm.com/mockups/editor/t-shirt/default.webp
 # expect: HTTP/2 200, content-type: image/webp
 ```
 

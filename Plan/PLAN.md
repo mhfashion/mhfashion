@@ -2770,3 +2770,7 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 - Nyein is a ready-made catalogue line: `is_customizable = 'none'` products stay buyable but lose the **Edit Design** action and never paint an editor draft on the mockup. `/nyein` now lists that line from `sub_brand` instead of the placeholder card.
 - `Doc/R2-STORAGE.md` is the storage contract: bucket `mh-fashion-assets`, `mockups/<slug>/<look>.<ext>` for photos, `designs/`, `posts/`, `orders/`, plus the upload commands and the photo spec.
 - Still open: the design → order link (the editor draft lives only in localStorage), R2 uploads from the app, checkout, and PNG/PDF export.
+
+### Two mockup sets
+- R2 now carries `mockups/product/<slug>/<look>.<ext>` (catalogue, 4:5) and `mockups/editor/<garment-slug>/<look>.<ext>` (editor panel, 1:1) as separate sets. `mockupCandidates(..., { set })` picks the folder and `editorMockupCandidates()` builds the editor URLs from colour + GSM; the flat pre-split layout is still a catalogue-only fallback.
+- Next: the editor panel still draws its own garment shape, so the `editor/` photos are not shown yet — wiring them in needs the editor to know its garment slug.

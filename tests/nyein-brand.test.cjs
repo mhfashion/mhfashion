@@ -67,7 +67,8 @@ test("the R2 contract is documented where the owner can follow it", () => {
   for (const marker of [
     "mh-fashion-assets",
     "NEXT_PUBLIC_R2_PUBLIC_URL",
-    "mockups/<product-slug>/<look>",
+    "mockups/product/<product-slug>/<look>",
+    "mockups/editor/<garment-slug>/<look>",
     "designs/<design-slug>.svg",
     "posts/<post-slug>.svg",
     "orders/<order-id>",

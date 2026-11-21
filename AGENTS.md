@@ -108,9 +108,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 
 ## R2 storage (`Doc/R2-STORAGE.md`)
 - Bucket `mh-fashion-assets`, public origin in `NEXT_PUBLIC_R2_PUBLIC_URL`.
-- Layout: `mockups/<product-slug>/<look>.<webp|png|jpg>`, `designs/<design-slug>.svg`, `posts/<post-slug>.svg`, `orders/<order-id>/...`.
-- `<look>` is `color[-fit][-sleeve]` with the size deliberately left out; the lookup walks most-specific → `default`, extensions in the order `webp, png, jpg`.
-- Mockup photos: 4:5 portrait, WebP ≤ 200 KB, print area at 30% left / 22% top / 40% wide / 46% tall.
+- Layout: `mockups/product/<product-slug>/<look>.<webp|png|jpg>`, `mockups/editor/<garment-slug>/<look>.<webp|png|jpg>`, `designs/<design-slug>.svg`, `posts/<post-slug>.svg`, `orders/<order-id>/...`.
+- **Two mockup sets, never mixed.** The catalogue (`ProductMockupPreview`, pinned with `set: "product"`) uses `color[-fit][-sleeve]`, 4:5 portrait, print area at 30% left / 22% top / 40% wide / 46% tall. The editor uses `editorMockupCandidates()` with `color[-gsm]` under `mockups/editor/<garment-slug>/` (`t-shirt`, `phone`), 1:1 square and flat.
+- The pre-split flat layout `mockups/<slug>/<look>.<ext>` is still tried **after** `mockups/product/...` (catalogue only); the editor never falls back to it, because a 4:5 photo does not fit a square panel.
+- Size never enters a look key; extensions are tried in the order `webp, png, jpg`.
 
 ## Cart lines (`lib/cart-items.ts`, `lib/cart-context.tsx`)
 - A cart line is keyed by `cartItemKey(productId, variant)` — product id **plus** size, colour, material, GSM, fit and sleeve. Two adds with any different value are separate lines; only an identical combination increments. Merging by product id alone collapsed different variants into one line and lost the variant entirely.
