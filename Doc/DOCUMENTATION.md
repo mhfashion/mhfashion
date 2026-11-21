@@ -2,6 +2,7 @@
 
 **Canonical documentation file:** `Doc/DOCUMENTATION.md`
 **Planning file:** [`Plan/PLAN.md`](../Plan/PLAN.md)
+**Editor plan and documentation:** [`Plan/EDITOR_PLAN.md`](../Plan/EDITOR_PLAN.md) and [`Doc/EDITOR.md`](EDITOR.md)
 
 This file consolidates the website work log, code audit, Guide content maintenance instructions, and Admin Dashboard visual-reference notes that previously lived in separate `Doc/` and `docs/` files. The plan remains a separate, canonical file in `Plan/`.
 
@@ -1120,3 +1121,27 @@ Storage is split by consumer: `mockups/product/<slug>/<look>.<ext>` for catalogu
 Remaining limitations: nothing is uploaded to R2 from the app yet (the editor draft still lives in `localStorage`), no quote request is sent to MH Delivery because the endpoint and token are not supplied, the editor panel still draws its own garment instead of the `editor/` photo, and there is no customer-facing checkout. The forward plan and its acceptance tests are in [`Plan/PLAN.md` → Forward plan: print, delivery and storage](../Plan/PLAN.md#print-delivery-storage-plan).
 
 Validation: `node --test tests/*.test.cjs` **220/220** passing, TypeScript clean, Next.js production build passing. The bundle was verified end to end in headless Chromium: the downloaded ZIP holds nine entries, the measurements CSV matches `designLayerSize()`, and the delivery file carries the consignee address and phone.
+
+### 2026-11-21 — Editor plan and editor documentation kept separate
+
+The editor plan and the editor documentation now live outside the main plan, on the owner's
+instruction. No editor behaviour changed.
+
+- `Plan/EDITOR_PLAN.md` is the editor plan of record: where each editor file lives and what it does,
+  the canvas and coordinate rules, the nine tools, the layer model, the Layers box, selection and
+  transform, text (wrapping, ink metrics, effects, decorations, presets, inline editing), shapes, pen,
+  gradients, images and photo adjustments, mockups and the shared artwork tier, Header Bar 2 and the
+  price, state and undo, phone parity, ten contracts that must not drift, the current test suites, the
+  verified limits, the roadmap and six owner decisions, and the change policy.
+- `Doc/EDITOR.md` documents the editor as built, for a maintainer.
+- The Unified Editor Vision, the editor specification, the Fabric.js appendix and the 24 owner
+  corrections moved out of `Plan/PLAN.md` into that file's appendices; §6 there is now a short summary
+  with links, and the old anchors stay so existing links resolve.
+- Every "built" claim in the plan was re-checked in `apps/web/src`. The check corrected the audit:
+  text wrapping, the seven painted text effects, decorations, font search with recents, node editing and
+  a rectangle-only Shape Builder already exist; `circle` is a selectable preset that paints nothing;
+  `flag` does not exist; align/tidy, flip, hover highlight, snap guides, context menu, glyphs,
+  character-level runs, artboards and persistence do not exist; Save and Buy are disabled placeholders.
+
+Validation: documentation only — no source change, `git diff --stat` shows `Plan/PLAN.md`,
+`Plan/EDITOR_PLAN.md`, `Doc/EDITOR.md`, `Doc/DOCUMENTATION.md` and `AGENTS.md`.

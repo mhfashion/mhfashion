@@ -2,6 +2,15 @@
 
 Repository memory for AI agents working on **mhfashion/mhfashion**.
 
+## Where the editor docs live
+- The editor plan is `Plan/EDITOR_PLAN.md` (verified state, contracts, limits, roadmap, owner decisions,
+  plus the specification and 24 owner corrections moved out of `Plan/PLAN.md`).
+- The behaviour documentation is `Doc/EDITOR.md`; the Kittl comparison is
+  `Doc/KITTL_CANVAS_EDITOR_AUDIT.md`.
+- `Plan/PLAN.md` §6 is a short summary with links — do not add editor detail there. Old anchors
+  (`#unified-editor-vision`, `#editor-implementation-plan`, `#editor-plan-from-audit`) stay in
+  `PLAN.md` as empty placeholders so existing links resolve.
+
 ## Stack
 - Monorepo (`npm` workspaces). App lives in `apps/web`.
 - Next.js 16 (App Router) + React 19, Fabric.js 7, Supabase, deployed as a Cloudflare Worker via OpenNext (`npm run cf:build --workspace=apps/web`).
