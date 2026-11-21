@@ -386,7 +386,6 @@ export type AdminSettings = {
   supportPhone: string;
   usdRateKs: number;
   lowStockThreshold: number;
-  freeDeliveryThresholdKs: number;
   orderNoteTemplate: string;
 };
 
@@ -1521,7 +1520,6 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
       supportPhone: "+95 9 000 112 233",
       usdRateKs: 4300,
       lowStockThreshold: 12,
-      freeDeliveryThresholdKs: 50000,
       orderNoteTemplate: "Checked by the print desk before hand-off.",
     },
   };

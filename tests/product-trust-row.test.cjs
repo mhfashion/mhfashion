@@ -23,3 +23,10 @@ test("the product page still carries the buying controls and the policy tabs", (
     assert.ok(detail.includes(marker), `${marker} disappeared from the product page`);
   }
 });
+
+test("the free-delivery threshold is gone from the admin settings", () => {
+  const data = readFileSync(path.join(ROOT, "apps/web/src/lib/admin-demo-data.ts"), "utf8");
+  const settings = readFileSync(path.join(ROOT, "apps/web/src/components/admin/AdminSettings.tsx"), "utf8");
+  assert.equal(data.includes("freeDeliveryThresholdKs"), false, "the setting still exists in the data model");
+  assert.equal(settings.includes("Free delivery"), false, "the setting is still rendered");
+});

@@ -44,7 +44,6 @@ export default function AdminSettings() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.supportEmail.trim())) errors.push("A valid support email is required.");
     if (!Number.isFinite(Number(form.usdRateKs)) || Number(form.usdRateKs) <= 0) errors.push("The USD rate must be greater than zero.");
     if (!Number.isFinite(Number(form.lowStockThreshold)) || Number(form.lowStockThreshold) < 0) errors.push("The low-stock threshold cannot be negative.");
-    if (!Number.isFinite(Number(form.freeDeliveryThresholdKs)) || Number(form.freeDeliveryThresholdKs) < 0) errors.push("The free-delivery threshold cannot be negative.");
     setSettingsErrors(errors);
     if (errors.length) return;
     updateAdminData((current) => updateSettings(current, {
@@ -53,7 +52,6 @@ export default function AdminSettings() {
       supportEmail: form.supportEmail.trim(),
       usdRateKs: Math.round(Number(form.usdRateKs)),
       lowStockThreshold: Math.round(Number(form.lowStockThreshold)),
-      freeDeliveryThresholdKs: Math.round(Number(form.freeDeliveryThresholdKs)),
     }));
     setSaved(true);
   }
@@ -164,9 +162,6 @@ export default function AdminSettings() {
               </AdminField>
               <AdminField label="Low-stock threshold" hint="Inventory flags rows at or below this">
                 <AdminInput value={String(form.lowStockThreshold)} onChange={(event) => update("lowStockThreshold", Number(event.target.value) || 0)} inputMode="numeric" aria-label="Low stock threshold" />
-              </AdminField>
-              <AdminField label="Free delivery from (Ks)">
-                <AdminInput value={String(form.freeDeliveryThresholdKs)} onChange={(event) => update("freeDeliveryThresholdKs", Number(event.target.value) || 0)} inputMode="numeric" aria-label="Free delivery threshold" />
               </AdminField>
             </div>
             <AdminField label="Default print desk note">

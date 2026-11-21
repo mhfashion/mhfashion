@@ -98,6 +98,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 ## Product page trust row (removed)
 - The product page used to carry five static promises (Free Delivery, Secure Payment, Easy Returns, 24/7 Support, Seol Support). They are gone: delivery is being handed to the **MH Delivery API**, so the site must not advertise a shipping rule it does not control. `tests/product-trust-row.test.cjs` fails if the copy or its icons come back.
 - The Shipping & Returns tab still carries the written policy text; change it only when the MH Delivery terms replace it.
+- The admin **Free delivery from (Ks)** setting is gone as well: delivery pricing belongs to the MH Delivery API, so `AdminSettings` no longer has `freeDeliveryThresholdKs`.
 
 ## Cart lines (`lib/cart-items.ts`, `lib/cart-context.tsx`)
 - A cart line is keyed by `cartItemKey(productId, variant)` — product id **plus** size, colour, material, GSM, fit and sleeve. Two adds with any different value are separate lines; only an identical combination increments. Merging by product id alone collapsed different variants into one line and lost the variant entirely.
