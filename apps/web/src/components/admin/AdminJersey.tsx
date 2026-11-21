@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Check, Copy, Download, ImageOff, Plus, Ruler, Shirt, Trash2 } from "lucide-react";
-import AdminShell from "@/components/admin/AdminShell";
 import { AdminButton, AdminCard, AdminEmpty, AdminInput, AdminStat } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { JERSEY_PANEL_KEYS, type JerseyPanelKey, type JerseyPoint, type JerseyStyle } from "@/lib/admin-demo-data";
@@ -55,7 +54,8 @@ function ViewPreview({ style, view, selected, onSelect }: {
   );
 }
 
-export default function AdminJersey() {
+/** The jersey mapping body, so Posts can host it as a tab without a second sidebar. */
+export function AdminJerseyPanel() {
   const data = useAdminDemoData();
   const styles = jerseyStyles(data);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -158,17 +158,12 @@ export default function AdminJersey() {
   const completeStyles = styles.filter((style) => styleIssues(style, styles).length === 0).length;
 
   return (
-    <AdminShell
-      active="jersey"
-      title="Jersey mapping"
-      description="One worn photo and a quad per panel — the catalog preview and the post-edit mockup read the same zones."
-      actions={(
-        <div className="flex flex-wrap gap-1.5">
-          <AdminButton variant="secondary" onClick={addStyle} aria-label="Add a jersey style"><Plus size={13} /> Add style</AdminButton>
-          <AdminButton variant="secondary" onClick={exportZones} disabled={!active} aria-label="Export mapping zones JSON"><Download size={13} /> mapping_zones.json</AdminButton>
-        </div>
-      )}
-    >
+    <div data-jersey-panel>
+      <p className="mb-2 text-[10px] text-[#808a97]">One worn photo and a quad per panel — the catalog preview and the post-edit mockup read the same zones.</p>
+      <div className="flex flex-wrap justify-end gap-1.5">
+        <AdminButton variant="secondary" onClick={addStyle} aria-label="Add a jersey style"><Plus size={13} /> Add style</AdminButton>
+        <AdminButton variant="secondary" onClick={exportZones} disabled={!active} aria-label="Export mapping zones JSON"><Download size={13} /> mapping_zones.json</AdminButton>
+      </div>
       <section aria-label="Jersey metrics" className="grid grid-cols-1 gap-3 min-[440px]:grid-cols-3">
         <AdminStat label="Styles" value={String(styles.length)} hint={`${completeStyles} with every required panel`} icon={<Shirt size={21} />} />
         <AdminStat label="Panels" value={String(styles.reduce((total, style) => total + style.panels.length, 0))} hint="Quads across every style" icon={<Ruler size={21} />} />
@@ -310,6 +305,6 @@ export default function AdminJersey() {
           </ul>
         </div>
       </AdminCard>
-    </AdminShell>
+    </div>
   );
 }

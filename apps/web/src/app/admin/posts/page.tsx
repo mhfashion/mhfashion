@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import AdminPosts from "@/components/admin/AdminPosts";
 
 export const metadata: Metadata = {
@@ -7,5 +8,10 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPostsPage() {
-  return <AdminPosts />;
+  // AdminPosts reads ?tab= to open the Jersey mapping straight from /admin/jersey.
+  return (
+    <Suspense fallback={null}>
+      <AdminPosts />
+    </Suspense>
+  );
 }

@@ -6,6 +6,9 @@ The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN
 
 - [x] **Guide cards sized like product cards.** `GuideCard` is a square tile on the product grid
   (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`); the tall cover band and the excerpt are gone.
+- [x] **Ads in the admin menu bar.** `/admin/ads` controls campaign copy, link and run window for five
+  storefront slots (pause/enable/delete persist in the demo store).
+- [x] **Jersey moved into Posts.** A "Jersey mapping" tab holds the mapping panel; `/admin/jersey` redirects.
 - [x] **MH Fashion categories as icons.** The "All MH Fashion 48 / T-Shirts 22 …" strip is now six round
   icon buttons with no counts, like the home page.
 - [x] **Checkout reuses the saved address.** The address from the last order is shown as a card with a

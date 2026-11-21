@@ -1,7 +1,6 @@
-import AdminJersey from "@/components/admin/AdminJersey";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Jersey mapping · MH Fashion Admin" };
-
+// Jersey mapping lives inside Posts (owner request 2026-11-21); the old bookmark still works.
 export default function AdminJerseyPage() {
-  return <AdminJersey />;
+  redirect("/admin/posts?tab=jersey");
 }

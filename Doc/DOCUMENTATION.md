@@ -1271,3 +1271,25 @@ Checked the remaining-work register against the source and corrected the entries
 - The text labels and the stale counts (48/22/9/7/6/4) are gone from both the row and the sidebar filter.
   Each button keeps `aria-label` and `title` so the name is still available, plus `data-category`.
 - Verified in Chromium at 1440x560 and 390x600 (2x); the e2e asserts the row is icons only.
+
+### 2026-11-21 — Ads module and the Jersey tab inside Posts
+
+**Ads** (`/admin/ads`, `AdminAds.tsx`, `lib/admin-ads.ts`)
+- Five storefront slots: Home hero (1200x400), Home strip (1200x160), Category banner (1200x220),
+  Guide rail (220x300), Checkout aside (360x180).
+- A campaign holds a slot, an internal name, headline, body, button label + link, optional image URL and a
+  start/end date. Status is derived: Disabled → Scheduled → Expired → Live.
+- The screen shows live/scheduled/slots-filled/campaign totals, the campaign table, a slot map, and a
+  drawer editor with a banner preview. Pause/Enable, Edit and Delete write to the shared demo store
+  (`mh-fashion-admin-demo-data-v1`), so they survive a reload.
+- `activeAdFor(ads, slot)` is the single rule for "what shows now": newest live ad, otherwise nothing.
+  Storefront banners are not wired yet.
+
+**Jersey inside Posts**
+- Posts tabs are now Guide posts, T-shirt posts, Nyein posts and Jersey mapping. The mapping panel keeps
+  every control (styles, zones, corners, mapping_zones.json export) but loses its own sidebar entry.
+- `/admin/jersey` is a server redirect to `/admin/posts?tab=jersey`; `AdminPosts` reads the tab from the
+  query string inside a `Suspense` boundary.
+
+Verified: `node --test` 373/373, tsc clean, ESLint 0 errors, `next build` OK, and Chromium screenshots of
+the Ads page, the editor drawer, a created campaign (Live, persisted) and the Posts → Jersey tab.

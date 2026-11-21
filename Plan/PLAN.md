@@ -2128,3 +2128,33 @@ The owner: the "All MH Fashion 48 / T-Shirts 22 / Kids 9 / Phone Covers 7 / Bags
   `CATEGORIES`.
 - `tests/storefront-e2e.cjs` asserts six icon links, no text, an accessible name on each and 40-48px boxes.
   Full suite **367/367**, e2e PASS desktop + phone.
+
+## 2026-11-21 — Ads module, and Jersey moves into Posts
+
+The owner: add an **Ads** entry to the admin menu bar for controlling ads, and keep jersey inside **Posts**.
+("Plan ပြောင်းမှာပါ" — the plan will change later, so this is the current shape.)
+
+### Ads (`/admin/ads`)
+- `lib/admin-demo-data.ts`: `AdminAd` / `AdSlotId`, five slots (`home-hero`, `home-strip`,
+  `category-banner`, `guide-rail`, `checkout-aside`), `createSeedAds()`, the `ads` field on
+  `AdminDemoData` (backfilled for browsers that already hold older demo data) and `"ads"` in
+  `AdminModuleId` / `ADMIN_MODULES`.
+- `lib/admin-ads.ts`: `adStatus` (Live / Scheduled / Expired / Disabled), `activeAdFor(slot)` (newest live
+  ad, or nothing), `adDraftFrom` / `validateAdDraft` / `adFromDraft`, and `upsertAd` / `toggleAd` /
+  `removeAd` over `{ ads }` — the same store the rest of the admin writes.
+- `components/admin/AdminAds.tsx`: four stats (live, scheduled, slots filled, campaigns), the campaign
+  table with status badges, the slot map, and a drawer editor with a live banner preview. Every change
+  goes through `updateAdminData`, so Pause/Enable/Delete persist.
+- Storefront rendering of the slots is the next step; the panel only controls copy, link and window today.
+
+### Jersey inside Posts
+- `AdminJersey.tsx` now exports `AdminJerseyPanel` (body only, no shell) and the Posts module renders it
+  under a new **Jersey mapping** tab; the tab count comes from `jerseyStyles(data)`.
+- The sidebar no longer lists Jersey; `/admin/jersey` redirects to `/admin/posts?tab=jersey`, and
+  `AdminPosts` reads `?tab=` through `useSearchParams` (the page wraps it in `Suspense`).
+
+### Verification
+- `tests/admin-ads.test.cjs` (new): statuses, slot picking, validation, store round trip, seeds, nav/route.
+- `tests/admin-jersey.test.cjs` updated: no Jersey nav entry, Posts tab + panel, redirect.
+- Full suite **373/373**, `tsc` clean, ESLint 0 errors, build passed. Chromium at 1440x1100: Ads page,
+  editor drawer, a created ad landing Live in the table and in localStorage, Posts → Jersey mapping tab.

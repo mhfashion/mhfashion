@@ -13,6 +13,7 @@ export type AdminModuleId =
   | "products"
   | "designs"
   | "posts"
+  | "ads"
   | "pricing"
   | "attributes"
   | "settlements"
@@ -376,6 +377,23 @@ export type AdminPromotion = {
   enabled: boolean;
 };
 
+export type AdSlotId = "home-hero" | "home-strip" | "category-banner" | "guide-rail" | "checkout-aside";
+
+export type AdminAd = {
+  id: string;
+  slot: AdSlotId;
+  /** Internal name the admin uses to tell campaigns apart. */
+  name: string;
+  headline: string;
+  body: string;
+  ctaLabel: string;
+  ctaHref: string;
+  imageUrl: string;
+  enabled: boolean;
+  startsAt: string;
+  endsAt: string;
+};
+
 export type AdminTeamMember = {
   id: string;
   name: string;
@@ -505,6 +523,7 @@ export type AdminDemoData = {
   productPrices: AdminProductPriceRow[];
   priceHistory: AdminPriceHistoryEntry[];
   promotions: AdminPromotion[];
+  ads: AdminAd[];
   team: AdminTeamMember[];
   settings: AdminSettings;
 };
@@ -515,6 +534,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "products", label: "Products" },
   { id: "designs", label: "Designs" },
   { id: "posts", label: "Posts" },
+  { id: "ads", label: "Ads" },
   { id: "pricing", label: "Pricing" },
   { id: "attributes", label: "Attributes" },
   { id: "settlements", label: "Settlements" },
@@ -1630,6 +1650,55 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
   ];
 }
 
+export function createSeedAds(now = Date.now()): AdminAd[] {
+  const day = (offset: number, hour = 0) => {
+    const date = new Date(now + offset * DAY_MS);
+    date.setUTCHours(hour, 0, 0, 0);
+    return date.toISOString();
+  };
+  return [
+    {
+      id: "ad_seed_signature",
+      slot: "home-hero",
+      name: "Signature tee drop",
+      headline: "The Signature drop is here",
+      body: "New MH Fashion tees, printed on premium cotton and shipped from Yangon.",
+      ctaLabel: "Shop the drop",
+      ctaHref: "/new",
+      imageUrl: "",
+      enabled: true,
+      startsAt: day(-3),
+      endsAt: day(11, 23),
+    },
+    {
+      id: "ad_seed_guide",
+      slot: "guide-rail",
+      name: "Guide rail — design help",
+      headline: "Not sure where to start?",
+      body: "The editor guide walks you from a blank canvas to a print-ready file.",
+      ctaLabel: "Read the guide",
+      ctaHref: "/guide/editor-guide",
+      imageUrl: "",
+      enabled: true,
+      startsAt: day(-10),
+      endsAt: day(40, 23),
+    },
+    {
+      id: "ad_seed_nyein",
+      slot: "category-banner",
+      name: "Nyein collection teaser",
+      headline: "Nyein: quiet prints, loud quality",
+      body: "A small collection of tonal artwork for everyday wear.",
+      ctaLabel: "See Nyein",
+      ctaHref: "/nyein",
+      imageUrl: "",
+      enabled: false,
+      startsAt: day(6),
+      endsAt: day(26, 23),
+    },
+  ];
+}
+
 export function createAdminDemoData(now = Date.now()): AdminDemoData {
   const random = seededRandom(20261121);
   const products: AdminProduct[] = SEED_PRODUCTS.map((product) => ({
@@ -1792,6 +1861,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     productPrices,
     priceHistory: [],
     promotions,
+    ads: createSeedAds(now),
     team,
     settings: {
       storeName: "MH Fashion",
@@ -1842,6 +1912,7 @@ export function readAdminDemoData(): AdminDemoData {
             : createSeedJerseyStyles(Date.now()),
           productPrices: Array.isArray(parsed.productPrices) ? parsed.productPrices : [],
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
+          ads: Array.isArray(parsed.ads) ? parsed.ads : createSeedAds(),
           orders,
           tshirtPosts: Array.isArray(parsed.tshirtPosts)
             ? parsed.tshirtPosts.map(normalizeTshirtPost)

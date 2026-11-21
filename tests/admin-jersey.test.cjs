@@ -135,10 +135,20 @@ test("the preview path and view split follow the quad", () => {
 
 test("Jersey mapping is registered, routed and states the panel contract", () => {
   assert.ok(admin.ADMIN_MODULES.some((module) => module.id === "jersey" && module.label === "Jersey"));
+
+  // Jersey lives inside Posts (owner request 2026-11-21), so the sidebar no longer lists it and the old
+  // /admin/jersey bookmark redirects to the Posts tab.
   const shell = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminShell.tsx"), "utf8");
-  assert.match(shell, /id: "jersey", label: "Jersey", href: "\/admin\/jersey"/);
+  assert.ok(!/id: "jersey"/.test(shell), "the sidebar must not list Jersey on its own");
+  const posts = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminPosts.tsx"), "utf8");
+  assert.match(posts, /\{ id: "jersey", label: "Jersey mapping" \}/);
+  assert.match(posts, /<AdminJerseyPanel \/>/);
   assert.ok(existsSync(path.join(__dirname, "..", "apps/web/src/app/admin/jersey/page.tsx")));
+  const jerseyPage = readFileSync(path.join(__dirname, "..", "apps/web/src/app/admin/jersey/page.tsx"), "utf8");
+  assert.match(jerseyPage, /redirect\("\/admin\/posts\?tab=jersey"\)/);
+
   const source = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminJersey.tsx"), "utf8");
+  assert.match(source, /export function AdminJerseyPanel\(\)/);
   for (const marker of [
     "data-jersey-style",
     "data-panel-chip",

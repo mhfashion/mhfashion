@@ -495,3 +495,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   filled with `bg-accent`. Do not bring back the labels or the old 48/22/9/7/6/4 counts — they were static
   and disagreed with the product count on the page. Each link keeps `aria-label`, `title` and
   `data-category`; `tests/storefront-e2e.cjs` fails if the row renders text.
+
+## Admin: Ads module and the Jersey tab
+- `lib/admin-ads.ts` holds the ad rules (`adStatus`, `activeAdFor`, `adDraftFrom`, `validateAdDraft`,
+  `adFromDraft`, `upsertAd` / `toggleAd` / `removeAd`) and the five `AD_SLOTS`. The model itself
+  (`AdminAd`, `AdSlotId`, `createSeedAds`) lives in `admin-demo-data.ts`, which stays import-free so tests
+  can load it on its own; `admin-demo-data.ts` backfills `ads` for browsers holding older demo data.
+- `AdminAds.tsx` writes through `updateAdminData` like every other module; the drawer preview is the only
+  place the banner look is defined. Nothing renders the ads on the storefront yet — when that lands, read
+  `activeAdFor(data.ads, slot)` and nothing else, so the admin and the site cannot disagree.
+- Jersey mapping is a **Posts tab**, not a sidebar entry: `AdminJersey.tsx` exports `AdminJerseyPanel`
+  (body only) and `AdminPosts.tsx` renders it for `tab === "jersey"`, reading `?tab=` via `useSearchParams`
+  (`app/admin/posts/page.tsx` wraps `AdminPosts` in `Suspense`). `/admin/jersey` only redirects.
+- `tests/admin-ads.test.cjs` and `tests/admin-jersey.test.cjs` guard both contracts, including that the
+  sidebar has no `id: "jersey"` entry.
