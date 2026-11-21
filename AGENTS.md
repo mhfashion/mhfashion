@@ -232,6 +232,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   ambient token, but every write still fails (`git push` → `403 denied to mhfashion`,
   `POST /git/refs` → `403 Resource not accessible by integration`). Do not trust that field; test a
   write before promising a push. `-c credential.helper=` does not help, so it is not the helper.
+- A **fine-grained PAT with `Contents: Read and write`** does work for `git push` when passed inline
+  (`https://x-access-token:$PAT@github.com/...`). It does **not** allow `POST /pulls` — that needs
+  `Pull requests: Read and write` as its own fine-grained permission, and without it the API answers
+  `403 Resource not accessible by personal access token`. `create_pr` uses the ambient read-only token
+  and fails the same way. So open the PR *before* fast-forwarding `main`, or ask for the extra scope.
+- Never `git reset --hard origin/main` without a `git fetch` first: the tracking ref lags, and the
+  reset silently drops local commits that were already pushed (recover them from the pushed branch).
 
 ## Editor Header Bar 2 (`apps/web/src/components/EditorHeaderBar2.tsx`)
 - Shared geometry constants keep the Product / GSM / Color / Size / Save / Buy boxes uniform: `FIELD_BOX`, `TRIGGER_BOX`, `ACTION_BOX`, `MENU_BOX`, `MENU_OPTION`, `COLOR_SWATCH`.
