@@ -40,7 +40,8 @@ Anything not yet decided lives in section 13 (Open / Deferred).
   fixed-design (user picks an existing design).
 - Dark mode is the default theme; light mode via toggle. Visual direction: bold
   streetwear (reference template "VOID"), neon-lime accent `#d4ff3f`.
-- Language: UI copy in English; Burmese support to be decided later.
+- Language: UI copy ships in **English and Myanmar (EN/MM)**; the switcher sits in the header
+  pill and in the mobile drawer. (Owner decision, 2026-11-21.)
 
 ## 2. Tech Stack
 
@@ -116,6 +117,11 @@ Example: Sublimation → Fabric Type narrows to Polyester only, and Knit
 Structure / GSM options narrow too. Color, Cutting and Size are not filtered.
 Rules are set by the Super Admin.
 
+**Attribute names are final (owner decision, 2026-11-21):** Print Method, Fabric Type, Knit
+Structure, MH Cuttings. Pricing and Posts screens must use these names rather than the older
+Material / Fit Type / Sleeve / Print wording; whether the Posts module keeps its current labels or
+maps them is still open (section 13).
+
 ### 4.2 Phone Cover
 
 Brand (iPhone / Android) → Model. If the model supports wireless charging, an
@@ -140,10 +146,15 @@ Sport (full customization), Accessories.
 
 ### 4.5 Pricing
 
-Price depends on the full attribute combination (not flat). Admin sets prices
-in a Pricing Management module. Product cards show a range (lowest–highest);
-once a full combination is chosen on the detail page, show the exact price.
-Other product types get their own attribute sets and pricing formulas.
+Price belongs to one **full valid combination** of the chain in 4.1 — not to a size, and not to a
+base price with deltas. Admin enters every price by hand in the Pricing Management module (4.5.1).
+Product cards show a range (lowest–highest); once a full combination is chosen on the detail page,
+show the exact price. Other product types get their own attribute sets and pricing rules.
+
+**Google Sheet price import is removed** (owner decision, 2026-11-21). The link field, the
+server-side CSV fetch and the "the sheet defines the attributes" rule are gone; 4.5.1 replaces
+them. Prices are still one hand-entered amount per valid combination, with no base price, no
+derived delta, and unlisted combinations not sold.
 
 Current product-detail prototype behavior: the page shows the catalog price
 range until all required variant choices—Size, Color, Material, and GSM—are
@@ -156,7 +167,66 @@ selector uses **GSM** rather than Print Style; quantity multiplies the displayed
 unit/variant amount and the same selected quantity is added to the cart by the
 Buy Now/Add to Cart actions.
 
+#### 4.5.1 Pricing Management — UI/UX spec (Web and Phone)
+
+Proposed 2026-11-21; Web and Phone are specified together (owner directive 1).
+
+**Rules.** Price belongs to one full valid combination. Only combinations the cascading rules allow
+exist as rows, so pricing can never create an invalid combination (Sublimation with Combed Cotton,
+for example). A valid combination with no price is **not sold** and shows as "Unpriced" in admin.
+Prices are whole Ks integers, above 0 and under Ks 10,000,000. Typed input accepts `24000`,
+`24,000` and `Ks 24,000`.
+
+**Data.** `price_combinations` holds scope (product or post), one value per attribute (Print
+Method, Fabric Type, Knit Structure, GSM, Color, MH Cuttings, Size), `price_ks`, `updated_by`,
+`updated_at` and a version, unique per scope + combination. `price_history` records combination,
+old price, new price, who and when. Saves carry the row version, so a stale save is rejected with a
+message instead of overwriting someone else's change.
+
+**Web / Desktop.** A scope picker (product or post) with a summary line (total valid combinations,
+priced, unpriced); a price table with one row per valid combination, one column per attribute and
+an editable Price column, with sticky header and first column inside its own scroll container; one
+multi-select filter per attribute plus text search and an "Unpriced only" toggle with the filtered
+count always visible; row checkboxes, "select all filtered" and shift-click range selection; a bulk
+bar that appears with a selection offering *Set exact price* and *Copy price from…*, both stating
+"n rows will change" and requiring confirmation (no percentage or +/- tools, to keep the no-derived-
+delta rule); arrow keys between cells, Enter to edit, Esc to cancel, Tab to the next row's price;
+staged edits with a sticky "n unsaved changes — Save all / Discard" bar; a per-row history icon.
+
+**Phone / Mobile.** Same data and rules, presented as grouped cards instead of a wide table: group
+by a chosen attribute (default Print Method → Fabric Type) with collapsible sections, each row a
+card showing the remaining attributes as chips and one large price field; filters and bulk actions
+in bottom sheets behind a sticky "Filters (n)" button and an "Unpriced only" toggle; selection mode
+by long-press or a Select button; a numeric keypad (`inputmode="numeric"`) with thousands separators
+and 44 px minimum targets; a sticky save bar clear of the phone navigation; no horizontal page
+scroll at 320 px and 390 px.
+
+**CSV export / import.** Export all rows or the current filter as UTF-8 with BOM (so Excel opens
+Myanmar text correctly), one column per attribute plus `Price`. Import is a file upload, not a live
+link: the app previews will-change / unchanged / invalid rows with reasons and writes nothing until
+the admin confirms; rows that match no valid combination are reported, never silently dropped;
+limits are set in settings (proposal: 5,000 rows, 2 MB). Import works on Web and Phone.
+
+**States.** Loading, empty (no valid combinations — link to Attribute Management), unpriced,
+invalid price, unsaved changes, saving, saved, version conflict, permission denied.
+
+**Permissions and audit.** Requires the Pricing module permission; every change lands in
+`price_history`.
+
+**Acceptance checks (both form factors).** Every valid combination appears exactly once and no
+invalid combination can be created; an unpriced combination is flagged and is not purchasable;
+`24,000`, `Ks 24000` and `24000` all save as 24000 while 0, negative, over-limit and non-numeric
+values are rejected with a message; bulk set and copy touch only the selected rows and state the
+count before saving; unsaved changes survive a filter change and warn before leaving; a stale save
+is rejected without overwriting; exporting then importing an unchanged file produces zero changes;
+Web keyboard-only entry works, and Phone has no horizontal overflow at 320/390 px, shows the
+keypad, keeps 44 px targets and an uncovered save bar; a change made on Web is visible on Phone
+after reload and the reverse.
+
 ### 4.6 Product detail presentation
+
+**Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and
+photo-box sizes; do not re-specify them.
 
 - Use the full available page width with minimal side gutters; do not constrain the
   page to a narrow centered column or leave broad empty margins.
@@ -189,6 +259,11 @@ Buy Now/Add to Cart actions.
   shown under the Size selector.
 
 ## 6. Editor (`/create`)
+
+**Status: final as built (owner decision, 2026-11-21).** The editor is treated as finished — no
+further editor planning, and no change to its design or behaviour. The remaining-work register
+(section 16) therefore contains no editor items, and no other section of this plan may assign
+editor work. The dated owner corrections below are kept as the record of what was built.
 
 **Detailed editor implementation plan:** [editor implementation plan](#editor-implementation-plan). This section is the canonical location for the editor specification, milestones, and acceptance criteria; this project section records only the verified current state and short roadmap.
 
@@ -246,7 +321,16 @@ The detailed editor feature list below is a **forward plan**, not a claim that t
   card.
 - **Product detail:** breadcrumb, gallery, all attribute selectors, price,
   rating, quantity, Add to Cart / Buy Now / Edit Design, description,
-  shipping & returns, reviews, related products.
+  shipping & returns, reviews, related products. A ready-made product
+  (`is_customizable = 'none'`, e.g. the Nyein line) keeps Buy Now / Add to Cart
+  and drops Edit Design, with a "sold as shown" note.
+- **Product preview (built 2026-11-21):** the media column shows the garment
+  mockup for the chosen colour / fit / sleeve from
+  `mockups/product/<slug>/<look>.<ext>`, walking down to `default` and then the
+  catalog image, with the design drawn on top inside `PRODUCT_PRINT_AREA`. A
+  colour rail on the left selects the colour; hover zooms on desktop and a tap
+  opens a full-screen zoom on phone. Gallery sizes are as built (4.6) and must
+  not be re-specified.
 - **Cart:** items with mockup-incomplete warnings, discount code, subtotal /
   delivery / total.
 - **Checkout:** address auto-filled from account, provider auto-detected,
@@ -275,9 +359,29 @@ The detailed editor feature list below is a **forward plan**, not a claim that t
   display; checkout shows the user's chosen currency.
 - Refunds only for MH Fashion production errors. Copyright liability for user
   content rests with the user (stated in the Terms).
-- Production export per order: Product, Fabric Type, Knit Structure, GSM,
-  Print Method, Cutting, Color, Size, clean SVG and placement coordinates per
-  print location.
+- Production export per order is one bundle (`Doc/PRINT-BUNDLE.md`): `README.txt`,
+  the A4 press sheet, the A5 customer receipt, the per-line spec CSV, the
+  per-layer measurement CSV (print area, units/cm, X/Y/W×H in cm, rotation,
+  scale), `manifest.json`, the MH Delivery quote JSON, and every design as a
+  print-sized SVG plus its mockup-position diagram. Nothing is invented in the
+  bundle: the delivery fee is priced by MH Delivery (`Doc/MH-DELIVERY.md`).
+
+### 8.1 Copyright and takedown (owner policy, 2026-11-21)
+
+- **Ownership:** MH Fashion holds only the right to advertise and sell a design;
+  it does not claim ownership of user-submitted designs.
+- **Claims:** if someone says a design is theirs, MH Fashion accepts the claim
+  and takes the design down (hide or delete) where needed.
+- **Terms of Use wording (for legal review, not legal advice):** the user grants
+  MH Fashion the right to advertise and sell the design; the user is responsible
+  for holding the rights to what they submit; MH Fashion may remove a design
+  after a claim.
+- **Claim channel:** one contact email or form, listed in the Terms and in the
+  Guide.
+- **Admin action:** Designs module → Hide / Delete, with a short record (design,
+  who claimed, date, admin).
+- **Proposed, awaiting owner confirmation:** an order already paid for a design
+  that is later taken down is held for owner review before printing.
 
 ## 9. Promotions, Loyalty & AI Points
 
@@ -288,6 +392,24 @@ The detailed editor feature list below is a **forward plan**, not a claim that t
   +50 per purchased product (never expire). Daily points are spent first.
 
 ## 10. Admin System
+
+**Built modules (2026-11-21).** `/admin` is no longer a dashboard preview: every module in the left
+navigation is a real page — `/admin` (dashboard), `orders`, `products`, `inventory`, `customers`,
+`designs`, `promotions`, `posts`, `reports`, `settings`. They share one typed browser-local store
+(`lib/admin-demo-data.ts` over `useSyncExternalStore`, persisted to `localStorage` under
+`mh-fashion-admin-demo-data-v1`). Orders have stage chips, search, a Today card, date presets, a
+From/To range, a sort select, an Orders-by-day strip and a detail drawer with items, timeline,
+print-desk note, cancel/refund, production CSV, the A4 print sheet, the A5 receipt, the print
+bundle ZIP and the MH Delivery quote JSON. Products have a validated create/edit drawer, archive and
+two-step delete; Inventory has per-size stock with low/out filters; Customers are grouped from the
+orders by email with VIP/repeat/new segments; Designs can be published, hidden or deleted;
+Promotions validate codes, value, minimum spend, limits and window; Reports show revenue buckets,
+top products, payment mix, pipeline and low-stock; Settings hold the store profile, the team with
+per-module permissions, and a demo-data reset. Posts live at `/admin/posts` with Guide, T-shirt and
+Nyein tabs; a T-shirt post carries a title, description, one attached SVG and one hand-typed price
+per full attribute combination (no base price, no derived delta, unlisted combinations not sold).
+This remains a preview, not a security boundary — Supabase Auth, RLS and server-side role checks are
+still required before live admin data is exposed.
 
 - Super Admin has full access and creates all other admins, assigning each
   one's permissions individually (module checklist: Product, Order, Pricing,
@@ -315,16 +437,27 @@ data; connect live analytics only after that secure foundation exists.
 - SEO with structured data and clean URLs; verified-purchase reviews (no admin
   moderation).
 - Notifications: in-app first (web and app); email only when an address is on
-  file, provider chosen later.
+  file. The customer notification channel and the email provider are decided
+  later (owner decision, 2026-11-21).
 - Analytics/tracking integrations are built in but optional.
 
 ## 12. Cloudflare R2 Layout
 
+**One key pattern, chosen 2026-11-21.** The earlier `mockups/{product_id}/{style_id}/{color_id}_front.png`
+form is retired; the pattern below is the only one, and `Doc/R2-STORAGE.md` is its contract.
+
+**Only admins upload, through the admin dashboard** (owner decision 7). Nobody uploads by hand and
+no upload path exists in the storefront or the editor. The upload form generates the key from the
+product, the look and the file type, so a key is never typed and cannot drift from the pattern.
+
 ```
-designs/{design_id}/original.svg
-designs/{design_id}/layers/{layer_id}.svg
-designs/{design_id}/thumbnails/{layer_id}.webp
-mockups/{product_id}/{style_id}/{color_id}_front.png (and _back, detail_n)
+mockups/product/<product-slug>/<look>.<webp|png|jpg>    catalogue photos, 4:5
+mockups/editor/<garment-slug>/<look>.<webp|png|jpg>     editor panel photos, 1:1
+mockups/3d/<product-slug>/<look>.<webp|png|jpg>         3D renders (reserved)
+models/<product-slug>.glb                               3D garment models (reserved)
+designs/<design-slug>.svg                               design library artwork
+posts/<post-slug>.svg                                   T-shirt post artwork
+orders/<order-id>/...                                   copy of the print bundle
 jersey-mockups/{jersey_style_id}/worn_photo.png + mapping_zones.json
 brushes/{brush_id}/texture.png
 elements/v1/manifest.json, elements/v1/{slug}.svg (planned, R2 not connected)
@@ -333,6 +466,12 @@ text-styles/v1/manifest.json, text-styles/v1/previews/{slug}.webp (planned)
 products/categories/{slug}.png, products/banners/{id}.png
 uploads/{user_id}/{upload_id}/original.jpg, upscaled.jpg
 ```
+
+`<look>` is the attribute combination that actually changes the picture: for the catalogue
+`colour[-fit][-sleeve]`, for the editor `colour[-gsm]`. **Size is never part of a look** — the same
+photo serves M and XL. The lookup walks from the most specific key down to `default`, trying
+`webp`, `png` then `jpg`; a look with no file falls back to `default` and then to the catalog image.
+The two sets are separate on purpose: a 4:5 catalogue photo does not fit the square editor panel.
 
 Future private serving contract (not implemented): `GET /api/editor/fonts`,
 `GET /api/editor/text-styles`, and allow-listed `GET /api/editor/assets/[...assetKey]`
@@ -353,10 +492,23 @@ catalog-facing items.
 - Private R2 connection and uploads for Elements, licensed fonts, text-style
   previews, and mockup assets remain deferred. The editor uses its local
   Elements catalog and browser/system font fallbacks; the storefront continues
-  to use its existing Supabase product data. No bucket, binding, or R2 upload is
-  part of this stage.
+  to use its existing Supabase product data. Product, editor and 3D mockups are
+  read from the public bucket, but **uploading them is admin-only and not built
+  yet** (section 12, section 16 P1).
 - Further editor tools and layer-panel features; further admin permissions.
 - Refund request flow; mobile app scope; email provider.
+
+**Open questions for the owner (2026-11-21)**
+
+1. Posts attribute labels: rename them to the 4.1 names (Print Method, Fabric Type, Knit Structure,
+   MH Cuttings) or map the current Material / Fit Type / Sleeve / Print labels onto them?
+2. Deploy: once the Cloudflare secrets are settled, keep every push to `main` deploying, or add a
+   staging branch and a preview deployment? The answer decides how directive 5 is worded.
+3. Inventory: is it **blank garment stock**, as assumed in section 16? If it instead caps sellable
+   quantity, the stock-decrement rules change.
+4. After a takedown, is a paid order held for owner review before printing (8.1)?
+5. Pricing Management (4.5.1): approve the spec as written, and which form factor is designed first —
+   the Web grid or the Phone cards?
 
 ## 14. Build Status
 
@@ -437,6 +589,17 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
 **Broader platform sequencing:** after the audit priorities are addressed, continue Supabase Auth and server-side Super Admin authorization, checkout/payment/order creation, R2, and the remaining editor production work.
 
 ---
+
+**Status snapshot 2026-11-21 (re-checked, replaces the 2026-11-12 line):** `main` is at `ca454da`
+and the repository test suite passes 220/220 (`node --test tests/*.test.cjs`), TypeScript is clean
+and the Next.js production build passes. The production Worker was re-probed on 2026-11-21:
+`/`, `/nyein`, `/admin/login` and `/products/butterfly-effect` all return 200, the removed
+delivery/support promises are absent from the product page, and `/nyein` serves the new brand
+collection page — so the deploy pipeline has run at least through `501e16b`. That contradicts the
+earlier "no Actions secrets configured" note in `AGENTS.md`; treat the secret state as
+**unconfirmed** and verify in GitHub → Settings → Secrets before relying on either statement.
+Supabase migrations `0001`–`0007` remain owner-managed, and the admin workspace is still
+browser-local demo data (section 16 P0).
 
 ## Change Log
 
@@ -646,6 +809,14 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   framed detail card.
 - Editor Tools bar (2026-11-15): added the owner-requested compact, rounded, collapsible bottom-center dock with Move, Pen, Hand, Brush, Eraser, Text, Undo, and Remove BG. Pen/Brush, stroke erasing and bounded draw/erase Undo work on the current layer model; Text and Remove BG show notices until their object/image pipelines exist. Mobile placement clears navigation and hides behind open side panels. See `Doc/DOCUMENTATION.md#work-log`.
 - Canvas options menu (2026-11-15): compacted the canvas-edge menu and replaced its single `Add Mockup` action with separate `Front Mockup` and `Back Mockup` entries, removed the `+` control from the Front Mockup box, and re-themed the circle and the canvas/mockup connector wires with the app accent tokens; the canvas node now stacks above the mockups while the menu is open so every entry stays clickable on Web and Phone. See `Doc/DOCUMENTATION.md#work-log`.
+- Plan review (2026-11-21): recorded the owner decisions — Editor final as built (no further editor
+  planning or changes), gallery sizes as built, EN/MM UI, attribute names fixed, notification
+  channel deferred, Google Sheet pricing removed in favour of the Pricing Management UI/UX spec
+  (4.5.1, Web + Phone, proposed), admin-only R2 uploads through the dashboard, and the copyright
+  and takedown policy (8.1). Added the remaining-work register (16), fixed the R2 key pattern (12),
+  folded the 2026-11-21 build updates into sections 7/8/10, and refreshed the status snapshot (14).
+  Pending owner confirmation: Posts labels, deploy/staging, the meaning of Inventory, the takedown
+  rule for open orders, and the Pricing spec itself (13).
 
 
 
@@ -751,6 +922,56 @@ This section records the current repository state and overrides earlier draft bu
 - Super Admin promotion is controlled by the Supabase `public.user_roles` table. Only a user created through the Supabase Auth administrator flow should be assigned `role = 'super_admin'`; passwords are never stored in `public` tables.
 - The current `/admin/login` and `/admin` UI still use the inherited browser-local demo session and are not yet connected to Supabase Auth/RLS. This is explicitly not production security; the next implementation step is to replace the demo session with Supabase Auth and enforce `public.is_super_admin()` server-side before exposing live admin data.
 
+
+## 16. Remaining-work register (2026-11-21)
+
+Editor items are excluded by owner decision 1 — the editor is final as built. Priority below is a
+proposal, not an approved order.
+
+### P0 — foundation
+
+1. **Real backend for admin data.** Orders, products, per-size stock, posts, promotions, designs and
+   settings live in browser `localStorage` (`mh-fashion-admin-demo-data-v1`). Define Supabase
+   tables and a one-time migration for `orders`, `order_items` (spec snapshot, design layout, print
+   position), `tshirt_posts`, `price_combinations`, `price_history`, `designs`, `promotions`,
+   `stock` and `settings`.
+2. **Supabase Auth + RLS + server-side role checks**, replacing the demo session (15.9). Module
+   permissions must be enforced on the server, not only drawn as checkboxes.
+3. **Fix the Cloudflare deploy pipeline** (secrets) and settle the staging question (13, item 2).
+4. **Checkout, payment, order creation.** A Payment Provider interface, payment webhooks and
+   idempotent order creation (no double charge), with payment status mapped onto order status.
+
+### P1 — before launch
+
+5. **Delivery fee.** The MH Delivery API contract, behaviour when the API is down, per-product
+   weight and package size, the Myanmar region/township address structure, and the DHL placeholder.
+   The payload already exists (`Doc/MH-DELIVERY.md`); nothing is sent yet.
+6. **Print file quality checks.** Low-resolution photo warning, DTF vs Sublimation file requirements
+   (colour, bleed), and confirmation that the print-size export opens on phones.
+7. **SVG handling.** Admin-only upload lowers the risk; still strip scripts and event attributes
+   when an SVG is rendered inline.
+8. **Design takedown handling** per 8.1 — admin action, record, and the effect on open orders.
+9. **Rate limiting / abuse protection** for uploads, AI points and public forms.
+10. **Testing.** Automated tests for checkout, pricing and orders; E2E smoke tests; real-device
+    checks on phone.
+
+### P2 — later
+
+11. **Posts ↔ Product relationship** as a data model (how a T-shirt post relates to
+    Product → Style → Color and to fixed-design products). The Nyein brief is still pending.
+12. **Admin modules not yet built:** Attribute Management, Brush Management, Delivery Settlement
+    Report, Loyalty rules, Jersey mapping setup.
+13. **Order operations:** order QR/barcode on the print sheet, reprint flow, refund request flow
+    (deferred).
+14. **Operations:** error monitoring, Supabase backups, timestamps stored in UTC and displayed in
+    UTC+6:30.
+15. **Mobile app decision:** PWA first vs React Native. The editor cannot be ported to React
+    Native directly.
+16. **Customer notification channel** (13, owner decision 5).
+
+**Assumption — Inventory:** the Inventory module (stock per product × size) means **blank garment
+stock**. *Owner to confirm; if it means a sellable-quantity cap instead, the stock-decrement rules
+change.*
 
 ## Security upgrade technical record (pre-push snapshot, 2026-11-11; current deployment status follows)
 
@@ -2671,6 +2892,8 @@ A text layer's Free Transform box must follow the text's measured glyph width an
 
 ## 2026-11-21 Implementation Update — Super Admin modules
 
+> Folded into section 10; kept here as the dated record.
+
 The `/admin` workspace is no longer a single dashboard preview: every module in the left navigation is now a real page backed by one browser-local demo data store.
 
 - **Routes:** `/admin` (dashboard), `/admin/orders`, `/admin/products`, `/admin/inventory`, `/admin/customers`, `/admin/designs`, `/admin/promotions`, `/admin/reports`, `/admin/settings`. All are listed in `apps/web/public/manus-routes.json` and keep `robots: noindex, nofollow`.
@@ -2689,6 +2912,9 @@ The `/admin` workspace is no longer a single dashboard preview: every module in 
 
 ## 2026-11-21 Implementation Update — Posts module (Guide / T-shirt / Nyein)
 
+> Folded into sections 7 and 10; kept here as the dated record. The Google Sheet price import
+> described below is removed — see 4.5.1.
+
 Posting lives in the admin workspace at `/admin/posts` with three tabs, because posting is split into three kinds of content.
 
 - **Tabs:** Guide posts (lists the published guide catalog with a link to `/guide/:slug`), T-shirt posts (the working module), Nyein posts (placeholder until the Nyein brief arrives).
@@ -2701,6 +2927,8 @@ Posting lives in the admin workspace at `/admin/posts` with three tabs, because 
 
 ## 2026-11-21 Implementation Update — Product page preview (mockup + design)
 
+> Folded into sections 7 and 12; kept here as the dated record.
+
 The product page at `/products/:slug` now previews the exact thing the customer is buying instead of a static photo.
 
 - **Bigger image.** The media column grew from 280 px to 440 px on desktop and runs full width on a phone (374 px at 390 px wide, no horizontal overflow).
@@ -2709,6 +2937,8 @@ The product page at `/products/:slug` now previews the exact thing the customer 
 - **Config:** set `NEXT_PUBLIC_R2_PUBLIC_URL` to the bucket's public origin at build time; without it the page still works, showing the catalog image with the design overlaid.
 
 ## 2026-11-21 Implementation Update — Orders detail + Google Sheet pricing
+
+> Folded into section 10; kept here as the dated record. The Google Sheet pricing half is removed.
 
 **Orders** — the list already showed every order; it now also answers "what came in today" and "what came in on a given day":
 
@@ -2719,12 +2949,10 @@ The product page at `/products/:slug` now previews the exact thing the customer 
 
 Orders are filed by the admin's local day. The old dashboard buckets used UTC day keys, which in UTC+6:30 pushed every order one day later on the chart; that is fixed.
 
-**T-shirt post prices from Google Sheets** — yes, this works, with one requirement: the sheet must be shared as "anyone with the link can view".
-
-- The post editor takes the sheet link, and the server (not the browser — Google's CSV endpoints send no CORS headers) fetches it, parses it and fills the price rows.
-- One row per combination, one column per attribute, plus a `Price` column. Headers are matched by name, prices accept `24,000` / `Ks 24000`, and a bad row is reported instead of being dropped.
-- The sheet decides what is sold: its columns become the enabled attributes and its values become their options, so editing the sheet is enough to change the combinations.
-- A private sheet would need a service account (credentials), which is a separate setup and not required for the preview workflow.
+**T-shirt post prices: Google Sheet import removed (owner decision, 2026-11-21).** The sheet link
+field, the server-side CSV fetch and the "the sheet defines the attributes" rule are gone. Prices
+are entered by hand in the Pricing Management module — see 4.5.1. The post editor keeps one price
+per full attribute combination; nothing else about posts changed.
 
 ## 2026-11-21 Fix — product page preview (thumbnails, phone height, zoom)
 
@@ -2746,6 +2974,8 @@ The photo box is now landscape instead of square (200 px tall on phones, 4:3 on 
 
 ## 2026-11-21 — Order print sheet
 
+> Folded into section 8 (production export); kept here as the dated record.
+
 Opening an order in the admin now hands the print desk everything it needs to run the job:
 
 - Each line lists colour, size, material, GSM, fit, sleeve, print method, placement and print size in cm, next to the product name and quantity.
@@ -2756,6 +2986,8 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 - Designs are saved as SVG at real print size, with the layer layout recorded: print area in cm, artwork units per cm, and every layer's X/Y/W×H in cm, rotation and scale. The drawer, the printable sheet and the CSV all show those measurements.
 
 ## 2026-11-21 — Print position on the mockup, separate cart lines
+
+> Folded into section 8; kept here as the dated record.
 
 - Every order line now records where the print area sits on the garment: the mockup name, the flat garment size in cm, and the print-area origin (cm from the top-left). The A4 sheet draws the garment with the print area and the layer boxes, so the press can align the job without guessing.
 - Adding to the cart with a different size, colour, material, GSM, fit or sleeve now creates a separate line instead of overwriting the previous one; identical combinations still just increase the quantity. Each line shows its own variant and price.
