@@ -2095,3 +2095,21 @@ The owner asked for the header's `EN / MM` and `Ks / $` pills to become little i
   banknote flips to the dollar coin) and by the phone drawer screenshot.
 - `tests/canvas-shell.test.cjs` now guards the icon contract (no letter labels, distinct flags, distinct
   currency icons, the data attributes and the toggles) plus the drawer. Full suite **366/366**.
+
+## 2026-11-21 — Checkout reuses the address the customer already gave
+
+The owner: "on /checkout, if the customer is signed in and has already entered an address, do not ask for it
+again."
+
+- `lib/delivery-address.ts` (new) keeps one complete delivery address per device
+  (`mh-fashion-delivery-address-v1`), with `isCompleteAddress`, `readSavedAddress`, `saveDeliveryAddress`,
+  `lastOrderAddress(orders)` (newest order this browser placed) and `addressSummary`.
+- `CheckoutClient.tsx` hydrates the form once on mount from the saved address, falling back to the last
+  order on the device, and shows a compact "Delivery address" card instead of the fields. `Change` opens
+  the fields (already prefilled) and `Keep the saved address` puts the card back. A successful order
+  re-saves whatever address was used, so a change sticks for next time.
+- There is still no customer account on the server (`my-orders.ts`: "There are no accounts yet"), so the
+  address lives on the device; when real accounts land, this prefill is the single place to read from.
+- `tests/checkout.test.cjs` covers the lib and the card markers; `tests/storefront-e2e.cjs` now asserts
+  that the second checkout shows the saved address with the fields closed (desktop and phone), and its
+  `fillCheckout` clicks `Change` first. Full suite **367/367**, e2e PASS on desktop and phone.

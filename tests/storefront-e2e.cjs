@@ -94,12 +94,18 @@ async function main() {
   const resetCheckout = () => evaluate(() => sessionStorage.removeItem("mh-fashion-checkout-key"));
   // The order history and cart live in this browser, so a run starts from an empty store.
   const resetBrowser = () => evaluate(() => {
-    for (const key of ["mh-fashion-admin-demo-data-v1", "mh-fashion-cart-items", "mh-fashion-cart-count", "mh-fashion-wishlist"]) {
+    for (const key of ["mh-fashion-admin-demo-data-v1", "mh-fashion-cart-items", "mh-fashion-cart-count", "mh-fashion-wishlist", "mh-fashion-delivery-address-v1"]) {
       localStorage.removeItem(key);
     }
     sessionStorage.clear();
   });
-  const fillCheckout = () => evaluate(() => {
+  const fillCheckout = () => evaluate(async () => {
+    // An address already on file collapses the fields; open them so every run fills the same form.
+    const change = document.querySelector("[data-checkout-address-change]");
+    if (change) {
+      change.click();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
     const set = (label, value) => {
       const field = document.querySelector(`[aria-label="${label}"]`);
       if (!field) return false;
@@ -233,6 +239,21 @@ async function main() {
     assert.ok(/42,000 Ks/.test(orders[0].text), "the order shows its total");
     assert.deepEqual(await jsonLd(), ["Organization", "WebSite"], "the layout nodes are on every page");
 
+    // The address this customer already gave us is reused: the next checkout shows it instead of
+    // asking for it again, and the fields stay closed until "Change" is pressed.
+    await visit("/", "header");
+    await seedCart();
+    await resetCheckout();
+    await visit("/checkout", "[data-checkout-line]");
+    const reuse = await evaluate(() => ({
+      card: Boolean(document.querySelector("[data-checkout-saved-address]")),
+      line: document.querySelector("[data-checkout-saved-address-line]")?.innerText ?? "",
+      fields: Boolean(document.querySelector('[aria-label="Full name"]')),
+    }));
+    assert.ok(reuse.card, "the second checkout reuses the saved address");
+    assert.equal(reuse.fields, false, "the address fields stay closed while an address is on file");
+    assert.match(reuse.line, /Baho Road/, `saved address line: ${reuse.line}`);
+
     console.log("PASS desktop: home, search, wishlist, faq, guide, checkout, account orders");
 
     // ---------- phone ----------
@@ -256,6 +277,7 @@ async function main() {
     }));
     assert.equal(phoneCheckout.width, phoneCheckout.client, "the phone checkout does not scroll sideways");
     assert.match(String(phoneCheckout.total), /42,000/, "the phone shows the same total");
+    assert.ok(await evaluate(() => Boolean(document.querySelector("[data-checkout-saved-address]"))), "the phone reuses the saved address");
     const phoneFill = await fillCheckout();
     assert.ok(Object.values(phoneFill).every(Boolean), `phone checkout fields: ${JSON.stringify(phoneFill)}`);
     await pause(400);

@@ -1247,3 +1247,18 @@ Checked the remaining-work register against the source and corrected the entries
   touch) shows the ringed flag pair and the money icon.
 - `tests/canvas-shell.test.cjs` covers both controls and the drawer. Full suite **366/366**;
   `tsc --noEmit` clean; ESLint clean; production build passed.
+
+### 2026-11-21 — Checkout does not ask for an address that is already on file
+
+- New `apps/web/src/lib/delivery-address.ts`: stores one complete address in `localStorage`
+  (`mh-fashion-delivery-address-v1`), validates it (`isCompleteAddress`), formats it for display
+  (`addressSummary`) and can read the newest order this browser placed (`lastOrderAddress`) as a fallback.
+- `CheckoutClient.tsx` fills the address once on mount and renders a card ("Min Thu Aung · 09 …",
+  "No 12, Baho Road, Sanchaung, Yangon", "Already on file — this parcel ships here unless you change it.")
+  with a **Change** button instead of five empty fields. `Change` opens the prefilled fields with a
+  **Keep the saved address** link; placing an order re-saves the address that was used.
+- Data attributes: `data-checkout-saved-address`, `data-checkout-saved-address-line`,
+  `data-checkout-address-change`, `data-checkout-address-cancel`.
+- The customer account does not exist on the server yet, so the address is per device, not per login.
+- Verified in Chromium at 1440x1000 and 390x844 (2x): card, prefilled edit form, phone layout; plus the
+  storefront e2e (desktop + phone). Full suite **367/367**, `tsc` clean, ESLint 0 errors, build passed.

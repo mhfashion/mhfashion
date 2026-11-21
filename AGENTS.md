@@ -479,3 +479,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   same treatment or the category-filter assertions break.
 - The guide hero is deliberately short (`min-h-[96px] sm:min-h-[124px] lg:min-h-[132px]`). Do not raise it
   back to the old 196px/`text-5xl` banner; `tests/guide-card.test.cjs` fails if you do.
+
+## Checkout address memory (`apps/web/src/lib/delivery-address.ts`)
+- There are still no server-side customer accounts (`lib/my-orders.ts` says so), so the delivery address
+  is remembered per device in `mh-fashion-delivery-address-v1`. `CheckoutClient.tsx` hydrates from
+  `readSavedAddress()`, else from `lastOrderAddress(data.orders)`, and re-saves after a successful order.
+- When an address is on file the five fields are replaced by `[data-checkout-saved-address]`; the
+  `Change` button (`[data-checkout-address-change]`) opens them prefilled and
+  `[data-checkout-address-cancel]` restores the card.
+- `tests/storefront-e2e.cjs` must keep clicking `[data-checkout-address-change]` inside `fillCheckout`,
+  and its `resetBrowser` must clear the address key, or the second checkout in a run has no fields to fill.

@@ -23,6 +23,7 @@ function loadModule(relativePath) {
 
 const admin = loadModule("apps/web/src/lib/admin-demo-data.ts");
 const checkout = loadModule("apps/web/src/lib/checkout.ts");
+const deliveryAddress = loadModule("apps/web/src/lib/delivery-address.ts");
 
 const NOW = Date.UTC(2026, 10, 21, 9, 0, 0);
 const data = admin.createAdminDemoData(NOW);
@@ -195,6 +196,29 @@ test("checkout is routed, wired from the cart and states the idempotency rule", 
     "Quoted by MH Delivery",
     "no money moves",
   ]) {
+    assert.ok(source.includes(marker), `CheckoutClient is missing ${marker}`);
+  }
+});
+
+test("a delivery address already given is reused instead of asked for again", () => {
+  const address = { name: "Min Thu Aung", phone: "09123456789", address: "No 12, Baho Road", township: "Sanchaung", city: "Yangon" };
+  assert.equal(deliveryAddress.isCompleteAddress(address), true);
+  assert.equal(deliveryAddress.isCompleteAddress({ ...address, township: "  " }), false);
+  assert.equal(deliveryAddress.isCompleteAddress(null), false);
+  assert.equal(deliveryAddress.addressSummary(address), "No 12, Baho Road, Sanchaung, Yangon");
+
+  // No window in Node, so the store is a no-op rather than a crash.
+  assert.equal(deliveryAddress.readSavedAddress(), null);
+  assert.equal(deliveryAddress.saveDeliveryAddress(address), undefined);
+
+  // An order this browser placed is the fallback when nothing was saved yet.
+  const placed = { id: "#MH1001", checkoutKey: "co_1", placedAt: "2026-11-20T10:00:00.000Z", shipTo: address };
+  assert.deepEqual(deliveryAddress.lastOrderAddress([placed]), address);
+  assert.equal(deliveryAddress.lastOrderAddress([{ ...placed, shipTo: { ...address, city: "" } }]), null);
+  assert.equal(deliveryAddress.lastOrderAddress([]), null);
+
+  const source = readFileSync(path.join(__dirname, "..", "apps/web/src/components/CheckoutClient.tsx"), "utf8");
+  for (const marker of ["data-checkout-saved-address", "data-checkout-saved-address-line", "data-checkout-address-change", "saveDeliveryAddress(address)"]) {
     assert.ok(source.includes(marker), `CheckoutClient is missing ${marker}`);
   }
 });

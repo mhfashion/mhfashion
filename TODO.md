@@ -6,6 +6,8 @@ The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN
 
 - [x] **Guide cards sized like product cards.** `GuideCard` is a square tile on the product grid
   (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`); the tall cover band and the excerpt are gone.
+- [x] **Checkout reuses the saved address.** The address from the last order is shown as a card with a
+  Change button, so a returning customer never retypes it (`lib/delivery-address.ts`). 1 unit + e2e.
 - [x] **Icon language/currency switchers.** `EN / MM` and `Ks / $` pills replaced by flag + money icons
   that change with the state (`SwitcherIcons.tsx`), in the header and the phone drawer. 2 tests.
 - [x] **Editor Guide in the menu box.** Desktop menu box row + phone shortcut chip (`data-guide-editor`).

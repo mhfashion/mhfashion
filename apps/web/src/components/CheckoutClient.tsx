@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, Check, CreditCard, Loader2, Lock, ShoppingBag, Truck } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useCurrency } from "@/lib/currency-context";
@@ -10,6 +10,7 @@ import {
   CHECKOUT_CITIES, CHECKOUT_PAYMENTS, EMPTY_ADDRESS, applyPaymentStatus, checkoutSubtotalKs, placeOrder,
   providerIdFor, type CheckoutAddress, type CheckoutDraft, type CheckoutPayment,
 } from "@/lib/checkout";
+import { addressSummary, lastOrderAddress, readSavedAddress, saveDeliveryAddress } from "@/lib/delivery-address";
 import { orderAmountKs, type PaymentStatus } from "@/lib/payments";
 
 const CHECKOUT_KEY_STORAGE = "mh-fashion-checkout-key";
@@ -38,6 +39,9 @@ export default function CheckoutClient() {
   const idempotencyKey = useIdempotencyKey();
 
   const [address, setAddress] = useState<CheckoutAddress>(EMPTY_ADDRESS);
+  const [savedAddress, setSavedAddress] = useState<CheckoutAddress | null>(null);
+  const [editingAddress, setEditingAddress] = useState(false);
+  const addressHydrated = useRef(false);
   const [payment, setPayment] = useState<CheckoutPayment>("KBZPay");
   const [note, setNote] = useState("");
   const [accepted, setAccepted] = useState(false);
@@ -47,6 +51,17 @@ export default function CheckoutClient() {
   const [submittedOrder, setSubmittedOrder] = useState<AdminOrder | null>(null);
   const [message, setMessage] = useState("");
   const submittingRef = useRef(false);
+
+  // A customer who already gave us an address does not type it again: the saved one fills the form,
+  // and the newest order on this device covers the case where nothing was saved yet.
+  useEffect(() => {
+    if (addressHydrated.current) return;
+    addressHydrated.current = true;
+    const known = readSavedAddress() ?? lastOrderAddress(data.orders);
+    if (!known) return;
+    setSavedAddress(known);
+    setAddress(known);
+  }, [data.orders]);
 
   const subtotal = checkoutSubtotalKs(items);
   const units = useMemo(() => items.reduce((total, item) => total + Math.max(1, item.quantity), 0), [items]);
@@ -84,6 +99,9 @@ export default function CheckoutClient() {
     setIssues(outcome.issues);
     if (outcome.order) {
       setSubmittedOrder(outcome.order);
+      saveDeliveryAddress(address);
+      setSavedAddress(address);
+      setEditingAddress(false);
       clearCart();
       setMessage(outcome.created ? `Order ${outcome.order.id} placed.` : `Order ${outcome.order.id} was already placed — nothing was charged twice.`);
     }
@@ -226,24 +244,54 @@ export default function CheckoutClient() {
       <section className="space-y-4">
         <div className="rounded-2xl border border-border bg-bg-surface p-4 shadow-sm sm:p-6">
           <h2 className="text-sm font-black">Delivery address</h2>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {field("Full name", "name")}
-            {field("Phone", "phone", { type: "tel", inputMode: "tel", hint: "The courier calls this number." })}
-            <div className="sm:col-span-2">{field("Address", "address", { hint: "House, street, quarter." })}</div>
-            {field("Township", "township")}
-            <label className="block">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">City / region</span>
-              <select
-                aria-label="City or region"
-                value={address.city}
-                onChange={(event) => setAddress({ ...address, city: event.target.value })}
-                className="mt-1 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-xs font-semibold outline-none focus:border-accent"
-              >
-                <option value="">Choose…</option>
-                {CHECKOUT_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
-              </select>
-            </label>
-          </div>
+          {savedAddress && !editingAddress ? (
+            <div data-checkout-saved-address className="mt-3 rounded-xl border border-border bg-bg p-3">
+              <p className="text-[11px] font-bold">{address.name} <span className="font-semibold text-text-muted">· {address.phone}</span></p>
+              <p data-checkout-saved-address-line className="mt-1 text-[11px] text-text-secondary">{addressSummary(address)}</p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <p className="text-[9px] text-text-muted">Already on file — this parcel ships here unless you change it.</p>
+                <button
+                  type="button"
+                  data-checkout-address-change
+                  onClick={() => setEditingAddress(true)}
+                  className="shrink-0 rounded-full border border-border-light px-3 py-1 text-[10px] font-bold text-accent hover:border-accent"
+                >
+                  Change
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {field("Full name", "name")}
+                {field("Phone", "phone", { type: "tel", inputMode: "tel", hint: "The courier calls this number." })}
+                <div className="sm:col-span-2">{field("Address", "address", { hint: "House, street, quarter." })}</div>
+                {field("Township", "township")}
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">City / region</span>
+                  <select
+                    aria-label="City or region"
+                    value={address.city}
+                    onChange={(event) => setAddress({ ...address, city: event.target.value })}
+                    className="mt-1 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-xs font-semibold outline-none focus:border-accent"
+                  >
+                    <option value="">Choose…</option>
+                    {CHECKOUT_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
+                  </select>
+                </label>
+              </div>
+              {savedAddress ? (
+                <button
+                  type="button"
+                  data-checkout-address-cancel
+                  onClick={() => { setAddress(savedAddress); setEditingAddress(false); }}
+                  className="mt-3 text-[10px] font-bold text-accent"
+                >
+                  Keep the saved address
+                </button>
+              ) : null}
+            </>
+          )}
           <label className="mt-3 block">
             <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Note for the print desk (optional)</span>
             <textarea
