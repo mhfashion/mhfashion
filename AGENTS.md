@@ -105,3 +105,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Measure ink against the **white print canvas only**: the page around it is near-black, so any padding in the screenshot clip is read as ink and inflates the box.
 - Load a fresh page per measured layer; leftover layers from an earlier step join the measured ink.
 - The editor has no tap-empty-space-to-deselect gesture (it never did), so do not assert it.
+
+## Text ink extents (why italic used to overflow the box)
+- `editorTextLineMetrics` reports two horizontal boxes per line: `width`/`advance` (the layout
+  box used for wrapping and `text-anchor`) and `inkLeft`/`inkRight` (the paint, relative to the
+  line's origin). The Free Transform outline uses the **ink** pair.
+- Italic glyphs slant past the layout box, so Chrome reports a positive `actualBoundingBoxLeft`
+  and the paint starts left of the anchor. Measuring the advance width alone cut the outline
+  through the first glyph. Same for a trailing `letter-spacing`, which adds advance but no ink.
+- `editorTextMetrics` unions each line's ink around that line's own origin
+  (`-advance`, `-advance/2` or `0` depending on alignment) before taking the min/max. Do not
+  substitute `width` for `inkRight` there; that reintroduces the right-hand gap.
+- `editorTextPaintPadding` consumes `inkLeft`/`inkWidth`, so effects and decorations keep
+  building off the same ink box. Keep it that way or shadows drift off the glyphs.
+- Both extents fall back to the advance box when the canvas metrics API is unavailable
+  (Node, SSR), and the test stubs deliberately omit `actualBoundingBoxLeft/Right` to cover it.
