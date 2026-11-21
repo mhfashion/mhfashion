@@ -2,7 +2,7 @@
 
 **Canonical documentation file:** `Doc/DOCUMENTATION.md`
 **Planning file:** [`Plan/PLAN.md`](../Plan/PLAN.md)
-**Editor plan and documentation:** [`Plan/EDITOR_PLAN.md`](../Plan/EDITOR_PLAN.md), [`Doc/EDITOR.md`](EDITOR.md), archive in [`Plan/EDITOR_HISTORY.md`](../Plan/EDITOR_HISTORY.md)
+**Editor plan and documentation:** [`Plan/EDITOR_PLAN.md`](../Plan/EDITOR_PLAN.md) and [`Doc/EDITOR.md`](EDITOR.md)
 
 This file consolidates the website work log, code audit, Guide content maintenance instructions, and Admin Dashboard visual-reference notes that previously lived in separate `Doc/` and `docs/` files. The plan remains a separate, canonical file in `Plan/`.
 
@@ -908,7 +908,7 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Studied Kittl's public editor documentation for Canvas transforms, Text insertion/editing, Layers, Alignment/Tidy, Text Transformation, Text Shadow, Text Decoration, and Glyphs.
 - Compared those behaviors against the current MH Fashion layer model and renderer without changing implementation code. The current system can absorb basic Kittl-style move/scale/rotate, group/child selection, layer synchronization, direct Text insertion, alignment, tidy spacing, flip, and limited text effects.
 - Recorded architecture expansion points and approval gates for character-level text runs, text-box wrapping, full Arch/Wave/Circle/Flag transformations, stacked shadow/decoration effects, vector node editing, multi-artboard/infinite canvas, and collaboration/version history.
-- Added the detailed comparison and decision checklist to `Doc/KITTL_CANVAS_EDITOR_AUDIT.md`. No advanced feature implementation was started before owner approval.
+- Added the detailed comparison and decision checklist to a separate editor notes file (removed on 2026-11-21; the plan and doc now live in `Plan/EDITOR_PLAN.md` and `Doc/EDITOR.md`). No advanced feature implementation was started before owner approval.
 
 ### 2026-11-15 — Kittl-inspired MH Fashion editor visual pass
 
@@ -1122,7 +1122,7 @@ Remaining limitations: nothing is uploaded to R2 from the app yet (the editor dr
 
 Validation: `node --test tests/*.test.cjs` **220/220** passing, TypeScript clean, Next.js production build passing. The bundle was verified end to end in headless Chromium: the downloaded ZIP holds nine entries, the measurements CSV matches `designLayerSize()`, and the delivery file carries the consignee address and phone.
 
-### 2026-11-21 — Editor plan and editor documentation kept separate
+### 2026-11-21 — Editor plan and editor documentation kept separate, written from the code
 
 The editor plan and the editor documentation now live outside the main plan, on the owner's
 instruction, and both are written from the code. No editor behaviour changed.
@@ -1133,13 +1133,13 @@ instruction, and both are written from the code. No editor behaviour changed.
 - `Doc/EDITOR.md` documents the editor as built: layout, canvas and workspace, tools, layers, selection
   and transform, text, shapes, pen, brush and eraser, gradients, images, mockups, the header bar, the Edit
   sidebar, undo and state, phone behaviour, keyboard and pointer, and the test suites.
-- `Plan/EDITOR_HISTORY.md` is an archive of the older editor specification, notes and owner corrections
-  that used to sit in `Plan/PLAN.md`; `Plan/PLAN.md` §6 is now a short summary with links.
+- The editor material that referenced other design products was removed, together with the editor
+  specification that used to sit in `Plan/PLAN.md`; §6 there is now a short summary with links.
 - What the code check found: no save and no persistence (Save and Buy are disabled, nothing is written to
   storage), no design hand-off to an order, undo covers layers only and has no keyboard shortcut, the
   `circle` text preset paints nothing, Shape Builder is limited to two axis-aligned rectangles, and
   align/tidy, flip, hover highlight, positional snapping, a context menu, glyph controls, per-character
   styling, extra products and the sidebar services are all absent.
 
-Validation: documentation only — no source change. `git diff --stat` shows `Plan/PLAN.md`,
-`Plan/EDITOR_PLAN.md`, `Plan/EDITOR_HISTORY.md`, `Doc/EDITOR.md`, `Doc/DOCUMENTATION.md` and `AGENTS.md`.
+Validation: documentation only — no source change.
+

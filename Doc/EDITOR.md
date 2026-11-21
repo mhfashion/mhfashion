@@ -2,7 +2,7 @@
 
 This document describes the editor at `/create` exactly as the code behaves today. It is written from
 the source, not from earlier plans: every section names the file that implements it. What the editor
-does not do is listed in `Plan/EDITOR_PLAN.md` §5, not here.
+does not do is listed in `Plan/EDITOR_PLAN.md` §4, not here.
 
 ## 1. Layout
 
@@ -114,7 +114,7 @@ design; each one creates a text layer and opens the inline editor.
   enabled or disabled, moved up or down, removed, and given its own colour, offset, blur or width.
 - Decorations: a horizontal line, a colour cut or an oblique cut, each with its own colour and width.
 - Transform presets: plain, arch and wave are painted; circle is offered but paints nothing (see
-  `Plan/EDITOR_PLAN.md` §5).
+  `Plan/EDITOR_PLAN.md` §4).
 - The transform box follows the painted glyphs plus effects and decorations, so it never cuts through the
   artwork.
 

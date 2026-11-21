@@ -315,7 +315,6 @@ and no other section of this plan may assign editor work.
 |---|---|
 | [`Plan/EDITOR_PLAN.md`](EDITOR_PLAN.md) | the editor plan: what the code does today, the contracts that must not drift, the verified gaps, the next steps with acceptance, and the owner's decisions |
 | [`Doc/EDITOR.md`](Doc/EDITOR.md) | how the editor behaves today, written from the source |
-| [`Plan/EDITOR_HISTORY.md`](EDITOR_HISTORY.md) | archive of the older editor specification, notes and owner corrections that used to sit in this file |
 
 Do not add editor detail to this file: it links to the editor plan instead. An item from that plan ships
 only when the owner approves that item.
@@ -1186,10 +1185,10 @@ date rather than tracking the latest build.
 <a id="editor-plan-from-audit"></a>
 ## Editor plan and specification (moved to `Plan/EDITOR_PLAN.md`)
 
-The editor plan, the editor specification and the editor product direction now live in
-[`Plan/EDITOR_PLAN.md`](EDITOR_PLAN.md). This project plan keeps only the short summary in §6 and
-the dated records of what was built; do not add editor detail here. The anchors above are kept so
-existing links still resolve; their content moved to the editor plan file.
+The editor plan now lives in [`Plan/EDITOR_PLAN.md`](EDITOR_PLAN.md) and the editor behaviour in
+[`Doc/EDITOR.md`](../Doc/EDITOR.md). This project plan keeps only the short summary in §6 and the dated
+records of what was built; do not add editor detail here. The anchors above are kept so existing links
+still resolve.
 
 <a id="legacy-architecture-reference"></a>
 ## Legacy Architecture Reference (archived from `docs/architecture.md`)
@@ -1849,47 +1848,27 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 
 ---
 
-## 2026-11-21 — Editor plan rewritten from the audit doc
+## 2026-11-21 — Editor plan and editor documentation kept separate, written from the code
 
-The owner asked for the editor plan to be rewritten from the audit document. The rewrite was derived
-from `Doc/KITTL_CANVAS_EDITOR_AUDIT.md`, re-checked against the source, and now lives in
-`Plan/EDITOR_PLAN.md`:
-
-- The audit's "already compatible" list is now a state table with the file that implements each item,
-  and the audit's "needs expansion" list is marked built, partial or missing as of today. Several
-  items the audit called missing have since shipped — text wrapping, the seven painted text effects
-  and decorations, font search with recent fonts, per-layer effect thumbnails — while `circle` turns
-  out to be a no-op preset and `flag` does not exist.
-- The roadmap keeps the audit's order and drops what is built: hover highlighting, align/tidy, flip,
-  drag-to-create text box, `circle`/`flag` presets, then the model-level items. Node editing and a
-  rectangle-only Shape Builder turned out to be built too, so R8 is now the builder's missing cases.
-- The audit's six open questions are recorded as D1–D6 with a recommendation each, so the owner can
-  accept or overturn them one by one.
-- The plan states plainly that it authorises no code: §6 still treats the editor as final as built, so
-  each item needs the owner's approval before it is implemented.
-
-## 2026-11-21 — Editor plan and editor documentation moved out of this file
-
-The owner asked for the editor plan and the editor documentation to be kept separate, with the code
-checked carefully and only the plan written. No editor behaviour changed; this was a documentation
-move plus a fresh code audit.
+The owner asked for the editor plan and the editor documentation to be kept apart from the project plan,
+written from the code that works, and for the editor material that referenced other design products to be
+removed. No editor behaviour changed.
 
 - `Plan/EDITOR_PLAN.md` is the editor plan, written from the source: where the editor lives (file by
   file, with sizes), what works today item by item, the ten contracts that must not drift, the verified
-  gaps, the next steps E1–E11 with files and acceptance, six decisions for the owner, and the change
-  policy.
-- `Doc/EDITOR.md` documents how the editor behaves today: layout, canvas, tools, layers, selection,
-  text, shapes, pen, brush and eraser, gradients, images, mockups, the header bar, the Edit sidebar,
-  undo, phone behaviour, keyboard and pointer.
-- `Plan/EDITOR_HISTORY.md` keeps the older editor material that used to sit in this file — the
-  product-direction document, the editor specification and its appendix, the notes comparing other
-  design tools, and the 24 owner corrections recorded under §6 — as an archive, not as the plan. The old
-  anchors stay here so existing links resolve.
-- Verified in the code while writing it: `circle` is selectable but paints no transform, `flag`/`rise`/
-  `angle`/`distort` do not exist, Shape Builder handles only the first two axis-aligned rectangles,
-  there is no align/tidy, flip, hover highlight, snap guides, context menu, glyph panel, character runs,
-  artboard, persistence or working Save/Buy, while text wrapping, the seven text effects, node editing,
-  font search and per-layer effect thumbnails all exist.
+  gaps with evidence, the next steps E1–E11 with files and acceptance, six decisions for the owner, and
+  the change policy.
+- `Doc/EDITOR.md` documents how the editor behaves today: layout, canvas and workspace, the nine tools,
+  layers, selection and transform, text, shapes, pen, brush and eraser, gradients, images, mockups, the
+  header bar, the Edit sidebar, undo and state, phone behaviour, keyboard and pointer, and the tests.
+- `Plan/PLAN.md` §6 is now a short summary that links to those two files, and the editor specification
+  that used to sit here was removed with the rest of the editor material, as the owner asked. The old
+  anchors stay so existing links resolve.
+- The code check recorded in the plan: `circle` is selectable but paints no transform, Shape Builder
+  handles only the first two axis-aligned rectangles, and there is no save, persistence, order hand-off,
+  align/tidy, flip, hover highlight, positional snapping, context menu, glyph panel, per-character
+  styling, artboard, keyboard undo, extra product or working Save/Buy; text wrapping, the seven text
+  effects, decorations, node editing, font search and per-layer effect thumbnails all exist.
 
 ## 2026-11-21 — Rate limiting on the payment API
 

@@ -5,8 +5,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 ## Where the editor docs live
 - The editor plan is `Plan/EDITOR_PLAN.md`: what the code does, the contracts, the verified gaps, the
   next steps with acceptance, and the owner's decisions. It is written from the source.
-- The behaviour documentation is `Doc/EDITOR.md`; `Plan/EDITOR_HISTORY.md` is an archive of the older
-  editor material and is not the plan.
+- The behaviour documentation is `Doc/EDITOR.md`. These two files are the only editor plan and doc.
 - `Plan/PLAN.md` §6 is a short summary with links — do not add editor detail there. Old anchors
   (`#unified-editor-vision`, `#editor-implementation-plan`, `#editor-plan-from-audit`) stay in
   `PLAN.md` as empty placeholders so existing links resolve.

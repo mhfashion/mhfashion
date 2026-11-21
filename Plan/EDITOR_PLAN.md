@@ -14,9 +14,10 @@ editors.
 |---|---|
 | `Doc/EDITOR.md` | how the editor behaves today, written from the source |
 | `Plan/PLAN.md` §6 | the project-level summary; it links here |
-| `Plan/EDITOR_HISTORY.md` | archive of the older editor specification, notes and owner corrections that used to sit in `Plan/PLAN.md` |
 
-**Checked against the source on 2026-11-21** in `apps/web/src` at commit `1022336`.
+These two files (`Plan/EDITOR_PLAN.md` and `Doc/EDITOR.md`) are the whole editor plan and documentation.
+
+**Checked against the source on 2026-11-21** in `apps/web/src`.
 
 ---
 
