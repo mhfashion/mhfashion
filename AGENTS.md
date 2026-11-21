@@ -105,6 +105,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Intents live in an in-memory map (`lib/payment-store.ts`), so a restart forgets open intents. That is fine while nothing is charged; it becomes a Supabase table with P0 item 1.
 - Tests: `tests/payments.test.cjs` (Web Crypto is global in Node 22, so no Node-only crypto import).
 
+## Wishlist (`lib/wishlist.ts`, `lib/wishlist-context.tsx`, `app/wishlist/page.tsx`)
+- The list is a **snapshot** of the saved products in `localStorage` (`mh-fashion-wishlist`), not a live catalog query: `/wishlist` must render with no server and no Supabase credentials. The page says the price shown is the saved one.
+- `wishlist.toggle(product)` is a toggle, never an append. `normalizeWishlist` drops an entry without id/slug/name, collapses duplicates and caps at `WISHLIST_LIMIT` (100); a non-numeric price becomes 0 so `toLocaleString` cannot print `NaN`.
+- The provider must not write before it reads (`if (!loaded) return;`), or the first render's empty array overwrites a saved list.
+- `ProductCard` reads `useWishlist()`; never reintroduce a private `useState` heart — the saved page would not see the tap. The button carries `data-wishlist-toggle={id}`, `data-wishlisted` and `aria-pressed`.
+- Header heart is a link to `/wishlist` with `data-wishlist-count`; `MobileNav` links the same route.
+
 ## Catalog search (`lib/products.ts`, `app/search/page.tsx`)
 - `normalizeSearchQuery` keeps `\p{L}`, `\p{M}`, `\p{N}`, spaces and `'&.+-`. The `\p{M}` matters: without it a Myanmar term loses its combining marks (`အင်္ကျီ` → `အင က`). Commas, brackets, `%` and `_` are stripped because they are PostgREST `or()` syntax.
 - `searchProducts` sends one request: `or=(name.ilike.%t%,sub_brand.ilike.%t%,product_type.ilike.%t%)`, and refuses a term shorter than two characters.

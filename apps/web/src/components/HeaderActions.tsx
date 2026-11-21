@@ -14,6 +14,7 @@ import {
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
 import { useCart } from "@/lib/cart-context";
+import { useWishlist } from "@/lib/wishlist-context";
 import { useI18n } from "@/lib/i18n";
 import NotificationBell from "./NotificationBell";
 import CartBox from "./CartBox";
@@ -22,6 +23,7 @@ export default function HeaderActions() {
   const { theme, toggleTheme } = useTheme();
   const { currency, toggleCurrency } = useCurrency();
   const { itemCount } = useCart();
+  const { count: wishlistCount } = useWishlist();
   const { locale, setLocale, t } = useI18n();
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -111,9 +113,12 @@ export default function HeaderActions() {
         </div>
         <NotificationBell />
 
-        <button aria-label={t("actions.wishlist")}>
+        <a href="/wishlist" aria-label={t("actions.wishlist")} data-header-wishlist className="relative">
           <Heart size={18} />
-        </button>
+          {wishlistCount > 0 ? (
+            <span data-wishlist-count className="absolute -right-1.5 -top-1.5 min-w-[14px] rounded-full bg-accent px-1 text-center text-[9px] font-bold leading-[14px] text-accent-foreground">{wishlistCount}</span>
+          ) : null}
+        </a>
 
         {/* Currency switcher — Ks/$ toggle, base price stored in Ks */}
         <button

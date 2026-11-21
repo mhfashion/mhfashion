@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { Heart, Shirt } from "lucide-react";
 import type { Product } from "@/lib/types";
 import { useCurrency } from "@/lib/currency-context";
 import { useI18n } from "@/lib/i18n";
+import { useWishlist } from "@/lib/wishlist-context";
 
 export default function ProductCard({ product, boxed = false }: { product: Product; boxed?: boolean }) {
-  const [favorited, setFavorited] = useState(false);
+  const wishlist = useWishlist();
+  const favorited = wishlist.has(product.id);
   const { formatRangeKs } = useCurrency();
   const { t } = useI18n();
   const productUrl = `/products/${product.slug}`;
@@ -27,12 +28,16 @@ export default function ProductCard({ product, boxed = false }: { product: Produ
         )}
 
         <button
+          type="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setFavorited((f) => !f);
+            wishlist.toggle(product);
           }}
-          aria-label="Favorite"
+          aria-label={favorited ? "Remove from wishlist" : "Save to wishlist"}
+          aria-pressed={favorited}
+          data-wishlist-toggle={product.id}
+          data-wishlisted={favorited ? "true" : "false"}
           className="absolute right-1.5 top-1.5"
         >
           <Heart size={13} className={`${favorited ? "text-accent" : "text-text-primary"} sm:h-[15px] sm:w-[15px]`} fill={favorited ? "currentColor" : "none"} />

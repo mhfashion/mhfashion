@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   Bell,
@@ -27,6 +28,7 @@ import Header from "@/components/Header";
 import { useCurrency } from "@/lib/currency-context";
 import { useTheme } from "@/lib/theme-context";
 import { useI18n } from "@/lib/i18n";
+import { useWishlist } from "@/lib/wishlist-context";
 
 type SectionId = "dashboard" | "profile" | "orders" | "designs" | "wishlist" | "points" | "settings";
 
@@ -166,6 +168,7 @@ export default function AccountPage() {
   const { locale, t } = useI18n();
   const copy = COPY[locale];
   const formatMoney = (value: number) => `${value.toLocaleString("en-US")} ${currency}`;
+  const wishlist = useWishlist();
   const sectionLabel = (section: (typeof SECTIONS)[number]) => t(section.labelKey) === section.labelKey ? section.fallback : t(section.labelKey);
 
   const sectionContent = useMemo(() => active, [active]);
@@ -203,7 +206,41 @@ export default function AccountPage() {
                 {active === "orders" && <div className="space-y-3">{ORDERS.map((order) => <div key={order.id} className="flex items-center gap-3 rounded-xl border border-border p-3"><ProductThumb variant={order.variant} /><div className="flex-1"><p className="text-sm font-bold">Order {order.id}</p><p className="mt-1 text-xs text-text-muted">{order.date} · {order.items} items</p></div><span className="hidden rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent sm:block">{order.stage}</span><p className="text-sm font-black">{formatMoney(order.totalKs)}</p></div>)}</div>}
                 {active === "profile" && <div className="grid max-w-2xl gap-4 sm:grid-cols-2"><label className="text-xs text-text-muted">{copy.fullName}<input defaultValue="Min Thu Aung" className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><label className="text-xs text-text-muted">{copy.email}<input defaultValue="minthu.aung@example.com" className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><label className="text-xs text-text-muted">{copy.phone}<input defaultValue="+95 9 400 686 925" className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><label className="text-xs text-text-muted sm:col-span-2">{copy.address}<textarea rows={3} placeholder="Street, township, city, country" className="mt-1 w-full resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><button className="rounded-full bg-accent px-5 py-2 text-xs font-bold text-accent-foreground sm:col-span-2 sm:w-fit">{copy.save}</button></div>}
                 {active === "designs" && <div className="grid gap-4 sm:grid-cols-3">{["Chaos Theory remix", "Team jersey #10"].map((name) => <div key={name} className="overflow-hidden rounded-xl border border-border"><div className="flex aspect-square items-center justify-center bg-gradient-to-br from-[#dff1c5] to-[#b7d98d] text-center text-sm font-black text-[#4c9d16]">MH<br />FASHION</div><div className="p-3"><p className="truncate text-xs font-bold">{name}</p><p className="mt-1 text-[10px] text-text-muted">T-shirt · Crew Neck · M</p><div className="mt-3 flex gap-3"><a href="/create" className="text-[10px] font-semibold text-accent">Edit</a><button className="flex items-center gap-1 text-[10px] text-text-muted"><Trash2 size={11} /> Delete</button></div></div></div>)}<a href="/create" className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-border-light text-xs text-text-muted">{copy.newDesign}</a></div>}
-                {active === "wishlist" && <div className="grid gap-4 sm:grid-cols-4">{["Butterfly Effect", "Void Tee"].map((name, index) => <div key={name}><div className="flex aspect-square items-center justify-center rounded-xl bg-gradient-to-br from-[#eaf8d7] to-[#cbeaa9] text-center text-xs font-black text-[#4c9d16]">MH<br />FASHION</div><p className="mt-2 text-xs font-semibold">{name}</p><p className="mt-1 text-[10px] text-text-muted">{formatMoney(index ? 25000 : 21000)}</p></div>)}</div>}
+                {active === "wishlist" && (
+                  wishlist.count ? (
+                    <div data-account-wishlist>
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-xs text-text-muted">{wishlist.count} {wishlist.count === 1 ? "item" : "items"} saved on this device.</p>
+                        <Link href="/wishlist" className="text-xs font-bold text-accent">Open the wishlist</Link>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-4">
+                        {wishlist.items.map((product) => (
+                          <Link key={product.id} href={`/products/${product.slug}`} data-account-wishlist-item={product.id} className="group">
+                            <div className="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-border bg-bg-surface p-2 text-center text-xs font-black text-[#4c9d16]">
+                              {product.imageUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <>MH<br />FASHION</>
+                              )}
+                            </div>
+                            <p className="mt-2 truncate text-xs font-semibold group-hover:text-accent">{product.name}</p>
+                            <p className="mt-1 text-[10px] text-text-muted">
+                              {formatMoney(product.priceMinKs)}
+                              {product.priceMaxKs > product.priceMinKs ? ` – ${formatMoney(product.priceMaxKs)}` : ""}
+                            </p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div data-account-wishlist-empty className="rounded-xl border border-border p-6 text-center">
+                      <p className="text-sm font-semibold">Nothing saved yet</p>
+                      <p className="mt-1 text-xs text-text-muted">Tap the heart on any product and it will wait for you here.</p>
+                      <Link href="/products" className="mt-3 inline-flex rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">Browse products</Link>
+                    </div>
+                  )
+                )}
                 {active === "points" && <div className="grid max-w-2xl gap-4 sm:grid-cols-2"><div className="rounded-xl border border-border p-5"><p className="text-xs text-text-muted">{copy.daily}</p><p className="mt-2 text-3xl font-black text-accent">300</p><p className="mt-2 text-[10px] leading-relaxed text-text-muted">Granted every day. Unused daily points expire at the end of the day.</p></div><div className="rounded-xl border border-border p-5"><p className="text-xs text-text-muted">{copy.purchase}</p><p className="mt-2 text-3xl font-black">150</p><p className="mt-2 text-[10px] leading-relaxed text-text-muted">Earned 50 points per product purchased. These never expire.</p></div></div>}
                 {active === "settings" && <div className="max-w-xl space-y-3"><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">Currency</p><p className="mt-1 text-xs text-text-muted">Prices are shown in this currency across the site.</p></div><button onClick={toggleCurrency} className="rounded-full border border-border-light px-3 py-1 text-xs">{currency}</button></div><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{copy.theme}</p><p className="mt-1 text-xs text-text-muted">Switch between dark and light appearance.</p></div><button onClick={toggleTheme} className="rounded-full border border-border-light px-3 py-1 text-xs capitalize">{theme}</button></div><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{copy.notifications}</p><p className="mt-1 text-xs text-text-muted">In-app notifications are always on.</p></div><Check size={18} className="text-accent" /></div></div>}
               </section>

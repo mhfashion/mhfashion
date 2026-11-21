@@ -159,6 +159,10 @@
     {
       "path": "/terms",
       "title": "Terms of Use"
+    },
+    {
+      "path": "/wishlist",
+      "title": "Wishlist"
     }
   ]
 }

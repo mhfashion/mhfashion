@@ -1064,6 +1064,12 @@ proposal, not an approved order.
     reaches the query, so commas, brackets and `%` cannot rewrite the filter. A Myanmar term keeps its
     combining marks. `tests/search.test.cjs` covers the normaliser, the real query against a stub
     PostgREST server, and the three entry points.
+    **Wishlist built 2026-11-21:** the heart on a product card saves the product to
+    `mh-fashion-wishlist` in the browser, the header heart links to `/wishlist` with a count badge, and
+    the account tab renders the same list. The saved page shows the snapshot that was saved and says so
+    — the product page is where the current price lives. Saving is a toggle, a stored entry without an
+    id, slug or name is dropped, duplicates collapse and the list stops at 100. `tests/wishlist.test.cjs`
+    covers the store, the card, the header, the page and the account tab.
 
 ### P2 — later
 
