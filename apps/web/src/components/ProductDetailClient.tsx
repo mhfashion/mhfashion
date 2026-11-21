@@ -122,8 +122,8 @@ export default function ProductDetailClient({ product, related }: Props) {
 
   return (
     <>
-      <section className="grid gap-2 rounded-xl border-0 bg-transparent p-0 shadow-none sm:border sm:border-border/70 sm:bg-bg-surface sm:p-2 sm:shadow-[0_8px_30px_rgba(30,40,20,0.06)] lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)] lg:gap-2.5 lg:p-2.5">
-        <div className="mx-auto min-w-0 w-full max-w-[min(100%,440px)] lg:max-w-[440px]">
+      <section className="grid gap-2 rounded-xl border-0 bg-transparent p-0 shadow-none sm:border sm:border-border/70 sm:bg-bg-surface sm:p-2 sm:shadow-[0_8px_30px_rgba(30,40,20,0.06)] lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)] lg:gap-2.5 lg:p-2.5">
+        <div className="mx-auto min-w-0 w-full max-w-[min(100%,480px)] lg:max-w-[480px]">
           <div className="relative">
             <ProductMockupPreview
               slug={product.slug}
@@ -131,6 +131,8 @@ export default function ProductDetailClient({ product, related }: Props) {
               imageUrl={product.imageUrl}
               selection={{ color: selectedColor, fit: selectedFit, sleeve: selectedSleeve, size: selectedSize }}
               design={design}
+              colours={colors}
+              onSelectColour={setSelectedColor}
             />
             {product.isNew && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-[10px] font-black text-accent-foreground">NEW</span>}
           </div>

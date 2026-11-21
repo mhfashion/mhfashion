@@ -103,7 +103,9 @@ test("the product page renders the mockup from the selection with the design on 
   assert.match(client, /selection=\{\{ color: selectedColor, fit: selectedFit, sleeve: selectedSleeve, size: selectedSize \}\}/);
   assert.match(client, /design=\{design\}/);
   assert.match(client, /resolveDesignOverlay\(\{ svgUrl: shared \?\? product\.designSvgUrl, draft: readDesignDraft\(\) \}\)/);
-  assert.match(client, /lg:grid-cols-\[minmax\(0,440px\)_minmax\(0,1fr\)\]/);
+  assert.match(client, /lg:grid-cols-\[minmax\(0,480px\)_minmax\(0,1fr\)\]/);
+  assert.match(client, /colours=\{colors\}/);
+  assert.match(client, /onSelectColour=\{setSelectedColor\}/);
   assert.equal(/activeImage/.test(client), false, "the fake 4-image carousel is gone");
 
   const preview = readFileSync(path.join(__dirname, "..", "apps/web/src/components/ProductMockupPreview.tsx"), "utf8");
@@ -112,6 +114,18 @@ test("the product page renders the mockup from the selection with the design on 
   assert.match(preview, /onError=\{advance\}/);
   assert.match(preview, /image\.complete && image\.naturalWidth === 0/);
   assert.match(preview, /data-design-overlay=\{design\.kind\}/);
+  // the thumbnail strip the product page lost: one tile per colour, photo or swatch
+  assert.match(preview, /data-product-thumbs/);
+  assert.match(preview, /data-product-thumb=\{name\}/);
+  assert.match(preview, /data-thumb-swatch=\{name\}/);
+  assert.match(preview, /includeDefault: false/);
+  // hover zoom and the tap-to-enlarge dialog
+  assert.match(preview, /data-product-zoom-layer/);
+  assert.match(preview, /data-product-lightbox/);
+  assert.match(preview, /pointerType !== "mouse"/);
+  assert.match(preview, /transform: zoom\.active \? `scale\(\$\{ZOOM_SCALE\}\)` : "scale\(1\)"/);
+  // phone keeps the image short instead of a full square
+  assert.match(preview, /h-\[240px\] w-full overflow-hidden rounded-2xl .* sm:aspect-square sm:h-auto/);
   assert.match(preview, /PRODUCT_PRINT_AREA/);
   assert.match(preview, /<EditorArtworkLayers layers=\{design\.layers\} \/>/);
 });
@@ -121,4 +135,15 @@ test("the editor keeps its open design so the product page can preview it", () =
   assert.match(canvas, /saveDesignDraft\(layers\)/);
   assert.match(canvas, /window\.setTimeout\(\(\) => saveDesignDraft\(layers\), 400\)/);
   assert.match(canvas, /\}, \[layers\]\);/);
+});
+
+test("colour thumbnails skip the generic default look", () => {
+  const all = mockup.mockupCandidates("chaos-theory", { color: "Navy" }, { base: "https://cdn.test", extensions: ["webp"] });
+  assert.deepEqual(all, ["https://cdn.test/mockups/chaos-theory/navy.webp", "https://cdn.test/mockups/chaos-theory/default.webp"]);
+
+  const thumbs = mockup.mockupCandidates("chaos-theory", { color: "Navy" }, { base: "https://cdn.test", extensions: ["webp"], includeDefault: false });
+  assert.deepEqual(thumbs, ["https://cdn.test/mockups/chaos-theory/navy.webp"]);
+
+  const unknown = mockup.mockupCandidates("chaos-theory", { color: "Purple" }, { base: "https://cdn.test", extensions: ["webp"], includeDefault: false });
+  assert.deepEqual(unknown, ["https://cdn.test/mockups/chaos-theory/purple.webp"], "no default look to mask the miss");
 });

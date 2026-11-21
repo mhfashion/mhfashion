@@ -2725,3 +2725,12 @@ Orders are filed by the admin's local day. The old dashboard buckets used UTC da
 - One row per combination, one column per attribute, plus a `Price` column. Headers are matched by name, prices accept `24,000` / `Ks 24000`, and a bad row is reported instead of being dropped.
 - The sheet decides what is sold: its columns become the enabled attributes and its values become their options, so editing the sheet is enough to change the combinations.
 - A private sheet would need a service account (credentials), which is a separate setup and not required for the preview workflow.
+
+## 2026-11-21 Fix — product page preview (thumbnails, phone height, zoom)
+
+The previous change removed the image strip under the product photo and left the box empty when no mockup existed. Both are fixed:
+
+- **The strip is back** and is now meaningful: one tile per colour. A tile shows that colour's mockup photo when one exists and its colour swatch when it does not, so the strip is never blank — even before the R2 mockups are uploaded. Tapping a tile chooses that colour (price and swatches follow).
+- **Phone no longer loses the screen to the photo**: the preview box is 240 px tall on phones instead of a full-width square, with the colour strip in one row (57 px) under it.
+- **Web gets a larger photo** (480 px column) plus **hover zoom**: pointing at the photo magnifies it around the cursor at 2.4x; clicking or tapping opens a full-screen zoom view that closes with X, the backdrop or Escape. The design on the shirt zooms with it.
+- With no photo at all (the current production state for most products) the box shows the chosen colour and "Mockup photo coming soon" instead of an empty rectangle.

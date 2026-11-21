@@ -66,6 +66,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `mergeSheetPriceRows` treats the sheet as the source of truth for combinations: its columns decide which attributes are enabled, its values become the attribute options, and an enabled attribute with no column is switched off (reported as an issue). Every problem is surfaced in the panel instead of silently dropping rows.
 - Tests: `tests/sheet-prices.test.cjs` (URL building, CSV quoting, header aliases, price parsing, duplicates, merge, and the route handler's 200/400/502 paths with an injected fetcher).
 
+## Product page preview (`components/ProductMockupPreview.tsx`)
+- The media column is `minmax(0,480px)` on `lg`. The preview box is `h-[240px]` on phones and `sm:aspect-square` above, so the photo does not eat the whole phone screen; the caption sits under it.
+- Below the box is a **colour strip** (`data-product-thumbs`, `grid-cols-6`): one tile per colour, `data-product-thumb="<Colour>"`. A tile shows that colour's mockup photo when the bucket has one and its swatch (`data-thumb-swatch`) otherwise, so the strip never collapses to nothing. Clicking a tile selects the colour (`onSelectColour`), which also updates price and the swatch row — it is not a separate "gallery" state.
+- Tiles must not fall back to the `default` look: `mockupCandidates(..., { includeDefault: false })` keeps every colour from showing the same generic photo. The main image keeps the full chain plus the catalog image.
+- Zoom: hovering with a mouse scales the zoom layer to `ZOOM_SCALE` (2.4) around the pointer (`data-product-zoom-layer`, transform-origin in %); leaving resets it. A click or a touch tap opens the lightbox (`data-product-lightbox`, `role="dialog"`), closed by the X, the backdrop or Escape. The design overlay lives inside the same transformed layer, so it zooms with the shirt.
+- When nothing resolves (no catalog image, no R2 mockup — the current production state for most products) the box shows the selected colour's swatch and "Mockup photo coming soon" instead of an empty rectangle.
+- Tests: `tests/product-mockup.test.cjs` (candidate order, default-look exclusion, preview wiring).
+
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.
 - The job's **first step** verifies the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets. If either is missing it exits 1 and every later step is skipped, so **the Cloudflare Worker is never deployed**.

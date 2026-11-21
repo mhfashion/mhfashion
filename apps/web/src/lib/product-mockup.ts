@@ -51,14 +51,18 @@ export function mockupKeys(slug: string, selection: ProductSelection): string[] 
 export function mockupCandidates(
   slug: string,
   selection: ProductSelection,
-  options: { base?: string; extensions?: readonly string[]; fallback?: string | null } = {},
+  options: { base?: string; extensions?: readonly string[]; fallback?: string | null; includeDefault?: boolean } = {},
 ): string[] {
   const base = (options.base ?? R2_MOCKUP_BASE).replace(/\/+$/, "");
   const extensions = options.extensions ?? MOCKUP_EXTENSIONS;
   const product = mockupSegment(slug);
   const urls: string[] = [];
   if (base && product) {
-    for (const key of mockupKeys(product, selection)) {
+    const keys = mockupKeys(product, selection);
+    // Colour thumbnails drop the generic "default" look: falling back to it would paint every
+    // colour with the same photo, which reads as a duplicate rather than a colour.
+    const visible = options.includeDefault === false ? keys.filter((key) => key !== "default") : keys;
+    for (const key of visible) {
       for (const extension of extensions) urls.push(`${base}/mockups/${product}/${key}.${extension}`);
     }
   }
