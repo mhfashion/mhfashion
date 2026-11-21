@@ -1,7 +1,5 @@
 "use client";
 
-import type { SheetPriceRow } from "@/lib/sheet-prices";
-
 // Browser-local demo data for the Super Admin workspace. Nothing here is a security boundary
 // or live store data: the plan requires the admin UI to stay preview-only until Supabase Auth,
 // RLS and server-side role checks replace the demo session. Every module reads and writes this
@@ -814,6 +812,7 @@ export function removeProduct(data: AdminDemoData, productId: string): AdminDemo
 export type AdminTshirtPostAttributeKey =
   | "size"
   | "material"
+  | "knit"
   | "fit"
   | "color"
   | "sleeve"
@@ -827,15 +826,18 @@ export type AdminTshirtPostAttribute = {
   options: string[];
 };
 
+// Labels follow Plan §4.1 (Print Method / Fabric Type / Knit Structure / MH Cuttings). The
+// stored keys are unchanged so existing posts keep their combinations.
 export const TSHIRT_POST_ATTRIBUTES: AdminTshirtPostAttribute[] = [
   { key: "size", label: "Size", options: ["S", "M", "L", "XL", "2XL"] },
-  { key: "material", label: "Material", options: ["Cotton", "Premium Cotton", "Polyester", "Blend"] },
+  { key: "material", label: "Fabric Type", options: ["Combed Cotton", "Compact Combed Cotton", "Polyester"] },
+  { key: "knit", label: "Knit Structure", options: ["Single Jersey", "Interlock", "Air Layer"] },
   { key: "fit", label: "Fit Type", options: ["Regular", "Oversized", "Slim"] },
-  { key: "color", label: "Colour", options: ["Black", "White", "Green", "Sand", "Red", "Navy"] },
+  { key: "color", label: "Color", options: ["Black", "White", "Green", "Sand", "Red", "Navy"] },
   { key: "sleeve", label: "Sleeve", options: ["Short Sleeve", "Long Sleeve"] },
   { key: "gsm", label: "GSM", options: ["160 GSM", "180 GSM", "200 GSM", "240 GSM"] },
-  { key: "cutting", label: "Cutting", options: ["Standard", "Raw Edge", "Raglan"] },
-  { key: "print", label: "Print", options: ["DTF", "Sublimation", "Screen Print"] },
+  { key: "cutting", label: "MH Cuttings", options: ["Crew Neck", "V-Neck", "Polo Neck", "Round Neck"] },
+  { key: "print", label: "Print Method", options: ["DTF", "Sublimation"] },
 ];
 
 export function tshirtAttributeLabel(key: AdminTshirtPostAttributeKey) {
@@ -868,6 +870,41 @@ export type AdminTshirtPostDraft = {
 // A new post starts with the four attributes that almost every drop varies; the rest
 // (sleeve, GSM, cutting, print) are one tick away when a drop needs them.
 const DEFAULT_TSHIRT_DRAFT_ATTRIBUTES: AdminTshirtPostAttributeKey[] = ["size", "material", "fit", "color"];
+// Stored posts keep their old option strings ("Cotton", "Standard", "Screen Print"). They are
+// mapped onto the §4.1 vocabulary on read so a saved post does not show a value the chain no
+// longer offers.
+const LEGACY_POST_OPTION_VALUES: Record<string, string> = {
+  Cotton: "Combed Cotton",
+  "Premium Cotton": "Compact Combed Cotton",
+  Blend: "Combed Cotton",
+  Standard: "Crew Neck",
+  "Raw Edge": "V-Neck",
+  Raglan: "Round Neck",
+  "Screen Print": "DTF",
+};
+
+export function normalizeTshirtPostOptions(post: AdminTshirtPost): AdminTshirtPost {
+  let changed = false;
+  const attributes = post.attributes.map((attribute) => {
+    const known = TSHIRT_POST_ATTRIBUTES.find((entry) => entry.key === attribute.key);
+    if (!known) return attribute;
+    const options = [...new Set(attribute.options.map((option) => LEGACY_POST_OPTION_VALUES[option] ?? option))]
+      .filter((option) => known.options.includes(option) || attribute.key === "gsm");
+    const next = { ...attribute, label: known.label, options: options.length ? options : known.options };
+    if (next.label !== attribute.label || next.options.join("\u0000") !== attribute.options.join("\u0000")) changed = true;
+    return next;
+  });
+  const prices = post.prices.map((row) => {
+    const options = Object.fromEntries(
+      Object.entries(row.options).map(([key, value]) => [key, (value && LEGACY_POST_OPTION_VALUES[value]) || value]),
+    );
+    if (Object.keys(options).some((key) => options[key] !== row.options[key as AdminTshirtPostAttributeKey])) changed = true;
+    return { ...row, options };
+  });
+  // Identity stays stable for an already-normalised post, so the store does not hand out a new
+  // object on every read.
+  return changed ? { ...post, attributes, prices } : post;
+}
 
 export function tshirtPostDraftFrom(post?: AdminTshirtPost): AdminTshirtPostDraft {
   return {
@@ -912,42 +949,6 @@ export function emptyTshirtPriceRow(attributes: AdminTshirtPostAttribute[]): Adm
     options: Object.fromEntries(attributes.map((attribute) => [attribute.key, attribute.options[0]])),
     priceKs: "",
   };
-}
-
-// A Google Sheet defines the sold combinations: the columns it carries become the enabled
-// attributes, the values become their options, and each priced line becomes one price row.
-// An enabled attribute with no column cannot be priced from the sheet, so it is switched off
-// rather than leaving rows that can never be complete.
-export function mergeSheetPriceRows(
-  attributes: AdminTshirtPostDraftAttribute[],
-  rows: SheetPriceRow[],
-): { attributes: AdminTshirtPostDraftAttribute[]; prices: AdminTshirtPostDraftPriceRow[]; issues: string[] } {
-  const issues: string[] = [];
-  const sheetColumns = new Set<AdminTshirtPostAttributeKey>();
-  for (const row of rows) {
-    for (const key of Object.keys(row.options) as AdminTshirtPostAttributeKey[]) {
-      if (row.options[key]) sheetColumns.add(key);
-    }
-  }
-
-  const nextAttributes = attributes.map((attribute) => {
-    if (!sheetColumns.has(attribute.key)) {
-      if (attribute.enabled) issues.push(`${attribute.label} has no column in the sheet, so it was switched off.`);
-      return { ...attribute, enabled: false };
-    }
-    const values = [...new Set(rows.map((row) => row.options[attribute.key]).filter((value): value is string => Boolean(value)))];
-    const options = [...attribute.options.filter((option) => values.includes(option)), ...values.filter((value) => !attribute.options.includes(value))];
-    return { ...attribute, enabled: true, options };
-  });
-
-  const enabled = nextAttributes.filter((attribute) => attribute.enabled && attribute.options.length > 0);
-  const prices = rows.map((row) => ({
-    id: makeAdminId("price"),
-    options: Object.fromEntries(enabled.map((attribute) => [attribute.key, row.options[attribute.key] ?? attribute.options[0]])),
-    priceKs: row.priceKs,
-  }));
-
-  return { attributes: nextAttributes, prices, issues };
 }
 
 // Keeping rows complete as the admin ticks options on and off: a value that is no longer
@@ -1070,7 +1071,7 @@ export function normalizeTshirtPost(post: AdminTshirtPost | (Record<string, unkn
     colors?: { name: string; hex: string; priceKs: number }[];
   };
   if (Array.isArray((post as AdminTshirtPost).attributes) && Array.isArray((post as AdminTshirtPost).prices)) {
-    return post as AdminTshirtPost;
+    return normalizeTshirtPostOptions(post as AdminTshirtPost);
   }
   const sizes = legacy.sizes ?? [];
   const colors = legacy.colors ?? [];
@@ -1084,7 +1085,7 @@ export function normalizeTshirtPost(post: AdminTshirtPost | (Record<string, unkn
     options: { size: size.size, ...(color.name ? { color: color.name } : {}) },
     priceKs: size.priceKs + color.priceKs,
   })));
-  return {
+  return normalizeTshirtPostOptions({
     id: legacy.id,
     title: legacy.title ?? "Untitled post",
     description: legacy.description ?? "",
@@ -1094,7 +1095,7 @@ export function normalizeTshirtPost(post: AdminTshirtPost | (Record<string, unkn
     status: legacy.status ?? "Draft",
     createdAt: legacy.createdAt ?? new Date().toISOString(),
     publishedAt: legacy.publishedAt ?? null,
-  };
+  });
 }
 
 // ---------------------------------------------------------------- designs
@@ -1326,17 +1327,17 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
       svg: seedPostSvg("PEACOCK", "#236b42"),
       attributes: [
         { key: "size", label: "Size", options: ["S", "M", "L", "XL"] },
-        { key: "material", label: "Material", options: ["Cotton", "Premium Cotton"] },
+        { key: "material", label: "Fabric Type", options: ["Combed Cotton", "Compact Combed Cotton"] },
         { key: "fit", label: "Fit Type", options: ["Regular"] },
         { key: "color", label: "Colour", options: ["Black", "White", "Sand"] },
-        { key: "print", label: "Print", options: ["DTF", "Sublimation"] },
+        { key: "print", label: "Print Method", options: ["DTF", "Sublimation"] },
       ],
       prices: [
-        { id: "price-peacock-1", options: { size: "S", material: "Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 21000 },
-        { id: "price-peacock-2", options: { size: "M", material: "Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 22000 },
-        { id: "price-peacock-3", options: { size: "M", material: "Premium Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 25000 },
-        { id: "price-peacock-4", options: { size: "XL", material: "Cotton", fit: "Regular", color: "White", print: "DTF" }, priceKs: 24000 },
-        { id: "price-peacock-5", options: { size: "XL", material: "Premium Cotton", fit: "Regular", color: "Sand", print: "Sublimation" }, priceKs: 31000 },
+        { id: "price-peacock-1", options: { size: "S", material: "Combed Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 21000 },
+        { id: "price-peacock-2", options: { size: "M", material: "Combed Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 22000 },
+        { id: "price-peacock-3", options: { size: "M", material: "Compact Combed Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 25000 },
+        { id: "price-peacock-4", options: { size: "XL", material: "Combed Cotton", fit: "Regular", color: "White", print: "DTF" }, priceKs: 24000 },
+        { id: "price-peacock-5", options: { size: "XL", material: "Compact Combed Cotton", fit: "Regular", color: "Sand", print: "Sublimation" }, priceKs: 31000 },
       ],
       status: "Published",
       createdAt: daysAgo(6),
@@ -1351,14 +1352,14 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
         { key: "size", label: "Size", options: ["M", "L", "2XL"] },
         { key: "fit", label: "Fit Type", options: ["Oversized"] },
         { key: "color", label: "Colour", options: ["Black", "Navy"] },
-        { key: "gsm", label: "GSM", options: ["220 GSM"] },
-        { key: "cutting", label: "Cutting", options: ["Raw Edge"] },
-        { key: "print", label: "Print", options: ["Sublimation"] },
+        { key: "gsm", label: "GSM", options: ["240 GSM"] },
+        { key: "cutting", label: "MH Cuttings", options: ["V-Neck"] },
+        { key: "print", label: "Print Method", options: ["Sublimation"] },
       ],
       prices: [
-        { id: "price-mandalay-1", options: { size: "M", fit: "Oversized", color: "Black", gsm: "220 GSM", cutting: "Raw Edge", print: "Sublimation" }, priceKs: 27000 },
-        { id: "price-mandalay-2", options: { size: "L", fit: "Oversized", color: "Navy", gsm: "220 GSM", cutting: "Raw Edge", print: "Sublimation" }, priceKs: 29000 },
-        { id: "price-mandalay-3", options: { size: "2XL", fit: "Oversized", color: "Black", gsm: "220 GSM", cutting: "Raw Edge", print: "Sublimation" }, priceKs: 31000 },
+        { id: "price-mandalay-1", options: { size: "M", fit: "Oversized", color: "Black", gsm: "240 GSM", cutting: "V-Neck", print: "Sublimation" }, priceKs: 27000 },
+        { id: "price-mandalay-2", options: { size: "L", fit: "Oversized", color: "Navy", gsm: "240 GSM", cutting: "V-Neck", print: "Sublimation" }, priceKs: 29000 },
+        { id: "price-mandalay-3", options: { size: "2XL", fit: "Oversized", color: "Black", gsm: "240 GSM", cutting: "V-Neck", print: "Sublimation" }, priceKs: 31000 },
       ],
       status: "Draft",
       createdAt: daysAgo(2),
@@ -1511,7 +1512,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     products,
     stock,
     designs,
-    tshirtPosts: createSeedTshirtPosts(now),
+    tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
     promotions,
     team,
     settings: {
@@ -1553,7 +1554,7 @@ export function readAdminDemoData(): AdminDemoData {
           orders,
           tshirtPosts: Array.isArray(parsed.tshirtPosts)
             ? parsed.tshirtPosts.map(normalizeTshirtPost)
-            : createSeedTshirtPosts(Date.now()),
+            : createSeedTshirtPosts(Date.now()).map(normalizeTshirtPostOptions),
         };
         return cache;
       }

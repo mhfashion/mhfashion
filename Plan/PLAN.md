@@ -119,8 +119,21 @@ Rules are set by the Super Admin.
 
 **Attribute names are final (owner decision, 2026-11-21):** Print Method, Fabric Type, Knit
 Structure, MH Cuttings. Pricing and Posts screens must use these names rather than the older
-Material / Fit Type / Sleeve / Print wording; whether the Posts module keeps its current labels or
-maps them is still open (section 13).
+Material / Fit Type / Sleeve / Print wording.
+
+**Answered (owner, 2026-11-21): the Posts labels are renamed, not mapped.** The Posts module now
+carries `Print Method`, `Fabric Type`, `Knit Structure`, `MH Cuttings` and `Color`, with the 4.1
+option values, and the Editor Header Bar 2 shows the same chain. The stored keys (`material`,
+`cutting`, `print`, …) are unchanged so saved posts keep their combinations; posts saved with the
+old option words (Cotton, Standard, Screen Print, …) are mapped onto the 4.1 vocabulary on read by
+`normalizeTshirtPostOptions` (`lib/admin-demo-data.ts`). The chain lists and cascade live in
+`lib/editor-attributes.ts` and are shared by both screens.
+
+**Implemented cascade (2026-11-21):** Sublimation → Fabric Type = Polyester only; Polyester →
+Knit Structure = Interlock | Air Layer; cotton → Single Jersey | Interlock. GSM, Color, MH
+Cuttings and Size are not filtered. A selection the cascade drops falls back to the first option
+still offered instead of staying on screen. The rule list is static until Attribute Management
+(§16 P2) makes it admin-driven.
 
 ### 4.2 Phone Cover
 
@@ -380,8 +393,9 @@ The detailed editor feature list below is a **forward plan**, not a claim that t
   Guide.
 - **Admin action:** Designs module → Hide / Delete, with a short record (design,
   who claimed, date, admin).
-- **Proposed, awaiting owner confirmation:** an order already paid for a design
-  that is later taken down is held for owner review before printing.
+- **Answered (owner, 2026-11-21): a takedown never stops an order that is already paid.** The
+  paid order is produced and delivered as normal; the takedown only stops new sales of the design
+  (it is hidden/removed from the storefront and the editor).
 
 ## 9. Promotions, Loyalty & AI Points
 
@@ -498,17 +512,18 @@ catalog-facing items.
 - Further editor tools and layer-panel features; further admin permissions.
 - Refund request flow; mobile app scope; email provider.
 
-**Open questions for the owner (2026-11-21)**
+**Owner answers (2026-11-21) — all five questions closed**
 
-1. Posts attribute labels: rename them to the 4.1 names (Print Method, Fabric Type, Knit Structure,
-   MH Cuttings) or map the current Material / Fit Type / Sleeve / Print labels onto them?
-2. Deploy: once the Cloudflare secrets are settled, keep every push to `main` deploying, or add a
-   staging branch and a preview deployment? The answer decides how directive 5 is worded.
-3. Inventory: is it **blank garment stock**, as assumed in section 16? If it instead caps sellable
-   quantity, the stock-decrement rules change.
-4. After a takedown, is a paid order held for owner review before printing (8.1)?
-5. Pricing Management (4.5.1): approve the spec as written, and which form factor is designed first —
-   the Web grid or the Phone cards?
+1. **Posts labels:** renamed to the 4.1 names (Print Method, Fabric Type, Knit Structure, MH
+   Cuttings), not mapped. Implemented; see §4.1.
+2. **Deploy:** keep the current rule — every push to `main` deploys. No staging branch for now, so
+   directive 5 stands unchanged.
+3. **Inventory:** raw (blank) garment stock, as assumed in §16. It does **not** cap sellable
+   quantity, so no stock decrement on sale.
+4. **Takedown:** a paid order for a taken-down design is **not** stopped; it is produced and
+   delivered. See §8.1.
+5. **Pricing Management (4.5.1):** spec approved as written; design the **Web grid first**, then
+   the Phone cards.
 
 ## 14. Build Status
 
@@ -817,6 +832,15 @@ browser-local demo data (section 16 P0).
   folded the 2026-11-21 build updates into sections 7/8/10, and refreshed the status snapshot (14).
   Pending owner confirmation: Posts labels, deploy/staging, the meaning of Inventory, the takedown
   rule for open orders, and the Pricing spec itself (13).
+- Owner answers + implementation (2026-11-21): all five open questions are closed (section 13).
+  Posts labels renamed to Print Method / Fabric Type / Knit Structure / MH Cuttings with the 4.1
+  option values (`lib/admin-demo-data.ts`, `normalizeTshirtPostOptions` maps saved posts onto the
+  new words); the Editor Header Bar 2 now shows Product, Print Method, Fabric Type, Knit Structure,
+  MH Cuttings, GSM, Color, Size with the §4.1 cascade (`lib/editor-attributes.ts`). The Google
+  Sheet price import is deleted (`lib/sheet-prices.ts`, `app/api/admin/tshirt-prices/route.ts` and
+  its panel), so prices are hand-entered only. Deploy rule unchanged (every `main` push deploys),
+  Inventory is raw garment stock and does not cap sales, and a takedown never stops a paid order.
+  Pricing Management is approved as written and the Web grid is designed first.
 
 
 

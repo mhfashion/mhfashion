@@ -1012,7 +1012,7 @@ test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and 
   assert.match(headerBar2, /const COLOR_OPTIONS = \[[\s\S]*?"white"[\s\S]*?"black"[\s\S]*?"navy"[\s\S]*?"grey"/);
   assert.match(headerBar2, /hex: "#ffffff"[\s\S]*?hex: "#111111"/, "Colour options carry real hex values");
   // Every box (fields and actions) shares one compact shape definition.
-  assert.match(headerBar2, /const FIELD_BOX_SHAPE =[\s\S]*?w-\[4\.5rem\][\s\S]*?rounded-full[\s\S]*?text-\[9px\]/);
+  assert.match(headerBar2, /const FIELD_BOX_SHAPE =[\s\S]*?w-\[7rem\][\s\S]*?rounded-full[\s\S]*?text-\[9px\]/);
   assert.match(headerBar2, /const FIELD_BOX = `\$\{FIELD_BOX_SHAPE\}[\s\S]*?border-accent bg-accent[\s\S]*?text-accent-foreground/);
   assert.match(headerBar2, /const TRIGGER_BOX = `\$\{FIELD_BOX\}/);
   assert.match(headerBar2, /const ACTION_BOX = `\$\{FIELD_BOX\}/);
@@ -1028,6 +1028,20 @@ test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and 
   assert.doesNotMatch(productGsmSelect, /Choose|option value=""/);
   assert.match(headerBar2, /function PendingSelect\([\s\S]*?value="—"[\s\S]*?options=\{\["—"\]\}/);
   assert.match(headerBar2, /product === "T-Shirt" \? \([\s\S]*?label="GSM"/);
+  // The §4.1 attribute chain sits between Product and GSM, in chain order.
+  const chain = ["Print Method", "Fabric Type", "Knit Structure", "MH Cuttings"];
+  assert.ok(headerBar2.includes('label="Print Method"'), "Header Bar 2 needs a Print Method box");
+  let cursor = -1;
+  for (const label of chain) {
+    const at = headerBar2.indexOf(`label="${label}"`);
+    assert.ok(at > cursor, `${label} must follow the previous attribute in the chain`);
+    cursor = at;
+  }
+  assert.ok(headerBar2.indexOf('label="GSM"') > cursor, "GSM follows MH Cuttings");
+  assert.match(headerBar2, /options=\{fabricTypeOptions\(attributes\.printMethod\)\}/);
+  assert.match(headerBar2, /options=\{knitStructureOptions\(attributes\.fabricType\)\}/);
+  assert.match(headerBar2, /options=\{MH_CUTTINGS_OPTIONS\}/);
+  assert.match(headerBar2, /narrowEditorAttributes\(\{ \.\.\.current, \.\.\.patch \}\)/);
   assert.match(headerBar2, /<PendingSelect label="Brand" \/>/);
   assert.match(headerBar2, /<PendingSelect label="Model" \/>/);
   assert.match(headerBar2, /<ColorBox value=\{selectedColor\} onChange=\{setSelectedColor\} \/>/);
@@ -1049,7 +1063,9 @@ test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and 
   assert.match(headerBar2, /role="listbox"[\s\S]*?className=\{MENU_BOX\}/);
   assert.match(headerBar2, /role="option"[\s\S]*?aria-selected=\{value === option\.value\}/);
   assert.match(headerBar2, /createPortal/);
-  assert.match(headerBar2, /hidden shrink-0 text-xs font-medium text-text-secondary sm:inline/);
+  // The label sits above its box (stacked), so eight attribute boxes still fit one 1440 row.
+  assert.match(headerBar2, /hidden shrink-0 text-\[10px\] font-medium text-text-secondary sm:inline/);
+  assert.match(headerBar2, /flex shrink-0 flex-col items-start gap-0\.5/);
   assert.match(headerBar2, /aria-label="Save" data-editor-box="Save" disabled/);
   assert.match(headerBar2, /aria-label="Buy"[\s\S]*?data-editor-box="Buy"[\s\S]*?disabled/);
   // Price is computed from the product's selections and shown left of Save.

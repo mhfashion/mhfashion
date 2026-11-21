@@ -57,14 +57,21 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - A range bound may be empty: `""` means open-ended, so `{ from: "2026-11-01", to: "" }` means "from that day on".
 - Tests: `tests/admin-orders.test.cjs`.
 
-## T-shirt post prices from a Google Sheet
-- The post editor's **Google Sheet prices** panel takes a sheet link and fills the price rows from it. `lib/sheet-prices.ts` is server-safe (types only from the store); `app/api/admin/tshirt-prices/route.ts` does the fetch.
-- **The fetch must happen server-side.** Google's CSV endpoints send no CORS headers, so a browser `fetch` fails no matter how the sheet is shared.
-- The sheet must be shared as "anyone with the link can view". A private sheet needs a service account, which is a separate credentialed setup — the route deliberately uses no credentials and rejects non-`docs.google.com` hosts so it cannot be used to fetch arbitrary URLs.
-- Link handling: a normal `/spreadsheets/d/<id>/edit#gid=0` share link or a bare id becomes `.../gviz/tq?tqx=out:csv&gid=<gid>`; a URL that already returns CSV is passed through (https only).
-- Columns are matched by header name (`Size`, `Material`, `Fit Type`, `Colour`/`Color`, `Sleeve`, `GSM`, `Cutting`, `Print`, plus `Price`/`Price Ks`). Prices accept `24,000`, `Ks 24000` and `24000.40`.
-- `mergeSheetPriceRows` treats the sheet as the source of truth for combinations: its columns decide which attributes are enabled, its values become the attribute options, and an enabled attribute with no column is switched off (reported as an issue). Every problem is surfaced in the panel instead of silently dropping rows.
-- Tests: `tests/sheet-prices.test.cjs` (URL building, CSV quoting, header aliases, price parsing, duplicates, merge, and the route handler's 200/400/502 paths with an injected fetcher).
+## Apparel attribute chain (`apps/web/src/lib/editor-attributes.ts`)
+- One module owns the §4.1 chain: `PRINT_METHOD_OPTIONS` (DTF, Sublimation), `FABRIC_TYPE_OPTIONS` (Combed Cotton, Compact Combed Cotton, Polyester), `KNIT_STRUCTURE_OPTIONS` (Single Jersey, Interlock, Air Layer), `MH_CUTTINGS_OPTIONS` (Crew Neck, V-Neck, Polo Neck, Round Neck).
+- `fabricTypeOptions(printMethod)` collapses to Polyester under Sublimation; `knitStructureOptions(fabricType)` gives Interlock/Air Layer for Polyester and Single Jersey/Interlock for cotton. `narrowEditorAttributes` re-applies both after any change, so a value the cascade drops falls back to the first option still offered instead of staying on screen.
+- The Posts module uses the same names: `TSHIRT_POST_ATTRIBUTES` keys are unchanged (`material`, `knit`, `cutting`, `print`) but the labels are Fabric Type / Knit Structure / MH Cuttings / Print Method, and the option values match the chain.
+- `normalizeTshirtPostOptions` maps a stored post's old words (Cotton, Premium Cotton, Blend, Standard, Raw Edge, Raglan, Screen Print) onto the chain and returns the **same object** when nothing changed — keep that identity, the store hands the post back on every read.
+
+## Editor Header Bar 2 layout
+- Eight field boxes on one 1440 row (Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size) plus price, Save and Buy. The field label is stacked **above** its pill (`flex-col`), not inline: inline labels made each field ~154px and pushed Save/Buy off-screen.
+- `FIELD_BOX_SHAPE` is `w-[7rem] h-7` (`h-11` on coarse pointers) with `pl-1.5 pr-5` on the trigger so "Combed Cotton" clears the absolutely-positioned chevron. Measured at 1440: bar scrollWidth == clientWidth (no scroll), all values fully readable.
+- The bar hides its scrollbar (`[scrollbar-width:none]`) and the price/Save/Buy group is `sm:sticky right-0` with `bg-bg`, so it stays reachable when the bar does scroll on tablets. Below `sm` the group is in flow — pinning it on a 390px viewport left only ~105px for the fields.
+- Verify with CDP by reading `[data-editor-box]` labels/values and comparing `scrollWidth`/`clientWidth`; the cascade check is Print Method → Sublimation, which must turn Fabric Type into "Polyester" and Knit Structure into "Interlock".
+
+## Google Sheet price import is deleted
+- Prices are hand-entered only. `lib/sheet-prices.ts`, `app/api/admin/tshirt-prices/route.ts`, the "Google Sheet prices" panel in `AdminPosts.tsx` and `mergeSheetPriceRows` are gone; do not reintroduce a sheet link, a CSV fetch, or "the sheet defines the attributes".
+- The post editor copy now says "price each combination by hand".
 
 ## Product page preview (`components/ProductMockupPreview.tsx`)
 - The media column is `minmax(0,640px)` on `lg`. The photo box is **landscape**, never square: `h-[170px]` on phones, `sm:aspect-[16/10]` above, so the media block costs one photo's height and nothing more. The box is white while a photo is showing (mockups ship on white) and `bg-bg` for the placeholder.

@@ -5,6 +5,15 @@ import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { DEFAULT_EDITOR_GSM, type EditorProduct } from "@/lib/editor-product";
 import { calculateEditorPriceKs } from "@/lib/editor-price";
+import {
+  DEFAULT_EDITOR_ATTRIBUTES,
+  MH_CUTTINGS_OPTIONS,
+  PRINT_METHOD_OPTIONS,
+  fabricTypeOptions,
+  knitStructureOptions,
+  narrowEditorAttributes,
+  type EditorAttributes,
+} from "@/lib/editor-attributes";
 
 const PRODUCT_OPTIONS = ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"] as const;
 const FUTURE_PRODUCTS = ["Hoodie", "Cup", "Kids", "Bag"] as const;
@@ -23,17 +32,19 @@ const COLOR_OPTIONS = [
   { value: "grey", label: "Grey", hex: "#6b7280" },
 ] as const;
 
-// One shared shape for every Header Bar 2 control so the Product, GSM,
-// Color, Size, Save, and Buy boxes read as one uniform, compact set.
+// One shared shape for every Header Bar 2 control so the Product, Print Method,
+// Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size, Save and Buy boxes
+// read as one uniform, compact set. The box is wide enough for "Combed Cotton";
+// a longer value truncates in the trigger and shows in full in the dropdown.
 const FIELD_BOX_SHAPE =
-  "relative h-7 w-[4.5rem] shrink-0 overflow-hidden rounded-full border text-[9px] font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11";
+  "relative h-7 w-[7rem] shrink-0 overflow-hidden rounded-full border text-[9px] font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11";
 const FIELD_BOX = `${FIELD_BOX_SHAPE} border-accent bg-accent text-accent-foreground`;
 // The chevron is pinned to the right edge so its position is identical on every
 // field box; the content stays centred in the remaining space.
-const TRIGGER_BOX = `${FIELD_BOX} inline-flex items-center justify-center pl-1.5 pr-4 disabled:cursor-not-allowed disabled:opacity-100`;
+const TRIGGER_BOX = `${FIELD_BOX} inline-flex items-center justify-center pl-1.5 pr-5 disabled:cursor-not-allowed disabled:opacity-100`;
 // The Color trigger keeps only a green outline (no green fill), so the selected
 // colour reads clearly instead of blending into the box.
-const OUTLINE_TRIGGER_BOX = `${FIELD_BOX_SHAPE} border-accent bg-transparent text-accent inline-flex items-center justify-center pl-1.5 pr-4 disabled:cursor-not-allowed disabled:opacity-100`;
+const OUTLINE_TRIGGER_BOX = `${FIELD_BOX_SHAPE} border-accent bg-transparent text-accent inline-flex items-center justify-center pl-1.5 pr-5 disabled:cursor-not-allowed disabled:opacity-100`;
 const ACTION_BOX = `${FIELD_BOX} inline-flex items-center justify-center px-1 disabled:cursor-default disabled:opacity-100`;
 // Every dropdown opens a compact green panel the same width as its box, so the
 // opened menu lines up with the control above it instead of a wide overlay.
@@ -49,7 +60,7 @@ const COLOR_TRIGGER_SWATCH = "h-[18px] w-10 shrink-0 rounded-md border border-bo
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <span data-editor-field-label className="hidden shrink-0 text-xs font-medium text-text-secondary sm:inline">
+    <span data-editor-field-label className="hidden shrink-0 text-[10px] font-medium text-text-secondary sm:inline">
       {children}
     </span>
   );
@@ -155,7 +166,7 @@ function BoxDropdown({
   };
 
   return (
-    <div className="flex shrink-0 items-center gap-1.5">
+    <div className="flex shrink-0 flex-col items-start gap-0.5">
       <FieldLabel>{label}</FieldLabel>
       <button
         ref={triggerRef}
@@ -296,9 +307,14 @@ export default function EditorHeaderBar2({
 }) {
   const [selectedColor, setSelectedColor] = useState("white");
   const [selectedSize, setSelectedSize] = useState("XL");
+  const [attributes, setAttributes] = useState<EditorAttributes>(DEFAULT_EDITOR_ATTRIBUTES);
 
   function changeProduct(value: string) {
     if (value === "T-Shirt" || value === "Phone") onProductChange(value);
+  }
+
+  function changeAttribute(patch: Partial<EditorAttributes>) {
+    setAttributes((current) => narrowEditorAttributes({ ...current, ...patch }));
   }
 
   // Provisional client-side price, matching the storefront's variant model
@@ -310,9 +326,9 @@ export default function EditorHeaderBar2({
     <div
       role="region"
       aria-label="Header Bar 2"
-      className="h-11 w-full shrink-0 overflow-x-auto overscroll-x-contain border-b border-border bg-bg px-2.5 sm:px-3"
+      className="h-11 w-full shrink-0 overflow-x-auto overscroll-x-contain border-b border-border bg-bg px-2.5 [scrollbar-width:none] sm:px-3 [&::-webkit-scrollbar]:hidden"
     >
-      <div className="flex h-full w-max min-w-full items-center justify-between gap-2.5">
+      <div className="flex h-full w-max min-w-full items-center justify-between gap-2">
         <div className="flex shrink-0 items-center gap-2">
           <SelectBox
             label="Product"
@@ -323,6 +339,30 @@ export default function EditorHeaderBar2({
           />
           {product === "T-Shirt" ? (
             <>
+              <SelectBox
+                label="Print Method"
+                value={attributes.printMethod}
+                options={PRINT_METHOD_OPTIONS}
+                onChange={(value) => changeAttribute({ printMethod: value })}
+              />
+              <SelectBox
+                label="Fabric Type"
+                value={attributes.fabricType}
+                options={fabricTypeOptions(attributes.printMethod)}
+                onChange={(value) => changeAttribute({ fabricType: value })}
+              />
+              <SelectBox
+                label="Knit Structure"
+                value={attributes.knitStructure}
+                options={knitStructureOptions(attributes.fabricType)}
+                onChange={(value) => changeAttribute({ knitStructure: value })}
+              />
+              <SelectBox
+                label="MH Cuttings"
+                value={attributes.cuttings}
+                options={MH_CUTTINGS_OPTIONS}
+                onChange={(value) => changeAttribute({ cuttings: value })}
+              />
               <SelectBox label="GSM" value={gsm} options={GSM_OPTIONS} onChange={onGsmChange} />
               <ColorBox value={selectedColor} onChange={setSelectedColor} />
               <SelectBox label="Size" value={selectedSize} options={SIZE_OPTIONS} onChange={setSelectedSize} />
@@ -335,7 +375,7 @@ export default function EditorHeaderBar2({
             </>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5 sm:sticky sm:right-0 sm:bg-bg sm:pl-2">
           <span
             aria-label={priceKs === null ? "Price unavailable" : priceLabel}
             data-editor-price

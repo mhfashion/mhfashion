@@ -36,13 +36,13 @@ function draft(overrides = {}) {
     svg: { url: "data:image/svg+xml;utf8,%3Csvg%2F%3E", fileName: "peacock.svg", sizeBytes: 512 },
     attributes: attributes({
       size: ["S", "M", "XL"],
-      material: ["Cotton", "Premium Cotton"],
+      material: ["Combed Cotton", "Compact Combed Cotton"],
       color: ["Black", "Navy"],
       print: ["DTF", "Sublimation"],
     }),
     prices: [
-      { id: "row-1", options: { size: "M", material: "Cotton", color: "Black", print: "DTF" }, priceKs: "22000" },
-      { id: "row-2", options: { size: "XL", material: "Premium Cotton", color: "Navy", print: "Sublimation" }, priceKs: "31000" },
+      { id: "row-1", options: { size: "M", material: "Combed Cotton", color: "Black", print: "DTF" }, priceKs: "22000" },
+      { id: "row-2", options: { size: "XL", material: "Compact Combed Cotton", color: "Navy", print: "Sublimation" }, priceKs: "31000" },
     ],
     status: "Draft",
     ...overrides,
@@ -70,8 +70,8 @@ test("the Posts module is registered and seeds attribute-priced T-shirt posts", 
 test("the same size carries different prices when the other attributes differ", () => {
   const post = admin.tshirtPostFromDraft(draft({
     prices: [
-      { id: "row-1", options: { size: "XL", material: "Cotton", color: "Black", print: "DTF" }, priceKs: "24000" },
-      { id: "row-2", options: { size: "XL", material: "Premium Cotton", color: "Navy", print: "Sublimation" }, priceKs: "31000" },
+      { id: "row-1", options: { size: "XL", material: "Combed Cotton", color: "Black", print: "DTF" }, priceKs: "24000" },
+      { id: "row-2", options: { size: "XL", material: "Compact Combed Cotton", color: "Navy", print: "Sublimation" }, priceKs: "31000" },
     ],
   }), undefined, new Date(NOW));
   assert.deepEqual(post.prices.map((row) => row.priceKs), [24000, 31000]);
@@ -86,28 +86,28 @@ test("draft validation rejects an incomplete, unpriced or duplicated combination
   assert.match(admin.validateTshirtPostDraft(draft({ attributes: attributes({}) })).join(" "), /at least one attribute/i);
   assert.match(admin.validateTshirtPostDraft(draft({ prices: [] })).join(" "), /at least one price combination/i);
 
-  const missing = draft({ prices: [{ id: "row-1", options: { size: "M", material: "Cotton", color: "Black" }, priceKs: "22000" }] });
-  assert.match(admin.validateTshirtPostDraft(missing).join(" "), /needs a print value/i);
+  const missing = draft({ prices: [{ id: "row-1", options: { size: "M", material: "Combed Cotton", color: "Black" }, priceKs: "22000" }] });
+  assert.match(admin.validateTshirtPostDraft(missing).join(" "), /needs a print method value/i);
 
-  const unpriced = draft({ prices: [{ id: "row-1", options: { size: "M", material: "Cotton", color: "Black", print: "DTF" }, priceKs: "" }] });
-  assert.match(admin.validateTshirtPostDraft(unpriced).join(" "), /set a price for M · Cotton · Black · DTF/i);
+  const unpriced = draft({ prices: [{ id: "row-1", options: { size: "M", material: "Combed Cotton", color: "Black", print: "DTF" }, priceKs: "" }] });
+  assert.match(admin.validateTshirtPostDraft(unpriced).join(" "), /set a price for M · Combed Cotton · Black · DTF/i);
 
   const duplicated = draft({
     prices: [
-      { id: "row-1", options: { size: "M", material: "Cotton", color: "Black", print: "DTF" }, priceKs: "22000" },
-      { id: "row-2", options: { size: "M", material: "Cotton", color: "Black", print: "DTF" }, priceKs: "23000" },
+      { id: "row-1", options: { size: "M", material: "Combed Cotton", color: "Black", print: "DTF" }, priceKs: "22000" },
+      { id: "row-2", options: { size: "M", material: "Combed Cotton", color: "Black", print: "DTF" }, priceKs: "23000" },
     ],
   });
   assert.match(admin.validateTshirtPostDraft(duplicated).join(" "), /repeat/i);
 
   const tooMany = draft({ prices: Array.from({ length: 41 }, (_, index) => ({
     id: `row-${index}`,
-    options: { size: "M", material: "Cotton", color: "Black", print: "DTF" },
+    options: { size: "M", material: "Combed Cotton", color: "Black", print: "DTF" },
     priceKs: "22000",
   })) });
   assert.match(admin.validateTshirtPostDraft(tooMany).join(" "), /under 40 combinations/i);
 
-  const overCap = draft({ prices: [{ id: "row-1", options: { size: "M", material: "Cotton", color: "Black", print: "DTF" }, priceKs: "12000000" }] });
+  const overCap = draft({ prices: [{ id: "row-1", options: { size: "M", material: "Combed Cotton", color: "Black", print: "DTF" }, priceKs: "12000000" }] });
   assert.match(admin.validateTshirtPostDraft(overCap).join(" "), /under Ks 10,000,000/i);
 });
 
@@ -115,19 +115,19 @@ test("price rows follow the ticked options instead of keeping a stale value", ()
   const rows = [{ id: "row-1", options: { size: "XL", material: "Blend", color: "Navy", print: "DTF" }, priceKs: "26000" }];
   const reconciled = admin.reconcileTshirtPriceRows([
     { key: "size", label: "Size", options: ["M", "L"] },
-    { key: "material", label: "Material", options: ["Cotton"] },
-    { key: "color", label: "Colour", options: ["Black", "Navy"] },
+    { key: "material", label: "Fabric Type", options: ["Combed Cotton"] },
+    { key: "color", label: "Color", options: ["Black", "Navy"] },
     { key: "print", label: "Print", options: ["DTF"] },
     { key: "gsm", label: "GSM", options: ["180 GSM", "220 GSM"] },
   ], rows);
-  assert.deepEqual(reconciled[0].options, { size: "M", material: "Cotton", color: "Navy", print: "DTF", gsm: "180 GSM" });
+  assert.deepEqual(reconciled[0].options, { size: "M", material: "Combed Cotton", color: "Navy", print: "DTF", gsm: "180 GSM" });
   assert.equal(reconciled[0].priceKs, "26000");
 });
 
 test("a new price row starts complete so only the price needs typing", () => {
   const active = admin.tshirtDraftAttributes(draft()).map(({ key, label, options }) => ({ key, label, options }));
   const row = admin.emptyTshirtPriceRow(active);
-  assert.deepEqual(row.options, { size: "S", material: "Cotton", color: "Black", print: "DTF" });
+  assert.deepEqual(row.options, { size: "S", material: "Combed Cotton", color: "Black", print: "DTF" });
   assert.equal(row.priceKs, "");
 });
 
@@ -187,7 +187,7 @@ test("posts saved with per-size prices are converted to combinations", () => {
   const converted = admin.normalizeTshirtPost(legacy);
   assert.deepEqual(converted.attributes, [
     { key: "size", label: "Size", options: ["M", "XL"] },
-    { key: "color", label: "Colour", options: ["Black", "Navy"] },
+    { key: "color", label: "Color", options: ["Black", "Navy"] },
   ]);
   assert.deepEqual(converted.prices.map((row) => [row.options.size, row.options.color, row.priceKs]), [
     ["M", "Black", 20000],
