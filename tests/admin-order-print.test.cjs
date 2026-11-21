@@ -49,15 +49,7 @@ function orderWith(overrides = {}) {
       fit: "Oversized",
       sleeve: "Short Sleeve",
       printMethod: "DTF",
-      design: {
-        id: "design-1",
-        name: "Street Vibes",
-        fileName: "street-vibes-black.svg",
-        svg: admin.orderDesignArtwork("Street Vibes", "#2f7d32"),
-        printWidthCm: 28,
-        printHeightCm: 35,
-        placement: "Front",
-      },
+      design: admin.seedOrderDesign("Street Vibes", "Black", 1),
     }],
     stage: "Printing",
     payment: "KBZPay",
@@ -84,11 +76,25 @@ test("every seeded order line carries the full print spec and a design file", ()
       assert.match(design.svg, /^<svg /);
       assert.ok(design.printWidthCm > 0 && design.printHeightCm > 0);
       assert.ok(["Front", "Back", "Left chest", "Sleeve"].includes(design.placement));
+      assert.match(design.ink, /^#[0-9a-f]{6}$/i);
+      assert.equal(design.unitsPerCm, admin.DESIGN_UNITS_PER_CM);
+      assert.ok(design.layers.length >= 2, `${order.id} design has no layer layout`);
+      for (const layer of design.layers) {
+        assert.ok(layer.name && ["text", "shape", "image"].includes(layer.kind));
+        assert.ok(layer.x >= 0 && layer.y >= 0);
+        assert.ok(layer.width > 0 && layer.height > 0);
+        assert.equal(typeof layer.rotation, "number");
+        assert.ok(layer.scale > 0);
+      }
+      // The file is sized in centimetres, so it prints at the recorded print size.
+      assert.ok(design.svg.includes(`width="${design.printWidthCm}cm"`));
+      assert.ok(design.svg.includes(`height="${design.printHeightCm}cm"`));
     }
   }
 });
 
 test("the print CSV carries every column the press needs", () => {
+  const printDesign = orderWith().items[0].design;
   const rows = print.orderPrintRows(orderWith());
   assert.deepEqual(rows[0], [...print.ORDER_PRINT_COLUMNS]);
   assert.equal(rows.length, 2);
@@ -103,20 +109,28 @@ test("the print CSV carries every column the press needs", () => {
   assert.equal(line.Fit, "Oversized");
   assert.equal(line.Sleeve, "Short Sleeve");
   assert.equal(line.Print, "DTF");
-  assert.equal(line.Placement, "Front");
+  assert.equal(line.Placement, printDesign.placement);
   assert.equal(line["Print size (cm)"], "28 × 35");
   assert.equal(line.Quantity, 2);
   assert.equal(line["Line total (Ks)"], 42000);
   assert.equal(line.Design, "Street Vibes");
   assert.equal(line["Design file"], "street-vibes-black.svg");
+  assert.match(line.Ink, /^#[0-9a-f]{6}$/i);
+  assert.equal(line["Print area (cm)"], `${printDesign.printWidthCm} × ${printDesign.printHeightCm}`);
+  assert.equal(line["Units/cm"], admin.DESIGN_UNITS_PER_CM);
+  assert.equal(line.Layers, printDesign.layers.length);
+  assert.ok(line["Layer layout"].includes("Title text"));
 });
 
 test("an order without a design still exports a complete row", () => {
   const bare = orderWith({ items: [{ productId: "p", name: "Tote Bag", size: "One size", color: "Natural", quantity: 1, unitPriceKs: 16000 }] });
   const [, line] = print.orderPrintRows(bare);
   assert.deepEqual(line.slice(7, 14), ["—", "—", "—", "—", "—", "—", "—"]);
-  assert.equal(line[17], "No design");
-  assert.equal(line[18], "—");
+  const columns = print.ORDER_PRINT_COLUMNS;
+  assert.equal(line[columns.indexOf("Design")], "No design");
+  assert.equal(line[columns.indexOf("Design file")], "—");
+  assert.equal(line[columns.indexOf("Layers")], 0);
+  assert.equal(line[columns.indexOf("Layer layout")], "—");
 });
 
 test("the print sheet contains the whole spec, the shipping address and the artwork", () => {
@@ -125,7 +139,8 @@ test("the print sheet contains the whole spec, the shipping address and the artw
   for (const fragment of [
     "#MH1", "Thura Aung", "No. 24, Baho Road", "Hlaing", "Yangon",
     "Classic T-shirt", "Black", "M", "Combed Cotton", "180", "Oversized", "Short Sleeve",
-    "DTF", "Front", "28 × 35 cm", "Street Vibes", "street-vibes-black.svg",
+    "DTF", order.items[0].design.placement, `${order.items[0].design.printWidthCm} × ${order.items[0].design.printHeightCm} cm`, "Street Vibes", "street-vibes-black.svg",
+    "Layout · print area", "Title", "text",
     "MH FASHION", "Print sheet",
   ]) {
     assert.ok(html.includes(fragment), `print sheet is missing ${fragment}`);

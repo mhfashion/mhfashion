@@ -1,5 +1,7 @@
 import type { AdminOrder, AdminOrderDesign, AdminOrderItem } from "./admin-demo-data";
-import { formatAdminDateTime, formatKs, orderTotalKs, orderUnits } from "./admin-demo-data";
+import {
+  DESIGN_UNITS_PER_CM, designLayerSize, formatAdminDateTime, formatKs, orderTotalKs, orderUnits,
+} from "./admin-demo-data";
 
 /**
  * Everything the print desk needs, one row per order line. Kept next to the print sheet so the
@@ -8,8 +10,20 @@ import { formatAdminDateTime, formatKs, orderTotalKs, orderUnits } from "./admin
 export const ORDER_PRINT_COLUMNS = [
   "Order", "Placed", "Stage", "Payment",
   "Product", "Colour", "Size", "Material", "GSM", "Fit", "Sleeve", "Print", "Placement", "Print size (cm)",
-  "Quantity", "Unit price (Ks)", "Line total (Ks)", "Design", "Design file",
+  "Quantity", "Unit price (Ks)", "Line total (Ks)", "Design", "Design file", "Ink",
+  "Print area (cm)", "Units/cm", "Layers", "Layer layout",
 ] as const;
+
+/** "Backdrop shape 5.6,3.5 16.8×15.4cm r0 s1" — the layer measurements in one CSV cell. */
+export function designLayoutSummary(design: AdminOrderDesign): string {
+  const units = design.unitsPerCm || DESIGN_UNITS_PER_CM;
+  return design.layers
+    .map((layer) => {
+      const size = designLayerSize(layer, units);
+      return `${layer.name} ${layer.kind} ${size.xCm},${size.yCm} ${size.widthCm}×${size.heightCm}cm r${layer.rotation} s${layer.scale}`;
+    })
+    .join(" | ");
+}
 
 export function orderItemPrintValues(order: AdminOrder, item: AdminOrderItem): (string | number)[] {
   return [
@@ -32,6 +46,11 @@ export function orderItemPrintValues(order: AdminOrder, item: AdminOrderItem): (
     item.unitPriceKs * item.quantity,
     item.design?.name ?? "No design",
     item.design?.fileName ?? "—",
+    item.design?.ink ?? "—",
+    item.design ? `${item.design.printWidthCm} × ${item.design.printHeightCm}` : "—",
+    item.design?.unitsPerCm ?? "—",
+    item.design?.layers.length ?? 0,
+    item.design ? designLayoutSummary(item.design) : "—",
   ];
 }
 
@@ -73,6 +92,8 @@ function specRows(item: AdminOrderItem): [string, string][] {
     ["Print method", item.printMethod ?? "—"],
     ["Placement", design?.placement ?? "—"],
     ["Print size", design ? `${design.printWidthCm} × ${design.printHeightCm} cm` : "—"],
+    ["Ink", design?.ink ?? "—"],
+    ["Artwork units", design ? `${design.unitsPerCm} per cm` : "—"],
     ["Quantity", String(item.quantity)],
     ["Design", design?.name ?? "No design"],
     ["Design file", design?.fileName ?? "—"],
@@ -93,6 +114,18 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
     const artwork = design
       ? `<img class="art" alt="${escapeHtml(design.fileName)}" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(design.svg)}" />`
       : `<p class="empty">No design file attached</p>`;
+    const layoutRows = design
+      ? design.layers
+        .map((layer) => {
+          const size = designLayerSize(layer, design.unitsPerCm);
+          return `<tr><td>${escapeHtml(layer.name)}</td><td>${escapeHtml(layer.kind)}</td><td>${size.xCm}</td><td>${size.yCm}</td><td>${size.widthCm} × ${size.heightCm}</td><td>${layer.rotation}°</td><td>${layer.scale}</td></tr>`;
+        })
+        .join("")
+      : "";
+    const layout = design
+      ? `<h3>Layout · print area ${design.printWidthCm} × ${design.printHeightCm} cm (${design.unitsPerCm} units/cm)</h3>
+        <table class="layout"><thead><tr><th>Layer</th><th>Type</th><th>X (cm)</th><th>Y (cm)</th><th>W × H (cm)</th><th>Rotation</th><th>Scale</th></tr></thead><tbody>${layoutRows}</tbody></table>`
+      : "";
     return `<section class="item">
       <h2>Line ${index + 1} · ${escapeHtml(item.name)} · ${escapeHtml(item.color)} / ${escapeHtml(item.size)} · ×${item.quantity}</h2>
       <div class="line">
@@ -102,6 +135,7 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
           <figcaption>${design ? `${escapeHtml(design.name)}<br /><b>${escapeHtml(design.fileName)}</b>` : "—"}</figcaption>
         </figure>
       </div>
+      ${layout}
     </section>`;
   }).join("");
 
@@ -134,6 +168,10 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
   figure.design .art { width: 140px; height: auto; border: 1px dashed #c9d0d8; }
   figure.design figcaption { font-size: 9px; color: #4a5461; margin-top: 4px; word-break: break-all; }
   .files li { margin-bottom: 2px; }
+  h3 { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #6b7481; margin: 10px 0 4px; }
+  table.layout { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.layout th, table.layout td { text-align: left; padding: 2px 6px; border-bottom: 1px solid #eef1f4; }
+  table.layout th { color: #6b7481; font-weight: 600; }
   footer { margin-top: 10px; border-top: 1px solid #d8dde3; padding-top: 6px; color: #5c6673; }
   .totals { display: flex; justify-content: space-between; font-weight: 700; font-size: 12px; }
   .empty { color: #9aa2ae; font-style: italic; }

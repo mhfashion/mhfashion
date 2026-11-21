@@ -41,16 +41,56 @@ export type AdminPromotionKind = "percent" | "amount";
 export type AdminPromotionStatus = "Active" | "Scheduled" | "Expired" | "Used up" | "Disabled";
 export type AdminTeamRole = "Super Admin" | "Post Admin" | "Print Admin" | "Support";
 
+export type AdminDesignLayer = {
+  name: string;
+  kind: "text" | "shape" | "image";
+  /** Placement inside the print area, in artwork units (divide by unitsPerCm for centimetres). */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  scale: number;
+  text?: string;
+};
+
 export type AdminOrderDesign = {
   id: string;
   name: string;
   fileName: string;
-  /** Inline artwork: the print desk can preview and download the file without a bucket. */
+  /** Print ink, so the press knows what colour to load. */
+  ink: string;
+  /** Inline artwork at real print size: the desk can preview and download it without a bucket. */
   svg: string;
+  /** Print area on the garment. */
   printWidthCm: number;
   printHeightCm: number;
+  /** Artwork units per centimetre; converts every layer position to a real size. */
+  unitsPerCm: number;
+  layers: AdminDesignLayer[];
   placement: "Front" | "Back" | "Left chest" | "Sleeve";
 };
+
+export const DESIGN_UNITS_PER_CM = 10;
+
+export type DesignLayerSize = {
+  xCm: number;
+  yCm: number;
+  widthCm: number;
+  heightCm: number;
+};
+
+/** A layer's box in centimetres, rounded to 0.1 cm for the sheet and the CSV. */
+export function designLayerSize(layer: AdminDesignLayer, unitsPerCm = DESIGN_UNITS_PER_CM): DesignLayerSize {
+  const scale = layer.scale > 0 ? layer.scale : 1;
+  const round = (value: number) => Math.round((value / unitsPerCm) * 10) / 10;
+  return {
+    xCm: round(layer.x),
+    yCm: round(layer.y),
+    widthCm: round(layer.width * scale),
+    heightCm: round(layer.height * scale),
+  };
+}
 
 export type AdminOrderShipTo = {
   name: string;
@@ -91,10 +131,39 @@ export type AdminOrder = {
 
 const DESIGN_INKS = ["#2f7d32", "#c08a2e", "#203459", "#b83219", "#4b3f8f", "#1f7a6d", "#8a1f5c", "#33413a"];
 
-/** Stand-in artwork for a seeded design, in the shape the print desk would receive. */
-export function orderDesignArtwork(name: string, ink: string): string {
-  const label = name.replace(/[<>&"]/g, "").slice(0, 28);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300" width="240" height="300"><circle cx="120" cy="98" r="60" fill="${ink}" opacity="0.14"/><path d="M120 36 L184 98 L120 160 L56 98 Z" fill="${ink}" opacity="0.88"/><text x="120" y="232" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="800" fill="${ink}">${label}</text><text x="120" y="258" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="10" letter-spacing="3" fill="${ink}" opacity="0.7">MH FASHION</text></svg>`;
+function svgText(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function designLayerSvg(layer: AdminDesignLayer, ink: string): string {
+  const scale = layer.scale > 0 ? layer.scale : 1;
+  const width = layer.width * scale;
+  const height = layer.height * scale;
+  const centerX = layer.x + width / 2;
+  const centerY = layer.y + height / 2;
+  const rotate = layer.rotation ? ` transform="rotate(${layer.rotation} ${centerX.toFixed(1)} ${centerY.toFixed(1)})"` : "";
+  if (layer.kind === "text") {
+    const label = layer.text ?? layer.name;
+    // Fit the label inside its own layer box, so the file and the layout table agree.
+    const size = Math.max(6, Math.min(height * 0.72, width / Math.max(1, label.length * 0.56)));
+    return `<text x="${centerX.toFixed(1)}" y="${centerY.toFixed(1)}" font-family="Inter, Arial, sans-serif" font-size="${size.toFixed(1)}" font-weight="800" fill="${ink}" text-anchor="middle" dominant-baseline="middle"${rotate}>${svgText(label)}</text>`;
+  }
+  if (layer.kind === "image") {
+    return `<rect x="${layer.x.toFixed(1)}" y="${layer.y.toFixed(1)}" width="${width.toFixed(1)}" height="${height.toFixed(1)}" fill="${ink}" opacity="0.25"${rotate} />`;
+  }
+  return `<rect x="${layer.x.toFixed(1)}" y="${layer.y.toFixed(1)}" width="${width.toFixed(1)}" height="${height.toFixed(1)}" rx="${(Math.min(width, height) * 0.08).toFixed(1)}" fill="${ink}" opacity="0.18"${rotate} />`;
+}
+
+/**
+ * The saved design file. It is sized in centimetres and drawn from the stored layer boxes, so the
+ * artwork the press opens is exactly the layout recorded on the order.
+ */
+export function buildDesignSvg(design: Pick<AdminOrderDesign, "name" | "ink" | "layers" | "printWidthCm" | "printHeightCm" | "unitsPerCm">): string {
+  const units = design.unitsPerCm > 0 ? design.unitsPerCm : DESIGN_UNITS_PER_CM;
+  const width = design.printWidthCm * units;
+  const height = design.printHeightCm * units;
+  const layers = design.layers.map((layer) => designLayerSvg(layer, design.ink)).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${design.printWidthCm}cm" height="${design.printHeightCm}cm" viewBox="0 0 ${width.toFixed(1)} ${height.toFixed(1)}"><title>${svgText(design.name)}</title>${layers}</svg>`;
 }
 
 function designFileSlug(name: string, color: string): string {
@@ -108,17 +177,31 @@ function hashString(value: string): number {
   return hash;
 }
 
-function seedOrderDesign(name: string, color: string, seed: number): AdminOrderDesign {
+export function seedOrderDesign(name: string, color: string, seed: number): AdminOrderDesign {
   const placement = (["Front", "Back", "Left chest", "Sleeve"] as const)[seed % 4];
-  return {
+  const printWidthCm = placement === "Left chest" ? 9 : placement === "Sleeve" ? 7 : 28;
+  const printHeightCm = placement === "Left chest" ? 9 : placement === "Sleeve" ? 7 : 35;
+  const unitsPerCm = DESIGN_UNITS_PER_CM;
+  const width = printWidthCm * unitsPerCm;
+  const height = printHeightCm * unitsPerCm;
+  const layers: AdminDesignLayer[] = [
+    { name: "Backdrop", kind: "shape", x: width * 0.2, y: height * 0.1, width: width * 0.6, height: height * 0.44, rotation: 0, scale: 1 },
+    { name: "Title", kind: "text", text: name, x: width * 0.08, y: height * 0.62, width: width * 0.84, height: height * 0.14, rotation: 0, scale: 1 },
+    { name: "Wordmark", kind: "text", text: "MH FASHION", x: width * 0.18, y: height * 0.82, width: width * 0.64, height: height * 0.07, rotation: 0, scale: 1 },
+  ];
+  const design: AdminOrderDesign = {
     id: `design-${(seed % SEED_DESIGN_NAMES.length) + 1}`,
     name,
     fileName: designFileSlug(name, color),
-    svg: orderDesignArtwork(name, DESIGN_INKS[seed % DESIGN_INKS.length]),
-    printWidthCm: placement === "Left chest" ? 9 : placement === "Sleeve" ? 7 : 28,
-    printHeightCm: placement === "Left chest" ? 9 : placement === "Sleeve" ? 7 : 35,
+    ink: DESIGN_INKS[seed % DESIGN_INKS.length],
+    svg: "",
+    printWidthCm,
+    printHeightCm,
+    unitsPerCm,
+    layers,
     placement,
   };
+  return { ...design, svg: buildDesignSvg(design) };
 }
 
 /**
@@ -134,7 +217,10 @@ export function backfillOrderPrintSpec(order: AdminOrder, products: AdminProduct
     city: "Yangon",
   };
   const items = order.items.map((item, index) => {
-    if (item.design && item.material && item.fit && item.sleeve && item.printMethod) return item;
+    const design = item.design && Array.isArray(item.design.layers) && item.design.layers.length
+      ? item.design
+      : null;
+    if (design && item.material && item.fit && item.sleeve && item.printMethod) return item;
     const product = products.find((candidate) => candidate.id === item.productId);
     const apparel = product ? APPAREL_CATEGORIES.includes(product.category) : true;
     const seed = hashString(`${order.id}-${index}`);
@@ -146,7 +232,7 @@ export function backfillOrderPrintSpec(order: AdminOrder, products: AdminProduct
       fit: item.fit ?? (apparel ? "Oversized" : "Standard"),
       sleeve: item.sleeve ?? (apparel ? "Short Sleeve" : "—"),
       printMethod: item.printMethod ?? "DTF",
-      design: item.design ?? seedOrderDesign(designName, item.color, seed),
+      design: design ?? seedOrderDesign(designName, item.color, seed),
     };
   });
   return { ...order, shipTo, items };

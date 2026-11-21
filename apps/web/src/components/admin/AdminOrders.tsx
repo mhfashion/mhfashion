@@ -16,7 +16,7 @@ import {
 } from "@/lib/order-print";
 import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
-  adminDayKey, adminDayLabel, adminTodayKey, formatAdminDateTime, formatKs, nextOrderStage,
+  adminDayKey, adminDayLabel, adminTodayKey, designLayerSize, formatAdminDateTime, formatKs, nextOrderStage,
   orderDateRangeForPreset, orderDayGroups, orderStageIndex, orderTotalKs, orderUnits,
   ordersInDateRange, setOrderNote, setOrderStage, sortOrders, summarizeOrders,
   type AdminDateRange, type AdminOrder, type AdminOrderDatePreset, type AdminOrderSort,
@@ -327,6 +327,7 @@ export default function AdminOrders() {
                     ["Placement", design?.placement ?? "—"],
                     ["Print size", design ? `${design.printWidthCm} × ${design.printHeightCm} cm` : "—"],
                     ["Design", design?.name ?? "No design"],
+                    ["Ink", design?.ink ?? "—"],
                   ];
                   return (
                     <div key={`${item.productId}-${item.size}-${item.color}-${index}`} className="rounded-xl border border-[#edf0f3] p-2.5">
@@ -352,6 +353,33 @@ export default function AdminOrders() {
                           <AdminButton compact variant="secondary" aria-label={`Download ${design.fileName}`} onClick={() => downloadDesignFile(design)}><FileDown size={12} /> SVG</AdminButton>
                         </div>
                       ) : <p className="mt-2 text-[9px] text-[#9aa2ae]">No design file attached.</p>}
+                      {design && design.layers.length ? (
+                        <div className="mt-2" data-order-design-layout>
+                          <p className="mb-1 text-[8px] font-bold uppercase tracking-wide text-[#87909b]">
+                            Layout · print area {design.printWidthCm} × {design.printHeightCm} cm · {design.unitsPerCm} units/cm
+                          </p>
+                          <table className="w-full text-left text-[8px]">
+                            <thead className="text-[#9aa2ae]"><tr><th className="pb-0.5 font-semibold">Layer</th><th className="pb-0.5 font-semibold">Type</th><th className="pb-0.5 text-right font-semibold">X</th><th className="pb-0.5 text-right font-semibold">Y</th><th className="pb-0.5 text-right font-semibold">W × H</th><th className="pb-0.5 text-right font-semibold">Rot</th><th className="pb-0.5 text-right font-semibold">Scale</th></tr></thead>
+                            <tbody className="divide-y divide-[#f2f4f6] text-[#505a68]">
+                              {design.layers.map((layer) => {
+                                const size = designLayerSize(layer, design.unitsPerCm);
+                                return (
+                                  <tr key={layer.name}>
+                                    <td className="py-1 font-semibold text-[#394250]">{layer.name}</td>
+                                    <td className="py-1">{layer.kind}</td>
+                                    <td className="py-1 text-right tabular-nums">{size.xCm}</td>
+                                    <td className="py-1 text-right tabular-nums">{size.yCm}</td>
+                                    <td className="py-1 text-right tabular-nums">{size.widthCm} × {size.heightCm}</td>
+                                    <td className="py-1 text-right tabular-nums">{layer.rotation}°</td>
+                                    <td className="py-1 text-right tabular-nums">{layer.scale}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                          <p className="mt-1 text-[8px] text-[#9aa2ae]">X, Y and W × H are centimetres on the print area.</p>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}

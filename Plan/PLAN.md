@@ -2753,3 +2753,4 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 - The shipping address is shown with the customer details.
 - "Print sheet" opens a standalone A4 document (identity, ship-to, spec per line, artwork, file list, totals, note) and sends it to the print dialog; "Print spec CSV" exports the same columns for a spreadsheet.
 - Orders saved before this change are backfilled on read, so no order opens with an empty spec.
+- Designs are saved as SVG at real print size, with the layer layout recorded: print area in cm, artwork units per cm, and every layer's X/Y/W×H in cm, rotation and scale. The drawer, the printable sheet and the CSV all show those measurements.
