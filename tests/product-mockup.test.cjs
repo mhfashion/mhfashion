@@ -143,7 +143,7 @@ test("the product page renders the mockup from the selection with the design on 
 });
 
 test("the editor keeps its open design so the product page can preview it", () => {
-  const canvas = readFileSync(path.join(__dirname, "..", "apps/web/src/components/KittlCanvas.tsx"), "utf8");
+  const canvas = readFileSync(path.join(__dirname, "..", "apps/web/src/components/EditorCanvas.tsx"), "utf8");
   assert.match(canvas, /saveDesignDraft\(layers\)/);
   assert.match(canvas, /window\.setTimeout\(\(\) => saveDesignDraft\(layers\), 400\)/);
   assert.match(canvas, /\}, \[layers\]\);/);

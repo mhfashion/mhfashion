@@ -546,7 +546,7 @@ catalog-facing items.
 
 ## 14. Build Status
 
-**Repository-source audit (2026-11-13, commit `90dc398`; production was not re-probed in this audit):** `/create` is currently only the KittlCanvas shell described in §6. The older detailed editor feature descriptions in this section are historical and do not match the audited code.
+**Repository-source audit (2026-11-13, commit `90dc398`; production was not re-probed in this audit):** `/create` is currently only the EditorCanvas shell described in §6. The older detailed editor feature descriptions in this section are historical and do not match the audited code.
 
 **Live in production** (status last externally probed on 2026-11-12; not re-probed during this code audit; mhfashion.mhfashionmm.workers.dev was then serving the pre-upgrade build described below): scaffold and Cloudflare deploy, the Supabase
 schema migrations `0001`–`0007` (Guide content and Super Admin roles included;
@@ -574,7 +574,7 @@ description field, so the page avoids unsupported material/specification claims.
 The Reviews title and rating stay visible while the review cards start collapsed.
 
 **Current editor-shell change (2026-11-13):** The storefront `Header` is temporarily
-hidden on `/create`; the `KittlCanvas` workspace remains. Ctrl/Command+wheel is
+hidden on `/create`; the `EditorCanvas` workspace remains. Ctrl/Command+wheel is
 prevented from zooming the browser while the web app is open. In the editor,
 Ctrl/Command+wheel zooms only the view. Middle-button drag or Space+left-drag
 pans the view, and unmodified wheel moves it vertically. Do not show pixel-size
@@ -597,17 +597,17 @@ color formatting; freehand vector Pen paths; zoom and hand-pan; browser-local
 image import; text/basic-shape insertion; Undo/Redo; Save and restore via local
 storage; Front/Back draft state; layer visibility/lock, creation, duplication,
   grouping, reorder, deletion, inline rename, collapsible groups, drag/drop nesting,
-  thumbnails, a Photoshop-inspired compact selected-layer control strip with the
+  thumbnails, a desktop-editor-inspired compact selected-layer control strip with the
   blend/Opacity and Lock/Fill row arrangement, blend
   modes, opacity, per-layer Fill, Pass Through and isolated group compositing,
   flow under layer properties, effect toggles, alpha clipping masks, embedded
   raster Smart Object controls, and uniform mask strength. This is not a
-  Photoshop-equivalent panel or renderer. Designs remain browser-local and are
+  desktop-editor-equivalent panel or renderer. Designs remain browser-local and are
   not yet backed by Supabase or R2.
   The Elements flyout now includes category browsing, name/tag search, color
   choices, original SVG previews, click-to-add, and drag-to-canvas placement.
   Catalog data/assets are in `public/elements/v1` with future R2 object keys;
-  R2 itself remains disconnected by request. The Text flyout now follows Canva's
+  R2 itself remains disconnected by request. The Text flyout now follows the template editor's
   heading/subheading/body and font-search flow, supplies text/font-combination
   presets and selected-text formatting, using system fonts only. The Products
   sidebar was removed by owner request; storefront product catalog and detail
@@ -662,30 +662,30 @@ browser-local demo data (section 16 P0).
   color. The Effects flyout now toggles selected-layer effects (shadow, stroke,
   glow; raster blur/sharpen). True paintable masks, pixel merge, and node editing
   remain pending.
-- Upgraded the Layers box toward Photoshop-style behavior: type-aware thumbnails,
+- Upgraded the Layers box toward desktop-editor-style behavior: type-aware thumbnails,
   double-click inline rename, collapsible folder groups, drag reorder, and
   drag-into-group nesting. These actions update the Fabric layer stack and enter
-  Undo/Redo. True Photoshop masks, clipping, raster merge, and group transforms
+  Undo/Redo. True layer masks, clipping, raster merge, and group transforms
   remain unimplemented.
 - Expanded layer blending to standard Canvas modes including Color Dodge/Burn,
   Hard/Soft Light, Difference/Exclusion, Hue/Saturation/Color/Luminosity, and
   Linear Dodge (Add). Layer opacity now has both a live 0–100% slider and a
   numeric percentage field; nested group opacity cascades to child objects.
-  Photoshop's isolated group compositing and layer Fill remain future work.
+  the desktop editor's isolated group compositing and layer Fill remain future work.
 - Added a separate 0–100% Layer Fill slider/number field and isolated folder
   compositing: group children render together to an offscreen surface, then the
   group's blend mode and Opacity apply to the combined result. This first version
-  did not yet implement Photoshop Pass Through or proper Fill-vs-effects alpha;
+  did not yet implement Pass Through or proper Fill-vs-effects alpha;
   those gaps were corrected in the subsequent Layers panel fidelity update.
-- Reworked the Layers panel toward Photoshop's actual panel structure: selected
+- Reworked the Layers panel toward the desktop editor's actual panel structure: selected
   blend/Opacity controls above a larger layer stack, Fill directly below Opacity
   for individual layers only, compact rows with visibility/lock/thumb indicators,
   and layer-specific text/flow/effect settings tucked under selected properties.
   Groups now default to Pass Through and child blend modes remain individually
   active in that mode; choosing another group mode isolates/composites children
   as one image. Fill scales content alpha separately from overall object opacity.
-  Advanced Blend If/channel options and exact effect-aware Photoshop rendering
-  remain unimplemented; this is Photoshop-inspired, not Photoshop-equivalent.
+  Advanced Blend If/channel options and exact effect-aware rendering
+  remain unimplemented; this is desktop-editor-inspired, not desktop-editor-equivalent.
 - Replaced the old inset-rectangle clipping preview with alpha clipping: a clipped
   layer now uses the nearest unclipped lower sibling as its base, so transparent
   pixels in the base hide the upper artwork. Clipped layers inherit base opacity
@@ -697,33 +697,33 @@ browser-local demo data (section 16 P0).
   removes the Smart Object metadata. This is not a PSD/PSB document container:
   editable internal contents, linked assets, multi-layer/vector Smart Objects,
   and Smart Filters remain future work.
-- Replaced the four-shape Elements starter with a Canva-inspired, searchable SVG
+- Replaced the four-shape Elements starter with a template-inspired, searchable SVG
   library: category tabs, keyword/tag matching, recent-use shortcuts, color
   selection, click-to-add and direct drag-and-drop placement. Added a versioned
   local asset manifest and original monochrome SVG collection. Prepared the
   future R2 key/route contract (`elements/v1/...`, `/api/editor/elements`) but,
   as requested, did not authenticate, create a bucket, add a Worker binding,
-  enable public access, or upload objects. Canva's documented Elements flow uses
+  enable public access, or upload objects. the template editor's documented Elements flow uses
   search/category browsing and selection followed by reposition/resize; this
-  prototype follows that flow without copying Canva assets. [Canva: Add elements](https://www.canva.com/help/add-elements/)
+  prototype follows that flow without copying template assets. [template-editor element guidance]
   [Cloudflare: Upload objects](https://developers.cloudflare.com/r2/objects/upload-objects/)
   [Cloudflare: Public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/)
-- Researched Adobe's current Layers panel guidance and refined the selected-layer
+- Researched current desktop-editor Layers panel guidance and refined the selected-layer
   controls to match its layout: blend mode and Opacity on the first line, Lock
   and Fill on the second, on-demand slider popovers, and visibility controls in
   the leading layer-row column before thumbnails. This is a closer layout match,
-  not a claim of pixel-for-pixel Photoshop equivalence.
-- Expanded the Text flyout after researching Canva's official Text tab and Font
+  not a claim of pixel-for-pixel equivalence.
+- Expanded the Text flyout after researching the template editor's official Text tab and Font
   Library: heading/subheading/body insertion, font/category search, text styling,
   and ready-made font combinations are now the implementation model. Added live
   storefront product browsing to `/create` using the same public product and price
   data functions as the store, with a future private-R2 asset contract for licensed
   fonts, text-style previews, and product cards. No custom font files, R2
   credentials, bucket, binding, public access, or upload are included. This
-  reproduces useful interaction patterns, not Canva assets or a pixel-identical
-  editor. [Canva: Add and edit text](https://www.canva.com/help/add-and-edit-text/)
-  [Canva: Format text](https://www.canva.com/help/format-text/)
-  [Canva Design School: Text and the Font Library](https://www.canva.com/design-school/resources/finding-fonts-and-using-text/)
+  reproduces useful interaction patterns, not template assets or a pixel-identical
+  editor. [template-editor text guidance]
+  [template-editor formatting guidance]
+  [template-editor text guidance]
 - Activated all 14 non-Move canvas tools with tool-specific pointer behavior,
   color/width/tolerance settings, status feedback, and history-backed artwork edits.
   Ruler overlays are excluded from saved marks; Rotate View/Hand/Zoom operate only
@@ -731,7 +731,7 @@ browser-local demo data (section 16 P0).
   remain object-level rather than pixel/anchor editing. The Next.js production
   build passed; a read-only review found no P0/P1 issues and its lock/raster-status
   findings were corrected before delivery.
-- Stabilized the Photoshop-style Layers Box after user feedback: the right dock
+- Stabilized the desktop-editor-style Layers Box after user feedback: the right dock
   remains visible from editor load, with its header, layer list, and fixed
   Blend/Opacity and Lock/Fill rows present before selection. Empty-state controls
   show neutral values and are disabled; selecting a layer updates their values
@@ -748,7 +748,7 @@ browser-local demo data (section 16 P0).
   editor-only products API/helper at the owner's request. Storefront catalog and
   product detail pages, plus the editor's bottom Product attribute selector,
   remain unchanged.
-- Replaced the dark Photoshop-like drawing surround with a theme-independent
+- Replaced the dark desktop-editor-like drawing surround with a theme-independent
   light workspace and white artboard, and made the selection bar contextual for
   text and shape formatting plus selected-object duplicate/delete. Production
   build and TypeScript checks passed.
@@ -780,7 +780,7 @@ browser-local demo data (section 16 P0).
   vector anchor editing and Shape Builder, raster selection roadmap, layers and
   non-destructive masks/Smart Objects, text transformations, effects, mockups,
   production export, shortcuts, persistence, accessibility, phased delivery,
-  and acceptance criteria. It uses official Kittl, Photoshop, and Illustrator
+  and acceptance criteria. It uses the official editor documentation
   documentation as behavioral references without copying proprietary assets or
   UI.
 - Fabric implementation appendix added (2026-11-12): `EDITOR_PLAN.md` now
@@ -941,7 +941,7 @@ This section records the current repository state and overrides earlier draft bu
 - `/create` uses Fabric.js 7.4.0 in the browser with local draft persistence, Front/Back state, Undo/Redo, Save/restore, image import, text presets/font search, original local SVG Elements catalog, responsive rails/flyouts, contextual toolbar, layers management, and separate Product/Mockup selection. Canvas pointer reads use `getScenePoint`; object-level tools were browser-regression-tested after the v7 upgrade.
 - Current mockup workspace uses a linked T-Shirt design box and Mockup preview box. The connector dot shows/hides the Mockup box; the preview contains one R2-image placeholder per available side (Front and Back by default, or one supported side). R2 image loading and selected-product side wiring remain pending.
 - The Products sidebar/library was removed by request; storefront product catalog/detail routes remain unchanged.
-- Object-level editor tools are implemented, but this is not a Photoshop-equivalent pixel editor. Pixel-level raster masks/merge/eraser, node-level path editing, complete production mockup rendering, account-backed drafts and R2 asset uploads remain deferred.
+- Object-level editor tools are implemented, but this is not a desktop-editor-equivalent pixel editor. Pixel-level raster masks/merge/eraser, node-level path editing, complete production mockup rendering, account-backed drafts and R2 asset uploads remain deferred.
 - Local Elements, fonts and text-style manifests are versioned under `public/`; R2 is explicitly not connected and no credentials/bindings/public bucket should be added until the R2 phase is requested.
 
 ### 15.6 Data, deployment and validation record
@@ -1251,7 +1251,7 @@ Claude; the user deploys/applies them manually with Claude's guidance.
 
 ## Editor
 - 4-panel-ish layout: left column combines an icon stack (Upload, Elements,
-  Text, Effects, AI) with a Photoshop-style selectable Tools Palette (Move,
+  Text, Effects, AI) with a desktop-editor-style selectable Tools Palette (Move,
   Marquee, Lasso, Eyedropper, Shape, Pen, Gradient, Eraser, Hand, Zoom, plus
   Path/Direct Selection, Magic Wand, Clone Stamp/Healing Brush,
   Ruler/Measurement, Rotate View); Layers panel on the right (Blend Mode +
@@ -1402,7 +1402,7 @@ Source of scope: `Plan/PLAN.md#project-plan` sections 1, 3, 7, 10 and 11.
 
 Source of scope: `Plan/PLAN.md#project-plan` section 6.
 
-- [x] Canva-inspired Elements library for `/create`
+- [x] template-inspired Elements library for `/create`
   - Browse original SVG graphics by category and search by names or tags.
   - Choose a color, click a graphic to add it centered on the active canvas, or drag it onto a placement point.
   - Added graphics become individual editable layers and remain in the browser-local draft.
@@ -1411,11 +1411,11 @@ Source of scope: `Plan/PLAN.md#project-plan` section 6.
 - [ ] Future R2 migration (explicitly deferred)
   - Later move `elements/v1/manifest.json` and `elements/v1/{slug}.svg` to the private `mh-fashion-assets` bucket and serve them through same-origin editor API routes.
 
-## Canva-style Text tools
+## template-style Text tools
 
 Source of scope: `Plan/PLAN.md#project-plan` section 6.
 
-- [x] Canva-like text insertion and typography controls in `/create`
+- [x] template-like text insertion and typography controls in `/create`
   - Add heading, subheading, and body text from the Text panel; allow users to type custom copy before insertion.
   - Search and browse font choices by style category; show live font previews and ready-made paired text/font designs that add as grouped, separately editable layers.
   - For selected text, change font family, size, color, bold, italic, underline, alignment, and letter/line spacing. Preserve text editing, transforms, Undo/Redo, and browser-local draft storage.
@@ -1442,7 +1442,7 @@ Source of scope: `Plan/PLAN.md#project-plan` section 6 and the `/create` toolbar
   - Eyedropper samples the visible canvas pixel into the current tool color. Shape drag-creates the chosen editable shape; Pen draws editable freehand vector strokes with configurable color/width; Gradient drag-creates a gradient rectangle or applies an editable linear fill to eligible text/vector objects.
   - Clone Stamp duplicates the selected or clicked unlocked source object at the stamp point and remains undoable; it refuses sources locked directly or by a parent group. Eraser removes the clicked whole artwork object while leaving its layer row empty and usable (pixel-level erasing is not included).
   - Ruler drag displays a transient pixel-distance and angle measurement. Rotate View drag rotates the canvas view without changing artwork; Reset View restores orientation/zoom. Hand pans; Zoom click magnifies and Shift-click reduces, with existing zoom buttons retained.
-  - Show tool-specific cursor/status/options; keep added design changes in layers/history/drafts and keep navigation/measurement overlays out of saved artwork. Document the vector/object-level limits rather than claiming raster Photoshop behavior.
+  - Show tool-specific cursor/status/options; keep added design changes in layers/history/drafts and keep navigation/measurement overlays out of saved artwork. Document the vector/object-level limits rather than claiming raster behavior.
 - Evidence: `npm run build` passed; no inactive-tool placeholder messages remain; a read-only review found no P0/P1 issues. The review's Clone Stamp lock gap and Magic Wand raster-status ambiguity were corrected. Ruler visuals are transient overlays and are not included in saved marks/history; pixel-level raster selection/erasing and path-anchor editing remain out of scope.
 
 ## Cloudflare Worker build compatibility
@@ -1453,16 +1453,16 @@ Source of scope: Cloudflare's Workers Build check rejected the previous Next.js 
 - [x] Update the lockfile and verify a clean install produces the same Cloudflare build.
 - Evidence: `npm ci --no-audit --no-fund`, `npm run cf:build --workspace=apps/web`, `npm run build`, and `npm run test:guide` pass; no unsupported-version bypass flag is used. The existing compatibility-date warning is unchanged.
 
-## Canva-style workspace and selection toolbar
+## template-style workspace and selection toolbar
 
-Source of scope: owner request to remove the dark Photoshop-like backing from the drawing area and make the red-circled bar work like Canva.
+Source of scope: owner request to remove the dark desktop-editor-like backing from the drawing area and make the red-circled bar work like the template editor.
 
 - [historical; superseded by §6 owner-specified fixed print canvas] The prior editor iteration used a white artboard and an optional transparency grid. The current blank preview uses a transparent canvas buffer with a presentation-only checkerboard.
 - [x] Make the selection bar contextual: text exposes font, size, color, emphasis, and alignment; shapes expose type and fill; selected artwork exposes duplicate/delete actions.
 - [x] Remove developer-facing canvas-engine labeling from the drawing workspace footer.
 - Evidence: production build and TypeScript checks pass; selected artwork edits route through the existing history-backed update callback.
 
-## Persistent Photoshop-style Layers Box
+## Persistent desktop-editor-style Layers Box
 
 Source of scope: user clarification that the Layers Box must exist from editor start and that selecting a layer must not make Opacity/Fill controls appear.
 
@@ -1586,27 +1586,27 @@ The no-outer-frame correction is on `main` as `28867d9`. Its deployment run [#43
 - 2026-11-18: Applied the owner's Header Bar 2 follow-up. The opened dropdown is now a `rounded-2xl` green panel sized to the box it opens from (80px wide, not the old 176px overlay; option rows use the box height) with `rounded-full` options, and the sides are rounded instead of `rounded-full` clamping the tall menu into a capsule. Every field box pins its chevron to the right edge (`right-1.5`, vertically centred) so the arrow sits in the same place on Product, GSM, Color, and Size, and the Color swatch is a 20×20px rounded square rather than a small dot. The unit and integration tests assert the rounded panel, the box-width menu, the uniform chevron position, and the box-shaped swatch. Build, TypeScript, lint (0 errors / 25 warnings), 61/61 Node tests, and focused production Chromium at desktop 1280×900 and phone 390×844 passed. See `Doc/DOCUMENTATION.md#work-log`.
 
 
-- 2026-11-16: Following the owner's direct request, expanded the Pen tool into a Kittl-inspired Bézier workflow: click/drag nodes, Shift snapping, close/finish/cancel controls, persisted editable anchor metadata, double-click node editing, segment insertion, handle dragging, and node deletion. Updated the Pen behavior section to distinguish shipped behavior from remaining snapping/style scope. Added geometry/model/UI regression tests; production build and focused tests passed. See `Doc/DOCUMENTATION.md#work-log`.
+- 2026-11-16: Following the owner's direct request, expanded the Pen tool into a reference-inspired Bézier workflow: click/drag nodes, Shift snapping, close/finish/cancel controls, persisted editable anchor metadata, double-click node editing, segment insertion, handle dragging, and node deletion. Updated the Pen behavior section to distinguish shipped behavior from remaining snapping/style scope. Added geometry/model/UI regression tests; production build and focused tests passed. See `Doc/DOCUMENTATION.md#work-log`.
 
 ## 2026-11-17 Directive Update — Tools Bar first
 
-Pause unfinished Subpath/Node Editing, Fill/Stroke properties, and Bézier-handle work. Finalize the visible Tools Bar structure first: Move, Hand tool, Pan tool, Pen tool, Brush, Eraser tool, Shape tools, Gradient tool, Color switch tool, Undo, and Redo. Implement each tool one at a time only after this structure is accepted. Keep the Pen direction Photoshop/Kittl-inspired and do not modify the Layer Box.
+Pause unfinished Subpath/Node Editing, Fill/Stroke properties, and Bézier-handle work. Finalize the visible Tools Bar structure first: Move, Hand tool, Pan tool, Pen tool, Brush, Eraser tool, Shape tools, Gradient tool, Color switch tool, Undo, and Redo. Implement each tool one at a time only after this structure is accepted. Keep the Pen direction desktop-editor-inspired and do not modify the Layer Box.
 
 ## 2026-11-17 Directive Update — Free Transform visual language
 
-Keep the existing Free Transform behavior, but make its visual treatment Kittl-inspired: a thin selection line, compact resize handles, and a small rotation control using MH Fashion theme colors instead of blue. Preserve all eight resize points, rotation, move behavior, and separate touch hit areas for Phone/Mobile.
+Keep the existing Free Transform behavior, but make its visual treatment reference-inspired: a thin selection line, compact resize handles, and a small rotation control using MH Fashion theme colors instead of blue. Preserve all eight resize points, rotation, move behavior, and separate touch hit areas for Phone/Mobile.
 
 ## 2026-11-17 Directive Update — Pen icon and selected-tool cursor
 
-Use a Photoshop/Kittl-style pen-nib icon for Pen, based on the owner's reference. When a tool is selected, keep the Canvas cursor in that tool's own form instead of always showing a Hand/grab cursor: Pen/Brush crosshair, Eraser cell, Shape/Gradient crosshair, Move move-cursor, and Hand/Pan grab-cursor.
+Use a desktop-editor-style pen-nib icon for Pen, based on the owner's reference. When a tool is selected, keep the Canvas cursor in that tool's own form instead of always showing a Hand/grab cursor: Pen/Brush crosshair, Eraser cell, Shape/Gradient crosshair, Move move-cursor, and Hand/Pan grab-cursor.
 
 ## 2026-11-17 Directive Update — Pencil/ Pen distinction and Text tool
 
 The former `Pan` label was incorrect. It means **Pencil tool**, which must remain separate from the vector **Pen tool**. Give Pencil its own Pencil icon, label, cursor, and freehand drawing behavior; keep Pen as the nib/path tool. Add a visible Text tool to the Tools Bar. Selecting Text and clicking the canvas must create a text layer and enter the direct typing workflow. Hand alone owns viewport-pan behavior.
 
-## 2026-11-17 Directive Update — Kittl blue rotating Free Transform
+## 2026-11-17 Directive Update — blue rotating Free Transform
 
-Make Free Transform thinner and Kittl-like with a blue outline and rotation control. When the selected layer rotates, the entire Free Transform control group must rotate with it. Display the current rotation degree in a small live label near the rotation handle. Preserve all resize, move, rotate, and responsive touch behavior.
+Make Free Transform thinner and reference-like with a blue outline and rotation control. When the selected layer rotates, the entire Free Transform control group must rotate with it. Display the current rotation degree in a small live label near the rotation handle. Preserve all resize, move, rotate, and responsive touch behavior.
 
 ## 2026-11-17 Directive Update — Tool-shaped cursors
 
@@ -1616,17 +1616,17 @@ Do not show one generic plus/crosshair cursor for every tool. The Canvas cursor 
 
 The Free Transform rotation control should be a small white circular button with a circular rotate-arrow icon, matching the supplied reference. Remove the protruding connector stem entirely. Keep the larger invisible hit area and the small live degree label.
 
-- 2026-11-16: Following the owner's direct request to make Shape tools functional like Kittl Rectangle with selectable options, replaced the Shape placeholder with nine presets and drag-to-draw SVG preview/creation (Rectangle, Rounded rectangle, Ellipse, Triangle, Diamond, Line, Arrow, Star, Hexagon). Created geometry is stored as an editable shape layer, selected on the canvas, and shared with the mockup renderer. Added regression coverage; custom path editing and independent fill/stroke controls remain future scope. See `Doc/DOCUMENTATION.md#work-log`.
+- 2026-11-16: Following the owner's direct request to make Shape tools functional like the reference Rectangle with selectable options, replaced the Shape placeholder with nine presets and drag-to-draw SVG preview/creation (Rectangle, Rounded rectangle, Ellipse, Triangle, Diamond, Line, Arrow, Star, Hexagon). Created geometry is stored as an editable shape layer, selected on the canvas, and shared with the mockup renderer. Added regression coverage; custom path editing and independent fill/stroke controls remain future scope. See `Doc/DOCUMENTATION.md#work-log`.
 
 
-## 2026-11-17 Directive Update — Photoshop-like Free Transform mechanics
-The owner accepts Photoshop-style behavior in place of exact Kittl replication; reliable, intuitive transform behavior is the priority. Keep the previously approved thin blue selection outline, eight resize points, compact circular rotate-arrow handle, live degree badge, and mobile hit areas. Corner drags scale proportionally by default; Shift permits independent X/Y scaling; Alt/Option scales from the center; Shift snaps rotation to 15-degree increments. Resize math must follow the selected object's rotated local axes and pivot; group rotation/scaling must move the selected artwork together without altering unselected layers. Keep the Plan as the source of editor requirements; this direct owner instruction supersedes pixel-identical Kittl-only expectations.
+## 2026-11-17 Directive Update — desktop-editor-like Free Transform mechanics
+The owner accepts desktop-editor-style behavior in place of exact replication; reliable, intuitive transform behavior is the priority. Keep the previously approved thin blue selection outline, eight resize points, compact circular rotate-arrow handle, live degree badge, and mobile hit areas. Corner drags scale proportionally by default; Shift permits independent X/Y scaling; Alt/Option scales from the center; Shift snaps rotation to 15-degree increments. Resize math must follow the selected object's rotated local axes and pivot; group rotation/scaling must move the selected artwork together without altering unselected layers. Keep the Plan as the source of editor requirements; this direct owner instruction supersedes pixel-identical exact-replication expectations.
 
-## 2026-11-17 Directive Update — Photoshop-like Pen continuity
+## 2026-11-17 Directive Update — desktop-editor-like Pen continuity
 
-Keep the existing vector Pen path workflow and make its cursor/tool state consistent: use the same Pen-nib cursor on the viewport and print canvas from the first anchor through curve creation, path editing, Cancel, Finish/Close, and after path commit. Finishing or closing a path must leave Pen selected and ready to start another path, not switch automatically to Move. Preserve other tools' cursors and existing Bézier, snapping, close, finish, cancel, and point-edit behavior. Implement only this slice; wait for the owner's step-by-step direction before adding other Photoshop-specific Pen modes.
+Keep the existing vector Pen path workflow and make its cursor/tool state consistent: use the same Pen-nib cursor on the viewport and print canvas from the first anchor through curve creation, path editing, Cancel, Finish/Close, and after path commit. Finishing or closing a path must leave Pen selected and ready to start another path, not switch automatically to Move. Preserve other tools' cursors and existing Bézier, snapping, close, finish, cancel, and point-edit behavior. Implement only this slice; wait for the owner's step-by-step direction before adding other desktop-editor-specific Pen modes.
 
-## 2026-11-18 Implementation update — Photoshop-style Pen Bézier handles
+## 2026-11-18 Implementation update — desktop-editor-style Pen Bézier handles
 
 Following the owner's direct request, click-dragged Pen anchors now show paired guides and visible handle endpoints; saved-path handles can be dragged to change the cubic curve, and Alt still breaks the mirrored tangent. The live preview uses a 1.5px stroke, the committed path is thin at default canvas size, and the “Click: corner…” instruction plus empty idle hint panel are removed. Finish/Close/Cancel remain available during drawing. Handle motion is tracked globally while dragging so the edit survives SVG redraws; listeners are removed on pointerup, pointercancel, or unmount.
 
@@ -1643,7 +1643,7 @@ The owner reported three regressions. (1) Multi-line text was broken: the inline
 
 When an uploaded photo layer is selected and Adjustments is opened, show a compact Photo section with color controls and action boxes for Remove background and Upscale. Brightness, Contrast, Saturation, and Blur must render live on the photo and persist immutably. Keep the Remove background/Upscale controls ready for real image-service endpoints; until those endpoints are connected, preserve their active state without pretending that backend processing has completed.
 
-## 2026-11-18 Directive Update — Photoshop RAW-style photo controls
+## 2026-11-18 Directive Update — professional photo-editor-style photo controls
 
 Extend Photo Adjustments beyond basic color sliders with RAW-style controls: Temperature, Tint, Exposure, Highlights, Shadows, Vibrance, Hue, Vignette, and independent Red/Green/Blue channel controls. Render the adjustments live and keep each value immutable on the image layer. Use compact grouped controls so the panel remains usable on Desktop and Phone/Mobile.
 
@@ -1657,13 +1657,13 @@ Add Selective Color and HSL controls to Photo Adjustments, including per-compone
 
 ## 2026-11-18 Directive Update — Photo layers are non-drawable; sectioned Photo Adjustments
 
-The owner asked for three changes. First, Brush, Pencil, Pen, Eraser, Shape, and Gradient must not work on a photo layer: a photo is edited only through the Photo Adjustments panel. The canvas now ignores those tools when the selected layer is a photo, tool selection falls back to Move, and the Tools bar greys the drawing buttons out. Second, Photo Adjustments must be organised as separate Camera Raw sections, each opening on its own: Basic, Tone Curve, Color Mixer, Color Grading, Levels, Selective Color, Channel Mixer, Detail, Effects, Optics, and Calibration. Third, Upscale, Remove Background, AI Enhance, Smart Filter, and the layer mask controls move into their own separate service box, kept outside the adjustment sections.
+The owner asked for three changes. First, Brush, Pencil, Pen, Eraser, Shape, and Gradient must not work on a photo layer: a photo is edited only through the Photo Adjustments panel. The canvas now ignores those tools when the selected layer is a photo, tool selection falls back to Move, and the Tools bar greys the drawing buttons out. Second, Photo Adjustments must be organised as separate photo-editor sections, each opening on its own: Basic, Tone Curve, Color Mixer, Color Grading, Levels, Selective Color, Channel Mixer, Detail, Effects, Optics, and Calibration. Third, Upscale, Remove Background, AI Enhance, Smart Filter, and the layer mask controls move into their own separate service box, kept outside the adjustment sections.
 
 The owner also listed the exact controls for each section, and those are the ones implemented. Basic keeps Temperature, Tint, Exposure, Contrast, Highlights, Shadows, Whites, Blacks, Texture, Clarity, Dehaze, Vibrance, Saturation. Color Mixer now offers a Hue / Saturation / Luminance mode with an eight-band per-color row (red, orange, yellow, green, aqua, blue, purple, magenta) so each colour can be edited on its own. Color Grading carries Shadows, Midtones, and Highlights (hue and saturation each) plus Blending and Balance. Tone Curve carries Highlights, Lights, Darks, Shadows plus the draggable point graph. Detail carries Sharpening, Noise Reduction, and Color Noise Reduction. Effects carries Vignette and Grain. Optics carries Remove Chromatic Aberration and Lens Corrections. Calibration carries Red, Green, and Blue Primary (hue and saturation each). Because SVG filters cannot isolate a single hue per pixel, the per-color and primary controls are folded into a weighted global hue/saturation shift — a documented approximation, not a claim of pixel-level parity.
 
-## 2026-11-18 Directive Update — Photoshop Camera Raw-style Photo Adjustments
+## 2026-11-18 Directive Update — professional photo-editor-style Photo Adjustments
 
-The owner asked for a real Photoshop Camera Raw-style Photo Adjustment set rather than a flat slider list. Photo Adjustments now mirrors the Camera Raw/Develop module as collapsible groups: White Balance, Light (Exposure in EV plus Contrast/Highlights/Shadows/Whites/Blacks), Presence (Texture/Clarity/Dehaze/Vibrance/Saturation/Hue), Tone Curve, Levels, Color Mixer (HSL), Color Grading, Selective Color, Channel Mixer, Effects (Vignette/Grain), Detail (Sharpen/Noise reduction/Blur), and Smart & AI, with Auto and Reset. All control math lives in the pure `photo-adjustments.ts` module: exposure in stops, Adobe-documented tonal zones for Highlights/Shadows/Whites/Blacks, one luminance transfer table for the tone stage, one `feColorMatrix` for the color stage, and gradient/turbulence overlays for split toning, vignette, and grain. Values remain immutable instructions on the image layer so previews, mockups, and the print canvas stay identical and non-destructive. Controls must remain usable on Desktop and Phone/Mobile.
+The owner asked for a real professional photo-editor-style Photo Adjustment set rather than a flat slider list. Photo Adjustments now mirrors a professional photo editor as collapsible groups: White Balance, Light (Exposure in EV plus Contrast/Highlights/Shadows/Whites/Blacks), Presence (Texture/Clarity/Dehaze/Vibrance/Saturation/Hue), Tone Curve, Levels, Color Mixer (HSL), Color Grading, Selective Color, Channel Mixer, Effects (Vignette/Grain), Detail (Sharpen/Noise reduction/Blur), and Smart & AI, with Auto and Reset. All control math lives in the pure `photo-adjustments.ts` module: exposure in stops, documented tonal zones for Highlights/Shadows/Whites/Blacks, one luminance transfer table for the tone stage, one `feColorMatrix` for the color stage, and gradient/turbulence overlays for split toning, vignette, and grain. Values remain immutable instructions on the image layer so previews, mockups, and the print canvas stay identical and non-destructive. Controls must remain usable on Desktop and Phone/Mobile.
 
 ## 2026-11-18 Directive Update — Photo Layer Mask and Blend Modes
 
@@ -1675,21 +1675,21 @@ Photo layers must expose Add/Edit/Remove Layer Mask controls and Blend Modes in 
 
 The owner asked for the Editor Header Bar 2 icon boxes to share one shape, for the dropdown opened from each box's chevron to be rounded on its sides, and for the price to appear once an option is chosen. Product, GSM, Color, and Size now all render through a single `BoxDropdown` control built on the same `FIELD_BOX`/`TRIGGER_BOX` geometry as the Save/Buy `ACTION_BOX` boxes, so the whole bar reads as one uniform set and every field opens the identical green dropdown panel (no native `select`). The chevron on each box opens that panel; it matches the box fill, is pinned to the same right-edge position on every box, and is portal-mounted so the scrollable bar cannot clip it. The panel is only as wide as the box it opens from and its sides are rounded (`rounded-2xl` panel with `rounded-full` options), not `rounded-full`, which clamps a tall menu into a capsule. The Color swatch is a 20×20px rounded square rather than a dot. The Save-adjacent price is now live: it shows the provisional Ks amount as soon as the product's required selections exist and updates immediately on every Product/GSM/Size change, reading `Price —` only while a required choice is missing. Save/Buy remain placeholders because no price source or save/checkout handler is connected.
 
-## 2026-11-18 Directive Update — Shape adjustments (Photoshop-like and Kittl-like)
+## 2026-11-18 Directive Update — Shape adjustments (desktop-editor-like and reference-like)
 
-The owner asked for Photoshop-like shape adjustments with a Kittl feel. A shape layer now carries an `EditorShapeStyle` with independent **Fill** (color, enable, opacity) and **Stroke** (color, width, and a solid/dash/dot line style) channels — the Photoshop separation — plus a `cornerRadius` and two Kittl-style effects: a drop shadow (offset X/Y, blur, opacity) and an outer glow (spread, opacity). New shapes seed their style from their own geometry so the panel always has real values, and the style is stored on the shape content, preserved by Shape Builder operations and duplication, and clamped on every edit. The Adjustments panel gained a `Shape` section for these controls; the print canvas, the Layers thumbnail, and the mockup previews all render the same resolved style through `EditorLayerPreview`, and the drag preview on the canvas shows the target layer's live style. This is a focused first slice, not full parity: one fill and one stroke per shape (no gradient fill or stacked appearance), no per-path styling inside a single shape layer, and no dash-gap or cap/join controls yet.
+The owner asked for desktop-editor-like shape adjustments with a reference feel. A shape layer now carries an `EditorShapeStyle` with independent **Fill** (color, enable, opacity) and **Stroke** (color, width, and a solid/dash/dot line style) channels — the fill/stroke separation — plus a `cornerRadius` and two reference-style effects: a drop shadow (offset X/Y, blur, opacity) and an outer glow (spread, opacity). New shapes seed their style from their own geometry so the panel always has real values, and the style is stored on the shape content, preserved by Shape Builder operations and duplication, and clamped on every edit. The Adjustments panel gained a `Shape` section for these controls; the print canvas, the Layers thumbnail, and the mockup previews all render the same resolved style through `EditorLayerPreview`, and the drag preview on the canvas shows the target layer's live style. This is a focused first slice, not full parity: one fill and one stroke per shape (no gradient fill or stacked appearance), no per-path styling inside a single shape layer, and no dash-gap or cap/join controls yet.
 
 ## 2026-11-18 Directive Update — Bigger Free-transform handles with hover arrows
 
 The owner asked that the Free Transform corners and edge handles be a little bigger, and that hovering them show the two-sided resize icon plus the rotate tool's own icon regardless of which tool is active. The handles now keep a constant on-screen size (about 10px, measured from the SVG scale with a `ResizeObserver` instead of a fixed unit size), so they no longer shrink to a few pixels on a fitted canvas. Hovering a handle reveals a double-headed arrow glyph aligned to that handle's axis and switches the pointer to the matching resize cursor (`nwse`/`nesw`/`ns`/`ew`) with no tool switch needed. The rotate handle keeps its distinct circular-arrow glyph, is enlarged to match, and shows a grab cursor.
 
-## 2026-11-18 Directive Update — Compact Kittl-style Shape picker beside the chip
+## 2026-11-18 Directive Update — Compact reference-style Shape picker beside the chip
 
-The owner asked that selecting the Shape tool must not raise a large box. The Shape chip in the tools bar now shows the currently selected shape's icon; clicking it activates the Shape tool and opens a small Kittl-style picker right beside the chip. The picker is a compact three-column popover of icon-only buttons (28px square on desktop, 40px square on coarse pointers), with the "Choose a shape, then drag on the canvas" hint removed and each shape name kept only as `title`/`aria-label`. Choosing an option closes the box, leaves the Shape tool active so drawing can start immediately, and switches the chip's icon to the chosen shape. The picker stays closed on load. This is a presentation change only; the Shape tool still draws into the selected unlocked layer and does not create a layer per gesture.
+The owner asked that selecting the Shape tool must not raise a large box. The Shape chip in the tools bar now shows the currently selected shape's icon; clicking it activates the Shape tool and opens a small reference-style picker right beside the chip. The picker is a compact three-column popover of icon-only buttons (28px square on desktop, 40px square on coarse pointers), with the "Choose a shape, then drag on the canvas" hint removed and each shape name kept only as `title`/`aria-label`. Choosing an option closes the box, leaves the Shape tool active so drawing can start immediately, and switches the chip's icon to the chosen shape. The picker stays closed on load. This is a presentation change only; the Shape tool still draws into the selected unlocked layer and does not create a layer per gesture.
 
-## 2026-11-18 Directive Update — Text tool follows the Photoshop layer rule
+## 2026-11-18 Directive Update — Text tool follows the layer rule
 
-The owner asked that working on a layer must not keep calling up new layers, and that — like Photoshop — a layer is created only when the user asks for one. Confirmed rule for the Text tool: when the selected layer is a text layer, the Text tool edits that layer's own text in place and creates no new layer; when the selected layer is not a text layer (artwork/shape/image) or nothing is selected, it creates exactly one new text layer and types into it. This matches the existing Pen and Shape behavior, which already append to the selected unlocked layer. The canvas-click Text tool branch in `KittlCanvas.tsx` now checks `selectedLayer.kind === "text"`, reopens the in-place editor for that layer (with a lock notice), and only calls `addCanvasTextLayer` for a missing or non-text selection. The explicit Sidebar `Add Text` action and the `Add layer` control remain the deliberate ways to add a layer.
+The owner asked that working on a layer must not keep calling up new layers, and that a layer is created only when the user asks for one. Confirmed rule for the Text tool: when the selected layer is a text layer, the Text tool edits that layer's own text in place and creates no new layer; when the selected layer is not a text layer (artwork/shape/image) or nothing is selected, it creates exactly one new text layer and types into it. This matches the existing Pen and Shape behavior, which already append to the selected unlocked layer. The canvas-click Text tool branch in `EditorCanvas.tsx` now checks `selectedLayer.kind === "text"`, reopens the in-place editor for that layer (with a lock notice), and only calls `addCanvasTextLayer` for a missing or non-text selection. The explicit Sidebar `Add Text` action and the `Add layer` control remain the deliberate ways to add a layer.
 
 ## 2026-11-18 Directive Update — Pen and Shape reuse the active layer
 Update the earlier Shape-tool note: every Pen or Shape gesture appends its vector path to the currently selected unlocked layer; it must not create a new layer per action or automatically open the Layers panel. Missing or locked active layers block drawing instead of triggering implicit layer creation. Multiple Pen paths in one layer remain individually editable by path index. Preserve the current Pen-continuity behavior: finishing or closing a path leaves Pen active. Keep Add Layer explicit; text/image/design insertions may still create their own editable object layers.
@@ -1698,11 +1698,11 @@ Update the earlier Shape-tool note: every Pen or Shape gesture appends its vecto
 
 The owner asked that each drawing tool carry its own settings instead of the editor using fixed constants. The Adjustments panel now has a `Tool Options` section that follows the active tool and opens by default when the panel is opened. Brush and Pencil expose tip shape (round/square), size, opacity, and softness/feather; Eraser exposes its radius; Pen exposes stroke width and cap. The eraser's hit radius reads `toolOptions.eraser.size` (was a fixed `radiusPx = 180`) and a committed Pen path uses `toolOptions.pen.width` (was a fixed `strokeWidth: 5`). Each brush/pencil stroke stores its own `width`, `opacity`, `shape`, and `softness` so strokes within one layer can differ; strokes without stored values keep the previous 52px / 0.68-opacity brush look. Square tips use `stroke-linecap: butt` and non-zero softness applies a Gaussian blur. The Free Transform box now hides while a freehand stroke is in progress so the selection outline does not sit under the pointer. The bottom Adjustments action is enabled with no selected layer so the tool options stay reachable. Values live in page memory only, consistent with the rest of the editor's current state handling.
 
-## 2026-11-18 Directive Update — Photoshop-style Gradient tool
+## 2026-11-18 Directive Update — desktop-editor-style Gradient tool
 
-The owner asked for a Photoshop-style Gradient tool that can draw and re-aim gradient layers and edit them fully. The editor now has a `gradient` layer kind (`editor-layers.ts`) that holds an `EditorGradient` — a Photoshop shape (`linear`, `radial`, `angle` conic, `reflected`, `diamond`), a drag axis (`x1/y1` → `x2/y2` in the 1000×1200 artwork space), and a stop list (id, offset 0–100, hex colour, opacity 0–1, capped at eight). Helpers: `defaultEditorGradient`, `normalizeEditorGradient`, `sortEditorGradientStops`, `sampleEditorGradient` (ramp sampling for the conic/diamond shapes), `editorGradientGeometry`, `editorGradientConicWedges` (120 flat wedges, because SVG has no native conic paint), `editorGradientDiamondFacets` (four facets), `editorGradientFromToolSettings`, `createEditorGradientLayer`, `setEditorLayerGradient`, and `updateEditorGradientSettings`/`setEditorGradientStops`. The Gradient tool carries its own shape/preset in `EditorToolOptions.gradient`.
+The owner asked for a desktop-editor-style Gradient tool that can draw and re-aim gradient layers and edit them fully. The editor now has a `gradient` layer kind (`editor-layers.ts`) that holds an `EditorGradient` — a gradient shape (`linear`, `radial`, `angle` conic, `reflected`, `diamond`), a drag axis (`x1/y1` → `x2/y2` in the 1000×1200 artwork space), and a stop list (id, offset 0–100, hex colour, opacity 0–1, capped at eight). Helpers: `defaultEditorGradient`, `normalizeEditorGradient`, `sortEditorGradientStops`, `sampleEditorGradient` (ramp sampling for the conic/diamond shapes), `editorGradientGeometry`, `editorGradientConicWedges` (120 flat wedges, because SVG has no native conic paint), `editorGradientDiamondFacets` (four facets), `editorGradientFromToolSettings`, `createEditorGradientLayer`, `setEditorLayerGradient`, and `updateEditorGradientSettings`/`setEditorGradientStops`. The Gradient tool carries its own shape/preset in `EditorToolOptions.gradient`.
 
-On the canvas, a Gradient drag paints a full-canvas fill: a drag over a selected gradient layer re-aims that layer's axis, and a drag elsewhere drops a new gradient layer; a tap falls back to a full-width horizontal axis through the point. A live preview overlay draws during the drag. `GradientPreview` renders every shape from the shared 1000×1200 artwork space, so the print canvas, the Layers thumbnail, and both mockups look identical. The Adjustments panel gained a `Gradient` tool-options section (shape and preset pickers with live ramp previews) and a `Gradient` layer section (type select, draggable stop handles, add/remove stop, per-stop colour/position/opacity, and the axis Start/End fields). Controls stay usable on Desktop and Phone/Mobile. This is a vector gradient fill, not a raster or mesh gradient; per-stop midpoint/bias and Photoshop's noise/dither options are not included.
+On the canvas, a Gradient drag paints a full-canvas fill: a drag over a selected gradient layer re-aims that layer's axis, and a drag elsewhere drops a new gradient layer; a tap falls back to a full-width horizontal axis through the point. A live preview overlay draws during the drag. `GradientPreview` renders every shape from the shared 1000×1200 artwork space, so the print canvas, the Layers thumbnail, and both mockups look identical. The Adjustments panel gained a `Gradient` tool-options section (shape and preset pickers with live ramp previews) and a `Gradient` layer section (type select, draggable stop handles, add/remove stop, per-stop colour/position/opacity, and the axis Start/End fields). Controls stay usable on Desktop and Phone/Mobile. This is a vector gradient fill, not a raster or mesh gradient; per-stop midpoint/bias and noise/dither options are not included.
 
 ## 2026-11-19 Directive Update — Editor dock colors and Adjustments return arrow
 
@@ -1762,7 +1762,7 @@ The product page at `/products/:slug` now previews the exact thing the customer 
 
 - **Bigger image.** The media column grew from 280 px to 440 px on desktop and runs full width on a phone (374 px at 390 px wide, no horizontal overflow).
 - **The mockup follows the selection.** Colour, fit and sleeve resolve to an R2 object (`mockups/<slug>/<look>.<ext>`), walking from the most specific look down to `default` and then to the catalog image. Size is left out of the key because the same garment photo serves M and XL; a bucket only needs the looks that visually differ.
-- **The design sits on top.** The artwork is placed in `PRODUCT_PRINT_AREA` (30% / 22% / 40% / 46% of the image box) and comes from `?design=`, the product's own `designSvgUrl`, or the design currently open in the editor (kept in `localStorage` by `KittlCanvas`). Draft layers are drawn with the editor's own renderer, so the preview and the canvas cannot drift.
+- **The design sits on top.** The artwork is placed in `PRODUCT_PRINT_AREA` (30% / 22% / 40% / 46% of the image box) and comes from `?design=`, the product's own `designSvgUrl`, or the design currently open in the editor (kept in `localStorage` by `EditorCanvas`). Draft layers are drawn with the editor's own renderer, so the preview and the canvas cannot drift.
 - **Config:** set `NEXT_PUBLIC_R2_PUBLIC_URL` to the bucket's public origin at build time; without it the page still works, showing the catalog image with the design overlaid.
 
 ## 2026-11-21 Implementation Update — Orders detail + Google Sheet pricing
@@ -1865,10 +1865,11 @@ removed. No editor behaviour changed.
   that used to sit here was removed with the rest of the editor material, as the owner asked. The old
   anchors stay so existing links resolve.
 - The code check recorded in the plan: `circle` is selectable but paints no transform, Shape Builder
-  handles only the first two axis-aligned rectangles, and there is no save, persistence, order hand-off,
-  align/tidy, flip, hover highlight, positional snapping, context menu, glyph panel, per-character
-  styling, artboard, keyboard undo, extra product or working Save/Buy; text wrapping, the seven text
-  effects, decorations, node editing, font search and per-layer effect thumbnails all exist.
+  handles only the first two axis-aligned rectangles, the editor writes a browser draft but never
+  restores it and no order carries the artwork, and there is no align/tidy, flip, hover highlight,
+  positional snapping, context menu, glyph panel, per-character styling, artboard, keyboard undo, extra
+  product or working Save/Buy; text wrapping, the seven text effects, decorations, node editing, font
+  search and per-layer effect thumbnails all exist.
 
 ## 2026-11-21 — Rate limiting on the payment API
 

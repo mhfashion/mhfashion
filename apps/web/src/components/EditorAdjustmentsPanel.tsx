@@ -167,7 +167,7 @@ function GradientOptions({ value, onChange }: { value: EditorGradientToolSetting
   </div>;
 }
 
-/** A Photoshop-style gradient strip: draggable stop handles over a live preview ramp. */
+/** A gradient strip: draggable stop handles over a live preview ramp. */
 function GradientEditor({ gradient, onChange }: { gradient: EditorGradient; onChange: (gradient: EditorGradient) => void }) {
   const sorted = sortEditorGradientStops(gradient.stops);
   const css = sorted.map((stop) => `${stop.color} ${stop.offset}%`).join(", ");
@@ -223,7 +223,7 @@ function GradientEditor({ gradient, onChange }: { gradient: EditorGradient; onCh
       <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Start / End</span><div className="flex gap-1"><input aria-label="Gradient axis start X" type="number" value={Math.round(gradient.x1)} onChange={(event) => onChange({ ...gradient, x1: Number(event.target.value) })} className="w-14 rounded-lg border border-border bg-bg px-1 py-1 text-right text-[10px]" /><input aria-label="Gradient axis start Y" type="number" value={Math.round(gradient.y1)} onChange={(event) => onChange({ ...gradient, y1: Number(event.target.value) })} className="w-14 rounded-lg border border-border bg-bg px-1 py-1 text-right text-[10px]" /></div></div>
       <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>End X / Y</span><div className="flex gap-1"><input aria-label="Gradient axis end X" type="number" value={Math.round(gradient.x2)} onChange={(event) => onChange({ ...gradient, x2: Number(event.target.value) })} className="w-14 rounded-lg border border-border bg-bg px-1 py-1 text-right text-[10px]" /><input aria-label="Gradient axis end Y" type="number" value={Math.round(gradient.y2)} onChange={(event) => onChange({ ...gradient, y2: Number(event.target.value) })} className="w-14 rounded-lg border border-border bg-bg px-1 py-1 text-right text-[10px]" /></div></div>
     </div>}
-    <p className="text-[9px] leading-relaxed text-text-muted">Stops blend like Photoshop: drag a handle to move it, add one to split a ramp, and double-click to remove. The axis Start and End set the gradient direction and length.</p>
+    <p className="text-[9px] leading-relaxed text-text-muted">Drag a handle to move a stop, add one to split a ramp, and double-click to remove. The axis Start and End set the gradient direction and length.</p>
   </div>;
 }
 
@@ -347,7 +347,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
                   <RangeField label="Opacity" value={Math.round(shapeStyle.glow.opacity * 100)} min={0} max={100} suffix="%" ariaLabel="Shape glow opacity" onChange={(percent) => onUpdateShapeStyle({ glow: { ...shapeStyle.glow, opacity: percent / 100 } })} />
                 </div>}
               </div>
-              <p className="text-[9px] leading-relaxed text-text-muted">Fill and stroke are independent, like Photoshop and Kittl. Shadow and glow render live on the canvas, the layer thumbnail, and the mockups.</p>
+              <p className="text-[9px] leading-relaxed text-text-muted">Fill and stroke are independent. Shadow and glow render live on the canvas, the layer thumbnail, and the mockups.</p>
             </div>
           </Section>}
           {selectedLayer.shape && <Section title="Shape Builder" open={openSection === "Shape Builder"} onToggle={() => toggleSection("Shape Builder")}>

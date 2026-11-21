@@ -1,6 +1,6 @@
 import type { EditorImageContent, PhotoAdjustmentKey, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
 
-// Photoshop Camera Raw treats every edit as an instruction, not a pixel change.
+// Every photo edit is an instruction, not a pixel change.
 // This module turns those instructions into the SVG/CSS primitives the preview
 // renderer applies, so the math stays pure, deterministic, and testable apart
 // from React and the DOM.

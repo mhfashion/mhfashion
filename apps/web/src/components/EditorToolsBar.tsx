@@ -110,7 +110,7 @@ export default function EditorToolsBar({
             {tools.map(({ id, label, Icon }) => {
               const disabled = drawingToolsDisabled && (id === "brush" || id === "pencil" || id === "pen" || id === "shape" || id === "gradient" || id === "eraser");
               if (id === "shape") {
-                // Shape tool: a chip beside the bar opens the Kittl-style picker. The chip
+                // Shape tool: a chip beside the bar opens the preset picker. The chip
                 // shows the selected shape's icon, and picking an option closes the box.
                 return (
                   <div key={id} className="relative shrink-0">

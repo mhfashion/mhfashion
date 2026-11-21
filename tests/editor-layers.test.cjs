@@ -388,7 +388,7 @@ test("layer rows can be dropped at an arbitrary stack index", () => {
   assert.deepEqual(moveEditorLayerToIndex(layers, "one", 3).map((layer) => layer.id), ["two", "three", "one"]);
 });
 
-test("grouping non-adjacent layers creates a contiguous Photoshop-style folder block", () => {
+test("grouping non-adjacent layers creates a contiguous folder block", () => {
   const layers = ["one", "two", "three", "four"].map((id) => createEditorArtworkLayer(id, id));
   const grouped = groupEditorLayers(layers, ["one", "three"], "group-1");
   assert.deepEqual(grouped.map((layer) => layer.id), ["one", "three", "two", "four"]);
@@ -926,7 +926,7 @@ test("a trailing blank line does not stretch the transform box past the last gly
   assert.ok(spaced.height > one.height, "a blank middle line keeps its own line height");
 });
 
-test("gradient layers hold a Photoshop-style axis, shape, and stops", () => {
+test("gradient layers hold an axis, shape, and stops", () => {
   const layer = createEditorGradientLayer("g1", "Gradient 1", defaultEditorGradient());
   assert.equal(layer.kind, "gradient");
   assert.ok(layer.gradient, "the gradient content is attached");
@@ -945,7 +945,7 @@ test("gradient layers hold a Photoshop-style axis, shape, and stops", () => {
   assert.equal(setEditorLayerGradient([other], "a1", defaultEditorGradient())[0].gradient, null);
 });
 
-test("gradient stops normalize, clamp, sort, and sample like Photoshop", () => {
+test("gradient stops normalize, clamp, sort, and sample", () => {
   const messy = normalizeEditorGradient({
     type: "radial",
     x1: 10, y1: 20, x2: 30, y2: 40,

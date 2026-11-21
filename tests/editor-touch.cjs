@@ -445,7 +445,7 @@ async function main() {
     assert.equal(openLayers.dockSide, "right");
     assert.ok(Math.abs(openLayers.right - openLayers.viewportRight) < 1, "Layers panel docks to the viewport's right edge");
     assert.ok(openLayers.width <= openLayers.viewportWidth * 0.86 + 1, "Layers panel fits narrow phone screens");
-    assert.ok(openLayers.width <= 257, "Compact Photoshop panel stays within its 16rem maximum width");
+    assert.ok(openLayers.width <= 257, "Compact Layers panel stays within its 16rem maximum width");
     assert.ok(Math.abs(openLayers.arrowRight - openLayers.panelLeft) < 1, "The collapse arrow remains reachable at the open panel edge");
     assert.equal(openLayers.titleHeight, 44, "Portrait Layers title row stays 44px tall");
     assert.equal(openLayers.actionBarHeight, 44, "Portrait touch action bar stays 44px tall");
@@ -871,7 +871,7 @@ async function main() {
       };
     });
     assert.ok(themeBefore.layersWidth <= 257, "Desktop panel is visibly narrower than its previous oversized 17rem width");
-    assert.equal(themeBefore.layerNameSize, "11px", "Photoshop-style layer rows use compact type");
+    assert.equal(themeBefore.layerNameSize, "11px", "layer rows use compact type");
     assert.equal(themeBefore.toggleWidth, 28, "Desktop Layers toggle stays small");
     assert.ok(Number.parseFloat(themeBefore.toggleRadius) >= 14, "Desktop Layers toggle remains circular");
     assert.equal(themeBefore.layersToggle, `rgb(${themeBefore.accent})`, "Desktop toggle uses the app accent color");
@@ -894,7 +894,7 @@ async function main() {
     assert.notEqual(themeAfter.colorBoxBorder, themeBefore.colorBoxBorder, "Color box outline responds to Header theme toggle");
     assert.equal(themeBefore.colorBoxBorder, `rgb(${themeBefore.accent})`, "Color box outline uses the active app theme token");
     assert.equal(themeAfter.colorBoxBorder, `rgb(${themeAfter.accent})`, "Color box outline follows the toggled app theme token");
-    assert.notEqual(themeAfter.layersPanel, themeBefore.layersPanel, "Photoshop-style Layers dock responds to Header theme toggle");
+    assert.notEqual(themeAfter.layersPanel, themeBefore.layersPanel, "Layers dock responds to Header theme toggle");
     assert.notEqual(themeAfter.layersToggle, themeBefore.layersToggle, "Round Layers toggle follows the app accent theme color");
     assert.equal(themeAfter.layersToggle, `rgb(${themeAfter.accent})`, "Toggled button color matches the active theme accent token");
     await clickPoint(themeBefore.button);
@@ -905,7 +905,7 @@ async function main() {
     assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"]')?.dataset.dockSide), "right");
     await clickMouse('button[aria-label="Collapse Layers panel"]');
     assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"]')), null);
-    console.log("PASS desktop: right-side Layers arrow opens and collapses the Photoshop-inspired panel");
+    console.log("PASS desktop: right-side Layers arrow opens and collapses the Layers panel");
     const desktopButton = await rect('button[aria-label="Canvas options"]');
     assert.equal(desktopButton.w, 14); assert.equal(desktopButton.h, 14);
     console.log("PASS desktop 1280×900: original control size and no mobile toolbar");

@@ -10,7 +10,7 @@ does not do is listed in `Plan/EDITOR_PLAN.md` §4, not here.
 
 1. the site `Header`,
 2. `EditorHeaderBar2` — product, GSM, colour, size, save, buy and the live price,
-3. `KittlCanvas` (the file name in the code) — everything else: the canvas, the mockups, the tool bar,
+3. `EditorCanvas` (the file name in the code) — everything else: the canvas, the mockups, the tool bar,
    the Edit sidebar, the Layers box and the Adjustment box.
 
 The canvas area does not scroll; panels open over it. On a phone the bottom navigation keeps its real
@@ -203,13 +203,21 @@ Anything added here also appears in the Layers box.
 The design library is a local placeholder until the storage endpoint exists
 (`DESIGN_LIBRARY_STATUS = "pending-r2-endpoint"` in `lib/editor-design-library.ts`).
 
-## 15. Undo and state
+## 15. Undo, state and the draft
 
 - Undo and Redo keep the last 30 layer-array snapshots and cover layer changes: add, delete, move,
   resize, style, reorder, group and mask.
 - Viewport zoom, pan and mockup positions are not in the history.
-- Editor state lives in memory only: reloading `/create` starts a blank canvas. Nothing is written to
-  `localStorage`, `sessionStorage` or the database from this route.
+- The layer array is written to the browser's `localStorage` under `mh-fashion-design-draft-v1`, 400 ms
+  after the last change (`lib/design-draft.ts`, called from `EditorCanvas`).
+- The editor never reads that draft back: opening `/create` always starts with one blank layer, so a
+  reload loses the working canvas from the customer's point of view even though the stored draft is
+  still there.
+- A product page whose product allows a custom design renders that stored draft as its mockup and offers
+  an `Edit Design` link to `/create?product=<slug>`. The editor ignores the `?product=` value and always
+  opens on the default product.
+- Nothing is stored in the database from this route, `clearDesignDraft` is exported but never called,
+  and Save and Buy are disabled.
 
 ## 16. Phone
 

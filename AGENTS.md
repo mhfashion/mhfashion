@@ -53,7 +53,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - A *look* is colour + fit + sleeve. Size is deliberately excluded: the photo of a black oversized tee is the same for M and XL, so a bucket only needs the photos that actually differ. `mockupKeys` walks `black-oversized-short-sleeve` → `black-oversized` → `black-short-sleeve` → `black` → `default`, and `mockupCandidates` expands each key across `webp`, `png`, `jpg` before falling back to `product.imageUrl`.
 - The fallback chain runs through `<img onError>` **and** a mount check for `complete && naturalWidth === 0`. Without the mount check a 404 that lands before hydration leaves the preview stuck on a broken image, because the error fires before React attaches its handler.
 - The design overlay sits in `PRODUCT_PRINT_AREA` (fractions of the image box, currently 30% / 22% / 40% / 46%). Tune that constant when real mockup photos arrive; it is the only geometry the preview owns.
-- Design source, highest priority first: `?design=` (URL or data URL), `product.designSvgUrl`, then the editor draft. `lib/design-draft.ts` keeps the open editor artwork in `localStorage` (`mh-fashion-design-draft-v1`), written by `KittlCanvas` on a 400 ms debounce; an empty draft paints nothing.
+- Design source, highest priority first: `?design=` (URL or data URL), `product.designSvgUrl`, then the editor draft. `lib/design-draft.ts` keeps the open editor artwork in `localStorage` (`mh-fashion-design-draft-v1`), written by `EditorCanvas` on a 400 ms debounce; an empty draft paints nothing.
 - Draft layers are rendered with the same `EditorArtworkLayers` as the editor, inside a `1000 x 1200` viewBox, so the preview matches the canvas without a second renderer.
 - Tests: `tests/product-mockup.test.cjs`.
 
@@ -320,7 +320,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Selecting an option updates the price immediately (`data-editor-price`).
 
 ## Editor layers and tools outside the print canvas
-- Move/resize/rotate on the print canvas use `toCanvasPointUnclamped` in `KittlCanvas.tsx`; the drawing tools use `toCanvasPoint`, which is unclamped too, so a stroke can be painted on the pasteboard around the print area.
+- Move/resize/rotate on the print canvas use `toCanvasPointUnclamped` in `EditorCanvas.tsx`; the drawing tools use `toCanvasPoint`, which is unclamped too, so a stroke can be painted on the pasteboard around the print area.
 - The pasteboard (`[data-editor-pasteboard]`) is measured from the visible viewport and applied as a percentage rect of the canvas box (`PasteboardRect`), so a brush/pencil/pen/shape/gradient/eraser/text gesture can start anywhere the user can see. It used to be a fixed `-inset-24` ring, which silently dropped strokes started further out.
 - It is re-measured on `resize`, viewport `scroll`, a `ResizeObserver` on the viewport, and the effect deps (`activeTool`, `zoom`, `pan`, `nodePositions`, `menuOpen`, `visibleMockups`), so zooming, panning, adding a mockup, or opening the menu cannot leave the surface behind.
 - On a coarse pointer the surface stops at `PASTEBOARD_TOUCH_RING_PX` (96 local px) around the canvas: a viewport-wide `touch-none` element would swallow the scroll gesture that reaches the mockups. Verified at 390x844 — the pasteboard rect is exactly canvas ± 96.
@@ -347,7 +347,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 
 ## Text layers: downward writing, wrapping, and the ink-hugging box
 - `editorTextLines(text)` in `apps/web/src/lib/editor-layers.ts` is the single source of painted lines: it splits on `\n` and then soft-wraps each line to `text.wrapWidth`, breaking at spaces and falling back to a per-character split for a word wider than the limit. Fit is measured on `advance` (not ink `width`) so artwork line breaks match the browser's textarea wrapping.
-- Every renderer must use it: `EditorLayerPreview.tsx` and the inline editor in `KittlCanvas.tsx` both do. Do **not** reintroduce `text.value.split("\n")` — that paints a long line as one unbroken run straight off the canvas.
+- Every renderer must use it: `EditorLayerPreview.tsx` and the inline editor in `EditorCanvas.tsx` both do. Do **not** reintroduce `text.value.split("\n")` — that paints a long line as one unbroken run straight off the canvas.
 - New text gets `wrapWidth: DEFAULT_TEXT_WRAP_WIDTH` (880) from `addCanvasTextLayer`. Older layers have no `wrapWidth` and stay unwrapped, so existing artwork is not reflowed.
 - The inline editor's `foreignObject` height uses the wrapped line count and its width uses `wrapWidth ?? TEXT_EDIT_BOX_WIDTH`. Sizing from the newline count clipped soft-wrapped lines below the box, which read as "typing stopped working".
 - The inline editor is wrapped in `<g transform={editingTextLayerTransform}>` because it is a sibling of the artwork layers and must carry the same move/scale/rotate.

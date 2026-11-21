@@ -3,7 +3,7 @@ const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const ts = require("typescript");
-const source = readFileSync(path.join(__dirname, "../apps/web/src/components/KittlCanvas.tsx"), "utf8");
+const source = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorCanvas.tsx"), "utf8");
 const mockupArtwork = readFileSync(path.join(__dirname, "../apps/web/src/components/MockupArtwork.tsx"), "utf8");
 const toolsBar = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorToolsBar.tsx"), "utf8");
 const tierSource = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-artwork-tiers.ts"), "utf8");
@@ -198,7 +198,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /activeTool === "pen" && penAnchors.length > 0 && \(/);
   assert.doesNotMatch(source, /Click: corner · drag: curve · Shift: snap · click start: close/);
   assert.match(source, /activeTool === "text"/);
-  // Photoshop rule: the Text tool edits the selected text layer in place and only
+  // The Text tool edits the selected text layer in place and only
   // creates a new text layer when the selection is missing or is not a text layer.
   assert.match(source, /if \(selected\?\.kind === "text"\) \{\n\s+if \(selected\.locked\) \{\n\s+setToolNotice\("Unlock this text layer before editing its text\."\);\n\s+return;\n\s+\}\n\s+setEditingTextLayerId\(selected\.id\);/);
   assert.match(source, /addCanvasTextLayer\(undefined, \{ x: point\.x \* 1000, y: point\.y \* 1200 \}\)/);
@@ -238,7 +238,7 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
 test("Shape tool exposes selectable presets, previews gestures, and appends paths to the active layer", () => {
   assert.match(toolsBar, /data-testid="editor-shape-picker"/);
   assert.match(toolsBar, /role="group" aria-label="Shape options"/);
-  // Kittl-style: the Shape chip beside the bar opens a compact icon-only popover;
+  // The Shape chip beside the bar opens a compact icon-only popover;
   // choosing an option closes the box and the chip keeps the chosen shape's icon.
   assert.match(toolsBar, /const \[shapeMenuOpen, setShapeMenuOpen\] = useState\(false\)/);
   assert.match(toolsBar, /aria-expanded=\{shapeMenuOpen\}/);
@@ -261,7 +261,7 @@ test("Shape tool exposes selectable presets, previews gestures, and appends path
   assert.doesNotMatch(source, /Shape Tool is ready for the upcoming vector-shape pipeline/);
 });
 
-test("shape adjustments expose Photoshop/Kittl fill, stroke, radius, and effects", () => {
+test("shape adjustments expose fill, stroke, radius, and effects", () => {
   // Data model: independent fill/stroke channels plus effects, with clamping.
   assert.match(layerModelSource, /export type EditorShapeStyle = \{/);
   assert.match(layerModelSource, /export type EditorShapeLineStyle = "solid" \| "dash" \| "dot"/);
@@ -310,7 +310,7 @@ test("the Gradient tool draws, re-aims, and edits gradient layers", () => {
   assert.match(source, /if \(layer\.gradient\) return \{ x: 0, y: 0, width: 1000, height: 1200 \}/);
   assert.match(artworkLayers, /gradient=\{layer\.gradient\}/);
   assert.match(mockupSource, /Boolean\(layer\.gradient\)/);
-  // The preview renders each Photoshop shape: linear, reflected, radial, angle, diamond.
+  // The preview renders each gradient shape: linear, reflected, radial, angle, diamond.
   assert.match(layerPreview, /data-editor-gradient-layer=\{gradient\.type\}/);
   assert.match(layerPreview, /gradient\.type === "reflected"/);
   assert.match(layerPreview, /editorGradientConicWedges\(gradient\)/);
@@ -585,7 +585,7 @@ test("phone view pan is captured before editing and navigation reserves its meas
   assert.match(mobileNav, /new ResizeObserver\(updateHeight\)/);
 });
 
-test("Compact Photoshop-style Layers panel docks right and controls its functional stack and masks", () => {
+test("Compact Layers panel docks right and controls its functional stack and masks", () => {
   assert.match(source, /const \[layersOpen, setLayersOpen\] = useState\(false\)/);
   assert.match(source, /<EditorLayersPanel[\s\S]*?open=\{layersOpen\}[\s\S]*?onToggle=\{toggleLayersPanel\}[\s\S]*?onAddLayer=\{addLayer\}[\s\S]*?onAddMask=\{createLayerMask\}[\s\S]*?onDeleteLayer=\{deleteLayer\}/);
   assert.match(source, /<div className="relative min-h-0 flex-1">[\s\S]*?ref=\{viewportRef\}/);
@@ -689,7 +689,7 @@ test("Compact Photoshop-style Layers panel docks right and controls its function
   assert.match(layerModelSource, /export function deleteEditorLayer/);
 });
 
-test("Adjustment panel groups Kittl-style text controls into compact expandable sections", () => {
+test("Adjustment panel groups text controls into compact expandable sections", () => {
   assert.match(adjustmentsPanel, /function Section\(/);
   for (const section of ["Text", "Font", "Style & Alignment", "Effects", "Transform", "Photo", "Appearance"]) {
     assert.ok(adjustmentsPanel.includes(`title=\"${section}\"`), `missing ${section} adjustment section`);
@@ -964,7 +964,7 @@ test("Sidebar catalogs come from the MH Fashion design library and uploads honou
 test("editor reuses the existing web-app Header Bar above its full-height workspace", () => {
   assert.match(createRoute, /import Header from "@\/components\/Header"/);
   assert.match(createRoute, /data-editor-shared-header[^]*?<Header \/>/);
-  assert.match(createRoute, /<Header \/>[\s\S]*?<KittlCanvas product=\{product\} \/>/);
+  assert.match(createRoute, /<Header \/>[\s\S]*?<EditorCanvas product=\{product\} \/>/);
   assert.match(createRoute, /h-\[calc\(100dvh-var\(--mobile-navigation-height,4rem\)\)\][\s\S]*md:h-dvh/);
   assert.match(header, /import MobileNav from "\.\/MobileNav"/);
   assert.match(header, /import HeaderActions from "\.\/HeaderActions"/);
@@ -1001,8 +1001,8 @@ test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and 
   assert.match(createRoute, /useState<EditorProduct>\(DEFAULT_EDITOR_PRODUCT\)/);
   assert.match(createRoute, /useState\(DEFAULT_EDITOR_GSM\)/);
   assert.match(createRoute, /onProductChange=\{setProduct\}/);
-  assert.match(createRoute, /<KittlCanvas product=\{product\} \/>/);
-  assert.match(createRoute, /<Header \/>[\s\S]*?<EditorHeaderBar2[\s\S]*?\/>[\s\S]*?<KittlCanvas product=\{product\} \/>/);
+  assert.match(createRoute, /<EditorCanvas product=\{product\} \/>/);
+  assert.match(createRoute, /<Header \/>[\s\S]*?<EditorHeaderBar2[\s\S]*?\/>[\s\S]*?<EditorCanvas product=\{product\} \/>/);
   assert.match(headerBar2, /aria-label="Header Bar 2"/);
   assert.match(headerBar2, /h-11 w-full/);
   assert.match(headerBar2, /const PRODUCT_OPTIONS = \["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"\]/);
@@ -1116,7 +1116,7 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
   for (const label of ["Opacity", "Softness", "Feather", "Flow", "Spacing", "Smoothing", "Size jitter", "Opacity jitter"]) {
     assert.match(adjustmentsPanel, new RegExp(`label="${label}"`));
   }
-  // Photoshop/Kittl brush engine controls: tip geometry, dab build-up, dynamics, and blending.
+  // Brush engine controls: tip geometry, dab build-up, dynamics, and blending.
   for (const field of ["angle", "roundness", "flow", "spacing", "smoothing", "size jitter", "opacity jitter", "jitter floor", "scatter", "angle jitter", "roundness jitter", "blend"]) {
     assert.match(adjustmentsPanel, new RegExp(`ariaLabel=\\{` + "`" + `\\$\\{label\\} ${field}` + "`" + `\\}`));
   }

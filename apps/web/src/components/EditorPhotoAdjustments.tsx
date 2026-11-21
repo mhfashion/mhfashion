@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import type { EditorArtworkLayer, EditorImageContent, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
 import { autoPhotoAdjustments, MIXER_BANDS, MIXER_BAND_COLORS, neutralPhotoAdjustments } from "@/lib/photo-adjustments";
 
-// Photoshop Camera Raw's Basic panel is the reference: grouped, collapsible
+// The basic panel is grouped and collapsible:
 // controls, 0 as neutral for every presence/tone slider, Exposure in stops, and
 // Temp/Tint on the white-balance axis. Values stay on the image layer as
 // instructions, so every edit is non-destructive and re-renderable.

@@ -19,7 +19,7 @@ function pathFor(stroke: ArtworkStroke) {
 
 /**
  * A recorded eraser pass rendered into a luminance mask. Black dabs hide the artwork,
- * and `fillOpacity` lets overlapping dabs build up like Photoshop flow. A soft nib adds
+ * and `fillOpacity` lets overlapping dabs build up with the flow value. A soft nib adds
  * a Gaussian blur whose radius scales with the nib and its hardness.
  */
 function ErasureShape({ erasure, blurId }: { erasure: EditorErasure; blurId: string }) {
@@ -80,7 +80,7 @@ export function artworkStrokeUsesDabs(stroke: ArtworkStroke) {
 }
 
 /**
- * A freehand stroke rendered as a spaced run of nib dabs, matching Photoshop's brush engine:
+ * A freehand stroke rendered as a spaced run of nib dabs:
  * spacing controls the dab gap, flow builds up overlap, and jitter varies size/opacity per
  * dab. The last dab of a fade-out stroke lands at the stroke's own opacity while the rest of
  * the run is capped so the tail still reads as fading rather than missing.

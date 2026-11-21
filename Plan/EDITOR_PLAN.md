@@ -26,7 +26,7 @@ These two files (`Plan/EDITOR_PLAN.md` and `Doc/EDITOR.md`) are the whole editor
 | Piece | File | Lines |
 |---|---|---|
 | Route shell: site header, Header Bar 2, workspace | `app/create/page.tsx` | 25 |
-| Canvas: tools, selection, layers, mockups, undo | `components/KittlCanvas.tsx` | 2,983 |
+| Canvas: tools, selection, layers, mockups, undo | `components/EditorCanvas.tsx` | 2,983 |
 | Layer model, text metrics, shapes, gradients, masks | `lib/editor-layers.ts` | 1,847 |
 | Layers box | `components/EditorLayersPanel.tsx` | 327 |
 | Adjustment box | `components/EditorAdjustmentsPanel.tsx` | 438 |
@@ -72,6 +72,7 @@ Checked item by item in the source.
 | Mockups | Front and Back boxes with connectors, artwork mirror clipped to the print area, independent overlay transforms, shared 3500 px tier |
 | Header Bar 2 | product, GSM, colour, size, live price; Save and Buy disabled |
 | Edit sidebar | Designs, Elements, Text, Upload, Image Create; rail stays visible; additions land in the Layers box |
+| Browser draft | the layers are written to `localStorage` (`mh-fashion-design-draft-v1`) 400 ms after a change; a design-editable product page renders that draft and links back to `/create` |
 | Undo / redo | 30 layer snapshots, layer changes only |
 | Phone | 44 px targets, Pan view mode, view-only zoom, second finger cannot hijack a gesture, no panel overlap |
 
@@ -96,7 +97,7 @@ What the code does not do, with the evidence.
 
 | Gap | Evidence |
 |---|---|
-| No save, no persistence | Save and Buy are `disabled` in `EditorHeaderBar2`; `localStorage`, `sessionStorage` and `canvas_state` do not appear in `apps/web/src`; all state is React state in `KittlCanvas` |
+| No save button and no restore | Save and Buy are `disabled` in `EditorHeaderBar2`. The only persistence is the browser draft (`saveDesignDraft` in `lib/design-draft.ts`, called from `EditorCanvas` on a 400 ms debounce), and `/create` never reads it back: `readDesignDraft` is only used by `ProductDetailClient`, so a reload starts on one blank layer while the old draft stays in `localStorage`. `clearDesignDraft` is exported but never called, nothing reaches the database, and `/create` ignores the `?product=` it is given |
 | No design hand-off to an order | the editor never writes a design; the admin order record is built from the demo store, not from `/create` |
 | Undo is layer-only | `undoStack`/`redoStack` hold `EditorArtworkLayer[][]`; viewport and mockup positions are outside it |
 | No keyboard undo | only the tool-bar buttons; there is no `Ctrl+Z` handler |
@@ -122,13 +123,13 @@ the owner approves an item before it starts.
 
 | # | Item | Why | Files | Size |
 |---|---|---|---|---|
-| E1 | Save the design, then hand it to the order | Save and Buy are dead buttons; a customer cannot keep or buy artwork | `EditorHeaderBar2`, `KittlCanvas`, a new `lib/editor-persistence.ts`, the order payload | large |
+| E1 | Save the design, then hand it to the order | Save and Buy are dead buttons, the browser draft is never restored, and no order carries the artwork | `EditorHeaderBar2`, `EditorCanvas`, `lib/design-draft.ts`, the order payload | large |
 | E2 | Real-phone QA, and fix the `editor-touch.cjs` Edit-sidebar crash | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
 | E3 | Settle the `circle` preset | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
 | E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
 | E5 | Flip horizontal and vertical | mirrored artwork is a normal request for a print shop | layer fields, renderer, mockup, print | medium |
-| E6 | Snap guides while dragging | free placement drifts off the print area | `KittlCanvas` drag paths | medium |
-| E7 | Hover highlight between canvas and Layers | finding the row for a shape on a busy canvas is slow | `KittlCanvas`, `EditorLayersPanel` | small |
+| E6 | Snap guides while dragging | free placement drifts off the print area | `EditorCanvas` drag paths | medium |
+| E7 | Hover highlight between canvas and Layers | finding the row for a shape on a busy canvas is slow | `EditorCanvas`, `EditorLayersPanel` | small |
 | E8 | Shape Builder for `exclude` and arbitrary paths | the builder only merges rectangles today | `applyEditorShapeBuilderOperation` | medium |
 | E9 | Enable the remaining products | Hoodie, Cup, Kids and Bag are visible but dead | `EditorHeaderBar2`, mockups, `editor-price` | medium |
 | E10 | Connect the sidebar library and image generation | Designs, Elements and Image Create are placeholders | `editor-design-library`, R2 endpoint, image service | large |
@@ -136,8 +137,9 @@ the owner approves an item before it starts.
 
 ### E1 — Save and order hand-off
 
-- Save writes the design (layers, canvas, product, GSM, colour, size, price) somewhere it survives a
-  reload; Buy turns the same payload into an order line.
+- Restore the draft the editor already writes, so a reload continues the same artwork, then make Save
+  write the design (layers, canvas, product, GSM, colour, size, price) somewhere it survives a browser
+  change; Buy turns the same payload into an order line.
 - Acceptance: reload keeps the artwork; a placed order shows the design in the admin order view with the
   print sheet and mockups; a browser with storage disabled shows a clear message instead of losing work.
 - Blocked on the decision in §6 D1 (where the design lives) and on the payment/order work.

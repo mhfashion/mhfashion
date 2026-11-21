@@ -343,7 +343,7 @@ function ArtworkOverlay({
     element.setSelectionRange(end, end);
   }, [editingTextLayerIdForCaret]);
 
-  // Free-transform handles keep a constant on-screen size (like Kittl/Photoshop) even though
+  // Free-transform handles keep a constant on-screen size even though
   // the artwork SVG is drawn in a 1000x1200 unit space that is scaled to fit its container.
   const svgRef = useRef<SVGSVGElement>(null);
   const [unitScale, setUnitScale] = useState(1);
@@ -533,7 +533,7 @@ function ArtworkOverlay({
   );
 }
 
-export default function KittlCanvas({ product }: { product: EditorProduct }) {
+export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [spaceHeld, setSpaceHeld] = useState(false);
@@ -875,7 +875,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     finishPenPathRef.current = finishPenPath;
   });
 
-  // Photoshop keys: Enter (or Return) commits the open path, Escape discards it.
+  // Enter (or Return) commits the open path, Escape discards it.
   useEffect(() => {
     penKeyHandlerRef.current = (event: KeyboardEvent) => {
       if (activeTool !== "pen" || penAnchors.length === 0) return;
@@ -1199,7 +1199,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setRedoStack([]);
   }
 
-  // A Text layer holds only text. Photoshop and Kittl keep it that way too: drawing,
+  // A Text layer holds only text: drawing,
   // shapes and erasing never land on a text layer, so the tools are refused instead of
   // silently mixing artwork into the text.
   function textLayerRejection(layer: EditorArtworkLayer | undefined): string | null {
@@ -1611,7 +1611,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       finishPenPath(true);
       return;
     }
-    // Photoshop: clicking the last point again ends the path as an open path.
+    // Clicking the last point again ends the path as an open path.
     if (isNearPenEnd(event.clientX, event.clientY)) {
       finishPenPath(false);
       return;
@@ -1651,7 +1651,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     setToolNotice("");
   }
 
-  // The Gradient tool paints a full-canvas fill. Photoshop-like: if a gradient layer is
+  // The Gradient tool paints a full-canvas fill. If a gradient layer is
   // selected the drag re-aims that layer's axis; otherwise it drops a new gradient layer.
   // A tap (or a tiny drag) still works, dropping the default axis through the point.
   function startGradientDrawing(event: React.PointerEvent<HTMLElement>) {
@@ -1920,7 +1920,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         return;
       }
       const selected = layers.find((layer) => layer.id === selectedLayerId);
-      // Photoshop rule: typing on an existing text layer edits that layer in place
+      // Typing on an existing text layer edits that layer in place
       // and never spawns another one. A new text layer is created only when the
       // selection is empty or is not a text layer.
       if (selected?.kind === "text") {

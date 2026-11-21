@@ -17,7 +17,7 @@ export type ArtworkStroke = {
   softness?: number;
   /** Distance between dabs as a percentage of the nib diameter, 1 to 100. */
   spacing?: number;
-  /** Per-dab strength, 1 to 100. Overlapping dabs build up like Photoshop flow. */
+  /** Per-dab strength, 1 to 100. Overlapping dabs build up with the flow value. */
   flow?: number;
   /** Dabs drawn per pointer sample, 1 to 10, smoothing a fast drag into a continuous line. */
   smoothing?: number;
@@ -63,7 +63,7 @@ export type EditorBrushSettings = {
   blend: EditorBrushBlend;
 };
 export type EditorPenSettings = { width: number; cap: "round" | "butt" | "square" };
-/** Photoshop-style eraser: a brush-style soft erase or a whole-stroke erase. */
+/** Eraser: a brush-style soft erase or a whole-stroke erase. */
 export type EditorEraserMode = "brush" | "stroke";
 export type EditorEraserSettings = {
   mode: EditorEraserMode;
@@ -75,7 +75,7 @@ export type EditorEraserSettings = {
   hardness: number;
   /** Maximum erase strength of one pass, 1 to 100. */
   opacity: number;
-  /** Per-dab erase strength, 1 to 100. Overlapping dabs build up like Photoshop flow. */
+  /** Per-dab erase strength, 1 to 100. Overlapping dabs build up with the flow value. */
   flow: number;
   /** Distance between dabs as a percentage of the nib diameter, 1 to 100. */
   spacing: number;
@@ -111,7 +111,7 @@ export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
   gradient: { type: "linear", presetId: "black-white" },
 };
 
-/** Kittl-style ready-made brush presets; each is a full brush settings patch. */
+/** Ready-made brush presets; each is a full brush settings patch. */
 export const EDITOR_BRUSH_PRESETS: { id: string; label: string; settings: EditorBrushSettings }[] = [
   { id: "hard-round", label: "Hard round", settings: { ...EDITOR_TOOL_OPTIONS_DEFAULT.brush } },
   { id: "soft-round", label: "Soft round", settings: { ...EDITOR_TOOL_OPTIONS_DEFAULT.brush, softness: 60, feather: 40, opacity: 0.55, flow: 70 } },
@@ -642,7 +642,7 @@ export type EditorShapeGlow = {
   width: number;
   opacity: number;
 };
-/** Photoshop/Kittl-style vector appearance: independent Fill and Stroke channels plus effects. */
+/** Vector appearance with independent Fill and Stroke channels plus effects. */
 export type EditorShapeStyle = {
   fill: string;
   fillEnabled: boolean;
@@ -947,7 +947,7 @@ export type PhotoAdjustmentKey =
 
 export type PhotoAdjustmentUpdate = Partial<Pick<EditorImageContent, PhotoAdjustmentKey>>;
 
-/** Photoshop gradient shapes. Linear and reflected run along the drag axis; radial,
+/** Gradient shapes. Linear and reflected run along the drag axis; radial,
  * angle (conic), and diamond grow outward from the drag start point. */
 export type EditorGradientType = "linear" | "radial" | "angle" | "reflected" | "diamond";
 export const EDITOR_GRADIENT_TYPES: EditorGradientType[] = ["linear", "radial", "angle", "reflected", "diamond"];
@@ -976,7 +976,7 @@ export type EditorGradient = {
   y2: number;
   stops: EditorGradientStop[];
 };
-/** Photoshop allows 32 stops; eight covers the editor without an unwieldy handle row. */
+/** Eight stops cover the editor without an unwieldy handle row. */
 export const EDITOR_GRADIENT_STOP_LIMIT = 8;
 
 export const EDITOR_GRADIENT_PRESETS: { id: string; label: string; stops: { offset: number; color: string; opacity: number }[] }[] = [

@@ -26,15 +26,15 @@ This file consolidates the website work log, code audit, Guide content maintenan
 - Validation: TypeScript passed; ESLint exit 0 on the changed files; Next.js production build passed; all repository Node tests passed **108/108** (editor-layers **42/42**, canvas-shell **22/22**), plus the `guide-http` integration suite **5/5** against the running server. Headless-Chromium CDP on desktop 1280×900 and phone 390×844 confirmed the box hugs the ink (symmetric ~5px padding, was ~11px above / ~12px below), a two-line label keeps one `tspan` per line, and re-entering a layer writes downward (`"ONE"` → Enter → `"ONE\nTWO"`, caret at the end).
 - Known limitation: the 18-unit selection margin is shared with every other layer kind, so a text box is a few pixels larger than the ink; it is uniform on all four sides. The 2026-11-18 "write downward on re-entry" entry below described the box as the SVG line box; that is superseded by this ink-hugging change.
 
-### 2026-11-18 — Photoshop-style Gradient tool: draw, re-aim, and edit gradient layers
+### 2026-11-18 — desktop-editor-style Gradient tool: draw, re-aim, and edit gradient layers
 
-- Added a `gradient` layer kind and the `EditorGradient` model to `apps/web/src/lib/editor-layers.ts`: a Photoshop shape (`linear`, `radial`, `angle` conic, `reflected`, `diamond`), a drag axis (`x1/y1` -> `x2/y2` in the shared 1000x1200 artwork space), and up to eight stops (id, offset 0-100, hex colour, opacity 0-1). The default ramp is black to white on a horizontal axis at y=600.
+- Added a `gradient` layer kind and the `EditorGradient` model to `apps/web/src/lib/editor-layers.ts`: a gradient shape (`linear`, `radial`, `angle` conic, `reflected`, `diamond`), a drag axis (`x1/y1` -> `x2/y2` in the shared 1000x1200 artwork space), and up to eight stops (id, offset 0-100, hex colour, opacity 0-1). The default ramp is black to white on a horizontal axis at y=600.
 - Pure helpers: `defaultEditorGradient`, `normalizeEditorGradient` (clamps offsets/opacity and rejects bad colours), `sortEditorGradientStops`, `sampleEditorGradient` (linear ramp sampling for the conic/diamond shapes), `editorGradientGeometry` (origin + radius from the 3-4-5 drag distance), `editorGradientConicWedges` (120 flat wedges, since SVG has no native conic paint), `editorGradientDiamondFacets` (four facets), `editorGradientFromToolSettings`, `createEditorGradientLayer`, `setEditorLayerGradient`, and `updateEditorGradientSettings`/`setEditorGradientStops`. The Gradient tool carries its own shape/preset in `EditorToolOptions.gradient`.
-- Canvas (`KittlCanvas.tsx`): a Gradient drag paints a full-canvas fill. A drag over a selected gradient layer re-aims that layer's axis; a drag elsewhere drops a new gradient layer; a tap falls back to a full-width horizontal axis through the point. A live `GradientPreview` overlay draws during the drag, and a gradient layer's selection box is the full canvas.
+- Canvas (`EditorCanvas.tsx`): a Gradient drag paints a full-canvas fill. A drag over a selected gradient layer re-aims that layer's axis; a drag elsewhere drops a new gradient layer; a tap falls back to a full-width horizontal axis through the point. A live `GradientPreview` overlay draws during the drag, and a gradient layer's selection box is the full canvas.
 - Rendering: `GradientPreview` in `EditorLayerPreview.tsx` renders every shape from the one 1000x1200 artwork space, so the print canvas (`EditorArtworkLayers`), the Layers thumbnail (`EditorLayersPanel`), and both mockups (`MockupArtwork`) look identical. `EditorAdjustmentsPanel.tsx` gained a `Gradient` tool-options section (shape and preset pickers with live ramp previews) and a `Gradient` layer section (type select, draggable stop handles, add/remove stop, per-stop colour/position/opacity, and the axis Start/End fields).
-- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/MockupArtwork.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
+- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorCanvas.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/MockupArtwork.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
 - Validation: TypeScript passed; ESLint **0 errors** on the changed files; Next.js production build passed; Node suites passed (editor-layers **41/41**, canvas-shell **22/22**, photo-adjustments **18/18**, editor-price **4/4**, editor-pen-path **6/6**, guides **9/9**, browser-guards **1/1**, canvas-spec **1/1**; guide-http fails only because no server is on port 3000). Headless-Chromium CDP against the production server on port 12000 confirmed the Gradient tool draws a linear layer with two stops, a second drag re-aims the axis without adding a layer, the Adjustments panel exposes the shape/preset pickers and the stop editor, adding a stop grows the handles 2 -> 3, switching the type to Radial swaps the SVG def to a radial fill, recolouring a stop updates the rendered ramp, and the preset/shape pickers apply to the next gradient, with no runtime exceptions.
-- Limitation: this is a vector gradient fill, not a raster or mesh gradient. Per-stop midpoint/bias, Photoshop's noise/dither options, and gradient strokes (only fills) are not included.
+- Limitation: this is a vector gradient fill, not a raster or mesh gradient. Per-stop midpoint/bias, the desktop editor's noise/dither options, and gradient strokes (only fills) are not included.
 
 This log records completed website-related changes in the connected repository. Add an entry after each completed implementation or documentation task, with the date, scope, files, validation evidence, and known limitations. Code-review findings are detailed in [Code Audit section](#code-audit).
 
@@ -56,7 +56,7 @@ This log records completed website-related changes in the connected repository. 
 - **Writing downward.** Re-entering a text layer now places the caret at the end of the text (`textAreaRef` + a focus effect), so Enter adds a line below and typing continues after the last glyph. The inline `textarea`'s first baseline is aligned with the drawn text (`editorTop = y − ascent − halfLeading`) so the caret sits on the glyphs, and it grows with every line.
 - **Editor stays open.** Tapping the inline Font size / Color controls no longer commits the edit; `onBlur` keeps the editor open when focus moves to another control inside `[data-editor-text-editor]`, and only a focus move outside commits. Escape still commits.
 - **Handles no longer block the text.** While the Text tool is active the Free Transform box is hidden (`transformControlsHidden`), so its bottom-centre handle can no longer sit on the glyphs and swallow the click that should re-open the editor.
-- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/KittlCanvas.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`, `TODO.md`.
+- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorCanvas.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`, `TODO.md`.
 - Validation: TypeScript passed; ESLint **0 errors / 25 warnings** with no diagnostics in the changed files; Next.js production build passed; all repository Node tests passed **107/107**. Headless-Chromium CDP against the production server on port 3000, desktop 1280×900 and phone 390×844, confirmed: the outline padding around the drawn text is now symmetric (~5px at rest, ~8px after a resize, ~11px after a rotate; it was **−20px at the top** before, i.e. the box started inside the glyphs); the box is hidden while the Text tool is active; re-entering a layer reopens the editor with the caret at the end and `"HI"` → Enter → `"HI\nTHERE"` draws two `tspan`s; and tapping the inline Font size control keeps the editor open. The Pen cursor hotspot still reads `2 2`.
 - Known limitation: the 18-unit selection margin is shared with every other layer kind, so a text box is a few pixels larger than the glyph ink; it is uniform on all four sides.
 
@@ -66,47 +66,47 @@ This log records completed website-related changes in the connected repository. 
 - **Multi-line typing.** The inline on-canvas editor is a `textarea` that grows with each line; Enter starts a new line (Escape still commits) instead of committing, and `EditorLayerPreview` renders one `<tspan>` per line so the drawn artwork matches the editor. The underline decoration follows the last line.
 - **Text + Free Transform.** The Free Transform box now hugs the glyphs via `editorTextCanvasBounds` instead of spanning the artwork like an image. `layerCanvasBounds` uses it, so a short label shows a small box and a two-line label grows taller. The measurement now reads the real font through a shared `CanvasRenderingContext2D` (`editorTextLineMetrics` → `measureText`), because a fixed per-character estimate was too narrow for wide glyphs — a `SAMPLE` label measured 0.76em/char, so the old box cut through the text. Node and SSR keep the previous estimate as a fallback. `MockupArtwork` uses the same measured bounds, so the mockup frame matches the print canvas. A Text layer also stays text-only: the Pen, Brush, Pencil, Eraser, and Shape tools refuse to draw on it (with a notice), and `appendLayerStroke`/`appendEditorShapePaths` skip a `"text"` layer in the model.
 - **Pen cursor.** The pen cursor hotspot was `15 22`, the pen icon's tail (bottom-right); the nib the slit points at is the top-left corner, so the hotspot is now `2 2` — the same anchor every other tool uses — and the anchor lands where the nib is.
-- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/MockupArtwork.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorCanvas.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/MockupArtwork.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
 - Validation: TypeScript passed; ESLint clean (exit 0) on the changed files and **0 errors / 25 warnings** repo-wide; Next.js production build passed; all repository Node tests passed **101/101** (editor-layers **36/36**, canvas-shell **21/21**); `git diff --check` passed. Headless-Chromium CDP against the production server on port 12000 confirmed on desktop 1280×900 and phone 390×844: the inline editor is a `textarea` whose Enter adds a line (`"HELLO\nWORLD"`, `"LINE1\nLINE2"`) and the artwork draws one tspan per line; the transform box now encloses the glyphs (156.2px box vs 145.7px text, was 122.2px and cutting through them) and stays enclosing after a resize (256.2 vs 239.0); re-editing an existing text layer appends a third line without creating a new layer; rotate and move still work; and the Pen cursor hotspot reads `2 2`.
 
 ### 2026-11-18 — Eraser: live size-accurate nib cursor and precise brush-mode erasing
 
 - The eraser now shows a live nib outline on the print canvas that matches the current `size`, `shape`, `angle`, and `roundness`, and hides the tiny fixed system cursor (`cursor: none`) while the eraser is active. The nib follows the pointer and scales with the Size control, so raising the size visibly enlarges the eraser. Round nibs draw a circle; square nibs draw a rotated rounded rect; both use `vectorEffect="non-scaling-stroke"` so the outline stays a crisp 1.5px at any zoom.
 - Erasing precision: Brush mode (the default) is non-destructive — it paints an erasure mask over only the touched spot and leaves the artwork intact. Stroke mode remains the opt-in whole-stroke erase. Measured erased width grows with size (≈15px at size 40, ≈66px at 160, ≈156px at 400).
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`.
 - Validation: TypeScript passed; ESLint **0 errors / 25 warnings** (unchanged); Next.js production build passed; Node suites passed (editor-layers **33/33**, canvas-shell **21/21**, and the rest unchanged). Headless-Chromium CDP against the production server on port 12000 passed **11/11** checks across two passes: the nib appears on hover, scales with size (r 60 at size 120 to r 200 at size 400), tracks the pointer, and renders square nibs; and both eraser modes behave (brush adds an erasure mask and keeps the stroke; stroke mode removes the whole stroke), with no runtime exceptions.
 - Limitation: the nib is a pointer-position outline (mouse hover and drag); on coarse-pointer touch it follows the finger during a drag but is not shown while merely hovering, since touch has no hover.
 
-### 2026-11-18 — Brush tool: Photoshop/Kittl brush engine, adjustments, presets, and eraser accuracy
+### 2026-11-18 — Brush tool: desktop editors brush engine, adjustments, presets, and eraser accuracy
 
 - **Brush engine.** `ArtworkStroke` and `EditorBrushSettings` gained `spacing`, `flow`, `smoothing`, `sizeJitter`, `opacityJitter`, `jitterMinimum`, `angle`, `roundness`, `scatter`, `angleJitter`, `roundnessJitter`, `fadeOut`, and a dab `blend` (`normal`/`multiply`/`screen`). `brushDabPoints` resamples the pointer path into spaced nib dabs along a `smoothBrushPoints` stabilized path, applies deterministic hashed jitter (size, opacity, angle, roundness, scatter) so a re-render never shimmers, and caps the dab count so a long dense drag stays responsive. `brushDabBlurRadius` scales edge softness with nib size.
 - **Renderer.** `EditorArtworkLayers` renders dab runs with per-stroke soften filters, square-nib per-dab angle/roundness, fade-out, and `mix-blend-mode` (`data-editor-brush-blend`). Strokes without `spacing` (pen and legacy) keep rendering as a single path. The Layers thumbnail now previews the erasure mask.
 - **Adjustments panel.** `BrushOptions` is grouped into Presets, Nib, Paint, Edge, Shape dynamics, and Blending, covering every control and shared by Brush and Pencil. `EDITOR_BRUSH_PRESETS` adds hard round, soft round, spray, chalk, marker, ink, and airbrush as full settings patches applied through the normalizer.
 - **Eraser.** `eraseTouchedStrokes` now tests the eraser pass against stroke **segments** via `segmentDistancePx` (with `distanceToSegment`, `orientation`, `segmentsIntersect` helpers) instead of only stroke vertices, so a fast drag can no longer slip between recorded samples. `EditorEraserSettings` also gained `mode` (`brush`/`stroke`), `shape`, `hardness`, `opacity`, `flow`, `spacing`, `angle`, and `roundness`, and `appendLayerErasure`/`updateLayerLastErasure` store brush-style passes.
-- **Files:** `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
+- **Files:** `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorCanvas.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
 - **Validation:** TypeScript passed; ESLint **0 errors / 25 warnings** (unchanged); Next.js production build passed; Node suites passed (editor-layers **33/33**, canvas-shell **21/21**, photo-adjustments **18/18**, editor-price **4/4**, editor-pen-path **6/6**, guides **9/9**, browser-guards **1/1**, canvas-spec **1/1**). Headless-Chromium CDP against the production server on port 12000 passed **27/27** checks across three passes: dab spacing/flow/smoothing/jitter, square-nib angle/roundness, multiply blend, fade-out, scatter off the straight path, preset application, and both eraser modes (brush adds an erasure mask; stroke mode clears the stroke), with no runtime exceptions.
-- **Limitation:** this is a Photoshop/Kittl-style vector-dab subset, not raster parity — no textured nib stamps, no pressure or velocity input, no per-stroke smoothing modes beyond the moving-average stabilizer, and no brush asset persistence (settings live in page memory only).
+- **Limitation:** this is a desktop-editor-style vector-dab subset, not raster parity — no textured nib stamps, no pressure or velocity input, no per-stroke smoothing modes beyond the moving-average stabilizer, and no brush asset persistence (settings live in page memory only).
 
-### 2026-11-18 — Shape adjustments: Photoshop/Kittl fill, stroke, radius, and effects
+### 2026-11-18 — Shape adjustments: desktop editors fill, stroke, radius, and effects
 
 - Added a vector appearance model to `apps/web/src/lib/editor-layers.ts`: `EditorShapeStyle` with independent **Fill** (color, enable, opacity) and **Stroke** (color, width, `solid`/`dash`/`dot`) channels, a `cornerRadius`, and two effects (`EditorShapeShadow` drop shadow and `EditorShapeGlow` outer glow). `EditorShapeContent` now carries an optional `style`.
 - Helpers: `defaultEditorShapeStyle` derives sensible values from a shape's own path fills/strokes; `resolveEditorShapeStyle` falls back to that when a shape has no stored style; `normalizeEditorShapeStyle` clamps every field; `updateEditorShapeStyle` merges a partial and re-normalizes; `roundEditorShapePath` rounds the corners of a closed M/L polygon. `appendEditorShapePaths` now seeds a style from the geometry, and `applyEditorShapeBuilderOperation`/`duplicateEditorLayer` preserve it.
 - Renderer: `EditorLayerPreview` takes a `shapeStyle` prop and drives `fill`, `fillOpacity`, `stroke`, `strokeWidth`, `strokeDasharray`, corner rounding (`roundEditorShapePath`), and a `feDropShadow`/glow `filter` via `<defs>`. The canvas (`EditorArtworkLayers`), the Layers thumbnail (`EditorLayersPanel`), and the mockups (`MockupArtwork`) all pass the resolved style, so a shape looks the same everywhere.
-- UI: the Adjustments panel gained a **Shape** section (`EditorAdjustmentsPanel`) with fill color/enable/opacity, stroke color/width, line style (solid/dash/dot), corner radius, and the drop-shadow (offset X/Y, blur, opacity) and outer-glow (spread, opacity) controls. `KittlCanvas` wires `onUpdateShapeStyle` and the drag preview now renders the target layer's style live.
-- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
+- UI: the Adjustments panel gained a **Shape** section (`EditorAdjustmentsPanel`) with fill color/enable/opacity, stroke color/width, line style (solid/dash/dot), corner radius, and the drop-shadow (offset X/Y, blur, opacity) and outer-glow (spread, opacity) controls. `EditorCanvas` wires `onUpdateShapeStyle` and the drag preview now renders the target layer's style live.
+- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorCanvas.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
 - Validation: TypeScript passed; ESLint **0 errors / 25 warnings** (unchanged); Next.js production build passed; Node suites passed (editor-layers **22/22**, canvas-shell **21/21**, photo-adjustments **18/18**, editor-price **4/4**, editor-pen-path **6/6**, browser-guards **1/1**, canvas-spec **1/1**). Headless-Chromium CDP against the production server on port 12000 passed **9/9** checks: the Shape tool draws, the committed path uses the styled renderer, the Shape section opens, enabling the drop shadow renders a `feDropShadow` filter, a non-zero corner radius rewrites the path with `Q` curves, and enabling the glow renders a glow filter — with no runtime exceptions.
-- Limitation: this is a Photoshop/Kittl-style subset, not full parity — a single fill and a single stroke per shape (no gradient fill or stacked appearance), no independent per-path styling inside one shape layer, and no dash-gap or cap/join controls yet.
+- Limitation: this is a desktop-editor-style subset, not full parity — a single fill and a single stroke per shape (no gradient fill or stacked appearance), no independent per-path styling inside one shape layer, and no dash-gap or cap/join controls yet.
 
 ### 2026-11-18 — Pen tool: nib-tip cursor, Alt-drag corners, Enter/Escape keys, click-last-anchor finish
 
-- Moved the Pen cursor hotspot from `12 14` to the nib tip (`15 22`) so a click places an anchor exactly under the pen point, matching Photoshop. The tool-shaped cursor still matches the Tools Bar icon.
+- Moved the Pen cursor hotspot from `12 14` to the nib tip (`15 22`) so a click places an anchor exactly under the pen point. The tool-shaped cursor still matches the Tools Bar icon.
 - Added `cornerEditorPenAnchor` to `apps/web/src/lib/editor-pen-path.ts`: an Alt-drag while placing an anchor now breaks the smooth node into a corner with only the outgoing handle, instead of the mirrored pair from a plain drag. `PenAnchorDrag` carries a `corner` flag recorded from `event.altKey`.
-- Added Photoshop keys while a Pen path is active: Enter/Return finishes the path, Escape discards it. Both are ignored while typing in an input, textarea, select, or contenteditable, and are routed through a ref so the window listener is not re-subscribed on every render.
+- Added keys while a Pen path is active: Enter/Return finishes the path, Escape discards it. Both are ignored while typing in an input, textarea, select, or contenteditable, and are routed through a ref so the window listener is not re-subscribed on every render.
 - Clicking the last placed anchor now finishes the path as an open path (previously only the first anchor closed it).
 - Added the key hints to the Pen actions bar text: “Click anchors · drag for curves · Alt-drag for corners · Enter finish · Esc cancel”.
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-pen-path.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-pen-path.test.cjs`.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `apps/web/src/lib/editor-pen-path.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-pen-path.test.cjs`.
 - Validation: TypeScript passed; ESLint **0 errors** (25 pre-existing warnings, none in the changed files); Next.js production build passed; all Node suites passed (canvas-shell **20/20**, editor-pen-path **6/6**, editor-layers **20/20**, photo-adjustments **18/18**, editor-price **4/4**). Headless-Chromium CDP against a fresh production build on port 3000 passed **10/10** desktop checks (nib-tip cursor, click-places-anchors, actions bar, hint text, Escape cancel, Enter finish, click-last-anchor finish, committed SVG paths, plain-drag paired handles, Alt-drag single outgoing handle) and **3/3** phone checks at 390×844 with touch emulation (touch taps place anchors, actions bar present with the hint hidden on narrow, Escape cancels).
-- Limitation: still a step-by-step Photoshop-like subset, not full Photoshop parity; no anchor snapping to unrelated objects and no dash/opacity/advanced cap-join properties yet.
+- Limitation: still a step-by-step desktop-editor-like subset, not full parity; no anchor snapping to unrelated objects and no dash/opacity/advanced cap-join properties yet.
 
 ### 2026-11-18 — Per-tool options for brush, pencil, eraser, and pen
 
@@ -117,7 +117,7 @@ This log records completed website-related changes in the connected repository. 
 - Square tips render with `stroke-linecap: butt`; softness above zero applies a Gaussian-blur filter.
 - The Free Transform box is now hidden while a freehand stroke is in progress (`drawingStroke` on `ArtworkOverlay`), so the selection outline no longer sits under the pointer mid-stroke.
 - The bottom Layers action strip's Adjustments button is enabled even with no selected layer, so tool options stay reachable.
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`.
 - Validation: TypeScript passed; ESLint clean (exit 0) on the five changed files; all repository Node tests passed **64/64** against a production server on port 3000; Next.js production build passed. Headless Chromium against the production server confirmed the per-tool `Tool Options · <Tool>` heading, the Brush controls (shape/size/opacity/softness/feather), the Eraser size control, the Pen width/cap controls, a committed stroke carrying `stroke-width="88"`, `stroke-opacity="0.68"`, `data-editor-stroke-shape="square"`, `stroke-linecap="butt"`, and the transform box absent during both a first and a second stroke and present again after release.
 - Limitation: tool options live in page memory only; they are not persisted to a draft or account, matching the rest of the editor's current state handling.
 
@@ -126,23 +126,23 @@ This log records completed website-related changes in the connected repository. 
 - Enlarged the Free Transform handles and gave them a constant on-screen size. The artwork SVG is drawn in a 1000×1200 unit space that shrinks to fit its container (about 0.29 units-to-pixel at desktop), so the old fixed-unit handle drew only ~3px on screen. A `ResizeObserver` now measures the SVG scale and sizes each handle to about 10px on screen regardless of zoom, so the corners and edge handles are noticeably bigger as the owner asked.
 - Hovering any resize handle now reveals a double-headed arrow glyph inside the handle that points along that handle's axis (diagonal on corners, straight on edges), and the pointer becomes the matching resize cursor — `nwse`, `nesw`, `ns`, or `ew` — no matter which tool is active. The handle's transparent hit circle was widened too, so the cursor and glyph appear as soon as the pointer reaches the handle.
 - The rotate handle keeps its own distinct circular-arrow glyph, is enlarged to the same constant size, and shows a grab cursor. The angle read-out beside it is unchanged.
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
 - Validation: Next.js production build passed; TypeScript passed; ESLint clean (exit 0) on the changed file; all repository Node tests passed **61/61**; `git diff --check` passed. Focused production Chromium at desktop 1280×900 and phone 390×844 confirmed eight resize handles sized about 14px on screen (up from about 3px), a double-headed arrow glyph appearing only on hover, the matching resize cursor on the hovered handle, and the rotate handle keeping its own glyph and grab cursor.
 
-### 2026-11-18 — Shape tool opens a compact Kittl-style picker beside its chip
+### 2026-11-18 — Shape tool opens a compact reference-style picker beside its chip
 
-- Reworked the Shape tool to match the owner's Kittl-style request: it no longer raises a large labelled box, and the picker is not permanently shown. The Shape chip in the tools bar now shows the currently selected shape's icon; clicking it activates the Shape tool and opens a small picker right beside the chip.
+- Reworked the Shape tool to match the owner's reference-style request: it no longer raises a large labelled box, and the picker is not permanently shown. The Shape chip in the tools bar now shows the currently selected shape's icon; clicking it activates the Shape tool and opens a small picker right beside the chip.
 - Choosing an option closes the box, keeps the Shape tool active so the user can draw immediately, and the chip's icon switches to the chosen shape. Options are icon-only (shape names kept as `title`/`aria-label`), laid out in a three-column popover, 28px square on desktop and 40px square on coarse pointers so touch targets stay finger-sized.
 - Removed the previous always-open-on-tool-select picker and the "Choose a shape, then drag on the canvas" hint line. The picker also stays closed on page load.
 - Files: `apps/web/src/components/EditorToolsBar.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
 - Validation: Next.js production build passed; TypeScript passed; ESLint clean (exit 0) on the changed file; all repository Node tests passed **61/61**; `git diff --check` passed. Focused production Chromium at desktop 1280×900 and phone 390×844 confirmed the picker is absent on load, opens beside the chip at **106×106px** (nine 28px icons) on desktop and **142×142px** (nine 40px icons) on phone, closes after a choice, and the chip's icon changes to the chosen shape.
 
-### 2026-11-18 — Text tool follows the Photoshop layer rule
+### 2026-11-18 — Text tool follows the layer rule
 
 - Fixed the Text tool so it stops creating a layer on every canvas click. Previously `startArtworkStroke` called `addCanvasTextLayer(undefined, …)` for every click regardless of the selection, so each click spawned a new `Text N` layer.
 - Confirmed rule (owner): if the selected layer is a text layer, the Text tool edits that layer's own text in place and creates no layer; if the selected layer is not a text layer (artwork/shape/image) or nothing is selected, it creates exactly one new text layer and types into it. This matches how Pen and Shape already append to the selected layer.
-- Implementation: the `activeTool === "text"` branch in `apps/web/src/components/KittlCanvas.tsx` now looks up the selected layer, reopens the existing in-place editor (`setEditingTextLayerId`) when it is a text layer, warns when that layer is locked, and only falls through to `addCanvasTextLayer` for a missing or non-text selection.
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Implementation: the `activeTool === "text"` branch in `apps/web/src/components/EditorCanvas.tsx` now looks up the selected layer, reopens the existing in-place editor (`setEditingTextLayerId`) when it is a text layer, warns when that layer is locked, and only falls through to `addCanvasTextLayer` for a missing or non-text selection.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
 - Validation: Next.js production build passed; TypeScript passed; ESLint clean (exit 0) on the changed file; all repository Node tests passed **61/61**; `git diff --check` passed. Focused production Chromium at desktop 1280×900 and phone 390×844 confirmed both branches: with a selected text layer the Text tool opened the in-place editor and the layer count stayed at 2; with a selected non-text artwork layer it created exactly one new text layer (3 → 4) and opened its editor.
 - Limitation: the Sidebar `Add Text` button and each Text/Element card still add one layer per action (that is the explicit insertion action, not the Text tool); only the canvas-click Text tool was changed.
 
@@ -167,26 +167,26 @@ This log records completed website-related changes in the connected repository. 
 - Validation on merged `main`: production build passed; lint completed with 0 errors / 25 warnings; all repository Node tests passed **55/55** and canvas-shell passed **16/16**. Focused post-merge CDP verification passed at 1280×900 desktop and 390×844 phone sizes for green box fills, Price-before-Save, rounded menu geometry, Color selection by touch, and mobile hiding of labels/price.
 - Scope note: the broader `tests/editor-touch.cjs` run completed its Header Bar 2 checks, then stopped at the existing Edit sidebar selector on line 330 (`aside[aria-label="Edit sidebar"]`); that unrelated Sidebar test was left untouched.
 
-### 2026-11-17 — Photoshop-like Pen cursor and path continuity
+### 2026-11-17 — desktop-editor-like Pen cursor and path continuity
 
-- Kept the existing vector Pen workflow (corner anchors, dragged Bézier points, Shift snapping, close/finish/cancel, and editable points/handles) and applied the owner's Photoshop-like continuity correction. The same Pen-nib cursor remains on the viewport and print canvas while Pen is selected, throughout drawing and after committing a path. The cursor hotspot is aligned to the nib point (`12 14`) with crosshair fallback; existing Move-based node editing remains unchanged.
+- Kept the existing vector Pen workflow (corner anchors, dragged Bézier points, Shift snapping, close/finish/cancel, and editable points/handles) and applied the owner's desktop-editor-like continuity correction. The same Pen-nib cursor remains on the viewport and print canvas while Pen is selected, throughout drawing and after committing a path. The cursor hotspot is aligned to the nib point (`12 14`) with crosshair fallback; existing Move-based node editing remains unchanged.
 - Finish/Close no longer switches the active tool to Move. Pen stays selected and ready to start another path. Other tools and their cursor behavior are unchanged; no unrequested Pen modes were added.
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
 - Validation: Next.js production build passed; all repository Node tests passed **55/55**, including canvas-shell **16/16**; lint completed with **0 errors / 25 warnings**; and `git diff --check` passed. Focused production-mode Chromium verified the same cursor before the first anchor, after each anchor, and after both Finish and Close path; Pen remained selected and a new path could start immediately after either completion.
 
-### 2026-11-18 — Photoshop-style Pen Bézier handles, thin path, and hint removal
+### 2026-11-18 — desktop-editor-style Pen Bézier handles, thin path, and hint removal
 
 - Dragging from an anchor now shows both Bézier guide lines and visible endpoint dots in the live preview. Existing saved-path handles remain editable; dragging a handle changes the cubic path, and Alt still breaks the mirrored tangent.
 - Thinned the live Pen preview to 1.5px and the committed Pen path to a fine line at the default canvas size. Removed the “Click: corner · drag: curve · Shift: snap · click start: close” instruction and the empty idle box; Finish, Close path, and Cancel remain visible during an active path.
 - Stabilized handle editing across React redraws by tracking pointer move/up/cancel for the duration of an active handle drag and cleaning up listeners on release or unmount.
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`, `TODO.md`, `Plan/PLAN.md`.
 - Validation on 2026-11-18: production build passed; all repository Node tests passed **55/55**; Pen geometry and canvas-shell tests passed **21/21**; lint completed with **0 errors / 25 warnings**. Focused production Chromium verified idle hint removal, visible in/out handle endpoints, 1.5px preview, active path actions, and that dragging a saved-path handle changes the cubic SVG path data. `git diff --check` passed.
 
-### 2026-11-16 — Owner-directed Kittl-inspired Pen curves and node editing
+### 2026-11-16 — Owner-directed reference-inspired Pen curves and node editing
 
 - Replaced the straight-anchor-only Pen interaction with click-to-place corners, click-drag smooth Bézier handles, Shift snapping to horizontal/vertical/45-degree segments, a highlighted close target, and touch-visible Finish/Close/Cancel actions. Closed paths use the active foreground as fill; open paths remain stroke-only.
 - Pen geometry is retained as editable anchor/handle/closed-state data alongside SVG path data. Double-clicking a selected Pen path enters node-edit mode; dragging points/handles edits the vector, clicking a segment inserts a node with cubic subdivision, and Alt-click, focused-point Delete/Backspace, or Delete point removes a node subject to open/closed minimums. Touch-sized invisible hit areas support Phone/Mobile pointer work. Ordinary handle drag mirrors the opposite handle; Alt-drag breaks the tangent. Changes are recorded through the existing layer undo history.
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-pen-path.ts`, `apps/web/src/lib/editor-layers.ts`, `tests/editor-pen-path.test.cjs`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`, `package.json`, `Plan/PLAN.md`.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `apps/web/src/lib/editor-pen-path.ts`, `apps/web/src/lib/editor-layers.ts`, `tests/editor-pen-path.test.cjs`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`, `package.json`, `Plan/PLAN.md`.
 - Validation: `npm run build` passed with TypeScript; `npm run test:editor-pen-path` passed **5/5**, `npm run test:editor-layers` passed **14/14**, and `npm run test:canvas-shell` passed **15/15**. Focused ESLint on the edited app files and `git diff --check` passed with no warnings/errors.
 - Limitations: snapping to unrelated objects/nodes and the full path appearance property set are not implemented in this pass. Pen paths currently create separate Shape layers and remain in the app's existing in-memory editor state; Save/persistent draft support is still unavailable.
 
@@ -199,7 +199,7 @@ This log records completed website-related changes in the connected repository. 
 - Validation: `npm run build` passed (including TypeScript); `npm run lint` completed with 0 errors and 26 warnings; `node --test tests/*.test.cjs` passed **44/44** with the local production app available. A focused CDP check passed at 1280×900 desktop and 390×844 phone sizes, including pill dimensions, defaults, swatch-token color, and the shared Header Dark/Light toggle.
 - Scope note: the broader legacy `tests/editor-touch.cjs` run still contains pre-upstream Edit sidebar expectations and stops in that unrelated section; those assertions were left untouched. Header Bar 2 was verified independently rather than expanding this task into Sidebar work.
 
-### 2026-11-15 — Owner-directed Canva-style Editor Sidebar first slice
+### 2026-11-15 — Owner-directed template-style Editor Sidebar first slice
 
 - Replaced the temporary left Edit sidebar categories with the owner-requested five-category flow: `Designs`, `Elements`, `Text`, `Upload`, and `Image Create`.
 - The Sidebar is hidden by default like the Layers panel. Its circular arrow reveals a compact icon rail; selecting a rail item opens the larger panel. A second arrow click hides the rail/panel. The panel uses touch-sized controls and remains protected by the existing mobile mutual-exclusion behavior with Layers.
@@ -223,7 +223,7 @@ This log records completed website-related changes in the connected repository. 
 - Layers gained a content `kind` (`artwork`, `text`, `shape`, `image`) plus text/shape/image payloads in `apps/web/src/lib/editor-layers.ts`. One shared preview renderer (`apps/web/src/components/EditorLayerPreview.tsx`) draws that content on the print canvas, on the Front/Back mockups, inside the Layers panel thumbnails and inside the Sidebar cards, so the same layer data appears everywhere.
 - Every Sidebar addition now lands in the Layers box: design cards add all of that design's layers, element cards add the single clicked layer (a design text layer opens for typing), and an uploaded photo is re-encoded in the browser until it fits the configured size policy (`UPLOAD_MAX_BYTES`, currently 2 MB, with pixel-edge reduction) before being centred on the canvas as an image layer. On desktop the Layers dock opens automatically when content is added; on phones the existing one-dock-at-a-time rule is preserved.
 - New files: `apps/web/src/lib/editor-design-library.ts` (MH Fashion design/layer catalog with one entry per individual layer and its SVG-space preview data, plus `designLayerToEditorLayer` / `designToEditorLayers` converters) and `apps/web/src/lib/editor-upload.ts` (size policy, byte formatting, canvas-based downscale/re-encode loop, print-area fitting).
-- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/lib/editor-design-library.ts`, `apps/web/src/lib/editor-upload.ts`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorEditSidebar.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`, `Plan/PLAN.md`.
+- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/lib/editor-design-library.ts`, `apps/web/src/lib/editor-upload.ts`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorEditSidebar.tsx`, `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`, `Plan/PLAN.md`.
 - Validation: canvas-shell **14/14**, editor-layers **7/7** (new text/shape/image coverage), canvas-spec **1/1**, browser-guards **1/1**, guides **9/9**; TypeScript passed; `next build` passed; `git diff --check` passed; lint **0 errors / 26 warnings** (all pre-existing, none in the files changed here).
 - Limitations: the Designs/Elements/Text catalogs are the repository-side placeholder catalog in `editor-design-library.ts` (`DESIGN_LIBRARY_STATUS = "pending-r2-endpoint"`); once the R2 listing and SVG-parsing endpoints exist they should feed the same `DesignLibraryEntry`/`DesignLibraryLayer` shape instead of the constant. Uploaded images and placed designs are stored in page memory as data URLs/layer data — no browser/account persistence or production export yet. Inline text editing is single-line per layer with no font family/weight/letter-spacing controls or text-specific transform handles; the existing whole-layer move transform applies. `Image Create` still has no AI generation service in this repository, so its button records the prompt and states that a generated image will land on the canvas as its own layer once that service is connected. The KB/MB ceiling is a single module constant rather than an admin-configurable value.
 
@@ -232,7 +232,7 @@ This log records completed website-related changes in the connected repository. 
 - Added selection transform controls for Sidebar-created layers on the print canvas: selected layers can be moved with the existing Move tool and resized using the green corner handle. The resize scale is clamped to a usable 25%–300% range and applies to artwork, design elements, text and uploaded images through shared layer rendering. The control is placed above the move hit area so it remains clickable.
 - Add Text now opens an actual inline canvas editor with a real text input and a small formatting strip for font size and color. Text is stored immutably in the selected `text` layer while typing, and formatting updates redraw the same canvas text immediately. The layer remains selectable and visible in the Layers panel.
 - Removed the user-visible R2 placeholder/status paragraph from Designs and the unnecessary AI service status copy from Image Create. The Sidebar now shows only design controls/cards and the requested functional actions.
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorEditSidebar.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorEditSidebar.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`.
 - Validation: TypeScript passed; canvas-shell **14/14**; editor-layers **7/7**; production build passed; `git diff --check` passed; lint **0 errors / 26 warnings** (existing repository warnings only).
 - Remaining limitation: the current text strip provides font size and color first; font family, weight, alignment, letter spacing, and rich text controls are a follow-up layer-design pass. R2/AI service integration remains separate from the local layer mechanics.
 
@@ -241,8 +241,8 @@ This log records completed website-related changes in the connected repository. 
 - Enabled the Layers box `Fill` field. It now writes a clamped `fillOpacity` value to the selected layer and the renderer applies it to all layer pixels/content, including freehand strokes, text, vector elements, and uploaded images. `Opacity` remains the whole-layer opacity control.
 - Layer ordering is available through the existing per-layer Move Up / Move Down actions. Each action changes the actual shared array order used by the canvas and mockup renderers, so the visual stacking order follows the Layers box. Grouped layers are selected together and therefore move as one selection when using the canvas Move tool.
 - Added Group and Ungroup actions for multi-selected layers. Group membership is stored as a `groupId`, shown beside grouped layer names, and selecting one grouped member selects the full group. Ungroup removes that membership without flattening or duplicating content.
-- Kept and completed the non-destructive Photoshop-style mask flow: a mask is a separate thumbnail/target, black (`Hide`) strokes remove pixels through an SVG mask, white (`Reveal`) strokes restore them, and the source artwork remains unchanged. The mask can be selected independently in the Layers box and painted with the existing brush/mask target flow.
-- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `Plan/PLAN.md`.
+- Kept and completed the non-destructive desktop-editor-style mask flow: a mask is a separate thumbnail/target, black (`Hide`) strokes remove pixels through an SVG mask, white (`Reveal`) strokes restore them, and the source artwork remains unchanged. The mask can be selected independently in the Layers box and painted with the existing brush/mask target flow.
+- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`, `Plan/PLAN.md`.
 - Validation: TypeScript passed; editor-layers **7/7**; canvas-shell **14/14**; production build passed; `git diff --check` passed.
 
 ### 2026-11-15 — Independent grouped layers, mask brush painting, and linked layers
@@ -250,17 +250,17 @@ This log records completed website-related changes in the connected repository. 
 - Group membership no longer forces every member to be selected. A grouped layer can be selected and moved independently; multi-select remains available for intentionally transforming several members together. The existing Group/Ungroup actions remain non-destructive.
 - Selecting a layer mask now automatically switches to the Brush tool. Creating a new mask does the same, so the user can immediately paint black (`Hide`) or white (`Reveal`) directly on the canvas. The SVG mask keeps a white base plus black/white brush strokes, preserving source artwork for later mask edits/removal.
 - Replaced the disabled adjustment-layer footer slot with a working `Link layers` action. Selecting two or more layers and clicking the link icon assigns a shared link membership; moving any selected linked layer expands the move set to its linked peers. Clicking the same action on linked selections removes the link. Group and Link are separate: groups can be individually selected, while links explicitly synchronize canvas transforms.
-- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
+- Files: `apps/web/src/lib/editor-layers.ts`, `apps/web/src/components/EditorCanvas.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `tests/editor-layers.test.cjs`, `tests/canvas-shell.test.cjs`.
 - Validation: TypeScript passed; editor-layers **8/8**; canvas-shell **14/14**; production build passed; `git diff --check` passed.
 
-### 2026-11-15 — Photoshop-style layer stack drag reorder and folder groups
+### 2026-11-15 — desktop-editor-style layer stack drag reorder and folder groups
 
 - Layer rows in the Layers box are now draggable. Dropping a row above/below another row calls the shared `moveEditorLayerToIndex` helper, so the actual layer array and canvas/mockup stacking order change directly instead of requiring repeated Move Up/Move Down clicks. The menu actions remain available as keyboard-friendly alternatives.
 - Grouped layers now expose a folder-style collapsed/expanded header in the Layers box. Child rows remain individual layer rows with their own thumbnail, visibility, mask, rename, and selection controls. Collapsing only hides the child rows in the panel; it does not flatten or delete them. Group membership stays separate from Link Layers, and individual group children remain independently selectable.
-- Files: `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`.
+- Files: `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorCanvas.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`.
 - Validation: TypeScript passed; editor-layers **9/9**; canvas-shell **14/14**; production build passed; `git diff --check` passed.
 
-### 2026-11-15 — Restore stable Photoshop-style layer row layout
+### 2026-11-15 — Restore stable desktop-editor-style layer row layout
 
 - Corrected the folder header integration that could overlap or distort the original layer rows. Each group now has a normal folder header wrapper followed by its child row; the original thumbnail, visibility, mask, name, options menu, and drag target remain intact.
 - Child rows retain their normal height and controls, while collapse/expand only changes child visibility in the list. Layer data, order, masks, groups, Fill and Link behavior are preserved.
@@ -275,11 +275,11 @@ This log records completed website-related changes in the connected repository. 
 - Updated the stale editor touch-test Fill selector to the functional `#editor-layer-fill` input. Focused validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (existing project warnings remain).
 - Remaining follow-up: selection rectangles are still canvas-tier bounds rather than exact per-primitive bounds, and mockup lock/transform affordances need a dedicated browser interaction pass.
 
-### 2026-11-15 — Photoshop-style transform handles and mask color workflow
+### 2026-11-15 — desktop-editor-style transform handles and mask color workflow
 
-- Replaced the single bottom-right canvas resize handle with eight Photoshop-style handles: four corners and four side/midpoint handles. All handles use the shared resize transaction so the selected layer set remains consistent while scaling.
+- Replaced the single bottom-right canvas resize handle with eight desktop-editor-style handles: four corners and four side/midpoint handles. All handles use the shared resize transaction so the selected layer set remains consistent while scaling.
 - Added selectable Group folder headers. Selecting the Group header selects every child layer, so canvas move/resize applies to the complete group. Selecting an individual child row keeps the transform selection limited to that child; the Layer box selection remains the source of truth.
-- Removed the redundant mask instruction panel and Hide/Reveal buttons from the Layers box. Mask painting now follows the existing Photoshop-style foreground/background color switch: black foreground hides and white foreground reveals. Selecting/creating a mask still switches to Brush automatically.
+- Removed the redundant mask instruction panel and Hide/Reveal buttons from the Layers box. Mask painting now follows the existing desktop-editor-style foreground/background color switch: black foreground hides and white foreground reveals. Selecting/creating a mask still switches to Brush automatically.
 - Updated canvas-shell and touch-test expectations for eight handles and color-switch mask painting. Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; editor-touch syntax passed; production build passed; lint reported **0 errors** (26 existing warnings remain).
 
 ### 2026-11-15 — Functional Adjustment panel with Layers return arrow
@@ -289,7 +289,7 @@ This log records completed website-related changes in the connected repository. 
 - While Adjustment is open, its round arrow occupies the same dock-toggle position. Clicking that arrow closes Adjustment and reopens the Layers box, preserving the current selection.
 - The Adjustment action is available on touch layouts as well as desktop layouts. Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (26 existing warnings remain).
 
-### 2026-11-15 — Dynamic Photoshop-style canvas selection bounds
+### 2026-11-15 — Dynamic desktop-editor-style canvas selection bounds
 
 - Removed the fixed `120,160 → 880,1040` transform frame. The canvas now calculates selection bounds from the selected layer content: strokes, text metrics, image boxes, and shape path coordinates. A Group selection unions all child bounds; an individual child selection uses only that layer's bounds.
 - The eight resize handles are positioned on the calculated corners and side midpoints. Resize direction is handle-aware, so left/top handles grow inward/outward in the expected direction while preserving the layer scale model. Move and resize still use the complete selected ID set, so group-header selection affects the group and child selection affects only the child.
@@ -302,35 +302,35 @@ This log records completed website-related changes in the connected repository. 
 - Added `Text` to the bottom Tools bar. With Text selected, clicking a position on the canvas creates a new text layer at that exact canvas coordinate and focuses the inline editor so the user can type immediately.
 - Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (26 existing warnings remain).
 
-### 2026-11-15 — Kittl-style editor interaction pass
+### 2026-11-15 — reference-style editor interaction pass
 
-- Added the missing Photoshop/Kittl-style rotate affordance below the dynamic selection bounds. Rotation is tracked per layer and applied to selected linked layers together; the handle displays a live canvas interaction rather than a fixed-size transform control.
-- Text entry now returns to the Move/selection tool after the inline editor commits, matching the common Kittl flow where Text is an insertion tool and selection resumes after typing.
+- Added the missing desktop-editor-style rotate affordance below the dynamic selection bounds. Rotation is tracked per layer and applied to selected linked layers together; the handle displays a live canvas interaction rather than a fixed-size transform control.
+- Text entry now returns to the Move/selection tool after the inline editor commits, matching the usual editor behaviour flow where Text is an insertion tool and selection resumes after typing.
 - Preserved the existing Text Adjustment typography controls and direct Text tool workflow while extending the canvas transform foundation. Validation: TypeScript passed; editor-layers **11/11**; canvas-shell **14/14**; production build passed; lint reported **0 errors** (26 existing warnings remain).
 
 ### 2026-11-15 — Layer-aware Move Tool and no-scroll Tools Bar
 
 - Removed horizontal scrolling from the bottom Tools Bar. The controls now wrap into additional rows when the viewport is narrow, allowing the dock to grow in height instead of hiding tools behind a horizontal scroller.
 - Move Tool now operates on the selected artwork layer(s), not the entire canvas artwork. A normal layer click selects one layer; Shift/Ctrl/Cmd-click toggles additional artwork layers. Dragging the canvas then moves only the selected, unlocked layers. Each layer keeps its own bounded in-memory canvas offset, and new strokes on a moved layer remain aligned with that layer.
-- Files: `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`.
+- Files: `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/EditorArtworkLayers.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`.
 - Validation: no horizontal Tools Bar overflow assertion, canvas shell **13/13**, editor layers **6/6**, TypeScript, Next.js production build, and Phone/Desktop editor-touch suite passed across 390 × 844, 320 × 740, both landscape sizes, and 1280 × 900.
 - Limitations: multi-selection is currently an in-memory layer selection for the active Editor route; it is not yet serialized into a draft or export format.
 
-### 2026-11-15 — Canva-style Edit rail, Photoshop color swap, and canvas Move tool
+### 2026-11-15 — template-style Edit rail, color swap, and canvas Move tool
 
-- Reworked the Edit sidebar into a compact left icon rail like Canva. The rail remains narrow when idle; clicking a Design, Elements, Text, Brand, Uploads, Draw, Projects, or Apps icon opens the wider Edit box and highlights that category with a short honest status description. The existing circular expand/collapse control and Phone/Desktop overlap guard remain in place.
-- Updated the Tools Bar color controls to keep the overlapping Photoshop-style foreground/background squares and added a small circular swap control. Clicking either square opens its color picker; clicking `Swap foreground and background colors` exchanges the two colors. New Pen/Brush strokes continue to use the current foreground color.
+- Reworked the Edit sidebar into a compact left icon rail like the template editor. The rail remains narrow when idle; clicking a Design, Elements, Text, Brand, Uploads, Draw, Projects, or Apps icon opens the wider Edit box and highlights that category with a short honest status description. The existing circular expand/collapse control and Phone/Desktop overlap guard remain in place.
+- Updated the Tools Bar color controls to keep the overlapping desktop-editor-style foreground/background squares and added a small circular swap control. Clicking either square opens its color picker; clicking `Swap foreground and background colors` exchanges the two colors. New Pen/Brush strokes continue to use the current foreground color.
 - Move Tool now has a dedicated interactive target over the print canvas artwork. With Move selected, dragging the canvas artwork changes its shared source overlay transform within bounded canvas offsets; the existing independent Front/Back mockup movement remains unchanged.
-- Files: `apps/web/src/components/EditorEditSidebar.tsx`, `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, and `tests/editor-touch.cjs`.
+- Files: `apps/web/src/components/EditorEditSidebar.tsx`, `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`, and `tests/editor-touch.cjs`.
 - Validation: canvas shell **13/13**, editor layers **6/6**, browser guards **1/1**, TypeScript, Next.js production build, and `git diff --check` passed. Production Chromium editor-touch passed at 390 × 844, 320 × 740, both landscape sizes, and 1280 × 900 desktop.
-- Limitations: Edit categories currently provide layout and honest status text rather than connected Canva asset libraries; canvas Move uses a bounded in-memory transform and does not yet serialize to a document draft or export.
+- Limitations: Edit categories currently provide layout and honest status text rather than connected the template editor asset libraries; canvas Move uses a bounded in-memory transform and does not yet serialize to a document draft or export.
 
 ### 2026-11-15 — Add Shape / Gradient / Redo tools and shrink editor controls
 
 - Owner request: added `Shape`, `Gradient`, and `Redo` to the compact bottom Tools Bar. Shape and Gradient select their tools and show an honest availability notice because their vector-shape and gradient-fill pipelines are not connected yet. Redo is functional and paired with the existing bounded 30-snapshot artwork Undo history; making a new draw/erase action clears the redo branch.
 - Matching controls: the Tools Bar collapse chevron now uses the same solid `bg-accent` circular-arrow treatment as the Edit sidebar and Layers panel show/hide toggles. The existing panel positions remain edge-safe on Phone so the right Layers arrow does not cover the canvas options control.
 - Canvas menu: reduced the desktop menu from the previous 144 × 82 px treatment to a compact approximately 112 × 62 px box with 20 px rows, 10 px labels, 11 px icons, and 0.5 padding. Phone/Mobile keeps 40 px rows for touch while retaining the smaller box, and menu pointer events are isolated so touch selection remains reliable.
-- Files: `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-touch.cjs`, and `Plan/PLAN.md`.
+- Files: `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-touch.cjs`, and `Plan/PLAN.md`.
 - Validation: canvas shell **13/13**, canvas specification **1/1**, browser guards **1/1**, editor layer model **6/6**, and Guide **9/9** passed. TypeScript, `git diff --check`, Next.js production build, and Cloudflare/OpenNext build passed; ESLint remains **0 errors / 25 pre-existing warnings**. The Chromium editor-touch suite passed at 390 × 844, 320 × 740, both landscape sizes, and 1280 × 900 desktop. Final CDP checks confirmed the compact menu entries, theme accent colors/wires, and the updated Tools Bar icons.
 - Limitations: Shape and Gradient are UI-selected tools with notices only; they do not yet create vector shapes or gradient fills. Full-document history, persistence, export, physical-device verification, and Cloudflare deployment remain outstanding.
 
@@ -346,7 +346,7 @@ This log records completed website-related changes in the connected repository. 
 - Owner-directed Editor scope: shrink the box that opens from the small circle on the print canvas, replace its single `Add Mockup` action with separate `Front Mockup` and `Back Mockup` actions, remove the `+` control from the Front Mockup box, and recolour that circle plus the canvas/mockup connector wires with the app theme.
 - Web/Desktop: the menu now measures 144 x 82 px with 24 px rows (`min-w-36`, `p-1`, `text-xs`, 13 px icon and checkbox) and lists `Show Grid`, `Front Mockup`, `Back Mockup`. Phone/Mobile shows the same three entries in the narrower box and keeps 44 px row height; an already-attached side disables its own entry with an explanatory tooltip, and Product `Phone` continues to offer only `Front Mockup`. Each mockup box keeps its own close `x`; the in-box `+` add button no longer exists on either form factor.
 - Theming: the canvas-edge circle uses `bg-accent` with a `text-accent-foreground` centre (verified `rgb(212, 255, 63)` / `rgb(13, 13, 13)` in Dark) and the connector wires use `text-accent` with `stroke/fill="currentColor"`, so both follow the Header Light/Dark toggle like the Layers and Edit sidebar controls. While the menu is open the print-canvas node is raised to `z-30`; this fixed a defect found during browser verification where an attached mockup box painted over the menu and swallowed clicks on the `Back Mockup` row.
-- Files: `apps/web/src/components/KittlCanvas.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-touch.cjs`.
+- Files: `apps/web/src/components/EditorCanvas.tsx`, `tests/canvas-shell.test.cjs`, `tests/editor-touch.cjs`.
 - Validation: canvas shell **13/13**, canvas specification **1/1**, browser guards **1/1**, editor layer model **6/6**, Guide **9/9** and Guide HTTP **5/5** passed. TypeScript, `git diff --check`, the Next.js production build and the Cloudflare/OpenNext Worker build passed. ESLint reported **0 errors / 25 pre-existing warnings**, none in the changed files. The production Chromium editor-touch suite passed at 390 x 844, 320 x 740, 740 x 390, 844 x 390 and 1280 x 900 desktop, including the menu-driven Back Mockup flow and the menu row staying 44 px tall at 25% zoom. CDP screenshots and computed-style checks confirmed the compact menu size, the accent circle, accent `currentColor` wires, and zero add buttons inside mockup boxes.
 - Limitations: the mockups are still neutral placeholder boxes with no R2 assets, and the Editor has no Fabric document state, text/image objects, account persistence or production export yet. Physical-device verification remains outstanding. A GitHub push is not a deployment: the Cloudflare secrets are still missing, so production is unchanged.
 - Integration note: this work was rebased onto the color-swatch commits `392b4fa` / `5c5c3d3` and re-verified there — all repository Node suites **35/35**, TypeScript, ESLint (0 errors / 25 pre-existing warnings), Next.js build, Cloudflare/OpenNext build, `git diff --check`, and the full Chromium editor-touch suite passed. Both theme modes were re-measured after the merge: circle and wires `rgb(212, 255, 63)` with a `rgb(13, 13, 13)` centre in Dark, `rgb(101, 156, 20)` with a white centre in Light.
@@ -368,7 +368,7 @@ This log records completed website-related changes in the connected repository. 
 ### 2026-11-15 — Add the temporary Edit sidebar
 
 - Added the `Edit sidebar` opposite the right-side Layers dock, on the left. It begins collapsed and opens/closes with a matching small round, app-accent-colored arrow control.
-- Added disabled Canva-like placeholders for `Design`, `Elements`, `Text`, `Brand`, `Uploads`, `Draw`, `Projects`, and `Apps`; their actual content and actions remain pending the owner's next step-by-step instructions.
+- Added disabled template-like placeholders for `Design`, `Elements`, `Text`, `Brand`, `Uploads`, `Draw`, `Projects`, and `Apps`; their actual content and actions remain pending the owner's next step-by-step instructions.
 - On narrow screens, opening one dock closes the other to avoid panel overlap; resizing from desktop into the narrow breakpoint closes both docks. Desktop can keep both sidebars open. Both use theme-aware styling and touch-friendly controls.
 - Validation: all repository Node suites **33/33**, TypeScript, changed-file ESLint with no warnings, Cloudflare/OpenNext production build, and responsive Chromium checks passed. CDP verified all eight disabled tool labels, collapsed-by-default left docking, mobile mutual exclusion and desktop-to-phone resize handling, nonoverlapping desktop docks, app accent color in Light/Dark, touch-sized mobile control, and existing editor/layer regressions. Physical-device checks remain outstanding.
 
@@ -378,47 +378,47 @@ This log records completed website-related changes in the connected repository. 
 - Replaced the rectangular edge trigger with a circular button using the app's `bg-accent` / `text-accent-foreground` tokens, so it changes with Header Light/Dark. It is 28px on desktop and expands to a 44px coarse-pointer touch target.
 - Validation: all Node suites **32/32**, TypeScript, changed-file ESLint with no warnings, Cloudflare/OpenNext production build, and responsive Chromium tests passed. Browser checks cover the removed rows, active theme accent on the toggle, desktop/phone sizing, layer/mask operations, and existing mobile/editor regressions.
 
-### 2026-11-14 — Compact Layers panel to match supplied Photoshop layout
+### 2026-11-14 — Compact Layers panel to match the supplied layout
 
-- Reworked the right-side dock to follow the owner's supplied 398×770 Photoshop reference: compact `Layers / Channels / Paths` tabs; a `Kind` filter row; `Normal` blend and numeric opacity; `Lock / Fill` controls; short visibility/thumbnail/name/mask rows; and a compact bottom action strip. Reduced the panel to a 16rem maximum and labels to 11px; the row overflow menu holds rename/reorder/duplicate/delete and mask operations.
+- Reworked the right-side dock to follow the owner's supplied 398×770 reference: compact `Layers / Channels / Paths` tabs; a `Kind` filter row; `Normal` blend and numeric opacity; `Lock / Fill` controls; short visibility/thumbnail/name/mask rows; and a compact bottom action strip. Reduced the panel to a 16rem maximum and labels to 11px; the row overflow menu holds rename/reorder/duplicate/delete and mask operations.
 - Artwork and mask thumbnails preview their vector strokes. The working controls remain functional; screenshot-specific items not supported by the editor yet (Channels/Paths content, kind filters, pixel locks, Fill, effects, adjustment layers, and groups) are explicitly disabled. Portrait phones retain 44px touch targets; short-landscape viewports (≤500px tall) hide the decorative Kind row and reduce toolbar controls to free scrolling room for the layer/mask list.
 - Reference source: user attachment `pasted_file_OMaJAy_image.png` (398×770), supplied 2026-11-14; it is not copied into the repository.
 - Validation: all repository Node suites **32/32**, TypeScript, changed-file ESLint with no warnings, Next.js/Cloudflare OpenNext production build, and `git diff --check` passed. Chromium verified the 16rem maximum width and 11px row labels at 1280×900, 390×844/320×740 portrait, 740×390 and 844×390 landscape including mask-control scrolling, right-dock open/close, theme switching, create/draw/duplicate/delete, mask hide/reveal, and existing Phone/T-Shirt, Front/Back, and 3500/1500px tier behaviors. Physical-device checks remain outstanding.
 
-### 2026-11-14 — Dock Layers on the right in a Photoshop-inspired panel
+### 2026-11-14 — Dock Layers on the right in a desktop-editor-inspired panel
 
 - Moved the initially collapsed Layers dock to the Editor viewport's right edge and moved its toggle arrow to the left edge of the dock.
-- Applied a compact neutral graphite/light-gray treatment with Photoshop-like blue selected-layer feedback; the existing Header Light/Dark toggle still changes the panel colors. Layer and mask operations remain unchanged.
-- The exact reference image was not available in the repository or the inherited message attachments, so this is a Photoshop-inspired right dock—not a pixel-exact recreation of the screenshot. Reattach the image to refine its precise panel tabs, controls, and spacing.
+- Applied a compact neutral graphite/light-gray treatment with desktop-editor-like blue selected-layer feedback; the existing Header Light/Dark toggle still changes the panel colors. Layer and mask operations remain unchanged.
+- The exact reference image was not available in the repository or the inherited message attachments, so this is a desktop-editor-inspired right dock—not a pixel-exact recreation of the screenshot. Reattach the image to refine its precise panel tabs, controls, and spacing.
 - Validation: right-edge placement is checked in responsive Chromium for 390×844 and 320×740; TypeScript, ESLint, all Node suites, and the Cloudflare/OpenNext build are rerun for this positioning/style update.
 
 ### 2026-11-14 — Implement functional Layers and non-destructive vector masks
 
 - Replaced the left-side panel's “controls later” shell with an initially collapsed, theme-aware layer stack. The current vector artwork layer model supports add/select/rename/reorder, show/hide, lock, duplicate/delete, opacity and blend mode. Canvas drawing appends to the selected unlocked layer.
-- Added Photoshop-style Layer Masks: add/remove a mask, select it independently from its artwork, and paint black to hide or white to reveal using the print canvas. Source strokes remain intact. Ordered visible layers, opacity/blend and masks are rendered on the print canvas and shared Front/Back previews; per-mockup move/resize and the existing transferable artwork tier remain independent and unchanged.
+- Added desktop-editor-style Layer Masks: add/remove a mask, select it independently from its artwork, and paint black to hide or white to reveal using the print canvas. Source strokes remain intact. Ordered visible layers, opacity/blend and masks are rendered on the print canvas and shared Front/Back previews; per-mockup move/resize and the existing transferable artwork tier remain independent and unchanged.
 - The panel and its Properties/mask controls scroll on short screens. Mobile browser coverage exercises layer create, artwork drawing, hide/reveal mask strokes, duplicate/delete, and reachability at a 844×390 landscape viewport as well as the existing 390×844 and 320×740 phone checks.
-- Limitations: artwork and mask strokes are vector and page-memory only. Raster/pixel selection masks, undo/redo, serialized/browser/account saving, production export, and broader Photoshop features are not claimed in this slice; continue those only from the owner's next explicit instructions.
+- Limitations: artwork and mask strokes are vector and page-memory only. Raster/pixel selection masks, undo/redo, serialized/browser/account saving, production export, and broader raster features are not claimed in this slice; continue those only from the owner's next explicit instructions.
 - Validation: all repository Node tests **32/32**, TypeScript, changed-file ESLint, Next.js and Cloudflare/OpenNext production builds, Chromium touch/mouse checks, and `git diff --check` passed. Physical Android/iPhone testing remains outstanding.
 
 ### 2026-11-14 — Restore selectable Product and remove Choose defaults
 
 - Replaced the fixed Product value with a compact 92px dropdown. It has no `Choose` option, defaults to `T-Shirt`, allows `Phone`, and keeps `Hoodie`, `Cup`, `Kids`, and `Bag` visible but inactive until their rules are specified.
 - Removed `Choose` from the GSM dropdown and selected `160 GSM` as its initial value. Changing between T-Shirt and Phone preserves the GSM selection. Phone still switches to disabled Brand/Model placeholders and permits only one visible Front Mockup; returning to T-Shirt restores the previous Back Mockup.
-- The left Layers panel remains a closed-by-default shell only. The owner has now requested Photoshop-style functions including new layers, masks, and deletion. Those operations are not yet implemented; the exact meaning of `Mark` and how layer edits should apply across the print canvas and Front/Back Mockups need clarification before connecting controls to artwork.
+- The left Layers panel remains a closed-by-default shell only. The owner has now requested desktop-editor-style functions including new layers, masks, and deletion. Those operations are not yet implemented; the exact meaning of `Mark` and how layer edits should apply across the print canvas and Front/Back Mockups need clarification before connecting controls to artwork.
 - Validation: canvas-shell **11/11**, all repository Node tests **27/27**, TypeScript, changed-file ESLint, Cloudflare/OpenNext build, Chromium Product/GSM and Phone mockup checks at 390×844 and 320×740, desktop theme and mouse checks, Layers shell toggle checks, and `git diff --check` passed.
 
 ### 2026-11-14 — Fix Product to T-Shirt and add the Layers panel shell
 
 - Reduced the `Product` value box to 92px and made it a fixed, read-only `T-Shirt` value for this step. Product switching is intentionally not exposed; the prior Phone-specific rules remain in the code but are not reachable in the current UI. The `GSM`, `Color`, and `Size` fields remain in place.
 - Added a closed-by-default Layers panel shell on the left edge of the Editor viewport. Its arrow opens the panel, moves to the panel edge, and closes it again. The panel currently contains only the `Layers` heading and a note that controls will be added step by step.
-- No Photoshop layer list, create/delete/reorder/visibility/lock controls, blending, opacity, or artwork-to-layer behavior was added; those details are deferred to the owner's later instructions. The overlay stays within the Editor viewport, below the phone view toolbar, and uses the app's theme colors.
+- No layer list, create/delete/reorder/visibility/lock controls, blending, opacity, or artwork-to-layer behavior was added; those details are deferred to the owner's later instructions. The overlay stays within the Editor viewport, below the phone view toolbar, and uses the app's theme colors.
 - Validation: canvas-shell **11/11**, all repository Node tests **27/27**, TypeScript, changed-file ESLint, Cloudflare/OpenNext build, Chromium checks at 390×844 and 320×740 (open/close and drawer width), landscape phone and 1280×900 desktop open/close, existing touch/mouse editor regressions, and `git diff --check` passed. Physical Android/iPhone testing remains unavailable.
 
 ### 2026-11-14 — Make the first Product choices control Bar 2 and Mockups
 
 - `T-Shirt` is the default supported product. Its Bar 2 shows `GSM` and the existing `Size` placeholder; `Color`, `Save`, and `Buy` remain in the row. Selecting `Phone` hides `GSM`/`Size` and shows disabled `Brand`/`Model` placeholders because no brand/model options have been specified; `Color` remains visible.
 - On Phone, only one usable Front Mockup is shown and the Back-add control is unavailable. A T-Shirt Back Mockup is preserved while Phone is active and reappears when switching back to T-Shirt. The Front/Back transferable artwork tier remains usable for T-Shirt, and the single Phone mockup receives the large tier. The Product list keeps `Hoodie`, `Cup`, `Kids`, and `Bag` visible but disabled until their rules are specified; no attribute or brand/model options were invented.
-- Updated `/create`, the shared Product type, `EditorHeaderBar2`, `KittlCanvas`, tests, and current-state documentation. This supersedes the placeholder-only Product/GSM behavior in the following earlier log entry.
+- Updated `/create`, the shared Product type, `EditorHeaderBar2`, `EditorCanvas`, tests, and current-state documentation. This supersedes the placeholder-only Product/GSM behavior in the following earlier log entry.
 - Validation: canvas-shell **10/10**, all repository Node tests **26/26**, TypeScript, changed-file ESLint, Next.js production build, Chromium Product switching on phone viewports (conditional fields, Phone's single visible mockup/no Back-add control, preserved T-Shirt Back state), desktop mouse/touch regressions, and `git diff --check` passed. Physical Android/iPhone verification remains unavailable.
 
 ### 2026-11-14 — Phone Product Detail gallery frame alignment
@@ -452,7 +452,7 @@ This log records completed website-related changes in the connected repository. 
 - Finger-sized 44 CSS px controls နှင့် invisible move/resize hit targets ထည့်ထားသည်။ မူလ purple dots/resize circle ကို ထိန်းထားပြီး desktop ခလုတ်အရွယ် မပြောင်းပါ။ ဖုန်းအတွက် readable pixel-dimension badge နှင့် `Pan view`, Zoom `+`/`−`, `Reset view` controls ထည့်ထားသည်။ View controls သည် artwork transform မဟုတ်ဘဲ viewport state ကိုသာ ပြောင်းသည်။ Landscape တွင် desktop breakpoint ကျော်သော်လည်း touch controls/stacking ဆက်ရှိသည်။
 - Zoom 25% တွင်လည်း controls နှင့် dimension badge မသေးသွားအောင် inverse-scale ဖြင့် screen size ကို ထိန်းထားသည်။ သေးငယ်သော Artwork ကို select လုပ်ပြီးနောက် move/resize hit areas မထပ်စေရန် ဖုန်း resize handle ကို သီးခြားနေရာတွင် connector ဖြင့်ပြသည်။
 - Mobile bottom navigation ၏ တကယ့်အမြင့်နှင့် safe-area ကိုတိုင်းပြီး `/create` အမြင့်နှင့် root padding တွင် တစ်ကြိမ်တည်း ချန်ထားသည်။ Editor အောက်ပိုင်းကို navigation မဖုံးတော့ပါ။
-- ပြောင်းလဲသည့် source: `KittlCanvas.tsx`, `MockupArtwork.tsx`, `MobileBottomNav.tsx`, `/create/page.tsx`, root layout။ `tests/canvas-shell.test.cjs` တွင် mobile regression assertions ထည့်ထားပြီး `tests/editor-touch.cjs` သည် Node 22 နှင့် local Chromium CDP endpoint ကိုသာ သုံးသည့် reusable touch integration check ဖြစ်သည်။ Dependency အသစ် မထည့်ပါ။
+- ပြောင်းလဲသည့် source: `EditorCanvas.tsx`, `MockupArtwork.tsx`, `MobileBottomNav.tsx`, `/create/page.tsx`, root layout။ `tests/canvas-shell.test.cjs` တွင် mobile regression assertions ထည့်ထားပြီး `tests/editor-touch.cjs` သည် Node 22 နှင့် local Chromium CDP endpoint ကိုသာ သုံးသည့် reusable touch integration check ဖြစ်သည်။ Dependency အသစ် မထည့်ပါ။
 - Validation: Node tests **24/24**၊ TypeScript၊ changed-file ESLint၊ Next.js/OpenNext Cloudflare build နှင့် `git diff --check` အောင်မြင်သည်။ Chromium တွင် 390×844၊ 320×740 portrait touch၊ 740×390 နှင့် 844×390 landscape၊ tiny selected Artwork ကို ထပ်မံရွှေ့ခြင်း/resize၊ tier နှစ်ဖက်လုံး လွှဲပြောင်းခြင်း/release၊ pan/zoom၊ Zoom 25% screen-sized controls/readable badge၊ second-touch/cancel နှင့် desktop control-size/mouse drawing/Back resize regression တို့ကို စမ်းသပ်အောင်မြင်သည်။
 - Limitation: physical Android/iPhone နှင့် iOS Safari ပေါ်တွင် မစမ်းရသေးပါ။ Artwork/state များသည် အရင်အတိုင်း page memory တွင်သာ ရှိသည်။ Native app၊ multi-touch pinch editor သို့မဟုတ် roadmap feature အသစ်များ မထည့်ပါ။
 ### 2026-11-14 — Phone Product Detail option and price verification
@@ -519,7 +519,7 @@ This log records completed website-related changes in the connected repository. 
 
 - Owner clarification: the 3500 px large tier is not permanently assigned to Front. Either Front or Back may claim it; while one side's longest artwork edge exceeds 1500 px, that side may use up to 3500 px and the other side is capped at 1500 px. If both sides remain at or below 1500 px, either may claim the large tier by resizing above 1500 px. The numeric values remain provisional, not final print specifications.
 - When the large-tier owner is reduced to 1500 px or below, or its Mockup is removed, release the tier. If the tier transfers to the other side, clamp the former owner's artwork to 1500 px while preserving its center. Keep the currently displayed pixel dimensions visible while selected.
-- This rule supersedes the fixed Front-3500/Back-1500 assignment in the earlier work-log entry below. Updated `Plan/PLAN.md` first, then implemented shared allocation in `KittlCanvas` and `MockupArtwork`, with a tested allocation helper.
+- This rule supersedes the fixed Front-3500/Back-1500 assignment in the earlier work-log entry below. Updated `Plan/PLAN.md` first, then implemented shared allocation in `EditorCanvas` and `MockupArtwork`, with a tested allocation helper.
 - Validation: all 22 repository Node tests passed, including 6 canvas-shell tests and tier transfer/release cases; Next.js production build, TypeScript, modified-file ESLint, and `git diff --check` passed. A headless Chromium pointer test drew wide artwork, confirmed Front at **3500 px** and Back at **1500 px**, then resized Back past the threshold and confirmed Back changed to **3500 px** while Front changed to **1500 px**.
 ### 2026-11-14 — Product detail reference UI, compact sizing, and variant price display
 
@@ -571,7 +571,7 @@ This log records completed website-related changes in the connected repository. 
 
 ### 2026-11-14 — Match Front and Back Mockup sizes per direct instruction
 
-- Followed the owner's direct request rather than the previous Plan sizing language. Updated the existing mockup nodes in `KittlCanvas`: Front and Back now share the same responsive width (`min(18.25rem, 78vw)`, square box, and artwork scale (`0.82`). The older work-log entry below records the superseded larger-Front/smaller-Back behavior at that earlier commit.
+- Followed the owner's direct request rather than the previous Plan sizing language. Updated the existing mockup nodes in `EditorCanvas`: Front and Back now share the same responsive width (`min(18.25rem, 78vw)`, square box, and artwork scale (`0.82`). The older work-log entry below records the superseded larger-Front/smaller-Back behavior at that earlier commit.
 - Updated the Editor Plan after implementation to record the requested same-size behavior and the instruction that direct owner directions define Editor scope.
 - Validation: canvas shell **4/4**, canvas specification **1/1**, browser guards **1/1**, Guides **9/9**; TypeScript, changed-component ESLint, `git diff --check`, and the Next.js/OpenNext Cloudflare Worker production build passed. OpenNext emitted its existing compatibility-date advisory; no build failure occurred.
 - Limitation: the mockups remain temporary placeholders with transient page-memory artwork; no R2 garment assets are part of this sizing request.
@@ -694,7 +694,7 @@ The local unit tests, corrected production-server HTTP tests, Next.js build, and
 
 ##### 1. `/create` is a placeholder, not an editable or persistable design editor
 
-**Evidence:** `apps/web/src/app/create/page.tsx:3-8` mounts only `KittlCanvas`. In `apps/web/src/components/KittlCanvas.tsx:129-136`, the design area is an empty `div`; component state covers only mockup visibility, zoom, pan, and gesture handling. The adjacent mockup is explicitly a placeholder (`KittlCanvas.tsx:154-179`). There is no editor document model, artwork operation, history, serializer, or persistence call wired to the route. Although `supabase/migrations/0001_initial_schema.sql:89-95` defines `user_designs.canvas_state`, this route does not use it.
+**Evidence:** `apps/web/src/app/create/page.tsx:3-8` mounts only `EditorCanvas`. In `apps/web/src/components/EditorCanvas.tsx:129-136`, the design area is an empty `div`; component state covers only mockup visibility, zoom, pan, and gesture handling. The adjacent mockup is explicitly a placeholder (`EditorCanvas.tsx:154-179`). There is no editor document model, artwork operation, history, serializer, or persistence call wired to the route. Although `supabase/migrations/0001_initial_schema.sql:89-95` defines `user_designs.canvas_state`, this route does not use it.
 
 **Recommendation:** Build and mount a typed document model, editing operations, selection/history, layer and property controls, validation/serialization, and persistence before presenting `/create` as an operational design editor. Treat the detailed editor plan as forward-looking until each capability is implemented and tested.
 
@@ -738,13 +738,13 @@ The local unit tests, corrected production-server HTTP tests, Next.js build, and
 
 ##### 8. Short phone viewports can clip the stacked editor workspace
 
-**Evidence:** `apps/web/src/components/KittlCanvas.tsx:105-120,124-160` uses `overflow-hidden`; below `md` the canvas/mockup stack vertically but retains width-derived heights and a 48px separator. The page uses an `h-dvh` container (`apps/web/src/app/create/page.tsx:5-8`), so on short phone viewports the lower content can extend beyond the available height without a scroll path.
+**Evidence:** `apps/web/src/components/EditorCanvas.tsx:105-120,124-160` uses `overflow-hidden`; below `md` the canvas/mockup stack vertically but retains width-derived heights and a 48px separator. The page uses an `h-dvh` container (`apps/web/src/app/create/page.tsx:5-8`), so on short phone viewports the lower content can extend beyond the available height without a scroll path.
 
 **Recommendation:** Add vertical scrolling or a viewport-fit mode, then verify short phone heights and landscape layouts as part of the required Web/Desktop + Phone acceptance checks.
 
 ##### 9. Touch pointers cannot pan the canvas on phones
 
-**Evidence:** `KittlCanvas.tsx:68-71` accepts only middle-button drag or Space+left-button drag. A touchscreen primary pointer does not meet either condition, and the viewport is `overflow-hidden` (`KittlCanvas.tsx:115`), leaving no touch pan route.
+**Evidence:** `EditorCanvas.tsx:68-71` accepts only middle-button drag or Space+left-button drag. A touchscreen primary pointer does not meet either condition, and the viewport is `overflow-hidden` (`EditorCanvas.tsx:115`), leaving no touch pan route.
 
 **Recommendation:** Add a deliberate touch pan gesture (and pinch zoom if supported), with appropriate touch-action/pointer handling and accessible alternatives. Test on phone and preserve interactions for controls.
 
@@ -903,21 +903,21 @@ Sources supplied by the project owner on 2026-11-10:
 The current `/admin` page follows these cues but uses clearly labeled local preview data. The linked references are visual guidance only; they do not define live metrics or authorization behavior.
 - Validation: all repository Node tests passed **32/32**; TypeScript and ESLint passed; Cloudflare/OpenNext production build passed. Chromium CDP confirmed the dock's right-edge geometry at 390×844 and 320×740, the separated top arrow, 844×390 landscape stacking, desktop open/close, and Light/Dark color switching. Existing layer-mask, Product/Phone, mockup and tier regressions also passed. The screenshot-specific visual match remains open until the reference is attached.
 
-### 2026-11-15 — Kittl Canvas behavior audit and scope gates
+### 2026-11-15 — Editor canvas behavior audit and scope gates
 
-- Studied Kittl's public editor documentation for Canvas transforms, Text insertion/editing, Layers, Alignment/Tidy, Text Transformation, Text Shadow, Text Decoration, and Glyphs.
-- Compared those behaviors against the current MH Fashion layer model and renderer without changing implementation code. The current system can absorb basic Kittl-style move/scale/rotate, group/child selection, layer synchronization, direct Text insertion, alignment, tidy spacing, flip, and limited text effects.
+- Studied public editor documentation for Canvas transforms, Text insertion/editing, Layers, Alignment/Tidy, Text Transformation, Text Shadow, Text Decoration, and Glyphs.
+- Compared those behaviors against the current MH Fashion layer model and renderer without changing implementation code. The current system can absorb basic reference-style move/scale/rotate, group/child selection, layer synchronization, direct Text insertion, alignment, tidy spacing, flip, and limited text effects.
 - Recorded architecture expansion points and approval gates for character-level text runs, text-box wrapping, full Arch/Wave/Circle/Flag transformations, stacked shadow/decoration effects, vector node editing, multi-artboard/infinite canvas, and collaboration/version history.
 - Added the detailed comparison and decision checklist to a separate editor notes file (removed on 2026-11-21; the plan and doc now live in `Plan/EDITOR_PLAN.md` and `Doc/EDITOR.md`). No advanced feature implementation was started before owner approval.
 
-### 2026-11-15 — Kittl-inspired MH Fashion editor visual pass
+### 2026-11-15 — reference-inspired MH Fashion editor visual pass
 
-- Approved scope now includes the full Kittl-inspired Canvas direction, but the MH Fashion print-canvas and Front/Back Mockup model remains the source of truth. The visual direction is intentionally inspired rather than copied: dark graphite surfaces, rounded asset cards, clearer context-aware panels, stronger typography hierarchy, live-state accents, and neon-lime MH Fashion focus states.
+- Approved scope now includes the full reference-inspired Canvas direction, but the MH Fashion print-canvas and Front/Back Mockup model remains the source of truth. The visual direction is intentionally inspired rather than copied: dark graphite surfaces, rounded asset cards, clearer context-aware panels, stronger typography hierarchy, live-state accents, and neon-lime MH Fashion focus states.
 - Refined the Edit rail, asset cards, Layers dock, group rows, and Adjustment dock with responsive rounded surfaces, gradient headers, accent glow, compact metadata, stronger selected states, and touch-safe sizing for Phone/Mobile as well as Web/Desktop.
-- No Kittl brand assets or copied proprietary UI were introduced. Advanced behavior work remains staged behind the approved model-expansion plan: text boxes/runs, transformations, effects, alignment/tidy, vector foundations, and future artboard foundations.
+- No third-party brand assets or copied proprietary UI were introduced. Advanced behavior work remains staged behind the approved model-expansion plan: text boxes/runs, transformations, effects, alignment/tidy, vector foundations, and future artboard foundations.
 - Files: `Plan/PLAN.md`, `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorLayersPanel.tsx`, `apps/web/src/components/EditorEditSidebar.tsx`.
 
-### 2026-11-15 — Kittl-inspired text font browser
+### 2026-11-15 — reference-inspired text font browser
 
 - Expanded the Text Adjustment panel with a searchable/filterable font browser, recent-font chips, selected-font highlighting, and live font previews. Choosing a font updates the selected text layer immediately without re-entering text.
 - Kept the existing direct-canvas text workflow and all typography controls intact. The font browser is scrollable and touch-safe on Phone/Mobile while remaining compact on Web/Desktop.
@@ -925,11 +925,11 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 
 ### 2026-11-15 — Preserve MH Fashion Layer Box styling
 
-- Owner clarification: the Layers Box must retain the MH Fashion Photoshop-style visual treatment rather than the new Kittl-inspired surface styling. Restored the previous Layers Box presentation while preserving all existing behavior: layer selection, drag reorder, folder groups, masks, links, appearance controls, and adjustment entry point.
-- Kittl-inspired styling remains scoped to the Edit rail, design/element cards, Adjustment panel, Text controls, and Canvas interaction affordances. The Layers Box is intentionally excluded from that visual treatment.
+- Owner clarification: the Layers Box must retain the MH Fashion desktop-editor-style visual treatment rather than the new reference-inspired surface styling. Restored the previous Layers Box presentation while preserving all existing behavior: layer selection, drag reorder, folder groups, masks, links, appearance controls, and adjustment entry point.
+- reference-inspired styling remains scoped to the Edit rail, design/element cards, Adjustment panel, Text controls, and Canvas interaction affordances. The Layers Box is intentionally excluded from that visual treatment.
 - Validation: canvas-shell **14/14**, editor-layers **11/11**, Next.js production build passed, and `git diff --check` passed.
 
-### 2026-11-15 — Compact Kittl-style Adjustment sections and text effects
+### 2026-11-15 — Compact reference-style Adjustment sections and text effects
 
 - Reworked the Adjustment panel into compact expandable sections so related controls no longer create one very long scrolling column. Sections are `Text`, `Font`, `Style & Alignment`, `Effects`, `Transform`, and `Appearance`, each using a plus/minus disclosure control and touch-safe row height.
 - Added live text effect state to the text layer model for `None`, `Shadow`, and `Outline`, including effect color, shadow offset, and outline width. Added the first live transform presets (`Plain`, `Arch`, `Wave`, `Circle`) to the Adjustment UI while keeping text editable.
@@ -950,14 +950,14 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Added regression coverage for all three rectangle operations. The Layers Box remains unchanged.
 - Validation: canvas-shell **15/15**, editor-layers **12/12**, Next.js production build passed, and `git diff --check` passed.
 
-### 2026-11-16 — Kittl-inspired Pan/Hand tool interaction
+### 2026-11-16 — reference-inspired Pan/Hand tool interaction
 
-- Improved the Pan/Hand tool without changing the Layer Box. The Hand tool now has a clearer Kittl-inspired active icon state, a pan-specific tooltip, accent glow, and grab/grabbing cursor feedback.
+- Improved the Pan/Hand tool without changing the Layer Box. The Hand tool now has a clearer reference-inspired active icon state, a pan-specific tooltip, accent glow, and grab/grabbing cursor feedback.
 - Preserved and clarified the interaction model: Hand tool + left drag, Space + left drag, middle-button drag, and touch Pan mode all move the editor viewport. The viewport now exposes `data-pan-mode="hand|scroll"` for reliable state styling and testing.
 - Refined the Phone/Mobile Pan view control into a rounded active pill with a dedicated hand icon badge while retaining zoom and reset controls.
 - Validation: canvas-shell **15/15**, editor-layers **12/12**, Next.js production build passed, and `git diff --check` passed.
 
-### 2026-11-16 — Kittl-inspired Pen tool foundation
+### 2026-11-16 — reference-inspired Pen tool foundation
 
 - Reworked the Pen tool from a freehand stroke fallback into a vector anchor workflow. Click adds anchors, the active path previews with a dashed segment and anchor nodes, clicking near the first anchor closes the path, and double-click finishes an open path.
 - Finished paths are created as editable `shape` layers, selected immediately, revealed in the Layers stack on desktop, and styled with the active foreground color. Switching tools clears an unfinished path so partial geometry is not accidentally committed.
@@ -965,22 +965,22 @@ The current `/admin` page follows these cues but uses clearly labeled local prev
 - Validation: canvas-shell **15/15**, editor-layers **12/12**, Next.js production build passed, and `git diff --check` passed.
 
 
-### 2026-11-16 — Stackable Kittl-inspired text effects and Text tool removal
+### 2026-11-16 — Stackable reference-inspired text effects and Text tool removal
 
 - Expanded the selected-text Effects section from a single Shadow/Outline choice into a reusable stack of seven editable effect types: Shadow, Outline, Glow, Offset, Echo, Extrude, and Stripe. Each effect can be added more than once, enabled/disabled, recolored, configured with its relevant controls, reordered, and removed; clearing the stack leaves the editable text intact.
 - Added the stack to the shared text-layer model and immutable update/duplicate paths. The common SVG preview renderer now draws those effects on both the print canvas and Front/Back mockups, preserving existing legacy Shadow/Outline settings for older text layers. The effect controls retain compact cards and coarse-pointer target sizes for Phone/Mobile.
 - Removed the Text button and its canvas-click insertion route from the bottom Tools bar. Text insertion remains available through the Edit sidebar's `Add Text` action, which focuses the existing inline text editor.
-- Files: `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/KittlCanvas.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`, `Plan/PLAN.md`.
+- Files: `apps/web/src/components/EditorAdjustmentsPanel.tsx`, `apps/web/src/components/EditorLayerPreview.tsx`, `apps/web/src/components/EditorToolsBar.tsx`, `apps/web/src/components/EditorCanvas.tsx`, `apps/web/src/lib/editor-layers.ts`, `tests/canvas-shell.test.cjs`, `tests/editor-layers.test.cjs`, `Plan/PLAN.md`.
 - Validation: all five relevant unit suites passed **39/39** (Guide 9, browser guards 1, canvas spec 1, canvas-shell 15, editor layers 13); TypeScript passed; Next.js production build and OpenNext Cloudflare Worker build passed; `git diff --check` passed. ESLint reported **0 errors / 26 existing repository warnings**.
 - Limitations: effect rendering is SVG-based and remains live/editable text, but the current transforms are visual presets rather than true per-character warps; gradient/texture fills, multi-color vector exports, and final production print export remain outside this implementation.
 
 ### 2026-11-17 — Tools Bar structure reset before tool-by-tool implementation
 
-The unfinished Subpath/Node Editing, Fill/Stroke property panel, and Bézier-handle work was paused before commit. The visible Tools Bar order is now Move, Hand tool, Pan tool, Pen tool, Brush, Eraser tool, Shape tools, Gradient tool, Color switch tool, Undo, and Redo. Individual tool behavior will be implemented one at a time after the structure is accepted. The Layer Box remains unchanged, and the existing Photoshop/Kittl-inspired Pen foundation is retained.
+The unfinished Subpath/Node Editing, Fill/Stroke property panel, and Bézier-handle work was paused before commit. The visible Tools Bar order is now Move, Hand tool, Pan tool, Pen tool, Brush, Eraser tool, Shape tools, Gradient tool, Color switch tool, Undo, and Redo. Individual tool behavior will be implemented one at a time after the structure is accepted. The Layer Box remains unchanged, and the existing desktop-editor-inspired Pen foundation is retained.
 
-### 2026-11-17 — Kittl-style Free Transform visual pass
+### 2026-11-17 — reference-style Free Transform visual pass
 
-The existing Free Transform behavior was kept intact: all eight resize handles, move behavior, and rotation remain functional. Its appearance now uses the MH Fashion theme accent instead of Kittl blue: a thin 2px accent outline, compact square resize controls, a thin rotation stem, and a small rotation dot. Each visible control has a separate transparent touch hit area so Phone/Mobile editing remains finger-friendly without making the visual controls oversized.
+The existing Free Transform behavior was kept intact: all eight resize handles, move behavior, and rotation remain functional. Its appearance now uses the MH Fashion theme accent instead of blue: a thin 2px accent outline, compact square resize controls, a thin rotation stem, and a small rotation dot. Each visible control has a separate transparent touch hit area so Phone/Mobile editing remains finger-friendly without making the visual controls oversized.
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
 
@@ -996,9 +996,9 @@ Corrected the tool naming based on the owner's clarification: the former `Pan` t
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
 
-### 2026-11-17 — Kittl blue rotating Free Transform and live angle label
+### 2026-11-17 — blue rotating Free Transform and live angle label
 
-Free Transform now uses a thinner Kittl-style blue outline (`#4c9dff`) and compact blue/white resize and rotation controls. The complete transform-control group rotates around the selection center together with the selected layer, including the resize handles, rotation stem, rotation dot, and angle badge. While rotating, a small live degree label is displayed near the rotation control; the displayed value is normalized to 0–359 degrees. Existing move, resize, rotation, and mobile touch hit areas remain intact.
+Free Transform now uses a thinner reference-style blue outline (`#4c9dff`) and compact blue/white resize and rotation controls. The complete transform-control group rotates around the selection center together with the selected layer, including the resize handles, rotation stem, rotation dot, and angle badge. While rotating, a small live degree label is displayed near the rotation control; the displayed value is normalized to 0–359 degrees. Existing move, resize, rotation, and mobile touch hit areas remain intact.
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
 
@@ -1010,12 +1010,12 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 
 ### 2026-11-17 — Circular rotate-arrow handle refinement
 
-Refined the Free Transform rotation control to match the supplied reference: removed the protruding connector stem and replaced the plain dot with a small white circular control containing a dark circular rotate-arrow glyph and a thin Kittl-blue outline. The larger transparent hit area remains for reliable pointer/touch rotation, and the live degree badge remains nearby.
+Refined the Free Transform rotation control to match the supplied reference: removed the protruding connector stem and replaced the plain dot with a small white circular control containing a dark circular rotate-arrow glyph and a thin the reference editor-blue outline. The larger transparent hit area remains for reliable pointer/touch rotation, and the live degree badge remains nearby.
 
 Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js production build passed, and `git diff --check` passed.
 
 
-### 2026-11-16 — Functional Kittl-inspired Shape tool
+### 2026-11-16 — Functional reference-inspired Shape tool
 
 - Replaced the Shape tool's placeholder notice with a compact, touch-friendly preset picker: Rectangle, Rounded rectangle, Ellipse, Triangle, Diamond, Line, Arrow, Star, and Hexagon. The selected preset remains active while drawing; the foreground color styles new geometry.
 - Dragging on the print canvas renders a live SVG preview; releasing creates a native editable `shape` layer, selects it, reveals the Layers stack on desktop, and makes it available to the shared mockup renderer. Pointer cancel/lost capture clears an unfinished shape rather than committing it. Existing layer transform handles apply to these vector layers.
@@ -1024,14 +1024,14 @@ Validation passed: canvas-shell **15/15**, editor-layers **14/14**, Next.js prod
 - Current scope: shape choices are geometric vector paths and draw with a drag gesture. Custom path editing, independent fill/stroke styling controls, and more advanced shape adjustment handles are not part of this increment.
 
 
-### 2026-11-17 — Photoshop-style Free Transform mechanics
+### 2026-11-17 — desktop-editor-style Free Transform mechanics
 
-- Kept the owner-approved Kittl-inspired control visuals: thin blue selection outline, eight compact resize points, white circular rotate-arrow control without a stem, live degree badge, and larger transparent pointer targets. The owner clarified that Photoshop-like interaction is acceptable when the tool works reliably.
+- Kept the owner-approved reference-inspired control visuals: thin blue selection outline, eight compact resize points, white circular rotate-arrow control without a stem, live degree badge, and larger transparent pointer targets. The owner clarified that desktop-editor-like interaction is acceptable when the tool works reliably.
 - Corrected transform scaling and rotation to use each layer's actual bounds center rather than the artwork canvas center. The active selection's rotation is reflected by the bounding controls; rotated resize drags are interpreted in the selected object's local coordinates. The actual resize-handle key is read from its parent handle group, fixing the prior fallback that treated every handle as bottom-right.
 - Corner handles preserve proportions by default. Holding Shift permits independent X/Y scaling; Alt/Option scales from the selection center. Holding Shift while rotating snaps to 15-degree increments. Scaling/rotation now keep the opposite anchor or group center stable and merge updates into selected layers without clearing transforms on unselected layers. Pen node editing uses the same per-axis scaling and local pivot transforms. Modifier help is exposed on touch-size controls through accessible descriptions.
 - Added deterministic math regression coverage for proportional and free scaling, center anchoring, rotated side handles, and rotation snapping. Validation passed: six relevant suites **50/50**; TypeScript passed; Next.js production and OpenNext Cloudflare builds passed; `git diff --check` passed. ESLint returned **0 errors / 25 warnings**.
-- Scope limitation: this increment covers move, proportional/free scale, center scaling, and snapped/free rotation. Photoshop's skew, perspective, distortion, warp, numeric transform fields, persistence to serialized layer data, and synchronization of canvas transform maps into separate mockup previews are not implemented here.
-- Behavior reference: [Adobe Photoshop — Transform images, shapes, and paths](https://helpx.adobe.com/photoshop/desktop/crop-resize-transform/resize-adjust-resolution/transform-images-and-shapes-and-paths.html) and [Kittl — Canvas essentials](https://help.kittl.com/editing-and-design/basic-handling).
+- Scope limitation: this increment covers move, proportional/free scale, center scaling, and snapped/free rotation. the desktop editor's skew, perspective, distortion, warp, numeric transform fields, persistence to serialized layer data, and synchronization of canvas transform maps into separate mockup previews are not implemented here.
+- Behavior reference: desktop image editors, transform of images, shapes, and paths.
 ### 2026-11-18 — Canvas cursors match Tools Bar icons
 
 Aligned the custom Canvas cursor SVGs with the same Lucide icon geometry used by the Tools Bar instead of using separately drawn approximations. Pen, Pencil, Brush, Move, Hand, Text, Shape, and Gradient now reuse matching icon path shapes and stroke treatment. Eraser follows the requested exception and displays a simple circular cursor rather than the Eraser icon. The cursor remains synchronized between the editor viewport and print canvas.
@@ -1046,13 +1046,13 @@ Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js prod
 
 ### 2026-11-18 — RAW-style Photo color controls
 
-Expanded the Photo Adjustments section toward a Photoshop Camera Raw workflow. Added live Temperature, Tint, Exposure, Highlights, Shadows, Vibrance, Hue, and Vignette controls, plus a Color Mix group with independent Red, Green, and Blue channel sliders. RGB channel values use an SVG component-transfer filter; Temperature/Tint/Hue/Vibrance/Exposure are composed into the live image filter; Vignette renders as a radial gradient overlay. All values persist immutably on the image layer and remain ready for future non-destructive RAW processing services.
+Expanded the Photo Adjustments section toward a professional photo editor workflow. Added live Temperature, Tint, Exposure, Highlights, Shadows, Vibrance, Hue, and Vignette controls, plus a Color Mix group with independent Red, Green, and Blue channel sliders. RGB channel values use an SVG component-transfer filter; Temperature/Tint/Hue/Vibrance/Exposure are composed into the live image filter; Vignette renders as a radial gradient overlay. All values persist immutably on the image layer and remain ready for future non-destructive RAW processing services.
 
 Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
 
 ### 2026-11-18 — Photo Curves and Levels
 
-Added Photoshop Camera Raw-style Levels and Curves to the Photo Adjustments section. Levels includes Black point, White point, and Gamma controls. Curves includes a live graph preview and five editable control-point sliders; the curve is applied through SVG component-transfer table values. Levels are applied through SVG table/gamma transfer stages before RGB channel mixing, so the controls render non-destructively in the Canvas and previews. All state remains immutable on the image layer.
+Added professional photo-editor-style Levels and Curves to the Photo Adjustments section. Levels includes Black point, White point, and Gamma controls. Curves includes a live graph preview and five editable control-point sliders; the curve is applied through SVG component-transfer table values. Levels are applied through SVG table/gamma transfer stages before RGB channel mixing, so the controls render non-destructively in the Canvas and previews. All state remains immutable on the image layer.
 
 Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js production build passed, and `git diff --check` passed.
 
@@ -1071,24 +1071,23 @@ Validation passed: canvas-shell **16/16**, editor-layers **18/18**, Next.js prod
 
 ### 2026-11-18 — Photo layers are non-drawable; sectioned Photo Adjustments
 
-Three owner changes landed together. Drawing tools no longer touch a photo layer: `KittlCanvas.startArtworkStroke` returns early for `brush`, `pencil`, `pen`, `shape`, `gradient`, and `eraser` when the selected layer's kind is `image`, `chooseTool` falls back to Move with an explanatory notice, and `EditorToolsBar` receives a `drawingToolsDisabled` prop that greys those buttons out (they are the only disabled tools; Move, Hand, Text, colours, and undo/redo stay live). A photo is therefore edited only through Photo Adjustments.
+Three owner changes landed together. Drawing tools no longer touch a photo layer: `EditorCanvas.startArtworkStroke` returns early for `brush`, `pencil`, `pen`, `shape`, `gradient`, and `eraser` when the selected layer's kind is `image`, `chooseTool` falls back to Move with an explanatory notice, and `EditorToolsBar` receives a `drawingToolsDisabled` prop that greys those buttons out (they are the only disabled tools; Move, Hand, Text, colours, and undo/redo stay live). A photo is therefore edited only through Photo Adjustments.
 
-Photo Adjustments was reorganised into independent Camera Raw sections that each open on their own: Basic, Tone Curve, Color Mixer, Color Grading, Levels, Selective Color, Channel Mixer, Detail, Effects, Optics, and Calibration. The service actions — Upscale, Remove Background, AI Enhance, Smart Filter, and the Add/Edit/Remove layer mask buttons — moved into a separate `Photo services` box outside the adjustment sections. Color Mixer gained a Hue/Saturation/Luminance mode with an eight-band per-color row (red, orange, yellow, green, aqua, blue, purple, magenta). Color Grading gained Blending and Balance. Tone Curve gained parametric Highlights/Lights/Darks/Shadows regions next to the draggable point graph. Detail gained Color Noise Reduction. Optics (Remove Chromatic Aberration, Lens Corrections) and Calibration (Red/Green/Blue Primary hue and saturation) are new sections.
+Photo Adjustments was reorganised into independent photo-editor sections that each open on their own: Basic, Tone Curve, Color Mixer, Color Grading, Levels, Selective Color, Channel Mixer, Detail, Effects, Optics, and Calibration. The service actions — Upscale, Remove Background, AI Enhance, Smart Filter, and the Add/Edit/Remove layer mask buttons — moved into a separate `Photo services` box outside the adjustment sections. Color Mixer gained a Hue/Saturation/Luminance mode with an eight-band per-color row (red, orange, yellow, green, aqua, blue, purple, magenta). Color Grading gained Blending and Balance. Tone Curve gained parametric Highlights/Lights/Darks/Shadows regions next to the draggable point graph. Detail gained Color Noise Reduction. Optics (Remove Chromatic Aberration, Lens Corrections) and Calibration (Red/Green/Blue Primary hue and saturation) are new sections.
 
 The math is in `photo-adjustments.ts`: parametric curve regions are smooth bumps folded into the single tone transfer table, and the per-color mixer, primary calibration, lens correction, and chromatic-aberration controls fold into the single colour matrix and CSS filter. Since an SVG filter cannot isolate a single hue per pixel, the per-color and primary controls act as a weighted global shift — a documented approximation, stated as such in the code comment. New fields (`splitBlending`, `mixerHue`/`mixerSaturation`/`mixerLuminance`, `curveShadows`/`curveDarks`/`curveLights`/`curveHighlights`, `colorNoiseReduction`, `removeChromaticAberration`, `lensCorrections`, and the six primary values) were added to `EditorImageContent`, `PhotoAdjustmentKey`, the reset, and the change detector.
 
 Validation passed: canvas-shell **20/20**, photo-adjustments **18/18**, editor-layers **20/20**, editor-pen-path **5/5**, editor-price **4/4**, and the full repository Node suite **83/83**; TypeScript passed; Next.js production build passed; ESLint **0 errors / 25 warnings** (none in changed files); `git diff --check` passed.
 
-### 2026-11-18 — Photoshop Camera Raw-style Photo Adjustments
+### 2026-11-18 — professional photo-editor-style Photo Adjustments
 
-Rebuilt Photo Adjustments around the Camera Raw model instead of a flat slider list. Controls are grouped into collapsible panels: White Balance (Temperature/Tint), Light (Exposure in EV, Contrast, Highlights, Shadows, Whites, Blacks), Presence (Texture, Clarity, Dehaze, Vibrance, Saturation, Hue), Tone Curve, Levels, Color Mixer (HSL), Color Grading (highlight/midtone/shadow hue+saturation and balance), Selective Color, Channel Mixer, Effects (Vignette, Grain, Grain size), Detail (Sharpen, Noise reduction, Blur), and Smart & AI. Auto and Reset buttons set a balanced starting point or return every control to neutral.
+Rebuilt Photo Adjustments around a professional photo-editor model instead of a flat slider list. Controls are grouped into collapsible panels: White Balance (Temperature/Tint), Light (Exposure in EV, Contrast, Highlights, Shadows, Whites, Blacks), Presence (Texture, Clarity, Dehaze, Vibrance, Saturation, Hue), Tone Curve, Levels, Color Mixer (HSL), Color Grading (highlight/midtone/shadow hue+saturation and balance), Selective Color, Channel Mixer, Effects (Vignette, Grain, Grain size), Detail (Sharpen, Noise reduction, Blur), and Smart & AI. Auto and Reset buttons set a balanced starting point or return every control to neutral.
 
-All the math moved into the pure, testable module `apps/web/src/lib/photo-adjustments.ts`. Exposure is applied in stops (2^EV), and Highlights/Shadows/Whites/Blacks act only on their Adobe-documented tonal zones, so the whole tone stage folds into one luminance transfer table that the preview applies through a single `feComponentTransfer`. White balance, hue, saturation/vibrance, HSL, selective color, and the RGB channel mix combine into one `feColorMatrix`. Split toning renders as a three-stop gradient overlay, vignette as a radial gradient, and grain as a `feTurbulence` overlay. Presence sliders (clarity/texture/dehaze/sharpen/noise reduction) and smart presets compose a CSS filter. Every value stays an immutable instruction on `EditorImageContent`, so the preview, mockups, and the print canvas render identically and non-destructively.
+All the math moved into the pure, testable module `apps/web/src/lib/photo-adjustments.ts`. Exposure is applied in stops (2^EV), and Highlights/Shadows/Whites/Blacks act only on their documented tonal zones, so the whole tone stage folds into one luminance transfer table that the preview applies through a single `feComponentTransfer`. White balance, hue, saturation/vibrance, HSL, selective color, and the RGB channel mix combine into one `feColorMatrix`. Split toning renders as a three-stop gradient overlay, vignette as a radial gradient, and grain as a `feTurbulence` overlay. Presence sliders (clarity/texture/dehaze/sharpen/noise reduction) and smart presets compose a CSS filter. Every value stays an immutable instruction on `EditorImageContent`, so the preview, mockups, and the print canvas render identically and non-destructively.
 
 Tone-curve points are now draggable on a live graph, and the previous neutral values for Brightness/Contrast/Saturation moved to 0 (signed) so a Reset is truly neutral.
 
-Validation passed: photo-adjustments **13/13**, canvas-shell **19/19**, editor-layers **20/20**, editor-pen-path **5/5**, editor-price **4/4**, and the full repository Node suite **77/77**; TypeScript passed; Next.js production build passed; ESLint **0 errors / 25 warnings** (none in changed files); `git diff --check` passed. Control semantics reference [Adobe — Lightroom Classic tone controls](https://helpx.adobe.com/lightroom-classic/help/tone-control-adjustment.html) and [Edit photos in the Develop module](https://helpx.adobe.com/lightroom-classic/help/applying-adjustments-develop-module-basic.html).
-
+Validation passed: photo-adjustments **13/13**, canvas-shell **19/19**, editor-layers **20/20**, editor-pen-path **5/5**, editor-price **4/4**, and the full repository Node suite **77/77**; TypeScript passed; Next.js production build passed; ESLint **0 errors / 25 warnings** (none in changed files); `git diff --check` passed. Control semantics follow standard tone-control practice.
 
 ## 2026-11-18 — Pen and Shape drawing reuse the active layer
 Pen and Shape gestures now append vector paths to the selected unlocked layer rather than creating a new layer for every completed drawing action. They keep the selected layer in place and do not automatically open the Layers panel; a locked or missing active layer blocks the drawing instead of creating one. Pen remains active after a path is committed, matching the concurrent Pen-continuity directive. Multiple Pen paths can coexist in one layer, and hit-testing, anchor insertion/removal, and Bézier-handle edits carry the path index so only the intended path changes. Explicit Add Layer remains available; text, image, and design insertions continue to create their own editable object layers. After integrating the latest `origin/main`, validation passed: all five relevant test suites **47/47**, TypeScript, Next.js production build, and OpenNext Cloudflare build. ESLint reported **0 errors and 25 warnings**, with no diagnostics in changed source files; `git diff --check` passed.
@@ -1135,11 +1134,30 @@ instruction, and both are written from the code. No editor behaviour changed.
   sidebar, undo and state, phone behaviour, keyboard and pointer, and the test suites.
 - The editor material that referenced other design products was removed, together with the editor
   specification that used to sit in `Plan/PLAN.md`; §6 there is now a short summary with links.
-- What the code check found: no save and no persistence (Save and Buy are disabled, nothing is written to
-  storage), no design hand-off to an order, undo covers layers only and has no keyboard shortcut, the
-  `circle` text preset paints nothing, Shape Builder is limited to two axis-aligned rectangles, and
-  align/tidy, flip, hover highlight, positional snapping, a context menu, glyph controls, per-character
-  styling, extra products and the sidebar services are all absent.
+- What the code check found: Save and Buy are disabled and the editor never restores the browser draft it
+  writes (`/create` always opens on one blank layer, and no order carries the artwork), undo covers
+  layers only and has no keyboard shortcut, the `circle` text preset paints nothing, Shape Builder is
+  limited to two axis-aligned rectangles, and align/tidy, flip, hover highlight, positional snapping, a
+  context menu, glyph controls, per-character styling, extra products and the sidebar services are all
+  absent.
 
 Validation: documentation only — no source change.
+
+### 2026-11-21 — Editor plan and doc written from the code; component renamed
+
+The owner asked for the editor plan and documentation to describe only the code that works, and for
+references to other design products to go. No editor behaviour changed.
+
+- `Plan/EDITOR_PLAN.md` and `Doc/EDITOR.md` are the only editor plan and documentation; the older editor
+  specification and notes were removed from `Plan/PLAN.md` and from `Doc/`.
+- The canvas component is now `components/EditorCanvas.tsx` (the component is `EditorCanvas`, renamed
+  from its previous name); `app/create/page.tsx` and the tests were updated, and code comments plus one
+  panel sentence no longer name other products.
+- The code check corrected the plan: the editor does write a browser draft (`saveDesignDraft`,
+  `mh-fashion-design-draft-v1`, 400 ms debounce) and a design-editable product page renders it, but
+  `/create` never reads it back, `clearDesignDraft` is never called, `/create` ignores `?product=`, and
+  Save and Buy are disabled. Everything else the plan records was re-checked in the source.
+
+Validation: TypeScript passed; ESLint exit 0 on the changed files; Next.js production build passed; the
+full Node suite passed **343/343**.
 

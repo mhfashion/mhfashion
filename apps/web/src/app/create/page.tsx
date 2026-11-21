@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import KittlCanvas from "@/components/KittlCanvas";
+import EditorCanvas from "@/components/EditorCanvas";
 import Header from "@/components/Header";
 import EditorHeaderBar2 from "@/components/EditorHeaderBar2";
 import { DEFAULT_EDITOR_GSM, DEFAULT_EDITOR_PRODUCT, type EditorProduct } from "@/lib/editor-product";
@@ -22,7 +22,7 @@ export default function CreatePage() {
         onGsmChange={setGsm}
       />
       <div className="min-h-0 flex-1">
-        <KittlCanvas product={product} />
+        <EditorCanvas product={product} />
       </div>
     </div>
   );
