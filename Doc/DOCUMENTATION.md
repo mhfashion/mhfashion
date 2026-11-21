@@ -1302,3 +1302,16 @@ Checked the remaining-work register against the source and corrected the entries
 Verified: `node --test` 373/373, tsc clean, ESLint 0 errors, `next build` OK, storefront e2e (desktop + phone)
 including hero-ad replace/restore, and Chromium checks of the admin table, the drawer with a picked photo, the
 home hero photo, the video branch, and hero + strip ads at 1440x1000 and 390x844.
+
+### 2026-11-21 — Short animations as animated GIF/WebP (no video upload needed)
+
+A loop of a few frames does not need a video file or R2: an animated **GIF or WebP** is an image, so
+"Banner photo" accepts it — pick it from the computer (≤ 900 KB), or point at `/ads/loop.gif` or an `https://`
+URL. `<img>` loops it natively, so the home hero plays it exactly like a still photo.
+
+- A 6-frame 1600x600 banner GIF measured **19 KB**, so the 900 KB inline limit is generous for this.
+- The admin labels these: the table's media column shows **GIF** and the preview header shows *animated photo*.
+- `looksAnimatedMedia(url)` (`.gif` / `.webp`, including `data:image/gif…`) and `adMediaKind(ad)` are the only
+  places that decide the label — nothing in the storefront special-cases animation.
+- The **Animation video** option stays for `.mp4` / `.webm` links once R2 is connected; a data URL is refused
+  for video because it would blow the localStorage budget.

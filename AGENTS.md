@@ -516,3 +516,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   (`app/admin/posts/page.tsx` wraps `AdminPosts` in `Suspense`). `/admin/jersey` only redirects.
 - `tests/admin-ads.test.cjs` and `tests/admin-jersey.test.cjs` guard both contracts (including that the sidebar
   has no `id: "jersey"` entry); `tests/storefront-e2e.cjs` seeds a live hero ad and checks replace + restore.
+- Short animations ride on the photo path: an animated GIF/WebP loops natively in `<img>`, so no video or R2 is
+  needed (a 6-frame 1600x600 banner GIF is ~19 KB). `looksAnimatedMedia` / `adMediaKind` in `lib/admin-ads.ts`
+  are the only label logic ("GIF" in the table, "animated photo" in the preview) — the storefront never
+  special-cases animation, and `validateAdDraft` still refuses a `data:` URL for `mediaType: "video"`.

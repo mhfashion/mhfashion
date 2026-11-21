@@ -2163,3 +2163,13 @@ an ad is **only media**: a banner photo or an animation video, shown as the **ho
 - Full suite **373/373**, `tsc` clean, ESLint 0 errors, build passed. Chromium: admin table + drawer with a
   picked photo, the photo as the home hero, the video branch (`<video autoplay muted loop playsinline>`), and
   hero + strip ads at 1440x1000 and 390x844.
+
+### 2026-11-21 (later) — a few frames is enough
+Owner: R2 gets connected later, and the animation does not need to be big — a few frames is enough.
+So a short loop needs no video infrastructure at all:
+- An animated **GIF/WebP** is just an image: it can be picked from the computer (≤ 900 KB), stored with the ad,
+  and `<img>` loops it in place. Measured: a 6-frame 1600x600 hero GIF is **19 KB**.
+- `looksAnimatedMedia()` / `adMediaKind()` label such an ad "GIF" in the table and "animated photo" in the
+  preview, and the drawer says so under the media switch; the video option stays for when R2 is wired.
+- Verified in Chromium: pick `hero-anim.gif` → drawer says "animated photo" → save → table shows GIF → the home
+  hero renders it and two screenshots 260 ms apart differ inside the banner (it really animates).

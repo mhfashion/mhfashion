@@ -27,6 +27,16 @@ export const AD_SLOTS: { id: AdSlotId; label: string; where: string; size: strin
 
 export const MAX_IMAGE_BYTES = 900 * 1024;
 
+/** A few frames are enough: an animated GIF or WebP loops in an <img>, so it needs no video at all. */
+export function looksAnimatedMedia(url: string): boolean {
+  return /\.(gif|webp)([?#].*)?$/i.test(url) || /^data:image\/(gif|webp)/i.test(url);
+}
+
+export function adMediaKind(ad: Pick<AdminAd, "mediaType" | "mediaUrl">): "Video" | "GIF" | "Photo" {
+  if (ad.mediaType === "video") return "Video";
+  return looksAnimatedMedia(ad.mediaUrl) ? "GIF" : "Photo";
+}
+
 export function adSlotLabel(slot: AdSlotId): string {
   return AD_SLOTS.find((entry) => entry.id === slot)?.label ?? slot;
 }

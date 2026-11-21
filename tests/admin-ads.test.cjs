@@ -59,6 +59,23 @@ test("a slot renders the newest live ad and nothing when every ad is paused", ()
   assert.equal(ads.activeAdFor([otherSlot], "home-hero", NOW), null);
 });
 
+test("a short animation can ride along as an animated GIF instead of a video", () => {
+  assert.equal(ads.looksAnimatedMedia("/ads/hero.gif"), true);
+  assert.equal(ads.looksAnimatedMedia("/ads/hero.GIF?v=2"), true);
+  assert.equal(ads.looksAnimatedMedia("https://cdn.example.com/loop.webp"), true);
+  assert.equal(ads.looksAnimatedMedia("data:image/gif;base64,R0lGOD"), true);
+  assert.equal(ads.looksAnimatedMedia("/ads/hero.jpg"), false);
+  assert.equal(ads.looksAnimatedMedia("data:image/png;base64,AAA"), false);
+
+  assert.equal(ads.adMediaKind({ mediaType: "image", mediaUrl: "/ads/hero.gif" }), "GIF");
+  assert.equal(ads.adMediaKind({ mediaType: "image", mediaUrl: "/ads/hero.jpg" }), "Photo");
+  assert.equal(ads.adMediaKind({ mediaType: "video", mediaUrl: "/ads/hero.mp4" }), "Video");
+
+  // A GIF is an image, so the photo rules apply and it can even be picked from the computer.
+  const gif = ads.adDraftFrom({ ...base, mediaUrl: "data:image/gif;base64,R0lGODlhAQABAAAAACw=" }, NOW);
+  assert.deepEqual(ads.validateAdDraft(gif), []);
+});
+
 test("the draft only accepts media the storefront can play", () => {
   const good = ads.adDraftFrom(base, NOW);
   assert.deepEqual(ads.validateAdDraft(good), []);
@@ -126,6 +143,9 @@ test("Ads is a registered admin module with its own route and screen", () => {
     'aria-label="Ad description"',
     "Animation video",
     "Banner photo",
+    "animated GIF or WebP picked as a photo loops on its own",
+    "Pick a photo or an animated GIF",
+    "adMediaKind(ad)",
     "upsertAd",
     "toggleAd",
     "removeAd",

@@ -10,7 +10,7 @@ import {
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { formatAdminDate, type AdminAd, type AdMediaType, type AdSlotId } from "@/lib/admin-demo-data";
 import {
-  AD_SLOTS, MAX_IMAGE_BYTES, adDraftFrom, adFromDraft, adSlotLabel, adStatus, readImageFile,
+  AD_SLOTS, MAX_IMAGE_BYTES, adDraftFrom, adFromDraft, adMediaKind, adSlotLabel, adStatus, looksAnimatedMedia, readImageFile,
   removeAd, toggleAd, upsertAd, validateAdDraft, type AdminAdDraft, type AdminAdStatus,
 } from "@/lib/admin-ads";
 
@@ -26,7 +26,7 @@ function MediaPreview({ draft }: { draft: AdminAdDraft }) {
   return (
     <div data-ad-preview className="rounded-xl border border-[#edf0f3] bg-[#fafbfc] p-3">
       <p className="text-[9px] font-bold uppercase tracking-wide text-[#828c99]">
-        {slot?.label ?? "Ad"} preview · {slot?.size} · {draft.mediaType === "video" ? "looping video" : "photo"}
+        {slot?.label ?? "Ad"} preview · {slot?.size} · {draft.mediaType === "video" ? "looping video" : looksAnimatedMedia(draft.mediaUrl) ? "animated photo" : "photo"}
       </p>
       <div className={`mt-2 overflow-hidden rounded-lg bg-[#eef1f3] ${draft.slot === "home-hero" ? "aspect-[16/6]" : "aspect-[16/3]"}`}>
         {draft.mediaUrl ? (
@@ -165,7 +165,7 @@ export default function AdminAds() {
                             ? <video src={ad.mediaUrl} muted playsInline className="h-full w-full object-cover" />
                             : <img src={ad.mediaUrl} alt="" className="h-full w-full object-cover" />}
                         </span>
-                        <span className="text-[9px] text-[#6c7683]">{ad.mediaType === "video" ? "Video" : "Photo"}<span className="mt-0.5 block max-w-[130px] truncate text-[#9aa3ae]">{ad.alt}</span></span>
+                        <span className="text-[9px] text-[#6c7683]">{adMediaKind(ad)}<span className="mt-0.5 block max-w-[130px] truncate text-[#9aa3ae]">{ad.alt}</span></span>
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[#919aa6]">{formatAdminDate(ad.startsAt)} → {formatAdminDate(ad.endsAt)}</td>
@@ -250,13 +250,18 @@ export default function AdminAds() {
                 ))}
               </div>
 
+              <p className="mt-2 text-[9px] leading-snug text-[#87909b]">
+                A few frames is enough: an animated GIF or WebP picked as a photo loops on its own, and a 6-frame
+                1600x600 banner is about 20 KB — no video upload needed.
+              </p>
+
               <div className="mt-3">
                 <AdminField label={draft.mediaType === "video" ? "Video URL (.mp4 / .webm)" : "Photo URL"}>
                   <AdminInput value={draft.mediaUrl.startsWith("data:") ? "" : draft.mediaUrl} onChange={(event) => setDraft({ ...draft, mediaUrl: event.target.value })} placeholder={draft.mediaType === "video" ? "/ads/hero.mp4" : "/ads/hero.jpg"} aria-label="Ad media URL" />
                 </AdminField>
                 {draft.mediaType === "image" ? (
                   <label className="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-[9px] font-bold text-[#3f8c22]">
-                    <ImageIcon size={12} /> Pick a photo from this computer
+                    <ImageIcon size={12} /> Pick a photo or an animated GIF
                     <input
                       type="file"
                       accept="image/*"
