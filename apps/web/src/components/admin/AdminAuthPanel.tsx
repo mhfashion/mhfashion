@@ -23,7 +23,7 @@ export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
-  const [hasAccount, setHasAccount] = useState(false);
+  const [hasAccount, setHasAccount] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
 
@@ -36,17 +36,21 @@ export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
     setReady(true);
   }, [router]);
 
+  // The public registration route stays closed, but a browser with no demo account still needs a
+  // way into the preview: the login page sets that single local account up on first run.
+  const needsSetup = isRegister || hasAccount === false;
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (isRegister && password !== confirmPassword) {
+    if (needsSetup && password !== confirmPassword) {
       setError("The passwords do not match.");
       return;
     }
 
     setPending(true);
     try {
-      const session = isRegister
+      const session = needsSetup
         ? await createDemoAdminAccount(name, email, password)
         : await signInDemoAdmin(email, password);
 
@@ -75,9 +79,9 @@ export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
 
           <div className="mt-7 max-w-[390px] sm:mt-10 md:mt-auto md:mb-auto md:pt-16">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#8bd340]/25 bg-[#8bd340]/10 px-3 py-1.5 text-[9px] font-semibold tracking-wide text-[#b6e989]"><Sparkles size={12} /> ADMIN WORKSPACE</div>
-            <h1 className="text-[25px] font-extrabold leading-tight tracking-tight sm:text-[31px]">{isRegister ? "Create your admin account" : "Welcome back, Admin"}</h1>
+            <h1 className="text-[25px] font-extrabold leading-tight tracking-tight sm:text-[31px]">{needsSetup ? "Create your admin account" : "Welcome back, Admin"}</h1>
             <p className="mt-2 max-w-[340px] text-[11px] leading-5 text-[#b2bbc0] sm:text-[12px]">
-              {isRegister ? "Set up a local preview account to explore the MH Fashion admin dashboard." : "Sign in to open your MH Fashion admin dashboard preview."}
+              {needsSetup ? "Set up a local preview account to explore the MH Fashion admin dashboard." : "Sign in to open your MH Fashion admin dashboard preview."}
             </p>
 
             <div className="mt-5 hidden space-y-3 md:block">
@@ -91,8 +95,8 @@ export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
         <section className="flex items-center justify-center px-5 py-6 sm:px-9 sm:py-9 md:px-12 md:py-12">
           <div className="w-full max-w-[390px]">
             <Link href="/" className="mb-5 inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#778290] hover:text-[#397d27]"><ArrowLeft size={13} /> Back to store</Link>
-            <h2 className="text-[22px] font-extrabold tracking-tight text-[#18212c]">{isRegister ? "Create account" : "Admin sign in"}</h2>
-            <p className="mt-1 text-[11px] text-[#7d8794]">{isRegister ? "One demo admin account can be stored in this browser." : "Enter the demo account you created in this browser."}</p>
+            <h2 className="text-[22px] font-extrabold tracking-tight text-[#18212c]">{needsSetup ? "Create account" : "Admin sign in"}</h2>
+            <p className="mt-1 text-[11px] text-[#7d8794]">{needsSetup ? "One demo admin account can be stored in this browser." : "Enter the demo account you created in this browser."}</p>
 
             <div className="mt-4 rounded-xl border border-[#efdda6] bg-[#fff9e8] p-3 text-[9px] leading-4 text-[#725b1d]">
               <p className="flex items-center gap-1.5 font-bold"><ShieldAlert size={13} /> Demo mode — not secure authentication</p>
@@ -100,18 +104,18 @@ export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
             </div>
 
             {!ready ? <div className="mt-6 h-48 animate-pulse rounded-xl bg-[#f4f6f8]" /> : <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
-              {isRegister && <label className="block"><span className="mb-1.5 block text-[10px] font-semibold text-[#4c5663]">Full name</span><span className="flex h-11 items-center gap-2.5 rounded-xl border border-[#e1e5e9] bg-white px-3 text-[#929ba6] focus-within:border-[#8bcf4c]"><UserRound size={15} /><input required autoComplete="name" minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" className="w-full bg-transparent text-[11px] text-[#1f2935] outline-none placeholder:text-[#a2aab3]" /></span></label>}
+              {needsSetup && <label className="block"><span className="mb-1.5 block text-[10px] font-semibold text-[#4c5663]">Full name</span><span className="flex h-11 items-center gap-2.5 rounded-xl border border-[#e1e5e9] bg-white px-3 text-[#929ba6] focus-within:border-[#8bcf4c]"><UserRound size={15} /><input required autoComplete="name" minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" className="w-full bg-transparent text-[11px] text-[#1f2935] outline-none placeholder:text-[#a2aab3]" /></span></label>}
 
               <label className="block"><span className="mb-1.5 block text-[10px] font-semibold text-[#4c5663]">Email address</span><span className="flex h-11 items-center gap-2.5 rounded-xl border border-[#e1e5e9] bg-white px-3 text-[#929ba6] focus-within:border-[#8bcf4c]"><Mail size={15} /><input required type="email" autoComplete="email" maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@example.com" className="w-full bg-transparent text-[11px] text-[#1f2935] outline-none placeholder:text-[#a2aab3]" /></span></label>
 
-              <label className="block"><span className="mb-1.5 block text-[10px] font-semibold text-[#4c5663]">Password</span><span className="flex h-11 items-center gap-2.5 rounded-xl border border-[#e1e5e9] bg-white px-3 text-[#929ba6] focus-within:border-[#8bcf4c]"><LockKeyhole size={15} /><input required type={showPassword ? "text" : "password"} autoComplete={isRegister ? "new-password" : "current-password"} minLength={8} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={isRegister ? "At least 8 characters" : "Enter your password"} className="w-full bg-transparent text-[11px] text-[#1f2935] outline-none placeholder:text-[#a2aab3]" /><button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Hide password" : "Show password"} className="rounded-md p-1 text-[#7e8895] hover:bg-[#f1f3f5]">{showPassword ? <EyeOff size={15} /> : <Eye size={15} />}</button></span></label>
+              <label className="block"><span className="mb-1.5 block text-[10px] font-semibold text-[#4c5663]">Password</span><span className="flex h-11 items-center gap-2.5 rounded-xl border border-[#e1e5e9] bg-white px-3 text-[#929ba6] focus-within:border-[#8bcf4c]"><LockKeyhole size={15} /><input required type={showPassword ? "text" : "password"} autoComplete={needsSetup ? "new-password" : "current-password"} minLength={8} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={needsSetup ? "At least 8 characters" : "Enter your password"} className="w-full bg-transparent text-[11px] text-[#1f2935] outline-none placeholder:text-[#a2aab3]" /><button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Hide password" : "Show password"} className="rounded-md p-1 text-[#7e8895] hover:bg-[#f1f3f5]">{showPassword ? <EyeOff size={15} /> : <Eye size={15} />}</button></span></label>
 
-              {isRegister && <label className="block"><span className="mb-1.5 block text-[10px] font-semibold text-[#4c5663]">Confirm password</span><span className="flex h-11 items-center gap-2.5 rounded-xl border border-[#e1e5e9] bg-white px-3 text-[#929ba6] focus-within:border-[#8bcf4c]"><LockKeyhole size={15} /><input required type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={8} maxLength={128} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Re-enter password" className="w-full bg-transparent text-[11px] text-[#1f2935] outline-none placeholder:text-[#a2aab3]" /></span></label>}
+              {needsSetup && <label className="block"><span className="mb-1.5 block text-[10px] font-semibold text-[#4c5663]">Confirm password</span><span className="flex h-11 items-center gap-2.5 rounded-xl border border-[#e1e5e9] bg-white px-3 text-[#929ba6] focus-within:border-[#8bcf4c]"><LockKeyhole size={15} /><input required type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={8} maxLength={128} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Re-enter password" className="w-full bg-transparent text-[11px] text-[#1f2935] outline-none placeholder:text-[#a2aab3]" /></span></label>}
 
               {error && <p role="alert" className="rounded-lg border border-[#f2c9c9] bg-[#fff1f1] px-3 py-2 text-[10px] leading-4 text-[#b23a3a]">{error}</p>}
 
               <button disabled={pending} type="submit" className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#67ae2e] px-4 text-[11px] font-bold text-white shadow-[0_6px_14px_rgba(87,160,37,0.18)] transition hover:bg-[#579d25] disabled:cursor-wait disabled:opacity-60">
-                {pending ? "Please wait…" : isRegister ? "Create demo account" : "Sign in to dashboard"}<ArrowRight size={14} />
+                {pending ? "Please wait…" : needsSetup ? "Create demo account" : "Sign in to dashboard"}<ArrowRight size={14} />
               </button>
             </form>}
 

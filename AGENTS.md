@@ -128,3 +128,34 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   building off the same ink box. Keep it that way or shadows drift off the glyphs.
 - Both extents fall back to the advance box when the canvas metrics API is unavailable
   (Node, SSR), and the test stubs deliberately omit `actualBoundingBoxLeft/Right` to cover it.
+
+## Super Admin workspace (`apps/web/src/components/admin`, `apps/web/src/lib/admin-demo-*`)
+- `/admin` is a preview workspace, not a security boundary. The plan keeps public registration
+  closed (`/admin/register` does not exist), but `/admin/login` sets up the single browser-local
+  demo account when none exists (`needsSetup` in `AdminAuthPanel.tsx`). Without that first-run
+  form a fresh browser could never reach `/admin`, because the session gate redirects there.
+- Modules: `/admin` (dashboard), `/admin/orders`, `/admin/products`, `/admin/inventory`,
+  `/admin/customers`, `/admin/designs`, `/admin/promotions`, `/admin/reports`, `/admin/settings`.
+  Every page is a thin server file rendering a `"use client"` component; add new routes to
+  `apps/web/public/manus-routes.json` and to the expected list in `tests/guide-http.test.cjs`.
+- One store drives them all: `lib/admin-demo-data.ts` (types, seed, pure helpers, localStorage)
+  plus `lib/admin-demo-store.ts` (`useAdminDemoData()` over `useSyncExternalStore`,
+  `updateAdminData(fn)`). Key: `mh-fashion-admin-demo-data-v1`. Do not give a module its own
+  copy of orders or stock — the dashboard, reports and inventory must agree.
+- `admin-demo-data.ts` must stay import-free so `tests/admin-demo-data.test.cjs` can transpile it
+  and run it under `new Function` (React lives in `admin-demo-store.ts` for that reason).
+- Customers are derived from orders (`aggregateCustomers`) rather than stored; there is no
+  separate customer record yet, and cancelled/refunded orders count as orders but add no revenue
+  (`isSettledOrder`).
+- `AdminShell.tsx` owns the sidebar, header and session gate. Its `title` accepts a string or
+  `(admin) => string`; the page component itself cannot read a context provided inside the shell,
+  so pass a function instead of calling a hook in the page for the admin's name.
+- `AdminUi.tsx` holds the shared atoms (`AdminCard`, `AdminButton`, `AdminBadge`, `AdminField`,
+  `AdminDrawer`, ...). `AdminInput` is `w-full`, so wrap it in a fixed-width div for compact
+  numeric cells instead of adding `w-20` (Tailwind resolves the conflict by stylesheet order).
+- Destructive actions are two-step inline (`confirmId` state), not `window.confirm`, so the
+  headless CDP probes can drive them.
+- Verify with `npm run test:admin-data` (13 tests) and the full `node --test tests/*.test.cjs`
+  suite (135 tests, needs a server on port 3000 for `guide-http`). A browser pass means:
+  first-run setup on `/admin/login`, advance an order, create a product, `+10` a stock row,
+  create a promotion, save settings, add a team member, then reload to confirm persistence.

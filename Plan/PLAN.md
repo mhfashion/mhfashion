@@ -2454,6 +2454,7 @@ Source of scope: owner request and supplied Google Drive dashboard references (`
 - [x] Keep the demo account/session in browser local storage only, gate the preview dashboard client-side, and state clearly that this is not secure authentication: no Supabase, server-side authorization, email verification, or live data is connected. Warn users not to use a real or reused password.
 - [x] Keep admin routes out of search indexing and retain mobile behavior without the storefront bottom navigation.
 - Evidence: responsive `/admin` route has a collapsible mobile sidebar, stacked narrow-screen cards/tables, and a search input that filters sample products/orders. The earlier demo-account flow was browser-tested and the disposable account/session was removed. Current `main` keeps `/admin/login` as a local demo session, removes `/admin/register` from the route manifest, and labels dashboard data as preview-only. Migration `0007_create_super_admin_roles.sql` prepares a Supabase role schema; Supabase Auth and server-side authorization are not yet connected, so this UI is not production security.
+- [x] (2026-11-21) The remaining modules — Orders, Products, Inventory, Customers, Designs, Promotions, Reports and Settings — are implemented as separate `/admin/*` pages over one browser-local demo store. See "2026-11-21 Implementation Update — Super Admin modules" at the end of this plan.
 
 ## Permanent website publishing (historical snapshot, 2026-11-10; superseded by the current status below)
 
@@ -2666,3 +2667,22 @@ Edit Sidebar preview cards must not show the design name, layer name/source desi
 ## 2026-11-19 Directive Update — Text bounds and line-separated typing
 
 A text layer's Free Transform box must follow the text's measured glyph width and total multi-line height, not an artwork-sized or padded box. Inline text editing must support Enter/newline-separated typing; every line must render consistently on the canvas and mockups. Keep the behavior usable on Desktop and Phone/Mobile.
+
+
+## 2026-11-21 Implementation Update — Super Admin modules
+
+The `/admin` workspace is no longer a single dashboard preview: every module in the left navigation is now a real page backed by one browser-local demo data store.
+
+- **Routes:** `/admin` (dashboard), `/admin/orders`, `/admin/products`, `/admin/inventory`, `/admin/customers`, `/admin/designs`, `/admin/promotions`, `/admin/reports`, `/admin/settings`. All are listed in `apps/web/public/manus-routes.json` and keep `robots: noindex, nofollow`.
+- **Shared store:** `apps/web/src/lib/admin-demo-data.ts` holds the typed demo data (orders, products, per-size stock, designs, promotions, team members, settings) plus pure helpers for stage transitions, totals, revenue buckets, customer aggregation, stock adjustments, draft validation, promotion status/discounts and module permissions. `admin-demo-store.ts` exposes `useAdminDemoData()` over `useSyncExternalStore`; writes persist to `localStorage` under `mh-fashion-admin-demo-data-v1`, so stage changes, stock edits, new products and settings survive a reload.
+- **Orders:** stage filter chips with counts, search, advance-to-next-stage per row, detail drawer with items, pipeline timeline, print-desk note, cancel/refund and a production CSV export.
+- **Products:** create/edit drawer with validation (name, fabric, price, apparel GSM), archive/restore, two-step delete, status filters.
+- **Inventory:** stock row per product and size with −/+/+10 and direct entry, low-stock and out-of-stock filters driven by the settings threshold.
+- **Customers:** grouped from the order queue by email (orders, units, lifetime spend, last order) with VIP/repeat/new segments and sorting.
+- **Designs:** publish/hide/delete with status filters and download counts.
+- **Promotions:** code creation with validation, percent or fixed amount, minimum spend, usage limits, validity window, enable/disable, and a live discount preview.
+- **Reports:** 7/30/90-day revenue bars, top products, payment mix, pipeline distribution, low-stock watch list and CSV export.
+- **Settings:** store profile (name, support contact, USD rate, low-stock and free-delivery thresholds, default print note), team list with role plus per-module permission checkboxes, demo-data reset and sign out.
+- **First run:** `/admin/register` stays closed, but a browser with no demo account now gets the single local account setup form on `/admin/login` (same warnings, no real passwords). Without it the preview was unreachable on a fresh browser.
+- **Validation:** `npm run test:admin-data` (13 tests) covers the data layer; the full `node --test tests/*.test.cjs` suite passes 135/135 against a production build; headless Chromium drove first-run setup, order advancement, product creation, stock adjustment, promotion creation, settings save, team add, reload persistence and every module page with no console errors.
+- This remains a preview, not a security boundary. Supabase Auth, RLS and server-side role checks are still required before live admin data is exposed.
