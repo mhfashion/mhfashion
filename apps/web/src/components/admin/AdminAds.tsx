@@ -8,9 +8,10 @@ import {
   AdminInput, AdminSelect, AdminStat, type AdminTone,
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
-import { formatAdminDate, type AdminAd, type AdMediaType, type AdSlotId } from "@/lib/admin-demo-data";
+import { formatAdminDate, type AdminAd, type AdFit, type AdMediaType, type AdSlotId } from "@/lib/admin-demo-data";
 import {
-  AD_SLOTS, MAX_IMAGE_BYTES, adDraftFrom, adFromDraft, adMediaKind, adSlotLabel, adStatus, looksAnimatedMedia, readImageFile,
+  AD_FITS, AD_SLOTS, MAX_IMAGE_BYTES, adDraftFrom, adFromDraft, adMediaKind, adSlotLabel, adStatus,
+  looksAnimatedMedia, readImageFile,
   removeAd, toggleAd, upsertAd, validateAdDraft, type AdminAdDraft, type AdminAdStatus,
 } from "@/lib/admin-ads";
 
@@ -21,19 +22,23 @@ const STATUS_TONES: Record<AdminAdStatus, AdminTone> = {
   Disabled: "amber",
 };
 
+function fitClass(fit: AdFit | undefined): string {
+  return fit === "contain" ? "object-contain" : "object-cover";
+}
+
 function MediaPreview({ draft }: { draft: AdminAdDraft }) {
   const slot = AD_SLOTS.find((entry) => entry.id === draft.slot);
   return (
     <div data-ad-preview className="rounded-xl border border-[#edf0f3] bg-[#fafbfc] p-3">
       <p className="text-[9px] font-bold uppercase tracking-wide text-[#828c99]">
-        {slot?.label ?? "Ad"} preview · {slot?.size} · {draft.mediaType === "video" ? "looping video" : looksAnimatedMedia(draft.mediaUrl) ? "animated photo" : "photo"}
+        {slot?.label ?? "Ad"} preview · {slot?.size} · {draft.mediaType === "video" ? "looping video" : looksAnimatedMedia(draft.mediaUrl) ? "animated photo" : "photo"} · {draft.fit === "contain" ? "whole banner" : "filled"}
       </p>
       <div className={`mt-2 overflow-hidden rounded-lg bg-[#eef1f3] ${draft.slot === "home-hero" ? "aspect-[16/6]" : "aspect-[16/3]"}`}>
         {draft.mediaUrl ? (
           draft.mediaType === "video" ? (
-            <video data-ad-preview-video src={draft.mediaUrl} poster={draft.posterUrl || undefined} autoPlay muted loop playsInline className="h-full w-full object-cover" />
+            <video data-ad-preview-video src={draft.mediaUrl} poster={draft.posterUrl || undefined} autoPlay muted loop playsInline className={`h-full w-full ${fitClass(draft.fit)}`} />
           ) : (
-            <img data-ad-preview-image src={draft.mediaUrl} alt="" className="h-full w-full object-cover" />
+            <img data-ad-preview-image src={draft.mediaUrl} alt="" className={`h-full w-full ${fitClass(draft.fit)}`} />
           )
         ) : (
           <div className="flex h-full items-center justify-center text-[9px] font-semibold text-[#87909b]">
@@ -254,6 +259,15 @@ export default function AdminAds() {
                 A few frames is enough: an animated GIF or WebP picked as a photo loops on its own, and a 6-frame
                 1600x600 banner is about 20 KB — no video upload needed.
               </p>
+
+              <div className="mt-3">
+                <AdminField label="How it fits the box">
+                  <AdminSelect value={draft.fit} onChange={(event) => setDraft({ ...draft, fit: event.target.value as AdFit })} aria-label="Ad fit">
+                    {AD_FITS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  </AdminSelect>
+                </AdminField>
+                <p className="mt-1 text-[9px] text-[#87909b]">{AD_FITS.find((option) => option.id === draft.fit)?.hint}</p>
+              </div>
 
               <div className="mt-3">
                 <AdminField label={draft.mediaType === "video" ? "Video URL (.mp4 / .webm)" : "Photo URL"}>

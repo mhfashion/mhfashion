@@ -32,6 +32,7 @@ const base = {
   mediaType: "image",
   mediaUrl: "/ads/hero.jpg",
   posterUrl: "",
+  fit: "cover",
   alt: "Two models in MH Signature tees",
   href: "/new",
   enabled: true,
@@ -121,6 +122,17 @@ test("saving, pausing and deleting an ad go through the one demo store", () => {
   assert.equal(ads.removeAd(paused, created.id).ads.some((ad) => ad.id === created.id), false);
 });
 
+test("a ready-made leaderboard can be shown whole instead of cropped", () => {
+  assert.deepEqual(ads.AD_FITS.map((fit) => fit.id), ["cover", "contain"]);
+  const draft = { ...ads.adDraftFrom(base, NOW), fit: "contain", mediaUrl: "https://example.com/728x90.gif" };
+  assert.deepEqual(ads.validateAdDraft(draft), []);
+  assert.equal(ads.adFromDraft(draft, undefined, NOW).fit, "contain");
+  assert.equal(ads.adFromDraft({ ...draft, fit: "cover" }, undefined, NOW).fit, "cover");
+  // An unknown value falls back to filling the box rather than breaking the banner.
+  assert.equal(ads.adFromDraft({ ...draft, fit: "stretch" }, undefined, NOW).fit, "cover");
+  assert.equal(ads.adDraftFrom(base, NOW).fit, "cover");
+});
+
 test("Ads is a registered admin module with its own route and screen", () => {
   assert.ok(admin.ADMIN_MODULES.some((module) => module.id === "ads" && module.label === "Ads"));
   const shell = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminShell.tsx"), "utf8");
@@ -146,6 +158,8 @@ test("Ads is a registered admin module with its own route and screen", () => {
     "animated GIF or WebP picked as a photo loops on its own",
     "Pick a photo or an animated GIF",
     "adMediaKind(ad)",
+    'aria-label="Ad fit"',
+    "AD_FITS.map",
     "upsertAd",
     "toggleAd",
     "removeAd",
@@ -161,7 +175,7 @@ test("the home page renders the live hero ad and falls back to the green hero", 
   assert.match(home, /Design Your/);
 
   const banner = readFileSync(path.join(__dirname, "..", "apps/web/src/components/AdSlotBanner.tsx"), "utf8");
-  for (const marker of ["data-ad-image", "data-ad-video", "autoPlay", "muted", "loop", "playsInline", "data-ad-slot-banner={slot}", "children ?? null"]) {
+  for (const marker of ["data-ad-image", "data-ad-video", "autoPlay", "muted", "loop", "playsInline", "data-ad-slot-banner={slot}", "children ?? null", 'ad.fit === "contain" ? "block h-auto w-full" : "h-full w-full object-cover"']) {
     assert.ok(banner.includes(marker), `AdSlotBanner is missing ${marker}`);
   }
 

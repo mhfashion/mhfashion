@@ -6,6 +6,8 @@ The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN
 
 - [x] **Guide cards sized like product cards.** `GuideCard` is a square tile on the product grid
   (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`); the tall cover band and the excerpt are gone.
+- [x] **Ready-made banners fit.** A per-ad *Fill the box / Show the whole banner* choice, so a 728x90 GIF
+  template (e.g. the Gifer one) shows whole instead of losing its edges.
 - [x] **Short loops need no video.** An animated GIF/WebP picked as a photo loops in the hero (a 6-frame
   1600x600 file is ~19 KB); the video option stays for when R2 is connected.
 - [x] **Ads in the admin menu bar.** `/admin/ads` takes a banner photo or an animation video (path, URL or a

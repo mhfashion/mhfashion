@@ -1,7 +1,7 @@
 // Banner ads are media only (owner request 2026-11-21): one photo or one looping animation per slot.
 // An ad shows only while it is enabled and inside its window — nothing else decides visibility.
 
-import type { AdminAd, AdMediaType, AdSlotId } from "@/lib/admin-demo-data";
+import type { AdminAd, AdFit, AdMediaType, AdSlotId } from "@/lib/admin-demo-data";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -13,6 +13,7 @@ export type AdminAdDraft = {
   mediaType: AdMediaType;
   mediaUrl: string;
   posterUrl: string;
+  fit: AdFit;
   alt: string;
   href: string;
   startsAt: string;
@@ -31,6 +32,11 @@ export const MAX_IMAGE_BYTES = 900 * 1024;
 export function looksAnimatedMedia(url: string): boolean {
   return /\.(gif|webp)([?#].*)?$/i.test(url) || /^data:image\/(gif|webp)/i.test(url);
 }
+
+export const AD_FITS: { id: AdFit; label: string; hint: string }[] = [
+  { id: "cover", label: "Fill the box", hint: "Crops the edges of artwork that is a different shape." },
+  { id: "contain", label: "Show the whole banner", hint: "Letterboxes instead — right for a ready-made 728x90 leaderboard." },
+];
 
 export function adMediaKind(ad: Pick<AdminAd, "mediaType" | "mediaUrl">): "Video" | "GIF" | "Photo" {
   if (ad.mediaType === "video") return "Video";
@@ -73,6 +79,7 @@ export function adDraftFrom(ad?: AdminAd, now = Date.now()): AdminAdDraft {
     mediaType: ad?.mediaType ?? "image",
     mediaUrl: ad?.mediaUrl ?? "",
     posterUrl: ad?.posterUrl ?? "",
+    fit: ad?.fit ?? "cover",
     alt: ad?.alt ?? "",
     href: ad?.href ?? "",
     startsAt: (ad?.startsAt ?? new Date(now).toISOString()).slice(0, 10),
@@ -121,6 +128,7 @@ export function adFromDraft(draft: AdminAdDraft, existing?: AdminAd, now = Date.
     mediaType: draft.mediaType,
     mediaUrl: draft.mediaUrl.trim(),
     posterUrl: draft.mediaType === "video" ? draft.posterUrl.trim() : "",
+    fit: draft.fit === "contain" ? "contain" : "cover",
     alt: draft.alt.trim(),
     href: draft.href.trim(),
     enabled: existing?.enabled ?? true,

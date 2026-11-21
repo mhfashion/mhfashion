@@ -382,6 +382,9 @@ export type AdSlotId = "home-hero" | "home-strip";
 
 export type AdMediaType = "image" | "video";
 
+/** How the artwork meets the slot box: fill it (crop the edges) or show all of it (letterbox). */
+export type AdFit = "cover" | "contain";
+
 /**
  * An ad is one piece of media — a banner photo or a looping animation — plus when it runs.
  * There is no headline or button: the artwork carries the message (owner request 2026-11-21).
@@ -396,6 +399,7 @@ export type AdminAd = {
   mediaUrl: string;
   /** First frame of a video, also the fallback while it loads. */
   posterUrl: string;
+  fit: AdFit;
   /** What the media shows, read by screen readers. */
   alt: string;
   /** Optional click-through; empty means the banner is not a link. */

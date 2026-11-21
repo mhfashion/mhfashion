@@ -2173,3 +2173,14 @@ So a short loop needs no video infrastructure at all:
   preview, and the drawer says so under the media switch; the video option stays for when R2 is wired.
 - Verified in Chromium: pick `hero-anim.gif` → drawer says "animated photo" → save → table shows GIF → the home
   hero renders it and two screenshots 260 ms apart differ inside the banner (it really animates).
+
+### 2026-11-21 (later) — ready-made banners: fit the box or show the whole thing
+Owner sent a template: `https://mnamin24.github.io/gifer-gif-animated-banner-template/images/728x90.gif`
+(728x90, 2 frames, 32 KB). Pasting that URL works — it shows as **GIF** and loops in the hero — but a
+728x90 leaderboard in a 1361x300 hero is cropped: "NEW BRAND" and "SAVE 25%" were cut off.
+- `AdminAd.fit: "cover" | "contain"` (default `cover`), chosen with a **How it fits the box** select in the
+  drawer; `AD_FITS` carries the wording.
+- `contain` renders the artwork at its own aspect (`block h-auto w-full`) and drops the fixed height/aspect
+  wrapper, so nothing is cropped and no letterbox bands appear: the leaderboard shows whole at 1350x167 in
+  the hero and 358x44 on a phone.
+- Verified with that GIF in both slots at 1440x900 and 390x844; suite 375/375, e2e desktop + phone pass.

@@ -1315,3 +1315,17 @@ URL. `<img>` loops it natively, so the home hero plays it exactly like a still p
   places that decide the label — nothing in the storefront special-cases animation.
 - The **Animation video** option stays for `.mp4` / `.webm` links once R2 is connected; a data URL is refused
   for video because it would blow the localStorage budget.
+
+### 2026-11-21 — Fit: fill the box, or show a ready-made banner whole
+
+A ready-made leaderboard (728x90 and friends) is a very different shape from the hero, so an ad now carries
+`fit`:
+
+| Fit | Renders | Use it for |
+|---|---|---|
+| **Fill the box** (default) | `object-cover` inside the slot's height/aspect | artwork designed at the slot size (1600x600 / 1600x240) |
+| **Show the whole banner** | the image at its own aspect (`block h-auto w-full`), no fixed box | a bought/borrowed template such as a 728x90 GIF |
+
+With *Show the whole banner* a 728x90 GIF appears whole — 1350x167 in the desktop hero, 358x44 on a phone —
+with no cropping and no dark letterbox bands. The drawer's preview header says *whole banner* or *filled*, and
+the banner carries `data-ad-fit` so the choice is testable.

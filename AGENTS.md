@@ -520,3 +520,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   needed (a 6-frame 1600x600 banner GIF is ~19 KB). `looksAnimatedMedia` / `adMediaKind` in `lib/admin-ads.ts`
   are the only label logic ("GIF" in the table, "animated photo" in the preview) — the storefront never
   special-cases animation, and `validateAdDraft` still refuses a `data:` URL for `mediaType: "video"`.
+- `AdminAd.fit` ("cover" | "contain") decides cropping. `cover` fills the slot box (`object-cover`, fixed
+  min-height/aspect); `contain` renders the media at its own aspect (`block h-auto w-full`) and the banner drops
+  the fixed box entirely, so no crop and no letterbox bands. Use `contain` for ready-made leaderboards
+  (728x90) and `cover` for artwork drawn at the slot size. The banner exposes `data-ad-fit` for tests.
