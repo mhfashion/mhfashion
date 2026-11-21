@@ -4,6 +4,7 @@ import {
   orderTotalKs, orderUnits,
 } from "./admin-demo-data";
 import { createZip, type ZipEntry } from "./zip";
+import { deliveryFileName, deliveryQuoteJson } from "./delivery";
 
 /**
  * Everything the print desk needs, one row per order line. Kept next to the print sheet so the
@@ -222,6 +223,79 @@ ${items}
 </body></html>`;
 }
 
+/**
+ * A printable receipt for the customer: what they bought, what it cost and where it goes. The
+ * delivery line stays blank on purpose — the fee comes from MH Delivery, not from this sheet.
+ */
+export function buildOrderInvoiceHtml(order: AdminOrder): string {
+  const shipTo = order.shipTo;
+  const rows = order.items
+    .map((item) => `<tr><td>${escapeHtml(item.name)}<br /><span class="sub">${escapeHtml(item.color)} · ${escapeHtml(item.size)}${item.material ? ` · ${escapeHtml(item.material)}` : ""}</span></td><td class="num">${item.quantity}</td><td class="num">${escapeHtml(formatKs(item.unitPriceKs))}</td><td class="num">${escapeHtml(formatKs(item.unitPriceKs * item.quantity))}</td></tr>`)
+    .join("");
+  const total = orderTotalKs(order);
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" />
+<title>Receipt ${escapeHtml(order.id)}</title>
+<style>
+  @page { size: A5; margin: 10mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 11px/1.5 "Inter", Arial, sans-serif; color: #1d232b; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1d232b; padding-bottom: 8px; }
+  .brand { font-size: 16px; font-weight: 800; letter-spacing: .12em; }
+  h1 { font-size: 14px; margin: 6px 0 0; }
+  .meta { color: #5c6673; text-align: right; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { text-align: left; padding: 5px 4px; border-bottom: 1px solid #eef1f4; vertical-align: top; }
+  th { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: #6b7481; }
+  .num { text-align: right; white-space: nowrap; }
+  .sub { color: #6b7481; font-size: 10px; }
+  .totals { margin-top: 10px; }
+  .totals div { display: flex; justify-content: space-between; padding: 2px 0; }
+  .totals .grand { border-top: 2px solid #1d232b; margin-top: 4px; padding-top: 5px; font-weight: 800; font-size: 13px; }
+  .note { color: #5c6673; margin-top: 10px; }
+  .printbar { margin-bottom: 8px; }
+  .printbar button { font: inherit; padding: 5px 12px; border-radius: 999px; border: 1px solid #4cae22; background: #eef8e6; color: #3f8c22; font-weight: 700; cursor: pointer; }
+  @media print { .printbar { display: none; } }
+</style></head>
+<body>
+<div class="printbar"><button type="button" onclick="window.print()">Print / save as PDF</button></div>
+<header>
+  <div>
+    <div class="brand">MH FASHION</div>
+    <h1>Receipt · ${escapeHtml(order.id)}</h1>
+  </div>
+  <div class="meta">
+    ${escapeHtml(formatAdminDateTime(order.placedAt))}<br />
+    ${escapeHtml(order.stage)}<br />
+    ${escapeHtml(order.payment)}
+  </div>
+</header>
+<table>
+  <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Amount</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="totals">
+  <div><span>Subtotal</span><span>${escapeHtml(formatKs(total))}</span></div>
+  <div><span>Delivery</span><span>Quoted by MH Delivery</span></div>
+  <div class="grand"><span>Total paid</span><span>${escapeHtml(formatKs(total))}</span></div>
+</div>
+<p class="note">
+  ${shipTo ? `<b>Deliver to</b><br />${escapeHtml(shipTo.name)} · ${escapeHtml(shipTo.phone)}<br />${escapeHtml(shipTo.address)}<br />${escapeHtml(shipTo.township)}, ${escapeHtml(shipTo.city)}` : `<b>Deliver to</b><br />${escapeHtml(order.customerName)}<br />${escapeHtml(order.customerPhone)}`}
+</p>
+<p class="note">Thank you for ordering from MH Fashion. Keep this receipt for exchanges within 7 days.</p>
+</body></html>`;
+}
+
+/** Opens the receipt in a new window; the browser's print dialog saves it as a PDF. */
+export function openOrderInvoice(order: AdminOrder): void {
+  const win = window.open("", "_blank", "width=760,height=900");
+  if (!win) return;
+  win.document.write(buildOrderInvoiceHtml(order));
+  win.document.close();
+  win.focus();
+  win.setTimeout(() => win.print(), 300);
+}
+
 /** Opens the sheet in a new window and sends it straight to the printer dialog. */
 export function openOrderPrintSheet(order: AdminOrder): void {
   const win = window.open("", "_blank", "width=900,height=1000");
@@ -263,8 +337,10 @@ export function orderArchiveEntries(order: AdminOrder): ZipEntry[] {
   const designs = orderDesignFiles(order);
   const entries: ZipEntry[] = [
     { name: `print-sheet-${orderFileStem(order)}.html`, data: buildOrderPrintSheetHtml(order) },
+    { name: `invoice-${orderFileStem(order)}.html`, data: buildOrderInvoiceHtml(order) },
     { name: `print-spec-${orderFileStem(order)}.csv`, data: orderPrintRows(order).map((row) => row.map(csvCell).join(",")).join("\r\n") },
     { name: "manifest.json", data: JSON.stringify(orderManifest(order), null, 2) },
+    { name: deliveryFileName(order), data: deliveryQuoteJson(order) },
   ];
   for (const design of designs) {
     entries.push({ name: `designs/${design.fileName}`, data: design.svg });

@@ -83,8 +83,10 @@ test("the order archive is a valid ZIP with a file per design", () => {
 
   const stem = print.orderFileStem(order);
   assert.ok(names.includes(`print-sheet-${stem}.html`));
+  assert.ok(names.includes(`invoice-${stem}.html`), "the customer receipt is in the bundle");
   assert.ok(names.includes(`print-spec-${stem}.csv`));
   assert.ok(names.includes("manifest.json"));
+  assert.ok(names.includes(`delivery-${stem}.json`), "the MH Delivery quote request is in the bundle");
 
   const designs = print.orderDesignFiles(order);
   assert.ok(designs.length > 0);
@@ -150,7 +152,9 @@ test("an order without designs still archives its sheet and manifest", () => {
   const files = readZip(print.buildOrderArchive(bare));
   assert.deepEqual(files.map((file) => file.name).sort(), [
     `print-sheet-${print.orderFileStem(bare)}.html`,
+    `invoice-${print.orderFileStem(bare)}.html`,
     `print-spec-${print.orderFileStem(bare)}.csv`,
+    `delivery-${print.orderFileStem(bare)}.json`,
     "manifest.json",
   ].sort());
   const manifest = JSON.parse(files.find((file) => file.name === "manifest.json").content);
@@ -162,4 +166,19 @@ test("the drawer offers the ZIP next to the single SVG download", () => {
   assert.match(drawer, /downloadOrderArchive\(selected\)/);
   assert.match(drawer, /Print files ZIP/);
   assert.match(drawer, /downloadDesignFile\(design\)/);
+});
+
+test("the receipt shows what was bought and leaves delivery to MH Delivery", () => {
+  const order = data.orders.find((entry) => entry.items.some((item) => item.design)) ?? data.orders[0];
+  const html = print.buildOrderInvoiceHtml(order);
+  assert.match(html, /^<!doctype html>/);
+  assert.ok(html.includes(`Receipt · ${order.id}`));
+  for (const item of order.items) assert.ok(html.includes(item.name), `missing ${item.name}`);
+  assert.ok(html.includes("Quoted by MH Delivery"));
+  assert.ok(html.includes("Total paid"));
+  const shipTo = order.shipTo;
+  if (shipTo) {
+    assert.ok(html.includes(shipTo.phone), "the phone number is on the receipt");
+    assert.ok(html.includes(shipTo.township), "the township is on the receipt");
+  }
 });

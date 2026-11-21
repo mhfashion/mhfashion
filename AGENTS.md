@@ -108,10 +108,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 
 ## R2 storage (`Doc/R2-STORAGE.md`)
 - Bucket `mh-fashion-assets`, public origin in `NEXT_PUBLIC_R2_PUBLIC_URL`.
-- Layout: `mockups/product/<product-slug>/<look>.<webp|png|jpg>`, `mockups/editor/<garment-slug>/<look>.<webp|png|jpg>`, `designs/<design-slug>.svg`, `posts/<post-slug>.svg`, `orders/<order-id>/...`.
+- Layout: `mockups/product/<product-slug>/<look>.<webp|png|jpg>`, `mockups/editor/<garment-slug>/<look>.<webp|png|jpg>`, `mockups/3d/<product-slug>/<look>.<webp|png|jpg>` + `models/<product-slug>.glb` (reserved for the 3D viewer), `designs/<design-slug>.svg`, `posts/<post-slug>.svg`, `orders/<order-id>/...`.
 - **Two mockup sets, never mixed.** The catalogue (`ProductMockupPreview`, pinned with `set: "product"`) uses `color[-fit][-sleeve]`, 4:5 portrait, print area at 30% left / 22% top / 40% wide / 46% tall. The editor uses `editorMockupCandidates()` with `color[-gsm]` under `mockups/editor/<garment-slug>/` (`t-shirt`, `phone`), 1:1 square and flat.
 - The pre-split flat layout `mockups/<slug>/<look>.<ext>` is still tried **after** `mockups/product/...` (catalogue only); the editor never falls back to it, because a 4:5 photo does not fit a square panel.
 - Size never enters a look key; extensions are tried in the order `webp, png, jpg`.
+
+## Print bundle and delivery (`lib/order-print.ts`, `lib/delivery.ts`)
+- `print-files.zip` carries `print-sheet-<id>.html` (press), `invoice-<id>.html` (customer receipt, A5), `print-spec-<id>.csv`, `manifest.json`, `delivery-<id>.json` and `designs/*.svg` + `designs/*-mockup.svg`. Adding an entry means updating the exact-list assertion in `tests/order-archive.test.cjs`.
+- The receipt and the print sheet are self-contained HTML: they print through the browser's own dialog (Ctrl+P → save as PDF), so there is no PDF library and no font to ship.
+- The receipt never invents a delivery fee — the line reads "Quoted by MH Delivery" until MH Delivery returns a price.
+- `buildDeliveryQuoteRequest(order)` is the JSON MH Delivery prices from: consignee name / phone / email / address line / township / city, per-item size + colour + quantity + weight, parcel totals and the COD amount. `deliveryQuoteJson` / `downloadDeliveryJson` are the file, and `Doc/MH-DELIVERY.md` is the contract. Weights come from `UNIT_WEIGHT_GRAMS`; change them when the courier publishes real ones.
+- `NEXT_PUBLIC_MH_DELIVERY_URL` is read into `MH_DELIVERY_QUOTE_ENDPOINT`, which is empty until MH Delivery supplies the URL, so no request is sent yet.
 
 ## Cart lines (`lib/cart-items.ts`, `lib/cart-context.tsx`)
 - A cart line is keyed by `cartItemKey(productId, variant)` — product id **plus** size, colour, material, GSM, fit and sleeve. Two adds with any different value are separate lines; only an identical combination increments. Merging by product id alone collapsed different variants into one line and lost the variant entirely.

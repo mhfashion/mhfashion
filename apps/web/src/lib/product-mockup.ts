@@ -4,6 +4,9 @@
 // There are two independent mockup sets, because the two places show the garment differently:
 //   mockups/product/<product-slug>/<look>.<ext>  — catalogue photos (styled, 4:5 portrait)
 //   mockups/editor/<product-slug>/<look>.<ext>   — editor panel photos (flat, 1:1 square)
+//   mockups/3d/<product-slug>/<look>.<ext>       — 3D renders, reserved for the 3D mockup viewer
+// The 3D set also has its models at models/<product-slug>.glb; the folder exists so the renders
+// and the models can be uploaded before the viewer ships without another migration.
 // The flat `mockups/<product-slug>/<look>.<ext>` layout is still tried after the product set so
 // photos uploaded before the split keep working.
 //
@@ -15,10 +18,13 @@ export const R2_MOCKUP_BASE = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "").trim
 
 export const MOCKUP_EXTENSIONS = ["webp", "png", "jpg"] as const;
 
-/** Where a mockup is shown: the catalogue or the editor panel. */
-export type MockupSet = "editor" | "product";
+/** Where a mockup is shown: the catalogue, the editor panel, or the 3D viewer. */
+export type MockupSet = "editor" | "product" | "3d";
 
-export const MOCKUP_SETS: readonly MockupSet[] = ["product", "editor"] as const;
+export const MOCKUP_SETS: readonly MockupSet[] = ["product", "editor", "3d"] as const;
+
+/** Rendered turntable frames and the model they come from, per set. */
+export const MOCKUP_MODEL_EXTENSIONS = ["glb", "gltf"] as const;
 
 export function mockupSetFolder(set: MockupSet): string {
   return `mockups/${set}`;

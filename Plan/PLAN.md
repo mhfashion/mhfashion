@@ -2774,3 +2774,9 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 ### Two mockup sets
 - R2 now carries `mockups/product/<slug>/<look>.<ext>` (catalogue, 4:5) and `mockups/editor/<garment-slug>/<look>.<ext>` (editor panel, 1:1) as separate sets. `mockupCandidates(..., { set })` picks the folder and `editorMockupCandidates()` builds the editor URLs from colour + GSM; the flat pre-split layout is still a catalogue-only fallback.
 - Next: the editor panel still draws its own garment shape, so the `editor/` photos are not shown yet — wiring them in needs the editor to know its garment slug.
+
+### Delivery quote and print bundle
+- `delivery-<id>.json` (new, also inside the ZIP) is the MH Delivery quote request: consignee name, phone, email, address line, township, city, per-line size/colour/quantity/weight, parcel totals, COD amount. `Doc/MH-DELIVERY.md` documents the shape and what is still unknown (endpoint, auth, response fields).
+- `invoice-<id>.html` joins the bundle: an A5 receipt the browser prints to PDF, with a "Quoted by MH Delivery" line instead of an invented fee.
+- Drawer now has **Delivery JSON** and **Receipt** buttons next to the ZIP and print sheet.
+- `mockups/3d/` + `models/<slug>.glb` are reserved in R2 for the 3D mockup viewer, with the look keys and print-area convention documented.

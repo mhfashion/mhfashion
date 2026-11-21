@@ -43,7 +43,9 @@ NEXT_PUBLIC_R2_PUBLIC_URL = https://assets.mhfashionmm.com
 mh-fashion-assets/
 ├── mockups/
 │   ├── product/<product-slug>/<look>.<webp|png|jpg>   ← catalogue photos (product page, cards)
-│   └── editor/<garment-slug>/<look>.<webp|png|jpg>    ← editor panel photos (square, flat)
+│   ├── editor/<garment-slug>/<look>.<webp|png|jpg>    ← editor panel photos (square, flat)
+│   └── 3d/<product-slug>/<look>.<webp|png|jpg>        ← 3D renders (reserved, see 3.1d)
+├── models/<product-slug>.glb                          ← 3D garment models
 ├── designs/<design-slug>.svg                          ← design library source files
 ├── posts/<post-slug>.svg                              ← T-shirt post artwork
 └── orders/<order-id>/<file>.svg                       ← copies of what the press received
@@ -92,6 +94,21 @@ the middle of the panel, so keep the chest clear there.
 
 `editorMockupCandidates()` in `apps/web/src/lib/product-mockup.ts` builds these URLs; the editor
 never falls back to the catalogue layout because a 4:5 photo does not fit a square panel.
+
+### 3.1d 3D mockups — `mockups/3d/<product-slug>/<look>.webp` + `models/<product-slug>.glb`
+
+The 3D viewer is not built yet, but the folders exist so the assets can be uploaded once and not
+migrated later:
+
+- `models/<product-slug>.glb` — one garment model per product, Y-up, metres, origin at the centre
+  of the chest print area, ≤ 5 MB, Draco-compressed. This is the file the viewer loads.
+- `mockups/3d/<product-slug>/<look>.webp` — a rendered still per colour, same `<look>` keys as the
+  catalogue, used as the poster frame before the model finishes loading and for cards.
+- The model carries a `PRINT_AREA` empty (or a named node `print-area`) so the viewer can project
+  the design onto the chest without guessing coordinates.
+
+`mockupCandidates(slug, selection, { set: "3d" })` already builds the render URLs; nothing else in
+the app reads them yet.
 
 ### 3.1c Older flat layout
 

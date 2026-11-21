@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  CalendarDays, Check, Download, FileDown, Package, Printer, Search, Truck, X,
+  CalendarDays, Check, Download, FileDown, Package, Printer, ReceiptText, Search, Truck, X,
 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import {
@@ -12,8 +12,9 @@ import {
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { downloadCsv } from "@/lib/admin-csv";
 import {
-  designPreviewSrc, downloadDesignFile, downloadOrderArchive, openOrderPrintSheet, orderPrintRows,
+  designPreviewSrc, downloadDesignFile, downloadOrderArchive, openOrderInvoice, openOrderPrintSheet, orderPrintRows,
 } from "@/lib/order-print";
+import { downloadDeliveryJson } from "@/lib/delivery";
 import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
   adminDayKey, adminDayLabel, adminTodayKey, buildMockupDiagramSvg, designLayerSize,
@@ -259,6 +260,8 @@ export default function AdminOrders() {
             <div className="flex flex-wrap items-center gap-2">
               <AdminButton variant="secondary" onClick={() => downloadCsv(`${selected.id.replace("#", "order-")}-print-spec.csv`, orderPrintRows(selected))}><Download size={14} /> Print spec CSV</AdminButton>
               <AdminButton variant="secondary" aria-label="Download all design files and the print data as a ZIP" onClick={() => downloadOrderArchive(selected)}><FileDown size={14} /> Print files ZIP</AdminButton>
+              <AdminButton variant="secondary" aria-label="Download the MH Delivery quote request" onClick={() => downloadDeliveryJson(selected)}><Truck size={14} /> Delivery JSON</AdminButton>
+              <AdminButton variant="secondary" aria-label="Open the customer receipt" onClick={() => openOrderInvoice(selected)}><ReceiptText size={14} /> Receipt</AdminButton>
               <AdminButton onClick={() => openOrderPrintSheet(selected)}><Printer size={14} /> Print sheet</AdminButton>
             </div>
             <div className="flex flex-wrap items-center gap-2">
