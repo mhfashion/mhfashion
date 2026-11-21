@@ -1014,6 +1014,12 @@ proposal, not an approved order.
 3. **Fix the Cloudflare deploy pipeline** (secrets) and settle the staging question (13, item 2).
 4. **Checkout, payment, order creation.** A Payment Provider interface, payment webhooks and
    idempotent order creation (no double charge), with payment status mapped onto order status.
+   **Order creation shipped 2026-11-21:** `/checkout` collects the address, a note and the payment
+   method (KBZPay / Wave Pay / AYA Pay / Visa — no cash on delivery), and `placeOrder` in
+   `lib/checkout.ts` writes the order into the admin store with a `checkoutKey`. The same key returns
+   the first order instead of a second one, so a double submit or a refresh cannot charge twice; a
+   new order starts at **Pending Payment** and only a payment step moves it to **Confirmed**.
+   Still open: the real provider, its webhook and the delivery fee quote.
 
 ### P1 — before launch
 

@@ -1,0 +1,172 @@
+// Checkout (Plan §8): turn the cart into an order once, even if the button is pressed twice.
+// The idempotency key is the contract — a retry returns the order the first attempt created.
+
+import type { CartItem } from "@/lib/cart-items";
+import { type AdminDemoData, type AdminOrder, type AdminOrderItem, type AdminPaymentMethod } from "@/lib/admin-demo-data";
+
+/** Plan §8: Visa plus the three wallets. There is no cash on delivery. */
+export const CHECKOUT_PAYMENTS: { id: CheckoutPayment; label: string; hint: string }[] = [
+  { id: "KBZPay", label: "KBZPay", hint: "Scan the QR in the app" },
+  { id: "WavePay", label: "Wave Pay", hint: "Pay from the Wave Money app" },
+  { id: "AYAPay", label: "AYA Pay", hint: "Pay from the AYA app" },
+  { id: "Visa", label: "Visa / Mastercard", hint: "International card" },
+];
+
+export type CheckoutPayment = Extract<AdminPaymentMethod, "KBZPay" | "WavePay" | "AYAPay" | "Visa">;
+
+export type CheckoutAddress = {
+  name: string;
+  phone: string;
+  address: string;
+  township: string;
+  city: string;
+};
+
+export type CheckoutDraft = {
+  /** One per checkout attempt; the same key never creates a second order. */
+  idempotencyKey: string;
+  items: CartItem[];
+  address: CheckoutAddress;
+  payment: CheckoutPayment;
+  note?: string;
+  placedAt: string;
+};
+
+export const EMPTY_ADDRESS: CheckoutAddress = { name: "", phone: "", address: "", township: "", city: "" };
+
+export const CHECKOUT_CITIES = ["Yangon", "Mandalay", "Nay Pyi Taw", "Taunggyi", "Mawlamyine", "Other"];
+
+export function lineTotalKs(item: CartItem): number {
+  return (item.unitPriceKs ?? item.priceMinKs ?? 0) * Math.max(1, item.quantity);
+}
+
+export function checkoutSubtotalKs(items: readonly CartItem[]): number {
+  return items.reduce((total, item) => total + lineTotalKs(item), 0);
+}
+
+export function checkoutUnits(items: readonly CartItem[]): number {
+  return items.reduce((total, item) => total + Math.max(1, item.quantity), 0);
+}
+
+function digitsOnly(phone: string): string {
+  return phone.replace(/[^\d]/g, "");
+}
+
+export function validateCheckout(draft: CheckoutDraft): string[] {
+  const issues: string[] = [];
+  if (!draft.idempotencyKey.trim()) issues.push("The checkout is missing its request key — reload the page and try again.");
+  if (!draft.items.length) issues.push("Your cart is empty.");
+  for (const item of draft.items) {
+    if (!Number.isFinite(item.quantity) || item.quantity < 1) issues.push(`${item.name}: the quantity must be at least 1.`);
+    const price = item.unitPriceKs ?? item.priceMinKs;
+    if (!Number.isFinite(price) || price <= 0) issues.push(`${item.name}: it has no price for this combination yet.`);
+  }
+  if (!draft.address.name.trim()) issues.push("Enter the recipient's name.");
+  const phoneDigits = digitsOnly(draft.address.phone);
+  if (!phoneDigits) issues.push("Enter a phone number — the courier calls it.");
+  else if (phoneDigits.length < 7 || phoneDigits.length > 15) issues.push("That phone number does not look right.");
+  if (!draft.address.address.trim()) issues.push("Enter the delivery address.");
+  if (!draft.address.township.trim()) issues.push("Enter the township.");
+  if (!draft.address.city.trim()) issues.push("Choose the city or region.");
+  if (!CHECKOUT_PAYMENTS.some((method) => method.id === draft.payment)) issues.push("Choose how you want to pay.");
+  if ((draft.note ?? "").length > 500) issues.push("Keep the note under 500 characters.");
+  return issues;
+}
+
+export function nextOrderId(orders: readonly AdminOrder[]): string {
+  const highest = orders.reduce((max, order) => {
+    const match = /^#MH(\d+)$/.exec(order.id);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 1100);
+  return `#MH${highest + 1}`;
+}
+
+export function findOrderByCheckoutKey(data: AdminDemoData, key: string): AdminOrder | undefined {
+  if (!key) return undefined;
+  return data.orders.find((order) => order.checkoutKey === key);
+}
+
+export function orderItemFromCart(item: CartItem): AdminOrderItem {
+  const gsm = item.variant.gsm ? Number(item.variant.gsm) : null;
+  return {
+    productId: item.id,
+    name: item.name,
+    size: item.variant.size ?? "One size",
+    color: item.variant.color ?? "As shown",
+    quantity: Math.max(1, item.quantity),
+    unitPriceKs: item.unitPriceKs ?? item.priceMinKs ?? 0,
+    material: item.variant.material ?? undefined,
+    gsm: Number.isFinite(gsm) ? gsm : null,
+    fit: item.variant.fit ?? undefined,
+    sleeve: item.variant.sleeve ?? undefined,
+    design: null,
+  };
+}
+
+/** Payment must complete before an order confirms, so a new order starts at Pending Payment. */
+export function orderFromDraft(draft: CheckoutDraft, id: string): AdminOrder {
+  return {
+    id,
+    checkoutKey: draft.idempotencyKey,
+    customerName: draft.address.name.trim(),
+    customerEmail: "",
+    customerPhone: draft.address.phone.trim(),
+    shipTo: {
+      name: draft.address.name.trim(),
+      phone: draft.address.phone.trim(),
+      address: draft.address.address.trim(),
+      township: draft.address.township.trim(),
+      city: draft.address.city.trim(),
+    },
+    items: draft.items.map(orderItemFromCart),
+    stage: "Pending Payment",
+    payment: draft.payment,
+    placedAt: draft.placedAt,
+    note: (draft.note ?? "").trim(),
+  };
+}
+
+export function placeOrder(
+  data: AdminDemoData,
+  draft: CheckoutDraft,
+): { data: AdminDemoData; order: AdminOrder | null; created: boolean; issues: string[] } {
+  const existing = findOrderByCheckoutKey(data, draft.idempotencyKey);
+  if (existing) return { data, order: existing, created: false, issues: [] };
+  const issues = validateCheckout(draft);
+  if (issues.length) return { data, order: null, created: false, issues };
+  const order = orderFromDraft(draft, nextOrderId(data.orders));
+  return { data: { ...data, orders: [order, ...data.orders] }, order, created: true, issues: [] };
+}
+
+/** Demo stand-in for the payment webhook (P0 item 4): Pending Payment → Confirmed. */
+export function confirmPayment(
+  data: AdminDemoData,
+  orderId: string,
+): { data: AdminDemoData; order: AdminOrder | null; issues: string[] } {
+  const order = data.orders.find((entry) => entry.id === orderId);
+  if (!order) return { data, order: null, issues: ["That order no longer exists."] };
+  if (order.stage !== "Pending Payment") {
+    return { data, order, issues: [`${order.id} is already ${order.stage}.`] };
+  }
+  const paid: AdminOrder = { ...order, stage: "Confirmed" };
+  return {
+    data: { ...data, orders: data.orders.map((entry) => (entry.id === orderId ? paid : entry)) },
+    order: paid,
+    issues: [],
+  };
+}
+
+export function checkoutSummary(draft: CheckoutDraft): { units: number; subtotalKs: number; lines: { name: string; detail: string; quantity: number; totalKs: number }[] } {
+  return {
+    units: checkoutUnits(draft.items),
+    subtotalKs: checkoutSubtotalKs(draft.items),
+    lines: draft.items.map((item) => ({
+      name: item.name,
+      detail: [item.variant.size, item.variant.color, item.variant.material, item.variant.gsm, item.variant.fit, item.variant.sleeve]
+        .filter((part): part is string => Boolean(part))
+        .join(" · "),
+      quantity: Math.max(1, item.quantity),
+      totalKs: lineTotalKs(item),
+    })),
+  };
+}

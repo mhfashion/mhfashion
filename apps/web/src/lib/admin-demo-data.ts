@@ -36,7 +36,7 @@ export const ADMIN_ORDER_STAGES = [
 ] as const;
 
 export type AdminOrderStage = (typeof ADMIN_ORDER_STAGES)[number] | "Cancelled" | "Refunded";
-export type AdminPaymentMethod = "KBZPay" | "WavePay" | "AYAPay" | "Cash on Delivery";
+export type AdminPaymentMethod = "KBZPay" | "WavePay" | "AYAPay" | "Visa" | "Cash on Delivery";
 export type AdminProductCategory = "T-Shirt" | "Hoodie" | "Polo" | "Jersey" | "Cap" | "Accessory";
 export type AdminProductStatus = "Active" | "Draft" | "Archived";
 export type AdminDesignStatus = "Published" | "Draft" | "Hidden";
@@ -134,6 +134,8 @@ export type AdminOrderItem = {
 
 export type AdminOrder = {
   id: string;
+  /** Set when the order came through checkout; a repeat submit with the same key returns this order. */
+  checkoutKey?: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;

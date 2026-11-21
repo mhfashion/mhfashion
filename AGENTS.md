@@ -97,6 +97,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `applyChainPatch` refuses to remove an option that still prices rows, to switch off an attribute that prices rows, and to take an empty/duplicate label. It returns the untouched data plus `issues`; the UI renders those and writes nothing.
 - Tests: `tests/admin-attributes.test.cjs`.
 
+## Checkout (`lib/checkout.ts`, `components/CheckoutClient.tsx`)
+- `placeOrder(data, draft)` is the only writer of a storefront order. The draft carries `idempotencyKey`; the order stores it as `checkoutKey`, and a repeat submit with the same key returns the **first** order (`created: false`) instead of adding a second one. The page keeps the key in `sessionStorage` (`mh-fashion-checkout-key`) so a refresh reuses it.
+- A new order starts at **Pending Payment**; `confirmPayment` is the demo stand-in for the provider webhook and refuses anything that is not pending. Do not create orders at `Confirmed`.
+- The delivery fee is **not** invented: the summary says it is quoted by MH Delivery, because that API is not connected. Do not add a flat fee to make the total look complete.
+- `AdminPaymentMethod` now includes `Visa`; `CHECKOUT_PAYMENTS` deliberately has no cash on delivery (Plan §8).
+- The cart's Checkout button is a link to `/checkout` (`data-cart-checkout`); it used to be a dead button.
+- Tests: `tests/checkout.test.cjs`.
+
 ## Jersey mapping (`lib/admin-jersey.ts`, `components/admin/AdminJersey.tsx`)
 - `data.jerseyStyles` holds one worn photo path plus a quad per panel (Plan §4.4). Corners are **percentages of the photo**, ordered top-left, top-right, bottom-right, bottom-left; `panelPath` turns them into the preview path.
 - `panel.view` is derived from the key: only `back` belongs to the back photo. `panelIssues` refuses a corner outside 0-100, a quad under `MIN_PANEL_AREA` (25 %², shoelace) and a panel on the wrong view.
