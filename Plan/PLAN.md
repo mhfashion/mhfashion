@@ -2768,12 +2768,12 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 
 ### Nyein brand and R2 storage
 - Nyein is a ready-made catalogue line: `is_customizable = 'none'` products stay buyable but lose the **Edit Design** action and never paint an editor draft on the mockup. `/nyein` now lists that line from `sub_brand` instead of the placeholder card.
-- `Doc/R2-STORAGE.md` is the storage contract: bucket `mh-fashion-assets`, `mockups/<slug>/<look>.<ext>` for photos, `designs/`, `posts/`, `orders/`, plus the upload commands and the photo spec.
+- `Doc/R2-STORAGE.md` is the storage contract: bucket `mh-fashion-assets`, `mockups/product|editor|3d/<slug>/<look>.<ext>` for photos and renders, `models/<slug>.glb` for 3D, `designs/`, `posts/`, `orders/`, plus the upload commands and the photo spec.
 - Still open: the design → order link (the editor draft lives only in localStorage), R2 uploads from the app, checkout, and PNG/PDF export.
 
 ### Two mockup sets
 - R2 now carries `mockups/product/<slug>/<look>.<ext>` (catalogue, 4:5) and `mockups/editor/<garment-slug>/<look>.<ext>` (editor panel, 1:1) as separate sets. `mockupCandidates(..., { set })` picks the folder and `editorMockupCandidates()` builds the editor URLs from colour + GSM; the flat pre-split layout is still a catalogue-only fallback.
-- Next: the editor panel still draws its own garment shape, so the `editor/` photos are not shown yet — wiring them in needs the editor to know its garment slug.
+- Open: the editor panel still draws its own garment shape, so the `editor/` photos are not shown yet — see P3 below.
 
 ### Delivery quote and print bundle
 - `delivery-<id>.json` (new, also inside the ZIP) is the MH Delivery quote request: consignee name, phone, email, address line, township, city, per-line size/colour/quantity/weight, parcel totals, COD amount. `Doc/MH-DELIVERY.md` documents the shape and what is still unknown (endpoint, auth, response fields).
@@ -2784,3 +2784,112 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 ### Print bundle completeness
 - The ZIP is now self-describing: `README.txt` indexes it, `measurements-<id>.csv` gives one row per design layer (print area, units/cm, X/Y, width/height in cm, rotation, scale), and `Doc/PRINT-BUNDLE.md` explains every column for the press.
 - Bundle order: README, press sheet, receipt, line CSV, measurements CSV, manifest, delivery JSON, then `designs/`.
+
+---
+
+<a id="print-delivery-storage-plan"></a>
+## 2026-11-21 — Forward plan: print, delivery and storage
+
+The work log above records what shipped. This section is the plan for what is left, in the order
+it should be built. Each phase has a single acceptance test that decides whether it is done; a
+phase is not "done" because the code compiles.
+
+### Current state (shipped, `main` at `4e6acdc`)
+
+| Area | State |
+|---|---|
+| Print bundle | `print-files.zip` = README, press sheet, A5 receipt, line CSV, layer-measurement CSV, manifest, delivery JSON, design SVGs + mockup diagrams (`Doc/PRINT-BUNDLE.md`) |
+| Delivery | `delivery-<id>.json` is the MH Delivery quote request; nothing is POSTed yet (`Doc/MH-DELIVERY.md`) |
+| Storage | R2 layout fixed: `mockups/product`, `mockups/editor`, `mockups/3d`, `models/`, `designs/`, `posts/`, `orders/` (`Doc/R2-STORAGE.md`) |
+| Catalogue | Nyein is a ready-made line (`is_customizable = 'none'`) — buyable, no editor; `/nyein` lists it |
+| Tests | 220 passing; bundle contents and the quote payload are covered by `tests/order-archive.test.cjs` and `tests/delivery-quote.test.cjs` |
+
+### P1 — Design → order link (highest value, unblocks everything else)
+
+Today the editor draft lives only in `localStorage`, so an order can carry a design the press
+cannot fetch, and the ZIP is the only copy of the artwork.
+
+| Task | File |
+|---|---|
+| Upload the design SVG to R2 on save, keyed by design id | `app/api/designs/route.ts` (new), `lib/r2.ts` (new) |
+| Store `design_url`, `design_id` on the order item, not just the file name | migration `0008`, `lib/types.ts` |
+| Send `designId` with the cart line, so checkout and the editor agree on one design | `lib/cart-items.ts`, editor save path |
+| Drawer: show the R2 link next to each design and fail loudly when a file is missing | `components/admin/AdminOrders.tsx` |
+
+**Acceptance:** place an order from the editor, then delete the browser profile — the design still
+opens from the admin drawer, and the ZIP's `designs/*.svg` is byte-identical to the R2 object.
+
+### P2 — MH Delivery fee at checkout
+
+| Task | File |
+|---|---|
+| `POST /api/delivery/quote` server route; the token never reaches the browser | `app/api/delivery/quote/route.ts` (new) |
+| Map the quote response onto the order (`deliveryFeeKs`, `deliveryService`, `etaDays`) | migration `0009`, `lib/types.ts` |
+| Cart/checkout: township picker, then the fee appears before payment | `components/cart/*` |
+| Receipt: print the real fee instead of "Quoted by MH Delivery" | `lib/order-print.ts` |
+
+**Acceptance:** two townships produce different fees in the same session; the client bundle contains
+no delivery token; a failed quote blocks checkout with a readable message rather than a silent 0.
+
+**Blocked on:** endpoint URL, auth scheme, response fields (`Doc/MH-DELIVERY.md` → "Still to confirm").
+
+### P3 — Editor mockup photos
+
+| Task | File |
+|---|---|
+| Editor reads `?product=<slug>&colour=&gsm=` so it knows its garment | `app/create/page.tsx` |
+| Panel shows `editorMockupCandidates()` behind the artwork, falling back to the drawn garment | `components/MockupArtwork.tsx` |
+| Print frame aligned to the photo's chest, verified at 1:1 | same |
+
+**Acceptance:** with a photo uploaded, the artwork lands inside the photo's print area on web and
+phone; with no photo, the panel looks exactly as it does today.
+
+**Blocked on:** the owner's decision between one photo set per garment type (`t-shirt`, `phone`) and
+one per catalogue product.
+
+### P4 — 3D mockup viewer
+
+| Task | File |
+|---|---|
+| Load `models/<slug>.glb`, project the design onto the `print-area` node | `components/ProductMockup3D.tsx` (new) |
+| Poster frame from `mockups/3d/<slug>/<look>.webp` until the model is ready | same |
+| Lazy-load the renderer so the catalogue bundle does not grow | `app/products/[slug]/page.tsx` |
+
+**Acceptance:** the model loads in under 3 s on a mid-range phone over 4G, the design sits on the
+chest in the same place as the flat mockup, and a missing model silently falls back to the photo.
+
+**Open:** renderer choice (`three` + `model-viewer` vs a WebGL-lite path) and whether 3D ships per
+product or per garment type.
+
+### P5 — Customer export (PNG/PDF)
+
+| Task | File |
+|---|---|
+| "Download my design" as PNG at print resolution and as SVG | `lib/design-export.ts` (new) |
+| Same file set the press gets, minus the internal sheet | `lib/order-print.ts` reuse |
+
+**Acceptance:** the downloaded PNG measures the same centimetres at 300 dpi as the measurements CSV.
+
+### P6 — Bundle to R2
+
+| Task | File |
+|---|---|
+| Write the finished bundle to `orders/<id>/` so the press can fetch a link | `app/api/orders/[id]/archive/route.ts` (new) |
+| Store the link on the order and show it in the drawer | `components/admin/AdminOrders.tsx` |
+
+**Acceptance:** the press opens the link with no login and gets the same files as the ZIP.
+
+### Open questions for the owner
+
+1. Editor mockups per garment type or per catalogue product? (P3, changes how many photos to shoot)
+2. Is there a checkout today, or does P2 build it? The order model exists; the customer-facing
+   checkout flow does not.
+3. 3D: per product or per garment type, and which renderer? (P4)
+4. Real per-item weights from MH Delivery, so `UNIT_WEIGHT_GRAMS` stops being an estimate.
+
+### Deliberately out of scope
+
+- Raster mockups inside the ZIP — they are catalogue assets, not print files.
+- A PDF library — the receipt and the sheet print through the browser, which keeps the admin
+  bundle free of a font/raster pipeline.
+- Per-size mockup photos — size never changes the silhouette, so it is not a look key.

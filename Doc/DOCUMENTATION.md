@@ -1109,3 +1109,14 @@ Removed visible design/layer/file captions beneath preview cards in the Edit Sid
 ### 2026-11-19 — Text transform hugs copy and supports line breaks
 
 Text-only Free Transform selection bounds now use the measured glyph block directly instead of the generic artwork safety inset, so the box follows the actual text width and multi-line height. Text editing remains an inline `textarea`: Enter inserts line breaks, the editor grows with the number of lines, and the SVG canvas/mockup renderer draws each line independently from the same `\n` content. Desktop and coarse-pointer sizing retain the existing transform handles and touch behavior.
+
+
+### 2026-11-21 — Print bundle, MH Delivery quote and mockup sets
+
+Orders now leave the app as one self-contained bundle. The order drawer's **Print files ZIP** downloads `<order>-print-files.zip` with `README.txt`, the A4 press sheet, the A5 customer receipt, the per-line spec CSV, a per-layer measurement CSV (print area, units/cm, X/Y/width/height in cm, rotation, scale), `manifest.json`, the MH Delivery quote request and each design as a print-sized SVG plus its mockup-position diagram. `Doc/PRINT-BUNDLE.md` documents every column; `Doc/MH-DELIVERY.md` documents the JSON MH Delivery prices from. The receipt prints through the browser's own dialog, so no PDF library ships to the admin bundle, and it never invents a delivery fee.
+
+Storage is split by consumer: `mockups/product/<slug>/<look>.<ext>` for catalogue photos (4:5), `mockups/editor/<garment-slug>/<look>.<ext>` for the editor panel (1:1, colour + GSM), and `mockups/3d/<slug>/<look>.<ext>` with `models/<slug>.glb` reserved for the 3D viewer. `mockupCandidates(..., { set })` and `editorMockupCandidates()` build the URLs; the pre-split flat layout is still a catalogue-only fallback so existing uploads keep working. Ready-made products (`is_customizable = 'none'`, e.g. the Nyein line) stay buyable but lose the Edit Design action and never paint an editor draft on the mockup; `/nyein` lists that line from `sub_brand`.
+
+Remaining limitations: nothing is uploaded to R2 from the app yet (the editor draft still lives in `localStorage`), no quote request is sent to MH Delivery because the endpoint and token are not supplied, the editor panel still draws its own garment instead of the `editor/` photo, and there is no customer-facing checkout. The forward plan and its acceptance tests are in [`Plan/PLAN.md` → Forward plan: print, delivery and storage](../Plan/PLAN.md#print-delivery-storage-plan).
+
+Validation: `node --test tests/*.test.cjs` **220/220** passing, TypeScript clean, Next.js production build passing. The bundle was verified end to end in headless Chromium: the downloaded ZIP holds nine entries, the measurements CSV matches `designLayerSize()`, and the delivery file carries the consignee address and phone.
