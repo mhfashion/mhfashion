@@ -3,6 +3,8 @@ export type Product = {
   name: string;
   slug: string;
   imageUrl?: string;
+  // Artwork painted on top of the variant mockup; absent until the catalog carries one.
+  designSvgUrl?: string;
   isNew?: boolean;
   productType?: string;
   isCustomizable?: "full" | "partial" | "none";

@@ -2,7 +2,6 @@
 
 import {
   Check,
-  ChevronDown,
   Heart,
   Minus,
   Plus,
@@ -15,11 +14,13 @@ import {
   Truck,
   UserRound,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
+import ProductMockupPreview from "@/components/ProductMockupPreview";
 import { useCart } from "@/lib/cart-context";
 import { useCurrency } from "@/lib/currency-context";
+import { readDesignDraft, resolveDesignOverlay, type DesignOverlay } from "@/lib/design-draft";
 import { useI18n } from "@/lib/i18n";
 import type { Product } from "@/lib/types";
 
@@ -79,9 +80,17 @@ export default function ProductDetailClient({ product, related }: Props) {
   const [selectedSleeve, setSelectedSleeve] = useState("Short Sleeve");
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<Tab>("details");
-  const [activeImage, setActiveImage] = useState(0);
+  const [design, setDesign] = useState<DesignOverlay | null>(
+    product.designSvgUrl ? { kind: "svg", url: product.designSvgUrl } : null,
+  );
   const [favorite, setFavorite] = useState(false);
   const [added, setAdded] = useState(false);
+
+  // `?design=` carries a shared artwork; otherwise the design open in the editor is used.
+  useEffect(() => {
+    const shared = new URLSearchParams(window.location.search).get("design");
+    setDesign(resolveDesignOverlay({ svgUrl: shared ?? product.designSvgUrl, draft: readDesignDraft() }));
+  }, [product.designSvgUrl]);
 
   const sizePrice = ({ S: 0, M: 1000, L: 2000, XL: 3000, XXL: 4000 } as Record<string, number>)[selectedSize ?? ""] ?? 0;
   const colorPrice = { Black: 0, White: 500, Green: 1000, Sand: 500, Red: 1000, Navy: 500 }[selectedColor ?? ""] ?? 0;
@@ -113,22 +122,24 @@ export default function ProductDetailClient({ product, related }: Props) {
 
   return (
     <>
-      <section className="grid gap-2 rounded-xl border-0 bg-transparent p-0 shadow-none sm:border sm:border-border/70 sm:bg-bg-surface sm:p-2 sm:shadow-[0_8px_30px_rgba(30,40,20,0.06)] lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:gap-2.5 lg:p-2.5">
-        <div className="mx-auto min-w-0 w-full max-w-[min(100%,280px)] lg:max-w-[280px]">
-          <div className="relative aspect-square overflow-hidden rounded-2xl border border-border/70 bg-bg">
-            {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-text-muted">Product preview</div>}
-            {product.isNew && <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-[10px] font-black text-accent-foreground">NEW</span>}
-            <button type="button" aria-label="Previous product image" onClick={() => setActiveImage((activeImage + 3) % 4)} className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-text-primary shadow-sm"><ChevronDown className="rotate-90" size={17} /></button>
-            <button type="button" aria-label="Next product image" onClick={() => setActiveImage((activeImage + 1) % 4)} className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-text-primary shadow-sm"><ChevronDown className="-rotate-90" size={17} /></button>
-            <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-text-secondary shadow-sm">{activeImage + 1} / 4</span>
+      <section className="grid gap-2 rounded-xl border-0 bg-transparent p-0 shadow-none sm:border sm:border-border/70 sm:bg-bg-surface sm:p-2 sm:shadow-[0_8px_30px_rgba(30,40,20,0.06)] lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)] lg:gap-2.5 lg:p-2.5">
+        <div className="mx-auto min-w-0 w-full max-w-[min(100%,440px)] lg:max-w-[440px]">
+          <div className="relative">
+            <ProductMockupPreview
+              slug={product.slug}
+              name={product.name}
+              imageUrl={product.imageUrl}
+              selection={{ color: selectedColor, fit: selectedFit, sleeve: selectedSleeve, size: selectedSize }}
+              design={design}
+            />
+            {product.isNew && <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-[10px] font-black text-accent-foreground">NEW</span>}
           </div>
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {[0, 1, 2, 3].map((index) => (
-              <button key={index} type="button" onClick={() => setActiveImage(index)} className={`aspect-square overflow-hidden rounded-xl border-2 bg-bg ${activeImage === index ? "border-accent" : "border-border/60"}`}>
-                {product.imageUrl && index < 2 ? <img src={product.imageUrl} alt={`${product.name} view ${index + 1}`} className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-[10px] text-text-faint">View {index + 1}</span>}
-              </button>
-            ))}
-          </div>
+          <p data-mockup-caption className="mt-2 text-center text-[10px] text-text-muted">
+            {selectedColor || selectedMaterial || selectedGsm
+              ? `Mockup: ${[selectedColor, selectedFit, selectedSleeve].filter(Boolean).join(" · ")}`
+              : "Pick a colour and fit to see the mockup"}
+            {design ? " · your design on top" : ""}
+          </p>
         </div>
 
         <div className="min-w-0 px-1 py-1 sm:px-2">

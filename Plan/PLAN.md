@@ -2698,3 +2698,12 @@ Posting lives in the admin workspace at `/admin/posts` with three tabs, because 
 - **Validation:** title required (≤ 80 chars), SVG required, at least one attribute option, at least one combination, every row complete, every price above zero and under Ks 10,000,000, no repeated combination, at most 40 rows.
 - **SVG storage:** `apps/web/src/lib/post-assets.ts` reads the file and returns a data URL that the browser-local demo store can hold. The R2 route is not provisioned yet, so this is the single seam to replace with the Cloudflare R2 upload; the return shape (`url`, `fileName`, `sizeBytes`) stays the same.
 - **Persistence:** posts live in the same demo store (`tshirtPosts`), so they survive a reload. Entries saved by the earlier per-size module are converted on read (`normalizeTshirtPost`: sizes × colours become combinations with the colour surcharge folded into the price), and a store without posts is backfilled with the seeds.
+
+## 2026-11-21 Implementation Update — Product page preview (mockup + design)
+
+The product page at `/products/:slug` now previews the exact thing the customer is buying instead of a static photo.
+
+- **Bigger image.** The media column grew from 280 px to 440 px on desktop and runs full width on a phone (374 px at 390 px wide, no horizontal overflow).
+- **The mockup follows the selection.** Colour, fit and sleeve resolve to an R2 object (`mockups/<slug>/<look>.<ext>`), walking from the most specific look down to `default` and then to the catalog image. Size is left out of the key because the same garment photo serves M and XL; a bucket only needs the looks that visually differ.
+- **The design sits on top.** The artwork is placed in `PRODUCT_PRINT_AREA` (30% / 22% / 40% / 46% of the image box) and comes from `?design=`, the product's own `designSvgUrl`, or the design currently open in the editor (kept in `localStorage` by `KittlCanvas`). Draft layers are drawn with the editor's own renderer, so the preview and the canvas cannot drift.
+- **Config:** set `NEXT_PUBLIC_R2_PUBLIC_URL` to the bucket's public origin at build time; without it the page still works, showing the catalog image with the design overlaid.

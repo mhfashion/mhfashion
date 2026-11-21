@@ -39,6 +39,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `normalizeTshirtPost` converts posts saved by the earlier per-size module (sizes × colours with a colour surcharge) into combinations on read; a store without posts is backfilled with `createSeedTshirtPosts(...)`.
 - Tests: `tests/admin-posts.test.cjs` covers the combination helpers, validation, migration and the screen wiring; `tests/guide-http.test.cjs` asserts the exact `manus-routes.json` order, so a new admin route must be added to that expected list too.
 
+## Product preview (`components/ProductMockupPreview.tsx`)
+- The product page preview is driven by the customer's selection, not a photo carousel. The old fake "1 / 4" counter and the `View 2/3/4` thumbnails were placeholders; they are gone.
+- Mockups come from R2: `NEXT_PUBLIC_R2_PUBLIC_URL` is the public bucket origin and objects live at `mockups/<product-slug>/<look>.<ext>`. **This env var is inlined at build time**, so it must be set for the Cloudflare/Worker build as well, or the storefront only ever shows the catalog image.
+- A *look* is colour + fit + sleeve. Size is deliberately excluded: the photo of a black oversized tee is the same for M and XL, so a bucket only needs the photos that actually differ. `mockupKeys` walks `black-oversized-short-sleeve` → `black-oversized` → `black-short-sleeve` → `black` → `default`, and `mockupCandidates` expands each key across `webp`, `png`, `jpg` before falling back to `product.imageUrl`.
+- The fallback chain runs through `<img onError>` **and** a mount check for `complete && naturalWidth === 0`. Without the mount check a 404 that lands before hydration leaves the preview stuck on a broken image, because the error fires before React attaches its handler.
+- The design overlay sits in `PRODUCT_PRINT_AREA` (fractions of the image box, currently 30% / 22% / 40% / 46%). Tune that constant when real mockup photos arrive; it is the only geometry the preview owns.
+- Design source, highest priority first: `?design=` (URL or data URL), `product.designSvgUrl`, then the editor draft. `lib/design-draft.ts` keeps the open editor artwork in `localStorage` (`mh-fashion-design-draft-v1`), written by `KittlCanvas` on a 400 ms debounce; an empty draft paints nothing.
+- Draft layers are rendered with the same `EditorArtworkLayers` as the editor, inside a `1000 x 1200` viewBox, so the preview matches the canvas without a second renderer.
+- Tests: `tests/product-mockup.test.cjs`.
+
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.
 - The job's **first step** verifies the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets. If either is missing it exits 1 and every later step is skipped, so **the Cloudflare Worker is never deployed**.
