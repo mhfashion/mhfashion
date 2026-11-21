@@ -635,6 +635,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   }, [canvasLayerRotations, canvasLayerScales, canvasLayerTransforms, canvasLayerOrigins, layers]);
   const selectionBounds = useMemo(() => boundsForLayerIds(selectedLayerIds), [boundsForLayerIds, selectedLayerIds]);
   const [pasteboardRect, setPasteboardRect] = useState<PasteboardRect | null>(null);
+  // A light mat under the print area. Without it a dark stroke painted just outside the
+  // canvas landed on the near-black workspace and looked like nothing happened.
+  const [artboardRect, setArtboardRect] = useState<PasteboardRect | null>(null);
   // A layer may be parked far outside the print area, so the Move tool's pick surface has to
   // cover every visible layer, not a fixed margin around the canvas. Sized in percentages of
   // the print area, which is the same box the artwork coordinate space maps onto.
@@ -654,6 +657,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       height: `${Math.max(100, bottom) - minTop}%`,
     };
   }, [boundsForLayerIds, layers]);
+  // The mat only shows while something can actually be painted or parked outside the print
+  // area, so an empty editor keeps its plain workspace.
+  const artworkOutsideCanvas = useMemo(() => {
+    const all = boundsForLayerIds(layers.filter((layer) => layer.visible).map((layer) => layer.id));
+    if (!all) return false;
+    return all.x < 0 || all.y < 0 || all.x + all.width > 1000 || all.y + all.height > 1200;
+  }, [boundsForLayerIds, layers]);
+  const showArtboard = artworkOutsideCanvas;
   // The surface a press lands on: Move picks among the layers, the paint tools use the measured
   // pasteboard. Before the first measurement the canvas box itself stands in.
   const pasteboardSurface = activeTool === "move"
@@ -784,9 +795,8 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   // Percent of the canvas box keeps the surface aligned through zoom and pan without
   // re-deriving artwork units on every move.
   useEffect(() => {
-    // The surface is only rendered for the tools that paint; leaving it measured while Move is
-    // active is harmless because Move uses its own pick surface.
-    if (!CANVAS_OUTSIDE_TOOLS.includes(activeTool)) return;
+    // Measured for every tool: the mat is drawn whenever a layer reaches past the print area,
+    // and the pasteboard is simply unused (but harmless) for the tools that do not paint.
     let frame = 0;
     const measure = () => {
       frame = 0;
@@ -814,6 +824,27 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
         top: topPercent,
         width: Math.max(1, rightPercent - leftPercent),
         height: Math.max(1, bottomPercent - topPercent),
+      });
+      // Keep the mat inside the unobstructed strip (and the touch ring) so it never slides
+      // under a docked panel or an attached mockup, and give it roughly half a canvas of
+      // working room on each side.
+      const matX = Math.max(120, canvasRect.width * 0.55);
+      const matY = Math.max(90, canvasRect.height * 0.28);
+      let matRightBound = right;
+      document.querySelectorAll<HTMLElement>('section[aria-label="Front Mockup"], section[aria-label="Back Mockup"]').forEach((section) => {
+        const rect = section.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        if (rect.left > canvasRect.right) matRightBound = Math.min(matRightBound, rect.left);
+      });
+      const matLeft = clamp(percentX(Math.max(left, canvasRect.left - matX)), limitX);
+      const matRight = clamp(percentX(Math.min(matRightBound, canvasRect.right + matX)), limitX);
+      const matTop = clamp(percentY(Math.max(top, canvasRect.top - matY)), limitY);
+      const matBottom = clamp(percentY(Math.min(bottom, canvasRect.bottom + matY)), limitY);
+      setArtboardRect({
+        left: matLeft,
+        top: matTop,
+        width: Math.max(1, matRight - matLeft),
+        height: Math.max(1, matBottom - matTop),
       });
     };
     const schedule = () => {
@@ -2529,6 +2560,14 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
               style={{ cursor: draggingNode === "Print canvas" ? "grabbing" : activeToolCursorStyle, transform: `translate(${nodePositions["Print canvas"].x}px, ${nodePositions["Print canvas"].y}px)` }}
             >
               <div className="relative">
+                {showArtboard && artboardRect && (
+                  <div
+                    aria-hidden="true"
+                    data-editor-artboard="true"
+                    className="pointer-events-none absolute z-0 rounded-[20px] bg-[#ccd4dc] shadow-[0_24px_64px_rgba(6,10,16,0.42)] ring-1 ring-black/10"
+                    style={{ left: `${artboardRect.left}%`, top: `${artboardRect.top}%`, width: `${artboardRect.width}%`, height: `${artboardRect.height}%` }}
+                  />
+                )}
                 <canvas
                   ref={canvasNodeRef}
                   width={PRINT_CANVAS_SPEC.widthPx}
@@ -2541,7 +2580,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                   data-size-fixed={PRINT_CANVAS_SPEC.fixedSize}
                   aria-label="Blank print canvas"
                   onDoubleClick={() => activeTool === "pen" && finishPenPath(false)}
-                  className={`block w-full touch-none border border-[#36a0e5] shadow-[0_5px_18px_rgba(30,60,90,0.08)] ${activeTool === "shape" ? "cursor-crosshair" : ""}`}
+                  className={`relative z-[1] block w-full touch-none border border-[#36a0e5] shadow-[0_12px_34px_rgba(12,20,32,0.28)] ${activeTool === "shape" ? "cursor-crosshair" : ""}`}
                   style={{
                     backgroundColor: "#ffffff",
                     backgroundImage: "linear-gradient(45deg,#e4e7e3 25%,transparent 25%),linear-gradient(-45deg,#e4e7e3 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e4e7e3 75%),linear-gradient(-45deg,transparent 75%,#e4e7e3 75%)",

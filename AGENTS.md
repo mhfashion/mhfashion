@@ -83,6 +83,12 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The mockup `<section>`s are later siblings at the same z-index, so they still paint above the pasteboard and keep their own input; a Brush press on a mockup creates no stroke.
 - A transparent `<rect aria-label="Move selected layer">` overlays the selection outline so a layer parked off-canvas is still grabbable (the artwork itself renders `pointerEvents="none"`).
 - `CANVAS_LAYER_TRAVEL_LIMIT` (2400 artwork units) bounds how far a layer can be dragged, so it stays reachable; the pasteboard is clamped to the same limit.
+- Painting outside the print area works for every tool, but on the near-black workspace black ink was
+  invisible, which read as "the tools only draw inside the canvas". `[data-editor-artboard]` is a light
+  mat (`#ccd4dc`) behind the print area, measured by the same effect as the pasteboard and shown only
+  while `artworkOutsideCanvas` (a visible layer outside 0..1000 x 0..1200) is true, so an empty editor
+  keeps its plain look. It stops at a docked panel or an attached mockup, never takes pointer input,
+  and the print canvas is `relative z-[1]` so it stays above the mat.
 - `MockupArtwork` now receives `layerOffsets`/`layerScales`/`layerOrigins`/`layerRotations` and mirrors the canvas, then clips the artwork to the print area with a `clipPath` in overlay coordinates (`printScale = BASE_ARTWORK_SCALE * safeTransform.scale`). A layer dragged off-canvas therefore disappears from the mockup exactly as it would print.
 
 ## Testing pitfalls

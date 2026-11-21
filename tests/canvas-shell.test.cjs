@@ -469,6 +469,19 @@ test("every tool paints outside the print canvas, not just inside it", () => {
   assert.match(source, /const left = coarse \? canvasRect\.left - ring : viewportRect\.left;/);
   // It must not double as the workspace node drag handle.
   assert.match(source, /event\.target\.closest\("\[data-editor-pasteboard\]"\)\) return;/);
+  // Dark ink painted just outside the white canvas used to vanish into the dark workspace,
+  // which read as "the tools only work inside the canvas". A light mat is drawn under the
+  // print area as soon as a layer reaches past it, so the stroke is visible where it lands.
+  assert.match(source, /const \[artboardRect, setArtboardRect\] = useState<PasteboardRect \| null>\(null\);/);
+  assert.match(source, /data-editor-artboard="true"/);
+  assert.match(source, /const artworkOutsideCanvas = useMemo\(\(\) => \{/);
+  assert.match(source, /return all\.x < 0 \|\| all\.y < 0 \|\| all\.x \+ all\.width > 1000 \|\| all\.y \+ all\.height > 1200;/);
+  assert.match(source, /const showArtboard = artworkOutsideCanvas;/);
+  // The mat stops at a docked panel or an attached mockup instead of sliding under it.
+  assert.match(source, /section\[aria-label="Front Mockup"\], section\[aria-label="Back Mockup"\]/);
+  assert.match(source, /const matRight = clamp\(percentX\(Math\.min\(matRightBound, canvasRect\.right \+ matX\)\), limitX\);/);
+  // The print canvas keeps its own surface above the mat.
+  assert.match(source, /relative z-\[1\] block w-full touch-none border border-\[#36a0e5\]/);
   // Layer masks and erasure masks are clipped to their own region, so a canvas-sized mask
   // stopped erasing anything painted outside the print area.
   assert.match(artworkLayers, /const ARTWORK_MASK_ORIGIN = -\d+;/);
