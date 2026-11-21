@@ -80,6 +80,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Prices parse `24000`, `24,000`, `Ks 24,000`; 0, negatives, `10,000,000`+ and non-numeric text are rejected with a message. Rows carry `version`, so a save built from a stale grid is rejected (`conflicts`) instead of overwriting; every applied change appends to `priceHistory`.
 - CSV export is UTF-8 with a BOM (Excel needs it for Myanmar text). An unpriced row exports an empty Price cell and re-imports as "same" — that is what makes export → import a no-op. Import only previews; `importChanges` writes new/changed rows only.
 - The price cell needs `bg-white`: the admin theme's global input styling otherwise paints it dark and the number becomes unreadable.
+- Phone layout: below `sm` the table is replaced by grouped cards (`data-pricing-phone`), grouped by
+  two selects (default `["print","material"]` → "Print Method → Fabric Type"). `groupRows` keeps
+  first-appearance order, so sections follow the chain — never sort them. Filters and bulk live in
+  `BottomSheet`s, and the staged-save bar is a sibling of the card (not inside it) so it survives
+  the phone branch.
+- Native checkboxes render as dark squares because the site sets a dark `color-scheme`; give them
+  `[color-scheme:light] accent-[#4cae22]`.
+- A phone search field inside the admin header needs `min-w-0` on its flex wrapper, otherwise its
+  intrinsic width forces ~370 px of page at a 320 px viewport.
 - Tests: `tests/admin-pricing.test.cjs`.
 
 ## Design takedown (`recordDesignTakedown`)

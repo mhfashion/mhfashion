@@ -76,6 +76,31 @@ export function combinationSearchText(attributes: readonly PricingAttribute[], o
   return `${attributes.map((attribute) => `${attribute.label} ${options[attribute.key] ?? ""}`).join(" ")} ${combinationLabel(attributes, options)}`.toLowerCase();
 }
 
+export type PricingGroup = { key: string; label: string; rows: PricingRow[] };
+
+/**
+ * Phone layout groups the cards by one or two attributes (default Print Method → Fabric Type).
+ * Unknown keys are ignored, and the first appearance of a group fixes its position so the
+ * sections follow the chain instead of the alphabet.
+ */
+export function groupRows(
+  attributes: readonly PricingAttribute[],
+  rows: readonly PricingRow[],
+  groupBy: readonly string[],
+): PricingGroup[] {
+  const keys = groupBy.filter((key) => attributes.some((attribute) => attribute.key === key));
+  if (!keys.length) return [{ key: "all", label: "All combinations", rows: [...rows] }];
+  const groups = new Map<string, PricingGroup>();
+  for (const row of rows) {
+    const key = keys.map((entry) => row.options[entry] ?? "").join("|");
+    const label = keys.map((entry) => row.options[entry] ?? "—").join(" · ");
+    const existing = groups.get(key);
+    if (existing) existing.rows.push(row);
+    else groups.set(key, { key, label, rows: [row] });
+  }
+  return [...groups.values()];
+}
+
 export type PriceState = "priced" | "unpriced";
 
 export function priceState(price: number | null | undefined): PriceState {

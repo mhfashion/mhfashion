@@ -198,11 +198,19 @@ a message. A stale save (older row version) is rejected instead of overwriting. 
 the post's own price rows, so the Posts editor and the grid share one source of truth; product
 scope writes one row per stocked size, seeded from the catalogue price.
 
-**Still open in 4.5.1:** the Phone card layout (grouped cards, bottom sheets, keypad) — the Web
-grid is first by owner answer — and the "no valid combinations → link to Attribute Management"
-state, which needs Attribute Management (16 P2). The grid currently renders the page without
-horizontal scroll at 390 px and keeps the table inside its own scroll container, but it is not yet
-the designed phone experience.
+**Phone cards (built 2026-11-21):** below 640 px the table is replaced by grouped cards. Two
+selects pick the grouping (default **Print Method → Fabric Type**); each section header collapses
+and shows `n/total priced`; a card shows the remaining attributes as chips, a 44 px price field
+(`inputmode="numeric"`, so the keypad opens), an `Unpriced` badge and a 44 px history button.
+Filters and bulk actions open as bottom sheets ("Filters (n)", "Bulk (n)") with "n rows will
+change" still stated before anything is written, and the staged-save bar is sticky above the
+safe-area inset so it is never covered. Verified in headless Chromium at 390 px and 320 px: no
+horizontal page scroll (`scrollWidth === clientWidth`), every touch target ≥ 44 px, and the phone
+flow (select → bulk set → save) writes the same rows as the web grid. The search field in the
+admin header needed `min-w-0` to stop it forcing 370 px of page width at 320 px.
+
+**Still open in 4.5.1:** the "no valid combinations → link to Attribute Management" state, which
+needs Attribute Management (16 P2).
 
 **Rules.** Price belongs to one full valid combination. Only combinations the cascading rules allow
 exist as rows, so pricing can never create an invalid combination (Sublimation with Combed Cotton,
@@ -874,7 +882,8 @@ browser-local demo data (section 16 P0).
   post's own price rows, product scope one row per stocked size. Designs gained a Takedown drawer
   that records the claimant and hides the design without touching paid orders (8.1). The seeded
   Peacock post had a Sublimation + Combed Cotton row, which the cascade forbids; it is now DTF.
-  Phone cards and Attribute Management remain open (4.5.1, 16 P2).
+  Phone cards followed (grouped collapsible cards, bottom sheets, keypad fields, sticky save bar;
+  verified at 390 and 320 px). Attribute Management remains open (4.5.1, 16 P2).
 
 
 

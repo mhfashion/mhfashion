@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeftRight, Check, ChevronDown, Download, History, RotateCcw, Save, Search, Tags, Upload } from "lucide-react";
+import { ArrowLeftRight, Check, ChevronDown, Download, History, RotateCcw, Save, Search, SlidersHorizontal, Tags, Upload, X } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminEmpty, AdminInput, AdminSelect, AdminStat } from "@/components/admin/AdminUi";
 import { getDemoAdminSession } from "@/lib/admin-demo-auth";
@@ -13,8 +13,9 @@ import {
   type PriceChange, type PricingScope, type PricingScopeKind,
 } from "@/lib/admin-pricing";
 import {
-  buildPricingCsv, combinationLabel, combinationSearchText, formatPriceInput, importChanges, parsePriceInput,
-  parsePricingCsv, priceState, pricingSummary, type PricingAttribute, type PricingImportRow, type PricingRow,
+  buildPricingCsv, combinationLabel, combinationSearchText, formatPriceInput, groupRows, importChanges,
+  parsePriceInput, parsePricingCsv, priceState, pricingSummary,
+  type PricingAttribute, type PricingImportRow, type PricingRow,
 } from "@/lib/pricing-combinations";
 
 type Filters = Record<string, string[]>;
@@ -75,6 +76,30 @@ function AttributeFilter({
   );
 }
 
+/** Phone filters and bulk actions live in bottom sheets, clear of the sticky save bar. */
+function BottomSheet({
+  open, title, onClose, children,
+}: {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end" role="dialog" aria-modal="true" aria-label={title}>
+      <button type="button" aria-label="Close sheet" onClick={onClose} className="absolute inset-0 bg-[#111820]/45" />
+      <div className="relative max-h-[80vh] w-full overflow-y-auto rounded-t-2xl bg-white pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-16px_48px_rgba(17,24,32,0.18)]">
+        <div className="sticky top-0 flex items-center justify-between border-b border-[#edf0f3] bg-white px-4 py-3">
+          <h2 className="text-[12px] font-bold text-[#202733]">{title}</h2>
+          <button type="button" onClick={onClose} aria-label="Close sheet" className="rounded-lg p-1.5 text-[#87909c] hover:bg-[#f3f5f7]"><X size={16} /></button>
+        </div>
+        <div className="px-4 py-3">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPricing() {
   const data = useAdminDemoData();
   const [scope, setScope] = useState<PricingScope>(() => firstScope(data));
@@ -88,6 +113,10 @@ export default function AdminPricing() {
   const [bulkMessage, setBulkMessage] = useState("");
   const [message, setMessage] = useState("");
   const [historyKey, setHistoryKey] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = useState<string[]>(["print", "material"]);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [sheet, setSheet] = useState<"filters" | "bulk" | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
   const [importRows, setImportRows] = useState<PricingImportRow[] | null>(null);
   const [importIssues, setImportIssues] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -110,6 +139,8 @@ export default function AdminPricing() {
     return !query || combinationSearchText(attributes, row.options).includes(query);
   }), [rows, filters, search, unpricedOnly, prices, attributes]);
 
+  const groups = useMemo(() => groupRows(attributes, filtered, groupBy), [attributes, filtered, groupBy]);
+  const activeFilterCount = Object.keys(filters).length + (unpricedOnly ? 1 : 0);
   const dirtyKeys = Object.keys(pending);
   const invalidKeys = dirtyKeys.filter((key) => !parsePriceInput(pending[key]).ok);
   const changedKeys = dirtyKeys.filter((key) => {
@@ -286,7 +317,7 @@ export default function AdminPricing() {
       title="Pricing"
       description="One price per full valid combination. A combination with no price is not sold."
       search={(
-        <label className="flex h-10 w-full max-w-[420px] items-center gap-2.5 rounded-full border border-[#e6e9ed] bg-[#f8f9fb] px-3.5 text-[#8c95a1] focus-within:border-[#a5d972] focus-within:bg-white">
+        <label className="flex h-10 w-full min-w-0 max-w-[420px] items-center gap-2.5 rounded-full border border-[#e6e9ed] bg-[#f8f9fb] px-3.5 text-[#8c95a1] focus-within:border-[#a5d972] focus-within:bg-white">
           <Search size={16} className="shrink-0" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search combinations" placeholder="Search size, colour, fabric..." className="min-w-0 flex-1 bg-transparent text-[11px] text-[#252c37] outline-none placeholder:text-[#9da5af]" />
         </label>
@@ -322,7 +353,22 @@ export default function AdminPricing() {
               </optgroup>
             </AdminSelect>
           </label>
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Attribute filters">
+          <div className="flex w-full flex-wrap items-center gap-1.5 sm:hidden">
+            <AdminButton compact variant="secondary" onClick={() => setSheet("filters")} aria-label="Open filters"><SlidersHorizontal size={12} /> Filters ({activeFilterCount})</AdminButton>
+            <button
+              type="button"
+              aria-pressed={unpricedOnly}
+              onClick={() => setUnpricedOnly((value) => !value)}
+              className={`inline-flex h-11 items-center rounded-full border px-3 text-[10px] font-bold ${unpricedOnly ? "border-[#d9a300] bg-[#fff7e0] text-[#8a6a00]" : "border-[#e4e8ed] bg-white text-[#6c7683]"}`}
+            >
+              Unpriced only
+            </button>
+            {selected.size ? (
+              <AdminButton compact variant="secondary" onClick={() => setSheet("bulk")} aria-label="Open bulk actions"><ArrowLeftRight size={12} /> Bulk ({selected.size})</AdminButton>
+            ) : null}
+          </div>
+
+          <div className="hidden flex-wrap items-center gap-1.5 sm:flex" role="group" aria-label="Attribute filters">
             {attributes.map((attribute) => (
               <AttributeFilter
                 key={attribute.key}
@@ -354,7 +400,7 @@ export default function AdminPricing() {
         </div>
 
         {selected.size ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-[#f0f2f4] bg-[#f6fbf1] px-4 py-2 sm:px-5">
+          <div className="hidden flex-wrap items-center gap-2 border-b border-[#f0f2f4] bg-[#f6fbf1] px-4 py-2 sm:flex sm:px-5">
             <span className="text-[10px] font-bold text-[#3f8c22]">{selected.size} selected</span>
             <AdminInput value={bulkPrice} onChange={(event) => setBulkPrice(event.target.value)} inputMode="numeric" placeholder="Ks 24,000" aria-label="Bulk exact price" className="h-8 w-32" />
             <AdminButton compact variant="secondary" onClick={() => applyBulk("set")} aria-label="Set exact price on selected rows">Set exact price</AdminButton>
@@ -367,13 +413,115 @@ export default function AdminPricing() {
         {rows.length === 0 ? (
           <AdminEmpty title="This scope has no valid combinations" description="Enable attributes on the post, or add sizes to the product." />
         ) : (
-          <div className="max-h-[560px] overflow-auto">
+          <>
+            <div className="sm:hidden" data-pricing-phone>
+              <div className="flex flex-wrap items-center gap-1.5 border-b border-[#f0f2f4] px-3 py-2">
+                <div className="flex w-full gap-1.5">
+                <label className="min-w-0 flex-1">
+                  <span className="mb-0.5 block text-[9px] font-bold uppercase tracking-wide text-[#828c99]">Group by</span>
+                  <AdminSelect aria-label="Group cards by" value={groupBy[0] ?? ""} onChange={(event) => setGroupBy([event.target.value, groupBy[1] ?? ""].filter(Boolean))} className="h-11">
+                    <option value="">None</option>
+                    {attributes.map((attribute) => <option key={attribute.key} value={attribute.key}>{attribute.label}</option>)}
+                  </AdminSelect>
+                </label>
+                <label className="min-w-0 flex-1">
+                  <span className="mb-0.5 block text-[9px] font-bold uppercase tracking-wide text-[#828c99]">Then by</span>
+                  <AdminSelect aria-label="Then group cards by" value={groupBy[1] ?? ""} onChange={(event) => setGroupBy([groupBy[0] ?? "", event.target.value].filter(Boolean))} className="h-11">
+                    <option value="">None</option>
+                    {attributes.map((attribute) => <option key={attribute.key} value={attribute.key}>{attribute.label}</option>)}
+                  </AdminSelect>
+                </label>
+                </div>
+                <button
+                  type="button"
+                  aria-pressed={selectMode}
+                  onClick={() => setSelectMode((value) => !value)}
+                  className={`h-11 w-full rounded-xl border text-[11px] font-bold ${selectMode ? "border-[#4cae22] bg-[#eef8e6] text-[#3f8c22]" : "border-[#e4e8ed] bg-white text-[#6c7683]"}`}
+                >
+                  {selectMode ? "Selecting — tap cards to tick" : "Select combinations"}
+                </button>
+              </div>
+
+              {groups.length ? groups.map((group) => {
+                const open = !collapsed.has(group.key);
+                const pricedInGroup = group.rows.filter((row) => priceState(prices.get(row.key)) === "priced").length;
+                return (
+                  <section key={group.key} data-phone-group={group.label} className="border-b border-[#f0f2f4]">
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      onClick={() => setCollapsed((current) => {
+                        const next = new Set(current);
+                        if (next.has(group.key)) next.delete(group.key);
+                        else next.add(group.key);
+                        return next;
+                      })}
+                      className="flex h-12 w-full items-center justify-between gap-2 px-3 text-left"
+                    >
+                      <span className="min-w-0 truncate text-[11px] font-bold text-[#303844]">{group.label}</span>
+                      <span className="shrink-0 text-[10px] font-semibold text-[#98a1ac]">{pricedInGroup}/{group.rows.length} priced</span>
+                      <ChevronDown size={14} className={`shrink-0 text-[#98a1ac] transition-transform ${open ? "rotate-180" : ""}`} />
+                    </button>
+                    {open ? group.rows.map((row) => {
+                      const text = priceText(row);
+                      const parsed = parsePriceInput(text);
+                      const stored = prices.get(row.key);
+                      const chips = attributes.filter((attribute) => !groupBy.includes(attribute.key));
+                      return (
+                        <div key={row.key} className="border-t border-[#f5f7f9] px-3 py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {chips.map((attribute) => (
+                              <span key={attribute.key} className="rounded-full bg-[#f3f5f7] px-2 py-0.5 text-[9px] font-semibold text-[#6c7683]">
+                                {row.options[attribute.key] ?? "—"}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            {selectMode ? (
+                              <input
+                                type="checkbox"
+                                aria-label={`Select ${combinationLabel(attributes, row.options)}`}
+                                checked={selected.has(row.key)}
+                                onChange={() => toggleRow(row, filtered.indexOf(row), false)}
+                                className="h-6 w-6 shrink-0 accent-[#4cae22] [color-scheme:light]"
+                              />
+                            ) : null}
+                            <input
+                              value={text}
+                              inputMode="numeric"
+                              aria-label={`Price for ${combinationLabel(attributes, row.options)}`}
+                              aria-invalid={text.trim() !== "" && !parsed.ok}
+                              onChange={(event) => setCell(row, event.target.value)}
+                              data-phone-price-row={row.key}
+                              className={`h-11 min-w-0 flex-1 rounded-xl border bg-white px-3 text-[13px] font-semibold tabular-nums text-[#252c37] outline-none focus:border-[#a5d972] ${text.trim() !== "" && !parsed.ok ? "border-[#e6a5a5] bg-[#fdf3f3] text-[#a33]" : "border-[#e2e7ec]"}`}
+                            />
+                            {stored ? null : <AdminBadge tone="amber">Unpriced</AdminBadge>}
+                            <button
+                              type="button"
+                              aria-label={`Price history for ${combinationLabel(attributes, row.options)}`}
+                              onClick={() => setHistoryKey(historyKey === row.key ? null : row.key)}
+                              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#e4e8ed] text-[#6c7683]"
+                            >
+                              <History size={14} />
+                            </button>
+                          </div>
+                          {text.trim() !== "" && !parsed.ok ? <span className="mt-0.5 block text-[9px] font-semibold text-[#a33]">{parsed.error}</span> : null}
+                        </div>
+                      );
+                    }) : null}
+                  </section>
+                );
+              }) : <AdminEmpty title="No combination matches these filters" description="Clear a filter or the search box." />}
+            </div>
+
+            <div className="hidden max-h-[560px] overflow-auto sm:block">
             <table className="w-full min-w-[720px] border-collapse text-left text-[10px]">
               <thead className="sticky top-0 z-10 bg-[#fafbfc] text-[9px] font-semibold text-[#828c99]">
                 <tr>
                   <th className="sticky left-0 z-20 bg-[#fafbfc] px-3 py-2.5">
                     <input
                       type="checkbox"
+                      className="h-4 w-4 accent-[#4cae22] [color-scheme:light]"
                       aria-label="Select all filtered rows"
                       checked={filtered.length > 0 && filtered.every((row) => selected.has(row.key))}
                       onChange={(event) => setSelected(event.target.checked ? new Set(filtered.map((row) => row.key)) : new Set())}
@@ -397,6 +545,7 @@ export default function AdminPricing() {
                       <td className="sticky left-0 bg-white px-3 py-1.5">
                         <input
                           type="checkbox"
+                          className="h-4 w-4 accent-[#4cae22] [color-scheme:light]"
                           aria-label={`Select ${combinationLabel(attributes, row.options)}`}
                           checked={selected.has(row.key)}
                           onChange={() => toggleRow(row, index, false)}
@@ -451,7 +600,8 @@ export default function AdminPricing() {
                 }) : <tr><td colSpan={attributes.length + 3}><AdminEmpty title="No combination matches these filters" description="Clear a filter or the search box." /></td></tr>}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
 
         {historyKey ? (
@@ -474,18 +624,19 @@ export default function AdminPricing() {
           </div>
         ) : null}
 
-        {dirtyKeys.length ? (
-          <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-[#e8d9a8] bg-[#fff8e6] px-4 py-2.5 sm:px-5">
-            <span data-pricing-dirty-count className="text-[10px] font-bold text-[#8a6a00]">
-              {dirtyKeys.length} unsaved change{dirtyKeys.length === 1 ? "" : "s"}{invalidKeys.length ? ` · ${invalidKeys.length} invalid` : ""}
-            </span>
-            <div className="ml-auto flex gap-1.5">
-              <AdminButton compact variant="ghost" onClick={discard}><RotateCcw size={12} /> Discard</AdminButton>
-              <AdminButton compact onClick={save} disabled={!changedKeys.length}><Save size={12} /> Save all</AdminButton>
-            </div>
-          </div>
-        ) : null}
       </AdminCard>
+
+      {dirtyKeys.length ? (
+        <div className="sticky bottom-0 z-20 mt-2 flex flex-wrap items-center gap-2 rounded-2xl border border-[#e8d9a8] bg-[#fff8e6] px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(17,24,32,0.08)]">
+          <span data-pricing-dirty-count className="text-[10px] font-bold text-[#8a6a00]">
+            {dirtyKeys.length} unsaved change{dirtyKeys.length === 1 ? "" : "s"}{invalidKeys.length ? ` · ${invalidKeys.length} invalid` : ""}
+          </span>
+          <div className="ml-auto flex gap-1.5">
+            <AdminButton variant="ghost" onClick={discard}><RotateCcw size={12} /> Discard</AdminButton>
+            <AdminButton onClick={save} disabled={!changedKeys.length}><Save size={12} /> Save all</AdminButton>
+          </div>
+        </div>
+      ) : null}
 
       {message ? <p data-pricing-message role="status" className="mt-2 text-[10px] font-semibold text-[#3f8c22]">{message}</p> : null}
 
@@ -524,6 +675,73 @@ export default function AdminPricing() {
           </div>
         </AdminCard>
       ) : null}
+
+      <BottomSheet open={sheet === "filters"} title="Filters" onClose={() => setSheet(null)}>
+        <div className="space-y-3">
+          {attributes.map((attribute) => {
+            const active = filters[attribute.key];
+            return (
+              <div key={attribute.key}>
+                <p className="mb-1 text-[10px] font-bold text-[#3c4553]">{attribute.label}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {attribute.options.map((option) => {
+                    const on = !active || active.includes(option);
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => {
+                          const current = active ?? attribute.options;
+                          const next = on ? current.filter((value) => value !== option) : [...current, option];
+                          setFilters((values) => {
+                            const copy = { ...values };
+                            if (!next.length || next.length === attribute.options.length) delete copy[attribute.key];
+                            else copy[attribute.key] = next;
+                            return copy;
+                          });
+                        }}
+                        className={`h-9 rounded-full border px-3 text-[10px] font-semibold ${on ? "border-[#4cae22] bg-[#eef8e6] text-[#3f8c22]" : "border-[#e4e8ed] bg-white text-[#98a1ac]"}`}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          <label className="flex items-center justify-between gap-2 rounded-xl border border-[#e4e8ed] px-3 py-2">
+            <span className="text-[10px] font-bold text-[#3c4553]">Unpriced only</span>
+            <input type="checkbox" checked={unpricedOnly} onChange={(event) => setUnpricedOnly(event.target.checked)} className="h-5 w-5 accent-[#4cae22] [color-scheme:light]" />
+          </label>
+          <div className="flex items-center justify-between">
+            <span data-phone-count className="text-[10px] font-bold text-[#6c7683]">{filtered.length} of {rows.length} rows</span>
+            <div className="flex gap-1.5">
+              <AdminButton variant="ghost" onClick={() => { setFilters({}); setUnpricedOnly(false); }}>Clear all</AdminButton>
+              <AdminButton onClick={() => setSheet(null)}>Done</AdminButton>
+            </div>
+          </div>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet open={sheet === "bulk"} title={`Bulk · ${selected.size} selected`} onClose={() => setSheet(null)}>
+        <div className="space-y-3">
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-bold text-[#3c4553]">Set exact price</span>
+            <AdminInput value={bulkPrice} onChange={(event) => setBulkPrice(event.target.value)} inputMode="numeric" placeholder="Ks 24,000" aria-label="Bulk exact price (phone)" className="h-11" />
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            <AdminButton onClick={() => { applyBulk("set"); }}>Set exact price</AdminButton>
+            <AdminButton variant="secondary" onClick={() => applyBulk("copy")}><ArrowLeftRight size={12} /> Copy from first row</AdminButton>
+          </div>
+          {bulkMessage ? <p role="status" className="text-[10px] font-semibold text-[#6c7683]">{bulkMessage}</p> : null}
+          <div className="flex justify-between">
+            <AdminButton variant="ghost" onClick={() => setSelected(new Set())}>Clear selection</AdminButton>
+            <AdminButton onClick={() => setSheet(null)}>Done</AdminButton>
+          </div>
+        </div>
+      </BottomSheet>
 
       <p className="mt-3 text-[10px] text-[#98a1ac]">
         Combinations come from the attributes enabled on the post. Attribute Management (Plan §16 P2) will let the Super Admin edit the chain itself — until then, edit the post to change its attributes.

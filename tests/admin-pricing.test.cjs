@@ -238,3 +238,49 @@ test("the web grid keeps the spec's controls and no derived-delta tools", () => 
   assert.match(source, /sticky top-0/, "the header stays visible while scrolling");
   assert.match(source, /sticky left-0/, "the first column stays visible while scrolling");
 });
+
+test("phone cards group by the chain, not the alphabet", () => {
+  const attributes = pricing.scopeAttributes(data, peacock);
+  const rows = pricing.scopeRows(data, peacock);
+  const groups = combos.groupRows(attributes, rows, ["print", "material"]);
+  assert.deepEqual(groups.map((group) => group.label), ["DTF · Combed Cotton", "DTF · Compact Combed Cotton"]);
+  assert.equal(groups.reduce((total, group) => total + group.rows.length, 0), rows.length);
+  assert.deepEqual(groups[0].rows, rows.filter((row) => row.options.print === "DTF" && row.options.material === "Combed Cotton"));
+
+  const byColor = combos.groupRows(attributes, rows, ["color"]);
+  assert.deepEqual(byColor.map((group) => group.label), ["Black", "White", "Sand"], "first appearance fixes the section order");
+
+  assert.deepEqual(combos.groupRows(attributes, rows, []), [{ key: "all", label: "All combinations", rows }]);
+  assert.equal(combos.groupRows(attributes, rows, ["nope"]).length, 1, "an unknown attribute falls back to one section");
+});
+
+test("the phone layout has cards, sheets, keypad fields and 44px targets", () => {
+  const source = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminPricing.tsx"), "utf8");
+  for (const marker of [
+    "data-pricing-phone",
+    "data-phone-price-row",
+    "data-phone-group",
+    "data-phone-count",
+    'aria-label="Group cards by"',
+    'aria-label="Then group cards by"',
+    "Select combinations",
+    "Selecting — tap cards to tick",
+    "Open filters",
+    "Open bulk actions",
+    "Bulk exact price (phone)",
+    "Copy from first row",
+    "env(safe-area-inset-bottom)",
+  ]) {
+    assert.ok(source.includes(marker), `AdminPricing is missing ${marker}`);
+  }
+  // Default grouping is Print Method → Fabric Type, per 4.5.1.
+  assert.match(source, /useState<string\[\]>\(\["print", "material"\]\)/);
+  // The table and the cards are mutually exclusive: table from sm up, cards below it.
+  assert.match(source, /className="sm:hidden" data-pricing-phone/);
+  assert.match(source, /className="hidden max-h-\[560px\] overflow-auto sm:block"/);
+  // 44px touch targets on the phone: price field and the history button.
+  assert.match(source, /data-phone-price-row=\{row\.key\}[\s\S]{0,80}className=\{`h-11/);
+  assert.match(source, /className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl/);
+  // Native checkboxes need an explicit light colour-scheme or the admin theme paints them dark.
+  assert.match(source, /\[color-scheme:light\]/);
+});
