@@ -220,6 +220,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - To push without persisting the credential, pass a write-capable token inline and leave
   `origin` alone, so the read-only URL in `.git/config` is never overwritten:
   `git push "https://x-access-token:$TOKEN@github.com/mhfashion/mhfashion.git" HEAD:main`
+- `GET /repos/mhfashion/mhfashion` reports `permissions: {admin, maintain, push, ...}: true` for the
+  ambient token, but every write still fails (`git push` → `403 denied to mhfashion`,
+  `POST /git/refs` → `403 Resource not accessible by integration`). Do not trust that field; test a
+  write before promising a push. `-c credential.helper=` does not help, so it is not the helper.
 
 ## Editor Header Bar 2 (`apps/web/src/components/EditorHeaderBar2.tsx`)
 - Shared geometry constants keep the Product / GSM / Color / Size / Save / Buy boxes uniform: `FIELD_BOX`, `TRIGGER_BOX`, `ACTION_BOX`, `MENU_BOX`, `MENU_OPTION`, `COLOR_SWATCH`.
