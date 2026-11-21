@@ -916,6 +916,10 @@ export type EditorImageContent = {
   greenPrimarySaturation?: number;
   bluePrimaryHue?: number;
   bluePrimarySaturation?: number;
+  /** Design frame: rounded corners and a border drawn inside the image box. */
+  cornerRadius?: number;
+  borderWidth?: number;
+  borderColor?: string;
   aiEnhanced?: boolean;
   smartFilter?: "none" | "clarity" | "cinematic" | "vintage" | "bw" | "warm" | "cool";
   smartFilterIntensity?: number;
@@ -942,6 +946,7 @@ export type PhotoAdjustmentKey =
   | "redPrimaryHue" | "redPrimarySaturation"
   | "greenPrimaryHue" | "greenPrimarySaturation"
   | "bluePrimaryHue" | "bluePrimarySaturation"
+  | "cornerRadius" | "borderWidth" | "borderColor"
   | "aiEnhanced" | "smartFilter" | "smartFilterIntensity"
   | "backgroundRemoved" | "upscaled";
 
@@ -1845,3 +1850,114 @@ export function deleteEditorLayer(
 ): EditorArtworkLayer[] {
   return layers.filter((layer) => layer.id !== layerId);
 }
+
+/** The board every layer is arranged against, in artwork units (the 1000 x 1200 print area). */
+export const EDITOR_ARTBOARD = { width: 1000, height: 1200 } as const;
+
+/** How the canvas places a layer: a canvas offset, then scale and rotation about its own pivot. */
+export type EditorLayerPlacement = {
+  offset: ArtworkPoint;
+  scale: ArtworkPoint;
+  origin: ArtworkPoint;
+  rotation: number;
+};
+
+export type EditorLayerBox = { x: number; y: number; width: number; height: number };
+
+export type EditorArrangeAction =
+  | "left" | "center-h" | "right" | "top" | "middle" | "bottom" | "center"
+  | "flip-h" | "flip-v" | "rotate-90" | "rotate-180" | "reset-rotation" | "reset-scale" | "duplicate";
+
+export const EDITOR_ARRANGE_ALIGNMENTS: EditorArrangeAction[] = ["left", "center-h", "right", "top", "middle", "bottom"];
+
+export const EDITOR_ARRANGE_LABELS: Record<EditorArrangeAction, string> = {
+  left: "Left", "center-h": "Centre", right: "Right",
+  top: "Top", middle: "Middle", bottom: "Bottom",
+  center: "Centre on canvas", "flip-h": "Flip across", "flip-v": "Flip down",
+  "rotate-90": "Rotate 90°", "rotate-180": "Rotate 180°",
+  "reset-rotation": "Reset rotation", "reset-scale": "Reset size", duplicate: "Duplicate",
+};
+
+/** The axis-aligned box a layer paints once its offset, scale and rotation are applied. */
+export function placedLayerBounds(bounds: EditorLayerBox, placement: EditorLayerPlacement): EditorLayerBox {
+  const radians = (placement.rotation * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const corners = [
+    [bounds.x, bounds.y],
+    [bounds.x + bounds.width, bounds.y],
+    [bounds.x, bounds.y + bounds.height],
+    [bounds.x + bounds.width, bounds.y + bounds.height],
+  ];
+  const points = corners.map(([x, y]) => {
+    const dx = (x - placement.origin.x) * placement.scale.x;
+    const dy = (y - placement.origin.y) * placement.scale.y;
+    return {
+      x: placement.origin.x + dx * cos - dy * sin + placement.offset.x,
+      y: placement.origin.y + dx * sin + dy * cos + placement.offset.y,
+    };
+  });
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY };
+}
+
+/** The offset that snaps a layer to an artboard edge, the centre, or both. */
+export function arrangeLayerOffset(
+  bounds: EditorLayerBox,
+  placement: EditorLayerPlacement,
+  action: EditorArrangeAction,
+): ArtworkPoint {
+  const placed = placedLayerBounds(bounds, placement);
+  let dx = 0;
+  let dy = 0;
+  if (action === "left") dx = -placed.x;
+  if (action === "center-h" || action === "center") dx = (EDITOR_ARTBOARD.width - placed.width) / 2 - placed.x;
+  if (action === "right") dx = EDITOR_ARTBOARD.width - placed.width - placed.x;
+  if (action === "top") dy = -placed.y;
+  if (action === "middle" || action === "center") dy = (EDITOR_ARTBOARD.height - placed.height) / 2 - placed.y;
+  if (action === "bottom") dy = EDITOR_ARTBOARD.height - placed.height - placed.y;
+  return { x: placement.offset.x + dx, y: placement.offset.y + dy };
+}
+
+/** One-click looks for a text layer; each is only an effect stack, so the text stays editable. */
+export type EditorTextStylePreset = {
+  id: string;
+  label: string;
+  hint: string;
+  effects: Omit<EditorTextEffect, "id">[];
+};
+
+export const EDITOR_TEXT_STYLES: EditorTextStylePreset[] = [
+  { id: "neon", label: "Neon", hint: "Glowing tube", effects: [{ kind: "glow", color: "#37d7ff", width: 20, blur: 14, opacity: 0.9 }, { kind: "glow", color: "#d4ff3f", width: 9, blur: 6, opacity: 0.8 }] },
+  { id: "sticker", label: "Sticker", hint: "White cut edge", effects: [{ kind: "outline", color: "#ffffff", width: 12 }, { kind: "shadow", color: "#111827", offsetX: 6, offsetY: 8, blur: 3 }] },
+  { id: "retro", label: "Retro", hint: "Deep 3D block", effects: [{ kind: "extrude", color: "#ff5b8a", distance: 9, count: 7 }, { kind: "outline", color: "#111827", width: 4 }] },
+  { id: "chrome", label: "Chrome", hint: "Layered metal", effects: [{ kind: "offset", color: "#c7d2fe", offsetX: 4, offsetY: 5 }, { kind: "outline", color: "#0f172a", width: 5 }, { kind: "glow", color: "#ffffff", width: 7, blur: 5, opacity: 0.7 }] },
+  { id: "outline", label: "Outline", hint: "Colour edge", effects: [{ kind: "outline", color: "#d4ff3f", width: 7 }] },
+  { id: "shadow", label: "Shadow", hint: "Soft drop", effects: [{ kind: "shadow", color: "#111827", offsetX: 8, offsetY: 10, blur: 6 }] },
+  { id: "echo", label: "Echo", hint: "Rhythm trails", effects: [{ kind: "echo", color: "#37d7ff", count: 4, offsetX: 12, offsetY: 12 }] },
+  { id: "stripe", label: "Striped", hint: "Barber bars", effects: [{ kind: "stripe", color: "#f97316", width: 6, distance: 14, angle: -30 }] },
+];
+
+/** Turns a preset into effects with unique ids, so the stack editor can reorder and tune them. */
+export function textStyleEffects(preset: EditorTextStylePreset, seed: number | string = Date.now()): EditorTextEffect[] {
+  return preset.effects.map((effect, index) => ({ ...effect, id: `${preset.id}-${seed}-${index}`, enabled: true }));
+}
+
+/** Quick colours for text, fill and stroke, so a design stays on brand without a colour wheel. */
+export const EDITOR_DESIGN_SWATCHES: { name: string; value: string }[] = [
+  { name: "Ink", value: "#111827" },
+  { name: "Paper", value: "#ffffff" },
+  { name: "Lime", value: "#d4ff3f" },
+  { name: "Leaf", value: "#4f9d16" },
+  { name: "Sky", value: "#37d7ff" },
+  { name: "Berry", value: "#ff5b8a" },
+  { name: "Grape", value: "#7c3aed" },
+  { name: "Tangerine", value: "#f97316" },
+  { name: "Gold", value: "#f4c430" },
+  { name: "Slate", value: "#64748b" },
+  { name: "Mint", value: "#a7f3d0" },
+  { name: "Sand", value: "#f5e6ca" },
+];

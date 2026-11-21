@@ -83,6 +83,9 @@ export default function EditorLayerPreview({
   const imageFilterId = `${effectPrefix}-image`;
   const imageGradientId = `${effectPrefix}-image-gradient`;
   const imageGrainId = `${effectPrefix}-image-grain`;
+  const imageClipId = `${effectPrefix}-image-clip`;
+  const frameRadius = Math.max(0, image?.cornerRadius ?? 0);
+  const frameWidth = Math.max(0, image?.borderWidth ?? 0);
   const vignetteId = `${effectPrefix}-vignette`;
   const shapeShadowId = `${effectPrefix}-shape-shadow`;
   const shapeGlowId = `${effectPrefix}-shape-glow`;
@@ -220,8 +223,17 @@ export default function EditorLayerPreview({
         );
       })()}
       {image && (
-        <g data-editor-image-layer="true">
+        <g
+          data-editor-image-layer="true"
+          data-editor-image-frame={frameRadius > 0 || frameWidth > 0 ? "true" : "false"}
+          clipPath={frameRadius > 0 ? `url(#${imageClipId})` : undefined}
+        >
           <defs>
+            {frameRadius > 0 && (
+              <clipPath id={imageClipId}>
+                <rect x={image.x} y={image.y} width={image.width} height={image.height} rx={frameRadius} />
+              </clipPath>
+            )}
             <filter id={imageFilterId} colorInterpolationFilters="sRGB">
               {/* Tone: one luminance transfer table folds Exposure, Contrast,
                   Highlights, Shadows, Whites, Blacks, Brightness, Levels, Gamma,
@@ -266,6 +278,22 @@ export default function EditorLayerPreview({
           {splitToneStrength > 0 && <rect x={image.x} y={image.y} width={image.width} height={image.height} fill={`url(#${imageGradientId})`} pointerEvents="none" data-editor-image-split-tone="true" />}
           {vignette.amount > 0 && <rect x={image.x} y={image.y} width={image.width} height={image.height} fill={`url(#${vignetteId})`} pointerEvents="none" data-editor-image-vignette="true" />}
           {grain.amount > 0 && <rect x={image.x} y={image.y} width={image.width} height={image.height} filter={`url(#${imageGrainId})`} opacity={grain.amount * 0.4} pointerEvents="none" data-editor-image-grain="true" />}
+          {/* The border is inset by half its own width, so the frame paints inside the
+              image box and the transform box still hugs the layer. */}
+          {frameWidth > 0 && (
+            <rect
+              x={image.x + frameWidth / 2}
+              y={image.y + frameWidth / 2}
+              width={Math.max(0, image.width - frameWidth)}
+              height={Math.max(0, image.height - frameWidth)}
+              rx={Math.max(0, frameRadius - frameWidth / 2)}
+              fill="none"
+              stroke={image.borderColor || "#ffffff"}
+              strokeWidth={frameWidth}
+              pointerEvents="none"
+              data-editor-image-border="true"
+            />
+          )}
         </g>
       )}
       {gradient && <GradientPreview gradient={gradient} idPrefix={`${effectPrefix}-gradient`} />}

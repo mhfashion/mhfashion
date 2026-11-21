@@ -86,6 +86,12 @@ and in the thumbnail, and a button clears them.
 
 ## 5. Selection and transform
 
+- The Adjustments panel has an **Arrange** section for the selected layer: align to the canvas edge or
+  centre, centre on the canvas, flip across or down, rotate 90°/180°, reset rotation, reset size, and
+  duplicate. Alignment moves the layer's canvas offset only, so the artwork never shifts inside its own
+  transform, and the buttons are idempotent.
+- Rotation and size are shown as a read-out under the buttons.
+
 - The selection box is computed from the content: the union of a group's children, the painted text plus
   its effects and decorations, a shape's paths, or an image's box.
 - Eight square handles resize; a round handle below the box rotates. Handle hit areas scale with the box
@@ -108,6 +114,10 @@ design; each one creates a text layer and opens the inline editor.
   text layer puts the caret at the end of the text.
 - Text wraps to the layer's `wrapWidth` (880 units for new text). Text saved before wrapping existed has
   no width and stays unwrapped.
+- **Text styles** apply a look in one click: Neon, Sticker, Retro, Chrome, Outline, Shadow, Echo, Striped.
+  A preset only writes an effect stack, so every part of it can still be tuned, reordered or removed.
+- Colour fields for text, shape fill, shape stroke, decoration and the photo border carry a row of brand
+  swatches beside the colour wheel.
 - The Adjustment box styles the whole layer: font family (with search and recent fonts), size, colour,
   weight, italic, underline, alignment, letter-spacing and line height.
 - Effects are a stack: shadow, outline, glow, offset, echo, extrude and stripe. Each can be added,
@@ -162,6 +172,8 @@ Nine presets: rectangle, rounded rectangle, ellipse, triangle, diamond, line, ar
   provided per group.
 - Values are stored on the layer as instructions, so the photo itself is never overwritten.
 - An image layer can carry a mask like any other layer.
+- **Frame** rounds the corners and draws a border. Both are painted inside the image box (the border is
+  inset by half its own width), so the transform outline still hugs the photo.
 
 ## 12. Mockups
 

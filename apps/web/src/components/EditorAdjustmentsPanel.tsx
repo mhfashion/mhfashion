@@ -2,8 +2,8 @@
 
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorGradient, EditorGradientStop, EditorGradientToolSettings, EditorGradientType, EditorPenSettings, EditorShapeBuilderMode, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
-import { EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops } from "@/lib/editor-layers";
+import type { EditorArrangeAction, EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorGradient, EditorGradientStop, EditorGradientToolSettings, EditorGradientType, EditorLayerPlacement, EditorPenSettings, EditorShapeBuilderMode, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
+import { EDITOR_ARRANGE_ALIGNMENTS, EDITOR_ARRANGE_LABELS, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_DESIGN_SWATCHES, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
 
@@ -65,6 +65,14 @@ function NumberField({ label, value, min, max, step = 1, ariaLabel, onChange }: 
 
 function RangeField({ label, value, min, max, step = 1, suffix, ariaLabel, onChange }: { label: string; value: number; min: number; max: number; step?: number; suffix?: string; ariaLabel: string; onChange: (value: number) => void }) {
   return <label className="block text-[10px] text-text-secondary">{label}<span className="float-right font-semibold text-text-primary">{value}{suffix}</span><input aria-label={ariaLabel} type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>;
+}
+
+// Brand colours for text, fill, stroke and frame borders, so a design stays on
+// palette without opening a colour wheel.
+function Swatches({ value, ariaLabel, onPick }: { value: string; ariaLabel: string; onPick: (color: string) => void }) {
+  return <div role="group" aria-label={ariaLabel} className="flex flex-wrap gap-1">
+    {EDITOR_DESIGN_SWATCHES.map((swatch) => <button key={swatch.name} type="button" title={swatch.name} aria-label={`${ariaLabel} ${swatch.name}`} aria-pressed={value.toLowerCase() === swatch.value.toLowerCase()} onClick={() => onPick(swatch.value)} className="h-5 w-5 rounded-md border border-border outline-none transition hover:scale-110 aria-pressed:ring-2 aria-pressed:ring-accent [@media(pointer:coarse)]:h-7 [@media(pointer:coarse)]:w-7" style={{ background: swatch.value }} />)}
+  </div>;
 }
 
 function BrushOptions({ label, value, onChange }: { label: string; value: EditorBrushSettings; onChange: (patch: Partial<EditorBrushSettings>) => void }) {
@@ -227,7 +235,7 @@ function GradientEditor({ gradient, onChange }: { gradient: EditorGradient; onCh
   </div>;
 }
 
-export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures }: {
+export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures, placement, onArrange }: {
   open: boolean;
   onToggle: () => void;
   selectedLayer: EditorArtworkLayer | null;
@@ -245,6 +253,8 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   onRemoveMask: (id: string) => void;
   onSelectMask: () => void;
   onClearErasures: () => void;
+  placement: EditorLayerPlacement | null;
+  onArrange: (action: EditorArrangeAction) => void;
 }) {
   const text = selectedLayer?.text;
   const image = selectedLayer?.image;
@@ -268,6 +278,13 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
     setRecentFonts((current) => [fontFamily, ...current.filter((font) => font !== fontFamily)].slice(0, 4));
   }
   function replaceEffectStack(effects: EditorTextEffect[]) { onUpdateTextStyle({ effects, textEffect: "none" }); }
+  // A style preset is only an effect stack, so the layer stays live text.
+  function applyTextStyle(id: string) {
+    const preset = EDITOR_TEXT_STYLES.find((item) => item.id === id);
+    if (!preset) return;
+    replaceEffectStack(textStyleEffects(preset, `${nextEffectId}-${id}`));
+    setNextEffectId((current) => current + 1);
+  }
   function addTextEffect(kind: EditorTextEffectKind) {
     const preset = EFFECT_TYPES.find((item) => item.kind === kind);
     if (!preset) return;
@@ -323,11 +340,26 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
           {!selectedLayer && <p className="p-2 text-[11px] text-[#666] dark:text-[#bdbdbd]">Select a layer to edit its properties.</p>}
           {selectedLayer && <>
           <div className="rounded-xl border border-border/70 bg-bg/70 px-3 py-2 font-semibold text-text-primary shadow-sm dark:bg-white/[0.04]">{selectedLayer.name}<span className="mt-0.5 block text-[9px] font-normal uppercase tracking-wider text-text-muted">{selectedLayer.kind} layer</span></div>
+          <Section title="Arrange" open={openSection === "Arrange"} onToggle={() => toggleSection("Arrange")}>
+            <div className="space-y-2">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Align to canvas</p>
+              <div role="group" aria-label="Align layer to canvas" className="grid grid-cols-3 gap-1">
+                {EDITOR_ARRANGE_ALIGNMENTS.map((action) => <button key={action} type="button" aria-label={`Align layer ${EDITOR_ARRANGE_LABELS[action]}`} onClick={() => onArrange(action)} className="min-h-8 rounded-lg border border-border px-1 py-1.5 text-[10px] text-text-secondary outline-none transition hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11">{EDITOR_ARRANGE_LABELS[action]}</button>)}
+              </div>
+              <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Place and turn</p>
+              <div className="grid grid-cols-2 gap-1">
+                {(["center", "flip-h", "flip-v", "rotate-90", "rotate-180", "reset-rotation", "reset-scale", "duplicate"] as const).map((action) => <button key={action} type="button" aria-label={`${EDITOR_ARRANGE_LABELS[action]} for ${selectedLayer.name}`} onClick={() => onArrange(action)} className="min-h-8 rounded-lg border border-border px-1 py-1.5 text-[10px] text-text-secondary outline-none transition hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11">{EDITOR_ARRANGE_LABELS[action]}</button>)}
+              </div>
+              <p aria-label="Layer placement" className="text-[9px] leading-relaxed text-text-muted">Rotation {Math.round(placement?.rotation ?? 0)}° · Size {Math.round((placement?.scale.x ?? 1) * 100)}% × {Math.round((placement?.scale.y ?? 1) * 100)}%</p>
+            </div>
+          </Section>
           {selectedLayer.shape && shapeStyle && <Section title="Shape" open={openSection === "Shape"} onToggle={() => toggleSection("Shape")}>
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span className="flex items-center gap-1.5"><input aria-label="Toggle shape fill" type="checkbox" checked={shapeStyle.fillEnabled} onChange={(event) => onUpdateShapeStyle({ fillEnabled: event.target.checked })} className="h-3.5 w-3.5 accent-[var(--accent)]" />Fill</span><input aria-label="Shape fill color" type="color" value={shapeStyle.fill} onChange={(event) => onUpdateShapeStyle({ fill: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></div>
+              <Swatches value={shapeStyle.fill} ariaLabel="Shape fill swatch" onPick={(fillColor) => onUpdateShapeStyle({ fill: fillColor })} />
               <RangeField label="Fill opacity" value={shapeStyle.fillOpacity} min={0} max={100} suffix="%" ariaLabel="Shape fill opacity" onChange={(fillOpacity) => onUpdateShapeStyle({ fillOpacity })} />
               <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Stroke</span><input aria-label="Shape stroke color" type="color" value={shapeStyle.stroke} onChange={(event) => onUpdateShapeStyle({ stroke: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></div>
+              <Swatches value={shapeStyle.stroke} ariaLabel="Shape stroke swatch" onPick={(strokeColor) => onUpdateShapeStyle({ stroke: strokeColor })} />
               <RangeField label="Stroke width" value={shapeStyle.strokeWidth} min={0} max={60} suffix="px" ariaLabel="Shape stroke width" onChange={(strokeWidth) => onUpdateShapeStyle({ strokeWidth })} />
               <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Line style</span><div role="group" aria-label="Shape line style" className="flex gap-1">{EDITOR_SHAPE_LINE_STYLES.map((style) => <button key={style} type="button" aria-label={`Shape line style ${style}`} aria-pressed={shapeStyle.strokeStyle === style} onClick={() => onUpdateShapeStyle({ strokeStyle: style })} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{style}</button>)}</div></div>
               <RangeField label="Corner radius" value={shapeStyle.cornerRadius} min={0} max={200} suffix="u" ariaLabel="Shape corner radius" onChange={(cornerRadius) => onUpdateShapeStyle({ cornerRadius })} />
@@ -357,6 +389,15 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
           {image && <Section title="Photo" open={openSection === "Photo"} onToggle={() => toggleSection("Photo")}>
             <EditorPhotoAdjustments image={image} selectedLayer={selectedLayer} onUpdateImage={onUpdateImage} onAddMask={onAddMask} onRemoveMask={onRemoveMask} onSelectMask={onSelectMask} />
           </Section>}
+          {image && <Section title="Frame" open={openSection === "Frame"} onToggle={() => toggleSection("Frame")}>
+            <div className="space-y-2">
+              <RangeField label="Corner radius" value={image.cornerRadius ?? 0} min={0} max={Math.max(8, Math.round(Math.min(image.width, image.height) / 2))} suffix="u" ariaLabel="Image corner radius" onChange={(cornerRadius) => onUpdateImage({ cornerRadius })} />
+              <RangeField label="Border width" value={image.borderWidth ?? 0} min={0} max={80} suffix="u" ariaLabel="Image border width" onChange={(borderWidth) => onUpdateImage({ borderWidth })} />
+              <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">Border colour<input aria-label="Image border colour" type="color" value={image.borderColor ?? "#ffffff"} onChange={(event) => onUpdateImage({ borderColor: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></label>
+              <Swatches value={image.borderColor ?? "#ffffff"} ariaLabel="Image border swatch" onPick={(borderColor) => onUpdateImage({ borderColor })} />
+              <p className="text-[9px] leading-relaxed text-text-muted">The frame is drawn inside the photo box, so rounded corners and a border never grow the layer past its transform outline.</p>
+            </div>
+          </Section>}
           {text ? <>
             <Section title="Text" open={openSection === "Text"} onToggle={() => toggleSection("Text")}>
               <textarea aria-label="Adjustment text" value={text.value} onChange={(event) => onUpdateText(event.target.value)} className="min-h-20 w-full resize-y rounded-xl border border-border bg-bg p-2 text-[12px] text-text-primary outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20" />
@@ -365,6 +406,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
               <div className="space-y-2">
                 <NumberField label="Font size" value={text.fontSize} min={24} max={260} ariaLabel="Adjustment font size" onChange={(value) => onUpdateTextStyle({ fontSize: value })} />
                 <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">Color<input aria-label="Adjustment text color" type="color" value={text.color} onChange={(event) => onUpdateTextStyle({ color: event.target.value })} className="h-8 w-11 cursor-pointer rounded-lg border border-border bg-bg p-0.5" /></label>
+                <Swatches value={text.color} ariaLabel="Text colour swatch" onPick={(color) => onUpdateTextStyle({ color })} />
                 <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Font</span><span className="text-[9px] text-text-muted">{text.fontFamily ?? "Inter"}</span></div>
                 <input aria-label="Search fonts" value={fontQuery} onChange={(event) => setFontQuery(event.target.value)} placeholder="Search fonts" className="w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-primary outline-none placeholder:text-text-muted focus:border-accent" />
                 {recentFonts.length > 0 && !fontQuery && <div className="flex flex-wrap gap-1">{recentFonts.map((font) => <button key={font} type="button" onClick={() => chooseFont(font)} className="rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-[9px] text-accent hover:bg-accent/20">{font}</button>)}</div>}
@@ -380,6 +422,14 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
                 <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Align</span><div role="group" aria-label="Text alignment" className="flex gap-1"><button type="button" aria-label="Align text left" aria-pressed={text.textAlign === "left"} onClick={() => onUpdateTextStyle({ textAlign: "left" })} className="rounded-lg border border-border p-1.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground"><AlignLeft size={14} /></button><button type="button" aria-label="Align text center" aria-pressed={(text.textAlign ?? "center") === "center"} onClick={() => onUpdateTextStyle({ textAlign: "center" })} className="rounded-lg border border-border p-1.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground"><AlignCenter size={14} /></button><button type="button" aria-label="Align text right" aria-pressed={text.textAlign === "right"} onClick={() => onUpdateTextStyle({ textAlign: "right" })} className="rounded-lg border border-border p-1.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground"><AlignRight size={14} /></button></div></div>
                 <NumberField label="Letter spacing" value={text.letterSpacing ?? 0} min={-20} max={80} ariaLabel="Adjustment letter spacing" onChange={(value) => onUpdateTextStyle({ letterSpacing: value })} />
                 <NumberField label="Line height" value={text.lineHeight ?? 1.2} min={0.7} max={3} step={0.1} ariaLabel="Adjustment line height" onChange={(value) => onUpdateTextStyle({ lineHeight: value })} />
+              </div>
+            </Section>
+            <Section title="Text styles" open={openSection === "Text styles"} onToggle={() => toggleSection("Text styles")}>
+              <div className="space-y-2">
+                <div role="group" aria-label="Text style presets" className="grid grid-cols-2 gap-1">
+                  {EDITOR_TEXT_STYLES.map((preset) => <button key={preset.id} type="button" aria-label={`Apply ${preset.label} text style`} title={preset.hint} onClick={() => applyTextStyle(preset.id)} className="rounded-lg border border-border px-2 py-1.5 text-left outline-none transition hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11"><span className="block text-[10px] font-semibold text-text-primary">{preset.label}</span><span className="block text-[8px] uppercase tracking-wider text-text-muted">{preset.hint}</span></button>)}
+                </div>
+                <p className="text-[9px] leading-relaxed text-text-muted">A preset writes an editable effect stack, so you can still tune, reorder, or remove each layer of it below.</p>
               </div>
             </Section>
             <Section title="Effects" open={openSection === "Effects"} onToggle={() => toggleSection("Effects")}>

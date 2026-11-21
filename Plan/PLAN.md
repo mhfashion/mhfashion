@@ -2213,3 +2213,23 @@ Owner: a place should not hold a single banner but many, and the place should ch
   so a page with one banner does no work at all.
 - Verified in Chromium with three live hero banners and a 2 s turn: the hero cycled 3 → 1 → 2 without a reload
   while a place with one live and one paused banner never changed; no console errors.
+
+### 2026-11-21 — Editor Adjustments: arrange, text styles, photo frames, swatches
+The owner: the editor's Tools / Adjustments should be fuller on the design side.
+- **Arrange** (new section, any layer): align left/centre/right and top/middle/bottom to the print
+  artboard, centre on canvas, flip across, flip down, rotate 90°, rotate 180°, reset rotation, reset size,
+  duplicate. Alignment recomputes the layer's canvas offset from its *painted* box (`placedLayerBounds`
+  composes offset, scale and rotation), so a scaled or turned layer still lands flush, and pressing the
+  same button twice does not drift it. The section also reads out rotation and size.
+- **Text styles** (new section): Neon, Sticker, Retro, Chrome, Outline, Shadow, Echo, Striped. Each is only
+  an effect stack (`EDITOR_TEXT_STYLES` → `textStyleEffects`), so the layer stays live text and the stack
+  stays editable, reorderable and removable.
+- **Frame** (new section, photo layers): corner radius and border width/colour, painted *inside* the image
+  box so the transform outline keeps hugging the photo. `EditorImageContent` gained `cornerRadius`,
+  `borderWidth`, `borderColor`.
+- **Brand swatches** beside the colour pickers for text, shape fill, shape stroke and the photo border
+  (`EDITOR_DESIGN_SWATCHES`), so a design stays on palette without a colour wheel.
+- Verified in Chromium at 1440 and 390: align right puts the outline's right edge on the artboard edge
+  (866 px = 866 px), centre lands at dx 0 / dy 0, flip reads -100%, reset size 100%, duplicate adds a
+  layer, and Neon writes two Glow effects that paint on the canvas. Phone: panel 256 px, buttons 44 px, no
+  sideways scroll. Suite 386/386, tsc clean, ESLint 0 errors, e2e desktop + phone pass.

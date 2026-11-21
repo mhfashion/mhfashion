@@ -540,3 +540,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The turn length is `data.adsRotationSeconds` (default 8, clamped 2-120), set from the Ads screen. The storefront
   hook re-reads the store on `storage` and sleeps until the next turn boundary, so a place with one banner does
   no periodic work.
+- Editor Adjustments additions (2026-11-21): `Arrange` aligns the **painted** box, not the raw bounds —
+  `placedLayerBounds` composes offset/scale/rotation and `arrangeLayerOffset` returns a new canvas offset.
+  Alignment must stay offset-only: writing it into the layer's own geometry moves the artwork inside its
+  transform. `Text styles` are effect stacks only (`EDITOR_TEXT_STYLES` + `textStyleEffects`), so the text
+  stays editable. The photo `Frame` (corner radius + border) is drawn *inside* the image box on purpose —
+  a centred stroke would paint outside the transform outline.
