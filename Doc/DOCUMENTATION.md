@@ -1329,3 +1329,25 @@ A ready-made leaderboard (728x90 and friends) is a very different shape from the
 With *Show the whole banner* a 728x90 GIF appears whole — 1350x167 in the desktop hero, 358x44 on a phone —
 with no cropping and no dark letterbox bands. The drawer's preview header says *whole banner* or *filled*, and
 the banner carries `data-ad-fit` so the choice is testable.
+
+### 2026-11-21 — One board for every banner place
+
+| Place | Page | Where |
+|---|---|---|
+| `home-hero` | `/` | replaces the green hero while a banner is live |
+| `home-strip` | `/` | under the category row |
+| `home-lower` | `/` | between New Arrivals and the promo cards |
+| `new-top` | `/new` | under the Fresh Looks hero, above the grid |
+| `products-top` | `/products` | above the product grid |
+| `guide-top` | `/guide` | under the guide header, above the articles |
+
+`/admin/ads` lists every place as one row — its page, position, artwork, status and window — with
+**Change**, **Pause**, **Clear** on the row and **Add banner** on an empty one. Nothing has to be opened on the
+page itself.
+
+**Adding a place** (developer step, two lines): add an entry to `AD_SLOTS` in `lib/admin-demo-data.ts` and mount
+`<AdSlotBanner slot="<id>" />` where it should appear. `AdSlotId` is derived from that array, so the type, the
+board row and the drawer's slot list all follow.
+
+The board edits the ad `adForSlot()` returns (live, else next scheduled, else newest on file); the storefront
+only ever renders `activeAdFor()`, so a scheduled banner never shows early and a paused one stays editable.

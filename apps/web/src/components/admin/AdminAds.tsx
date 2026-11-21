@@ -10,9 +10,9 @@ import {
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { formatAdminDate, type AdminAd, type AdFit, type AdMediaType, type AdSlotId } from "@/lib/admin-demo-data";
 import {
-  AD_FITS, AD_SLOTS, MAX_IMAGE_BYTES, adDraftFrom, adFromDraft, adMediaKind, adSlotLabel, adStatus,
-  looksAnimatedMedia, readImageFile,
-  removeAd, toggleAd, upsertAd, validateAdDraft, type AdminAdDraft, type AdminAdStatus,
+  AD_FITS, AD_SLOTS, MAX_IMAGE_BYTES, adDraftFrom, adForSlot, adFromDraft, adMediaKind, adSlotLabel,
+  adSlotPage, adStatus, looksAnimatedMedia, readImageFile, removeAd, toggleAd, upsertAd, validateAdDraft,
+  type AdminAdDraft, type AdminAdStatus,
 } from "@/lib/admin-ads";
 
 const STATUS_TONES: Record<AdminAdStatus, AdminTone> = {
@@ -33,7 +33,7 @@ function MediaPreview({ draft }: { draft: AdminAdDraft }) {
       <p className="text-[9px] font-bold uppercase tracking-wide text-[#828c99]">
         {slot?.label ?? "Ad"} preview · {slot?.size} · {draft.mediaType === "video" ? "looping video" : looksAnimatedMedia(draft.mediaUrl) ? "animated photo" : "photo"} · {draft.fit === "contain" ? "whole banner" : "filled"}
       </p>
-      <div className={`mt-2 overflow-hidden rounded-lg bg-[#eef1f3] ${draft.slot === "home-hero" ? "aspect-[16/6]" : "aspect-[16/3]"}`}>
+      <div className={`mt-2 overflow-hidden rounded-lg bg-[#eef1f3] aspect-[16/6]`}>
         {draft.mediaUrl ? (
           draft.mediaType === "video" ? (
             <video data-ad-preview-video src={draft.mediaUrl} poster={draft.posterUrl || undefined} autoPlay muted loop playsInline className={`h-full w-full ${fitClass(draft.fit)}`} />
@@ -46,7 +46,7 @@ function MediaPreview({ draft }: { draft: AdminAdDraft }) {
           </div>
         )}
       </div>
-      <p className="mt-2 text-[9px] text-[#87909b]">Where: {slot?.where}</p>
+      <p className="mt-2 text-[9px] text-[#87909b]">Where: {slot?.page} · {slot?.where}</p>
     </div>
   );
 }
@@ -61,19 +61,21 @@ export default function AdminAds() {
   const posterInput = useRef<HTMLInputElement>(null);
 
   const query = search.trim().toLowerCase();
-  const editing = editingId ? data.ads.find((ad) => ad.id === editingId) ?? null : null;
-  const visible = useMemo(() => data.ads.filter((ad) => (
-    `${ad.name} ${ad.alt} ${adSlotLabel(ad.slot)} ${ad.mediaType} ${adStatus(ad)}`.toLowerCase().includes(query)
-  )), [data.ads, query]);
+  const editing = editingId && editingId !== "new" ? data.ads.find((ad) => ad.id === editingId) ?? null : null;
 
-  const live = data.ads.filter((ad) => adStatus(ad) === "Live");
-  const scheduled = data.ads.filter((ad) => adStatus(ad) === "Scheduled");
-  const videos = data.ads.filter((ad) => ad.mediaType === "video");
-  const coveredSlots = new Set(live.map((ad) => ad.slot));
+  // One row per place a banner can sit, so every slot on the site is edited from this one screen.
+  const board = useMemo(() => AD_SLOTS.map((slot) => ({ slot, ad: adForSlot(data.ads, slot.id) })), [data.ads]);
+  const visible = board.filter(({ slot, ad }) => (
+    `${slot.label} ${slot.page} ${slot.where} ${ad?.name ?? "empty"} ${ad ? adStatus(ad) : ""}`.toLowerCase().includes(query)
+  ));
 
-  function startCreate() {
+  const liveCount = board.filter(({ ad }) => ad && adStatus(ad) === "Live").length;
+  const scheduled = board.filter(({ ad }) => ad && adStatus(ad) === "Scheduled").length;
+  const videos = data.ads.filter((ad) => ad.mediaType === "video").length;
+
+  function startCreate(slot: AdSlotId) {
     setEditingId("new");
-    setDraft(adDraftFrom());
+    setDraft(adDraftFrom(undefined, Date.now(), slot));
     setErrors([]);
   }
 
@@ -100,7 +102,7 @@ export default function AdminAds() {
     closeEditor();
   }
 
-  function remove(ad: AdminAd) {
+  function clear(ad: AdminAd) {
     if (confirmId !== ad.id) {
       setConfirmId(ad.id);
       return;
@@ -124,98 +126,104 @@ export default function AdminAds() {
     <AdminShell
       active="ads"
       title="Ads"
-      description="One banner photo or one looping animation per slot, with the window it runs. A slot shows the newest live ad."
-      actions={<AdminButton onClick={startCreate} aria-label="Create an ad"><Plus size={14} /> New ad</AdminButton>}
+      description="Every banner place on the site, one row each — put a photo or a looping animation in any of them."
+      actions={<AdminButton onClick={() => startCreate("home-hero")} aria-label="Create an ad"><Plus size={14} /> New banner</AdminButton>}
       search={(
         <label className="flex h-10 w-full max-w-[420px] items-center gap-2.5 rounded-full border border-[#e6e9ed] bg-[#f8f9fb] px-3.5 text-[#8c95a1] focus-within:border-[#a5d972] focus-within:bg-white">
           <Search size={16} className="shrink-0" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search ads" placeholder="Search ad, slot or type..." className="min-w-0 flex-1 bg-transparent text-[11px] text-[#252c37] outline-none placeholder:text-[#9da5af]" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search slots" placeholder="Search slot, page or banner..." className="min-w-0 flex-1 bg-transparent text-[11px] text-[#252c37] outline-none placeholder:text-[#9da5af]" />
         </label>
       )}
     >
       <section aria-label="Ad metrics" className="grid grid-cols-1 gap-3 min-[440px]:grid-cols-2 xl:grid-cols-4">
-        <AdminStat label="Live now" value={String(live.length)} hint="Enabled and inside the window" icon={<Megaphone size={21} />} />
-        <AdminStat label="Scheduled" value={String(scheduled.length)} hint="Start in the future" icon={<Megaphone size={21} />} />
-        <AdminStat label="Slots filled" value={`${coveredSlots.size}/${AD_SLOTS.length}`} hint="Slots with a live ad" icon={<Megaphone size={21} />} />
-        <AdminStat label="Videos" value={String(videos.length)} hint="The rest are still photos" icon={<Film size={21} />} />
+        <AdminStat label="Slots live" value={`${liveCount}/${AD_SLOTS.length}`} hint="Places showing a banner" icon={<Megaphone size={21} />} />
+        <AdminStat label="Scheduled" value={String(scheduled)} hint="Start in the future" icon={<Megaphone size={21} />} />
+        <AdminStat label="Empty slots" value={String(AD_SLOTS.length - liveCount)} hint="Nothing showing there" icon={<ImageIcon size={21} />} />
+        <AdminStat label="Videos" value={String(videos)} hint="The rest are photos or GIFs" icon={<Film size={21} />} />
       </section>
 
       <AdminCard className="mt-3 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[780px] text-left text-[10px]">
-            <thead className="bg-[#fafbfc] text-[9px] font-semibold text-[#828c99]">
-              <tr>
-                <th className="px-4 py-2.5 font-semibold sm:px-5">Ad</th>
-                <th className="px-3 py-2.5 font-semibold">Slot</th>
-                <th className="px-3 py-2.5 font-semibold">Media</th>
-                <th className="px-3 py-2.5 font-semibold">Window</th>
-                <th className="px-3 py-2.5 font-semibold">Status</th>
-                <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f0f2f4]">
-              {visible.length ? visible.map((ad) => {
-                const status = adStatus(ad);
-                return (
-                  <tr key={ad.id} data-admin-ad={ad.id} data-ad-status={status} data-ad-media={ad.mediaType} className="hover:bg-[#fafbfc]">
-                    <td className="px-4 py-2.5 sm:px-5">
-                      <span className="block font-bold text-[#303844]">{ad.name}</span>
-                      <span className="mt-0.5 block text-[9px] text-[#919aa6]">{ad.href ? `→ ${ad.href}` : "No link"}</span>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[#505a68]">{adSlotLabel(ad.slot)}</td>
-                    <td className="px-3 py-2.5">
-                      <span className="flex items-center gap-2">
-                        <span className="flex h-8 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-[#e6e9ed] bg-[#f4f6f8]">
-                          {ad.mediaType === "video"
-                            ? <video src={ad.mediaUrl} muted playsInline className="h-full w-full object-cover" />
-                            : <img src={ad.mediaUrl} alt="" className="h-full w-full object-cover" />}
+        <ul className="divide-y divide-[#f0f2f4]">
+          {visible.length ? visible.map(({ slot, ad }) => {
+            const status = ad ? adStatus(ad) : null;
+            return (
+              <li
+                key={slot.id}
+                data-ad-slot-row={slot.id}
+                data-ad-filled={ad ? "true" : "false"}
+                data-ad-status={status ?? "Empty"}
+                data-ad-media={ad?.mediaType ?? "none"}
+                className="flex flex-col gap-2.5 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
+              >
+                <div className="min-w-0 sm:w-[210px] sm:shrink-0">
+                  <p className="text-[11px] font-bold text-[#303844]">{slot.label}</p>
+                  <p className="mt-0.5 text-[9px] text-[#87909b]"><span className="font-bold text-[#6c7683]">{slot.page}</span> · {slot.where}</p>
+                  <p className="mt-0.5 text-[9px] text-[#a3abb5]">{slot.size}</p>
+                </div>
+
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <span className="flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded border border-[#e6e9ed] bg-[#f4f6f8]">
+                    {ad ? (
+                      ad.mediaType === "video"
+                        ? <video src={ad.mediaUrl} muted playsInline className="h-full w-full object-cover" />
+                        : <img src={ad.mediaUrl} alt="" className="h-full w-full object-cover" />
+                    ) : <ImageIcon size={14} className="text-[#c2c9d1]" />}
+                  </span>
+                  <span className="min-w-0">
+                    {ad ? (
+                      <>
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <span className="truncate text-[10px] font-bold text-[#394250]">{ad.name}</span>
+                          {status ? <AdminBadge tone={STATUS_TONES[status]}>{status}</AdminBadge> : null}
+                          <span className="text-[9px] font-semibold text-[#919aa6]">{adMediaKind(ad)}</span>
                         </span>
-                        <span className="text-[9px] text-[#6c7683]">{adMediaKind(ad)}<span className="mt-0.5 block max-w-[130px] truncate text-[#9aa3ae]">{ad.alt}</span></span>
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-[#919aa6]">{formatAdminDate(ad.startsAt)} → {formatAdminDate(ad.endsAt)}</td>
-                    <td className="px-3 py-2.5"><AdminBadge tone={STATUS_TONES[status]}>{status}</AdminBadge></td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right sm:px-5">
-                      <div className="inline-flex items-center gap-1.5">
-                        <AdminButton compact variant="secondary" onClick={() => startEdit(ad)} aria-label={`Edit ${ad.name}`}><Pencil size={12} /> Edit</AdminButton>
-                        <AdminButton compact variant="ghost" onClick={() => updateAdminData((current) => toggleAd(current, ad.id))} aria-label={`${ad.enabled ? "Pause" : "Enable"} ${ad.name}`}>{ad.enabled ? "Pause" : "Enable"}</AdminButton>
-                        <AdminButton compact variant="danger" onClick={() => remove(ad)} aria-label={`Delete ${ad.name}`}><Trash2 size={12} /> {confirmId === ad.id ? "Confirm" : "Delete"}</AdminButton>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              }) : <tr><td colSpan={6}><AdminEmpty title="No ads yet" description="Create one with a banner photo or a looping video, then it appears on the home page while it is live." /></td></tr>}
-            </tbody>
-          </table>
-        </div>
+                        <span className="mt-0.5 block truncate text-[9px] text-[#919aa6]">
+                          {formatAdminDate(ad.startsAt)} → {formatAdminDate(ad.endsAt)} · {ad.href || "no link"}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-[#a3abb5]">Empty — nothing shows here</span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                  {ad ? (
+                    <>
+                      <AdminButton compact variant="secondary" onClick={() => startEdit(ad)} aria-label={`Edit ${slot.label}`}><Pencil size={12} /> Change</AdminButton>
+                      <AdminButton compact variant="ghost" onClick={() => updateAdminData((current) => toggleAd(current, ad.id))} aria-label={`${ad.enabled ? "Pause" : "Enable"} ${slot.label}`}>{ad.enabled ? "Pause" : "Enable"}</AdminButton>
+                      <AdminButton compact variant="danger" onClick={() => clear(ad)} aria-label={`Clear ${slot.label}`}><Trash2 size={12} /> {confirmId === ad.id ? "Confirm" : "Clear"}</AdminButton>
+                    </>
+                  ) : (
+                    <AdminButton compact variant="secondary" onClick={() => startCreate(slot.id)} aria-label={`Add a banner to ${slot.label}`}><Plus size={12} /> Add banner</AdminButton>
+                  )}
+                </div>
+              </li>
+            );
+          }) : <li><AdminEmpty title="No slots match this search" description="Try the page name, e.g. /new or /guide." /></li>}
+        </ul>
       </AdminCard>
 
       <AdminCard className="mt-3">
         <div className="px-4 py-3">
-          <h2 className="text-[11px] font-bold text-[#303844]">Where each slot appears</h2>
-          <ul className="mt-1 grid gap-1 text-[10px] text-[#4b5563] sm:grid-cols-2">
-            {AD_SLOTS.map((slot) => (
-              <li key={slot.id} data-ad-slot={slot.id}>
-                <span className="font-bold text-[#394250]">{slot.label}</span> · {slot.where} <span className="text-[#919aa6]">({slot.size})</span>
-              </li>
-            ))}
+          <h2 className="text-[11px] font-bold text-[#303844]">How slots work</h2>
+          <ul className="mt-1 space-y-1 text-[10px] text-[#4b5563]">
+            <li>Each row is one place on the site; a place shows its <span className="font-bold">newest live banner</span>, and nothing while it is paused or empty.</li>
+            <li><span className="font-bold">Change</span> replaces the artwork in place, <span className="font-bold">Pause</span> hides it without losing it, <span className="font-bold">Clear</span> removes it.</li>
+            <li>New places are added in code (<code>AD_SLOTS</code>) and mounted with <code>{'<AdSlotBanner slot="…" />'}</code> — they then appear on this board automatically.</li>
           </ul>
-          <p className="mt-2 text-[9px] text-[#87909b]">
-            A photo can be picked from this computer (up to {Math.round(MAX_IMAGE_BYTES / 1024)} KB) or referenced by path; a video needs a
-            URL — uploads land in R2, which is not connected yet, so use /ads/… once the file is in the repo or an https:// link.
-          </p>
         </div>
       </AdminCard>
 
       <AdminDrawer
         open={Boolean(editingId && draft)}
-        title={editingId === "new" ? "New ad" : `Edit ${editing?.name ?? "ad"}`}
-        description="The banner shows while the ad is enabled and inside its window; pause it any time."
+        title={editingId === "new" ? `New banner · ${adSlotLabel(draft?.slot ?? "home-hero")}` : `Edit ${editing?.name ?? "banner"}`}
+        description="The banner shows while it is enabled and inside its window; pause it any time."
         onClose={closeEditor}
         footer={(
           <div className="flex items-center justify-end gap-2">
             <AdminButton variant="secondary" onClick={closeEditor}>Cancel</AdminButton>
-            <AdminButton onClick={save}>{editingId === "new" ? "Create ad" : "Save changes"}</AdminButton>
+            <AdminButton onClick={save}>{editingId === "new" ? "Create banner" : "Save changes"}</AdminButton>
           </div>
         )}
       >
@@ -227,34 +235,35 @@ export default function AdminAds() {
               </ul>
             ) : null}
             <div className="grid grid-cols-2 gap-3">
-              <AdminField label="Slot">
+              <AdminField label="Where it sits">
                 <AdminSelect value={draft.slot} onChange={(event) => setDraft({ ...draft, slot: event.target.value as AdSlotId })} aria-label="Ad slot">
-                  {AD_SLOTS.map((slot) => <option key={slot.id} value={slot.id}>{slot.label}</option>)}
+                  {AD_SLOTS.map((slot) => <option key={slot.id} value={slot.id}>{slot.page} · {slot.label}</option>)}
                 </AdminSelect>
               </AdminField>
-              <AdminField label="Ad name">
+              <AdminField label="Banner name">
                 <AdminInput value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Songkran hero" aria-label="Ad name" />
               </AdminField>
             </div>
 
             <fieldset className="rounded-xl border border-[#edf0f3] bg-[#fafbfc] p-3">
-              <legend className="px-1 text-[10px] font-bold text-[#5b6674]">Media</legend>
-              <div role="radiogroup" aria-label="Ad media type" className="flex gap-1.5">
-                {(["image", "video"] as AdMediaType[]).map((type) => (
+              <legend className="px-1 text-[9px] font-bold uppercase tracking-wide text-[#828c99]">Media</legend>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { id: "image" as AdMediaType, label: "Banner photo", icon: <ImageIcon size={13} /> },
+                  { id: "video" as AdMediaType, label: "Animation video", icon: <Film size={13} /> },
+                ]).map((option) => (
                   <button
-                    key={type}
+                    key={option.id}
                     type="button"
-                    role="radio"
-                    aria-checked={draft.mediaType === type}
-                    data-ad-media-type={type}
-                    onClick={() => setDraft({ ...draft, mediaType: type, posterUrl: type === "video" ? draft.posterUrl : "" })}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold ${draft.mediaType === type ? "border-[#4cae22] bg-[#eef8e6] text-[#3f8c22]" : "border-[#e4e8ed] bg-white text-[#6c7683]"}`}
+                    onClick={() => setDraft({ ...draft, mediaType: option.id })}
+                    aria-pressed={draft.mediaType === option.id}
+                    data-media-option={option.id}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[9px] font-bold ${draft.mediaType === option.id ? "border-[#7ac943] bg-[#f2fbe6] text-[#3f8c22]" : "border-[#e6e9ed] bg-white text-[#6c7683]"}`}
                   >
-                    {type === "video" ? <Film size={12} /> : <ImageIcon size={12} />} {type === "video" ? "Animation video" : "Banner photo"}
+                    {option.icon} {option.label}
                   </button>
                 ))}
               </div>
-
               <p className="mt-2 text-[9px] leading-snug text-[#87909b]">
                 A few frames is enough: an animated GIF or WebP picked as a photo loops on its own, and a 6-frame
                 1600x600 banner is about 20 KB — no video upload needed.
@@ -271,52 +280,41 @@ export default function AdminAds() {
 
               <div className="mt-3">
                 <AdminField label={draft.mediaType === "video" ? "Video URL (.mp4 / .webm)" : "Photo URL"}>
-                  <AdminInput value={draft.mediaUrl.startsWith("data:") ? "" : draft.mediaUrl} onChange={(event) => setDraft({ ...draft, mediaUrl: event.target.value })} placeholder={draft.mediaType === "video" ? "/ads/hero.mp4" : "/ads/hero.jpg"} aria-label="Ad media URL" />
+                  <AdminInput value={draft.mediaUrl} onChange={(event) => setDraft({ ...draft, mediaUrl: event.target.value })} placeholder={draft.mediaType === "video" ? "https://cdn.mhfashion.com/hero.mp4" : "/ads/hero.jpg"} aria-label="Ad media URL" />
                 </AdminField>
                 {draft.mediaType === "image" ? (
                   <label className="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-[9px] font-bold text-[#3f8c22]">
                     <ImageIcon size={12} /> Pick a photo or an animated GIF
-                    <input
-                      type="file"
-                      accept="image/*"
-                      aria-label="Pick an ad photo"
-                      data-ad-file
-                      className="sr-only"
-                      onChange={(event) => pickFile(event.target.files?.[0], "mediaUrl")}
-                    />
+                    <input type="file" accept="image/*" aria-label="Pick an ad photo" className="hidden" onChange={(event) => { void pickFile(event.target.files?.[0], "mediaUrl"); event.target.value = ""; }} />
                   </label>
-                ) : null}
-                {draft.mediaUrl.startsWith("data:") ? (
-                  <p className="mt-1 text-[9px] font-semibold text-[#3f8c22]">A picked photo is stored with this ad.</p>
-                ) : null}
+                ) : (
+                  <p className="mt-2 text-[9px] text-[#87909b]">Uploads land in R2 once it is connected; until then a URL or a file in <code>public/ads/</code> works.</p>
+                )}
               </div>
 
               {draft.mediaType === "video" ? (
                 <div className="mt-3">
-                  <AdminField label="Poster photo (optional)" hint="Shown while the video loads.">
-                    <AdminInput value={draft.posterUrl.startsWith("data:") ? "" : draft.posterUrl} onChange={(event) => setDraft({ ...draft, posterUrl: event.target.value })} placeholder="/ads/hero-poster.jpg" aria-label="Ad poster URL" />
+                  <AdminField label="Poster photo (first frame)">
+                    <AdminInput value={draft.posterUrl} onChange={(event) => setDraft({ ...draft, posterUrl: event.target.value })} placeholder="/ads/hero-poster.jpg" aria-label="Ad poster URL" />
                   </AdminField>
-                  <label className="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-[9px] font-bold text-[#3f8c22]">
+                  <button type="button" onClick={() => posterInput.current?.click()} className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-bold text-[#3f8c22]">
                     <ImageIcon size={12} /> Pick a poster from this computer
-                    <input
-                      ref={posterInput}
-                      type="file"
-                      accept="image/*"
-                      aria-label="Pick a poster photo"
-                      className="sr-only"
-                      onChange={(event) => pickFile(event.target.files?.[0], "posterUrl")}
-                    />
-                  </label>
+                  </button>
+                  <input ref={posterInput} type="file" accept="image/*" aria-label="Pick an ad poster" className="hidden" onChange={(event) => { void pickFile(event.target.files?.[0], "posterUrl"); event.target.value = ""; }} />
                 </div>
               ) : null}
             </fieldset>
 
+            <MediaPreview draft={draft} />
+
             <AdminField label="Description" hint="Read by screen readers and search engines.">
-              <AdminInput value={draft.alt} onChange={(event) => setDraft({ ...draft, alt: event.target.value })} placeholder="Two models in MH Signature tees" aria-label="Ad description" />
+              <AdminInput value={draft.alt} onChange={(event) => setDraft({ ...draft, alt: event.target.value })} placeholder="Songkran sale — 25% off all tees" aria-label="Ad description" />
             </AdminField>
+
             <AdminField label="Link (optional)" hint="Leave empty when the banner is not clickable.">
               <AdminInput value={draft.href} onChange={(event) => setDraft({ ...draft, href: event.target.value })} placeholder="/new" aria-label="Ad link" />
             </AdminField>
+
             <div className="grid grid-cols-2 gap-3">
               <AdminField label="Starts">
                 <AdminInput type="date" value={draft.startsAt} onChange={(event) => setDraft({ ...draft, startsAt: event.target.value })} aria-label="Ad start date" />
@@ -325,7 +323,6 @@ export default function AdminAds() {
                 <AdminInput type="date" value={draft.endsAt} onChange={(event) => setDraft({ ...draft, endsAt: event.target.value })} aria-label="Ad end date" />
               </AdminField>
             </div>
-            <MediaPreview draft={draft} />
           </div>
         ) : null}
       </AdminDrawer>

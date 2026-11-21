@@ -2184,3 +2184,17 @@ Owner sent a template: `https://mnamin24.github.io/gifer-gif-animated-banner-tem
   wrapper, so nothing is cropped and no letterbox bands appear: the leaderboard shows whole at 1350x167 in
   the hero and 358x44 on a phone.
 - Verified with that GIF in both slots at 1440x900 and 390x844; suite 375/375, e2e desktop + phone pass.
+
+### 2026-11-21 (later) — every banner place in one screen
+Owner: slots are not on one page — home has three, /new has one, /guide has one, and more will come, so all of
+them must be visible and editable together, each with its own name and place.
+- `AD_SLOTS` (in `admin-demo-data.ts`) is now the single registry: `home-hero`, `home-strip`, `home-lower`
+  (`/`), `new-top` (`/new`), `products-top` (`/products`), `guide-top` (`/guide`). `AdSlotId` is derived from
+  it, so adding a place is one array entry plus one `<AdSlotBanner slot=… />`.
+- `/admin/ads` is a **slot board**: one row per place with its page, position and size, the banner in it, its
+  status and window, and Change / Pause / Clear in place; empty places offer **Add banner**.
+- `adForSlot()` decides what the board edits (live → next scheduled → newest), while the storefront keeps using
+  `activeAdFor()`, so a scheduled banner stays off the site.
+- The guide rail was a 220px column; it became `guide-top`, full width above the articles.
+- Verified in Chromium: 6 rows on the board at 1440 and 390 (no sideways scroll), and the banner renders on
+  `/` (3), `/new`, `/products` and `/guide` (1136x140 desktop, 358x44 phone). Suite 377/377, e2e passes.

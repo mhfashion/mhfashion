@@ -14,6 +14,7 @@ import {
   Star,
   X,
 } from "lucide-react";
+import AdSlotBanner from "@/components/AdSlotBanner";
 import Header from "@/components/Header";
 import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
@@ -145,6 +146,8 @@ export default async function GuidePage({ searchParams }: PageProps) {
               </div>
               <div className="absolute bottom-2 right-3 text-base font-black italic leading-none text-[#54a817]/80 sm:bottom-3 sm:right-10 sm:text-2xl">Your<br />Style</div>
             </section>
+
+            <AdSlotBanner slot="guide-top" />
 
             <div className="mb-4 -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:hidden">
               <Link href={guideUrl("", query)} className={`group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>

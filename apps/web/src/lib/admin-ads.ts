@@ -1,7 +1,7 @@
 // Banner ads are media only (owner request 2026-11-21): one photo or one looping animation per slot.
 // An ad shows only while it is enabled and inside its window — nothing else decides visibility.
 
-import type { AdminAd, AdFit, AdMediaType, AdSlotId } from "@/lib/admin-demo-data";
+import { AD_SLOTS, type AdminAd, type AdFit, type AdMediaType, type AdSlotId } from "@/lib/admin-demo-data";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -20,11 +20,7 @@ export type AdminAdDraft = {
   endsAt: string;
 };
 
-export const AD_SLOTS: { id: AdSlotId; label: string; where: string; size: string }[] = [
-  // Both banners crop to fill: keep the artwork's subject centred so phones (which crop the sides) still read.
-  { id: "home-hero", label: "Home hero", where: "Home page, replaces the green hero while it is live", size: "1600 x 600, centred" },
-  { id: "home-strip", label: "Home strip", where: "Home page, under the category row", size: "1600 x 240, centred" },
-];
+export { AD_SLOTS };
 
 export const MAX_IMAGE_BYTES = 900 * 1024;
 
@@ -45,6 +41,10 @@ export function adMediaKind(ad: Pick<AdminAd, "mediaType" | "mediaUrl">): "Video
 
 export function adSlotLabel(slot: AdSlotId): string {
   return AD_SLOTS.find((entry) => entry.id === slot)?.label ?? slot;
+}
+
+export function adSlotPage(slot: AdSlotId): string {
+  return AD_SLOTS.find((entry) => entry.id === slot)?.page ?? "";
 }
 
 export function adStatus(ad: AdminAd, now = Date.now()): AdminAdStatus {
@@ -68,13 +68,29 @@ export function activeAdFor(ads: readonly AdminAd[], slot: AdSlotId, now = Date.
     .sort((left, right) => Date.parse(right.startsAt) - Date.parse(left.startsAt))[0] ?? null;
 }
 
+/**
+ * The ad the board shows for a slot: the live one, else the next scheduled, else the newest on file.
+ * The storefront still only ever renders `activeAdFor`, so a scheduled ad cannot leak early.
+ */
+export function adForSlot(ads: readonly AdminAd[], slot: AdSlotId, now = Date.now()): AdminAd | null {
+  const live = activeAdFor(ads, slot, now);
+  if (live) return live;
+  const mine = ads.filter((ad) => ad.slot === slot);
+  if (!mine.length) return null;
+  const upcoming = mine
+    .filter((ad) => ad.enabled && Date.parse(ad.startsAt) > now)
+    .sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt))[0];
+  if (upcoming) return upcoming;
+  return mine.slice().sort((left, right) => Date.parse(right.startsAt) - Date.parse(left.startsAt))[0];
+}
+
 export function makeAdId(now = Date.now()): string {
   return `ad_${now.toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function adDraftFrom(ad?: AdminAd, now = Date.now()): AdminAdDraft {
+export function adDraftFrom(ad?: AdminAd, now = Date.now(), slot: AdSlotId = "home-hero"): AdminAdDraft {
   return {
-    slot: ad?.slot ?? "home-hero",
+    slot: ad?.slot ?? slot,
     name: ad?.name ?? "",
     mediaType: ad?.mediaType ?? "image",
     mediaUrl: ad?.mediaUrl ?? "",

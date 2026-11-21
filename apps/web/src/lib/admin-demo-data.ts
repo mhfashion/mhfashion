@@ -377,12 +377,23 @@ export type AdminPromotion = {
   enabled: boolean;
 };
 
-/** The two home-page banners. More slots are added here and mounted with <AdSlotBanner slot=… />. */
-export type AdSlotId = "home-hero" | "home-strip";
+/**
+ * Every place a banner can sit. Add an entry here and mount <AdSlotBanner slot="<id>" /> on the page:
+ * the admin board lists it and the type below follows automatically.
+ */
+export const AD_SLOTS = [
+  { id: "home-hero", label: "Home hero", page: "/", where: "Replaces the green hero while a banner is live", size: "1600 x 600" },
+  { id: "home-strip", label: "Home strip", page: "/", where: "Under the category row", size: "1600 x 240" },
+  { id: "home-lower", label: "Home lower", page: "/", where: "Between New Arrivals and the promo cards", size: "1600 x 240" },
+  { id: "new-top", label: "New arrivals banner", page: "/new", where: "Under the Fresh Looks hero, above the grid", size: "1600 x 240" },
+  { id: "products-top", label: "Shop banner", page: "/products", where: "Above the product grid", size: "1600 x 240" },
+  { id: "guide-top", label: "Guide banner", page: "/guide", where: "Under the guide header, above the articles", size: "1600 x 240" },
+] as const;
+
+export type AdSlotId = (typeof AD_SLOTS)[number]["id"];
 
 export type AdMediaType = "image" | "video";
 
-/** How the artwork meets the slot box: fill it (crop the edges) or show all of it (letterbox). */
 export type AdFit = "cover" | "contain";
 
 /**

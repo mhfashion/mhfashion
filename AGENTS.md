@@ -524,3 +524,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   min-height/aspect); `contain` renders the media at its own aspect (`block h-auto w-full`) and the banner drops
   the fixed box entirely, so no crop and no letterbox bands. Use `contain` for ready-made leaderboards
   (728x90) and `cover` for artwork drawn at the slot size. The banner exposes `data-ad-fit` for tests.
+- Banner places are a registry, not a hard-coded union: `AD_SLOTS` in `lib/admin-demo-data.ts` (import-free)
+  holds `{ id, label, page, where, size }` and `AdSlotId = (typeof AD_SLOTS)[number]["id"]`. Add a place by
+  adding an entry **and** mounting `<AdSlotBanner slot="<id>" />` on the page; the admin board is generated from
+  the array, so it needs no change. Current places: `home-hero`, `home-strip`, `home-lower` (`/`), `new-top`
+  (`/new`), `products-top` (`/products`), `guide-top` (`/guide`).
+- `/admin/ads` is a slot board (`data-ad-slot-row={slot.id}`), one row per place, with Change/Pause/Clear in
+  place and Add banner on empty rows. It edits `adForSlot()` (live → next scheduled → newest); the storefront
+  must keep using `activeAdFor()` so a scheduled banner cannot leak.

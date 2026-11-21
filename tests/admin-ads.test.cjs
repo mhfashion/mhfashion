@@ -46,7 +46,15 @@ test("an ad is a photo or a looping video, and is live only inside its window", 
   assert.equal(ads.adStatus({ ...base, startsAt: "2026-12-02T00:00:00.000Z" }, NOW), "Scheduled");
   assert.equal(ads.adStatus({ ...base, endsAt: "2026-11-01T00:00:00.000Z" }, NOW), "Expired");
   assert.equal(ads.adIsLive({ ...base, enabled: false }, NOW), false);
-  assert.deepEqual(ads.AD_SLOTS.map((slot) => slot.id), ["home-hero", "home-strip"]);
+  assert.deepEqual(ads.AD_SLOTS.map((slot) => slot.id), [
+    "home-hero", "home-strip", "home-lower", "new-top", "products-top", "guide-top",
+  ]);
+  // Every place names its page, so the board can say where a banner will appear.
+  for (const slot of ads.AD_SLOTS) {
+    assert.ok(slot.page.startsWith("/"), `${slot.id} has no page`);
+    assert.ok(slot.label && slot.where && slot.size, `${slot.id} is missing board copy`);
+    assert.equal(ads.adSlotPage(slot.id), slot.page);
+  }
   assert.equal(ads.adSlotLabel("home-strip"), "Home strip");
 });
 
@@ -145,10 +153,10 @@ test("Ads is a registered admin module with its own route and screen", () => {
   const source = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminAds.tsx"), "utf8");
   for (const marker of [
     'active="ads"',
-    "data-admin-ad={ad.id}",
-    "data-ad-status={status}",
-    "data-ad-media={ad.mediaType}",
-    "data-ad-media-type={type}",
+    "data-ad-slot-row={slot.id}",
+    'data-ad-status={status ?? "Empty"}',
+    'data-ad-media={ad?.mediaType ?? "none"}',
+    "formatAdminDate(ad.startsAt)",
     "data-ad-preview",
     'aria-label="Ad media URL"',
     'aria-label="Pick an ad photo"',
@@ -163,9 +171,47 @@ test("Ads is a registered admin module with its own route and screen", () => {
     "upsertAd",
     "toggleAd",
     "removeAd",
+    "data-ad-slot-row={slot.id}",
+    "adForSlot(data.ads, slot.id)",
+    'aria-label={`Add a banner to ${slot.label}`}',
+    'aria-label={`Edit ${slot.label}`}',
+    'aria-label={`Clear ${slot.label}`}',
   ]) {
     assert.ok(source.includes(marker), `AdminAds is missing ${marker}`);
   }
+});
+
+test("the board shows one row per place, and the same ad is what the storefront shows", () => {
+  const hero = { ...base, id: "ad_hero", slot: "home-hero" };
+  const future = { ...base, id: "ad_future", slot: "new-top", startsAt: "2026-12-05T00:00:00.000Z", endsAt: "2026-12-20T23:59:59.999Z" };
+  const adsOnFile = [hero, future];
+
+  // A live ad is what the board offers for editing, and what the storefront renders.
+  assert.equal(ads.adForSlot(adsOnFile, "home-hero", NOW).id, "ad_hero");
+  assert.equal(ads.activeAdFor(adsOnFile, "home-hero", NOW).id, "ad_hero");
+  // A scheduled ad is editable on the board but must not render yet.
+  assert.equal(ads.adForSlot(adsOnFile, "new-top", NOW).id, "ad_future");
+  assert.equal(ads.activeAdFor(adsOnFile, "new-top", NOW), null);
+  // A paused ad stays editable instead of vanishing from the board.
+  const paused = { ...base, id: "ad_paused", slot: "products-top", enabled: false };
+  assert.equal(ads.adForSlot([paused], "products-top", NOW).id, "ad_paused");
+  assert.equal(ads.activeAdFor([paused], "products-top", NOW), null);
+  // Empty places stay empty.
+  assert.equal(ads.adForSlot(adsOnFile, "guide-top", NOW), null);
+  // An expired ad is still reachable, newest first.
+  const older = { ...base, id: "ad_older", slot: "guide-top", startsAt: "2026-10-01T00:00:00.000Z", endsAt: "2026-10-10T23:59:59.999Z" };
+  const newer = { ...base, id: "ad_newer", slot: "guide-top", startsAt: "2026-10-11T00:00:00.000Z", endsAt: "2026-10-20T23:59:59.999Z" };
+  assert.equal(ads.adForSlot([older, newer], "guide-top", NOW).id, "ad_newer");
+});
+
+test("every page with a place mounts its banner", () => {
+  const read = (file) => readFileSync(path.join(__dirname, "..", "apps/web/src/app", file), "utf8");
+  assert.match(read("page.tsx"), /<AdSlotBanner slot="home-hero" variant="hero">/);
+  assert.match(read("page.tsx"), /<AdSlotBanner slot="home-strip" \/>/);
+  assert.match(read("page.tsx"), /<AdSlotBanner slot="home-lower" \/>/);
+  assert.match(read("new/page.tsx"), /<AdSlotBanner slot="new-top" \/>/);
+  assert.match(read("products/page.tsx"), /<AdSlotBanner slot="products-top" \/>/);
+  assert.match(read("guide/page.tsx"), /<AdSlotBanner slot="guide-top" \/>/);
 });
 
 test("the home page renders the live hero ad and falls back to the green hero", () => {
