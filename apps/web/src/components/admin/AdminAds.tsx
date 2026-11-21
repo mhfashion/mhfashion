@@ -8,9 +8,12 @@ import {
   AdminInput, AdminSelect, AdminStat, type AdminTone,
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
-import { formatAdminDate, type AdminAd, type AdFit, type AdMediaType, type AdSlotId } from "@/lib/admin-demo-data";
 import {
-  AD_FITS, AD_SLOTS, MAX_IMAGE_BYTES, adDraftFrom, adForSlot, adFromDraft, adMediaKind, adSlotLabel,
+  ADS_ROTATION_CHOICES, formatAdminDate, normalizeAdsRotationSeconds,
+  type AdminAd, type AdFit, type AdMediaType, type AdSlotId,
+} from "@/lib/admin-demo-data";
+import {
+  AD_FITS, AD_SLOTS, MAX_IMAGE_BYTES, adDraftFrom, adFromDraft, adMediaKind, adSlotLabel, adsForSlot,
   adSlotPage, adStatus, looksAnimatedMedia, readImageFile, removeAd, toggleAd, upsertAd, validateAdDraft,
   type AdminAdDraft, type AdminAdStatus,
 } from "@/lib/admin-ads";
@@ -63,15 +66,17 @@ export default function AdminAds() {
   const query = search.trim().toLowerCase();
   const editing = editingId && editingId !== "new" ? data.ads.find((ad) => ad.id === editingId) ?? null : null;
 
-  // One row per place a banner can sit, so every slot on the site is edited from this one screen.
-  const board = useMemo(() => AD_SLOTS.map((slot) => ({ slot, ad: adForSlot(data.ads, slot.id) })), [data.ads]);
-  const visible = board.filter(({ slot, ad }) => (
-    `${slot.label} ${slot.page} ${slot.where} ${ad?.name ?? "empty"} ${ad ? adStatus(ad) : ""}`.toLowerCase().includes(query)
+  // One row per place, and every banner filed under that place inside it — a place can hold many.
+  const board = useMemo(() => AD_SLOTS.map((slot) => ({ slot, banners: adsForSlot(data.ads, slot.id) })), [data.ads]);
+  const visible = board.filter(({ slot, banners }) => (
+    `${slot.label} ${slot.page} ${slot.where} ${banners.map((ad) => ad.name).join(" ")} ${banners.map((ad) => adStatus(ad)).join(" ")}`
+      .toLowerCase().includes(query)
   ));
-
-  const liveCount = board.filter(({ ad }) => ad && adStatus(ad) === "Live").length;
-  const scheduled = board.filter(({ ad }) => ad && adStatus(ad) === "Scheduled").length;
-  const videos = data.ads.filter((ad) => ad.mediaType === "video").length;
+  const liveBanners = data.ads.filter((ad) => adStatus(ad) === "Live").length;
+  const scheduled = data.ads.filter((ad) => adStatus(ad) === "Scheduled").length;
+  const emptyPlaces = board.filter(({ banners }) => banners.length === 0).length;
+  const livePlaces = board.filter(({ banners }) => banners.some((ad) => adStatus(ad) === "Live")).length;
+  const rotationSeconds = data.adsRotationSeconds;
 
   function startCreate(slot: AdSlotId) {
     setEditingId("new");
@@ -136,71 +141,77 @@ export default function AdminAds() {
       )}
     >
       <section aria-label="Ad metrics" className="grid grid-cols-1 gap-3 min-[440px]:grid-cols-2 xl:grid-cols-4">
-        <AdminStat label="Slots live" value={`${liveCount}/${AD_SLOTS.length}`} hint="Places showing a banner" icon={<Megaphone size={21} />} />
-        <AdminStat label="Scheduled" value={String(scheduled)} hint="Start in the future" icon={<Megaphone size={21} />} />
-        <AdminStat label="Empty slots" value={String(AD_SLOTS.length - liveCount)} hint="Nothing showing there" icon={<ImageIcon size={21} />} />
-        <AdminStat label="Videos" value={String(videos)} hint="The rest are photos or GIFs" icon={<Film size={21} />} />
+        <AdminStat label="Banners" value={String(data.ads.length)} hint={`Across ${AD_SLOTS.length} places`} icon={<Megaphone size={21} />} />
+        <AdminStat label="Live now" value={String(liveBanners)} hint={`Showing in ${livePlaces} place${livePlaces === 1 ? "" : "s"}`} icon={<ImageIcon size={21} />} />
+        <AdminStat label="Scheduled" value={String(scheduled)} hint="Start in the future" icon={<Film size={21} />} />
+        <AdminStat label="Empty places" value={String(emptyPlaces)} hint="Nothing filed there yet" icon={<ImageIcon size={21} />} />
       </section>
 
       <AdminCard className="mt-3 overflow-hidden">
         <ul className="divide-y divide-[#f0f2f4]">
-          {visible.length ? visible.map(({ slot, ad }) => {
-            const status = ad ? adStatus(ad) : null;
+          {visible.length ? visible.map(({ slot, banners }) => {
+            const live = banners.filter((ad) => adStatus(ad) === "Live").length;
             return (
-              <li
-                key={slot.id}
-                data-ad-slot-row={slot.id}
-                data-ad-filled={ad ? "true" : "false"}
-                data-ad-status={status ?? "Empty"}
-                data-ad-media={ad?.mediaType ?? "none"}
-                className="flex flex-col gap-2.5 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
-              >
-                <div className="min-w-0 sm:w-[210px] sm:shrink-0">
-                  <p className="text-[11px] font-bold text-[#303844]">{slot.label}</p>
-                  <p className="mt-0.5 text-[9px] text-[#87909b]"><span className="font-bold text-[#6c7683]">{slot.page}</span> · {slot.where}</p>
-                  <p className="mt-0.5 text-[9px] text-[#a3abb5]">{slot.size}</p>
-                </div>
-
-                <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                  <span className="flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded border border-[#e6e9ed] bg-[#f4f6f8]">
-                    {ad ? (
-                      ad.mediaType === "video"
-                        ? <video src={ad.mediaUrl} muted playsInline className="h-full w-full object-cover" />
-                        : <img src={ad.mediaUrl} alt="" className="h-full w-full object-cover" />
-                    ) : <ImageIcon size={14} className="text-[#c2c9d1]" />}
-                  </span>
-                  <span className="min-w-0">
-                    {ad ? (
-                      <>
-                        <span className="flex flex-wrap items-center gap-1.5">
-                          <span className="truncate text-[10px] font-bold text-[#394250]">{ad.name}</span>
-                          {status ? <AdminBadge tone={STATUS_TONES[status]}>{status}</AdminBadge> : null}
-                          <span className="text-[9px] font-semibold text-[#919aa6]">{adMediaKind(ad)}</span>
-                        </span>
-                        <span className="mt-0.5 block truncate text-[9px] text-[#919aa6]">
-                          {formatAdminDate(ad.startsAt)} → {formatAdminDate(ad.endsAt)} · {ad.href || "no link"}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-[10px] font-semibold text-[#a3abb5]">Empty — nothing shows here</span>
-                    )}
-                  </span>
-                </div>
-
-                <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-                  {ad ? (
-                    <>
-                      <AdminButton compact variant="secondary" onClick={() => startEdit(ad)} aria-label={`Edit ${slot.label}`}><Pencil size={12} /> Change</AdminButton>
-                      <AdminButton compact variant="ghost" onClick={() => updateAdminData((current) => toggleAd(current, ad.id))} aria-label={`${ad.enabled ? "Pause" : "Enable"} ${slot.label}`}>{ad.enabled ? "Pause" : "Enable"}</AdminButton>
-                      <AdminButton compact variant="danger" onClick={() => clear(ad)} aria-label={`Clear ${slot.label}`}><Trash2 size={12} /> {confirmId === ad.id ? "Confirm" : "Clear"}</AdminButton>
-                    </>
-                  ) : (
+              <li key={slot.id} data-ad-slot-row={slot.id} data-ad-count={banners.length} data-ad-live={live} className="px-4 py-3 sm:px-5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-[#303844]">{slot.label}</p>
+                    <p className="mt-0.5 text-[9px] text-[#87909b]"><span className="font-bold text-[#6c7683]">{slot.page}</span> · {slot.where}</p>
+                    <p className="mt-0.5 text-[9px] text-[#a3abb5]">{slot.size}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-semibold text-[#919aa6]">
+                      {banners.length ? `${banners.length} banner${banners.length === 1 ? "" : "s"} · ${live} live` : "No banners yet"}
+                      {live > 1 ? ` · changes every ${rotationSeconds}s` : ""}
+                    </span>
                     <AdminButton compact variant="secondary" onClick={() => startCreate(slot.id)} aria-label={`Add a banner to ${slot.label}`}><Plus size={12} /> Add banner</AdminButton>
-                  )}
+                  </div>
                 </div>
+
+                {banners.length ? (
+                  <ul className="mt-2 space-y-1.5">
+                    {banners.map((ad) => {
+                      const status = adStatus(ad);
+                      return (
+                        <li
+                          key={ad.id}
+                          data-ad-banner={ad.id}
+                          data-ad-status={status}
+                          data-ad-media={ad.mediaType}
+                          className="flex flex-col gap-2 rounded-lg border border-[#eef1f3] bg-[#fafbfc] px-2.5 py-2 sm:flex-row sm:items-center sm:gap-3"
+                        >
+                          <span className="flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded border border-[#e6e9ed] bg-[#f4f6f8]">
+                            {ad.mediaType === "video"
+                              ? <video src={ad.mediaUrl} muted playsInline className="h-full w-full object-cover" />
+                              : <img src={ad.mediaUrl} alt="" className="h-full w-full object-cover" />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <span className="truncate text-[10px] font-bold text-[#394250]">{ad.name}</span>
+                              <AdminBadge tone={STATUS_TONES[status]}>{status}</AdminBadge>
+                              <span className="text-[9px] font-semibold text-[#919aa6]">{adMediaKind(ad)}</span>
+                            </span>
+                            <span className="mt-0.5 block truncate text-[9px] text-[#919aa6]">
+                              {formatAdminDate(ad.startsAt)} → {formatAdminDate(ad.endsAt)} · {ad.href || "no link"}
+                            </span>
+                          </span>
+                          <span className="flex shrink-0 flex-wrap items-center gap-1.5">
+                            <AdminButton compact variant="secondary" onClick={() => startEdit(ad)} aria-label={`Edit ${ad.name}`}><Pencil size={12} /> Edit</AdminButton>
+                            <AdminButton compact variant="ghost" onClick={() => updateAdminData((current) => toggleAd(current, ad.id))} aria-label={`${ad.enabled ? "Pause" : "Enable"} ${ad.name}`}>{ad.enabled ? "Pause" : "Enable"}</AdminButton>
+                            <AdminButton compact variant="danger" onClick={() => clear(ad)} aria-label={`Clear ${ad.name}`}><Trash2 size={12} /> {confirmId === ad.id ? "Confirm" : "Delete"}</AdminButton>
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mt-2 rounded-lg border border-dashed border-[#e6e9ed] px-2.5 py-3 text-[9px] font-semibold text-[#a3abb5]">
+                    Empty — nothing shows in this place until a banner is added.
+                  </p>
+                )}
               </li>
             );
-          }) : <li><AdminEmpty title="No slots match this search" description="Try the page name, e.g. /new or /guide." /></li>}
+          }) : <li><AdminEmpty title="No places match this search" description="Try the page name, e.g. /new or /guide, or a banner name." /></li>}
         </ul>
       </AdminCard>
 
@@ -208,10 +219,24 @@ export default function AdminAds() {
         <div className="px-4 py-3">
           <h2 className="text-[11px] font-bold text-[#303844]">How slots work</h2>
           <ul className="mt-1 space-y-1 text-[10px] text-[#4b5563]">
-            <li>Each row is one place on the site; a place shows its <span className="font-bold">newest live banner</span>, and nothing while it is paused or empty.</li>
-            <li><span className="font-bold">Change</span> replaces the artwork in place, <span className="font-bold">Pause</span> hides it without losing it, <span className="font-bold">Clear</span> removes it.</li>
+            <li>Each row is one place on the site. A place can hold <span className="font-bold">as many banners as you like</span>.</li>
+            <li>With one live banner it stays up. With several, they <span className="font-bold">take turns</span> at the speed below; banners outside their dates wait their turn.</li>
+            <li><span className="font-bold">Edit</span> changes a banner, <span className="font-bold">Pause</span> hides it without losing it, <span className="font-bold">Delete</span> removes it.</li>
             <li>New places are added in code (<code>AD_SLOTS</code>) and mounted with <code>{'<AdSlotBanner slot="…" />'}</code> — they then appear on this board automatically.</li>
           </ul>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#eef1f3] bg-[#fafbfc] px-2.5 py-2">
+            <span className="text-[10px] font-bold text-[#394250]">Change banner every</span>
+            <select
+              aria-label="Seconds between banners"
+              value={rotationSeconds}
+              onChange={(event) => updateAdminData((current) => ({ ...current, adsRotationSeconds: normalizeAdsRotationSeconds(event.target.value) }))}
+              className="rounded-md border border-[#e0e4e8] bg-white px-2 py-1 text-[10px] font-semibold text-[#394250] outline-none focus:border-[#4f9d16]"
+            >
+              {[...new Set<number>([...ADS_ROTATION_CHOICES, rotationSeconds])].sort((a, b) => a - b)
+                .map((seconds) => <option key={seconds} value={seconds}>{seconds} seconds</option>)}
+            </select>
+            <span className="text-[9px] text-[#919aa6]">Applies wherever a place has more than one live banner.</span>
+          </div>
         </div>
       </AdminCard>
 

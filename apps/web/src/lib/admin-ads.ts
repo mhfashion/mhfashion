@@ -1,7 +1,10 @@
 // Banner ads are media only (owner request 2026-11-21): one photo or one looping animation per slot.
 // An ad shows only while it is enabled and inside its window — nothing else decides visibility.
 
-import { AD_SLOTS, type AdminAd, type AdFit, type AdMediaType, type AdSlotId } from "@/lib/admin-demo-data";
+import {
+  AD_SLOTS, DEFAULT_ADS_ROTATION_SECONDS,
+  type AdminAd, type AdFit, type AdMediaType, type AdSlotId,
+} from "@/lib/admin-demo-data";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -66,6 +69,34 @@ export function activeAdFor(ads: readonly AdminAd[], slot: AdSlotId, now = Date.
     .filter((ad) => ad.slot === slot && adIsLive(ad, now))
     .slice()
     .sort((left, right) => Date.parse(right.startsAt) - Date.parse(left.startsAt))[0] ?? null;
+}
+
+/** Every ad filed under a place, in the order it was added — the order a place cycles through them. */
+export function adsForSlot(ads: readonly AdminAd[], slot: AdSlotId): AdminAd[] {
+  return ads.filter((ad) => ad.slot === slot);
+}
+
+/** Every banner a place can show right now, oldest first, so the cycle order is stable. */
+export function liveAdsFor(ads: readonly AdminAd[], slot: AdSlotId, now = Date.now()): AdminAd[] {
+  return adsForSlot(ads, slot)
+    .filter((ad) => adIsLive(ad, now))
+    .sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt) || left.id.localeCompare(right.id));
+}
+
+/**
+ * The banner a place shows at a given moment. With several live banners the place cycles through them,
+ * and the index is a function of the clock alone, so every visitor sees the same one at the same time.
+ */
+export function adForMoment(
+  ads: readonly AdminAd[],
+  slot: AdSlotId,
+  now = Date.now(),
+  rotationSeconds = DEFAULT_ADS_ROTATION_SECONDS,
+): AdminAd | null {
+  const live = liveAdsFor(ads, slot, now);
+  if (live.length <= 1) return live[0] ?? null;
+  const period = Math.max(2, Math.round(rotationSeconds)) * 1000;
+  return live[Math.floor(now / period) % live.length];
 }
 
 /**

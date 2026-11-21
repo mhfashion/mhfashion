@@ -532,3 +532,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `/admin/ads` is a slot board (`data-ad-slot-row={slot.id}`), one row per place, with Change/Pause/Clear in
   place and Add banner on empty rows. It edits `adForSlot()` (live → next scheduled → newest); the storefront
   must keep using `activeAdFor()` so a scheduled banner cannot leak.
+- A place holds many banners. `adsForSlot()` = everything filed there (the board edits this, so paused and
+  scheduled banners stay reachable); `liveAdsFor()` = enabled and inside its dates, oldest first; `adForMoment()`
+  picks the one on screen. With several live banners the turn index is `floor(now / period) % live.length`, a
+  function of the clock only — do not replace it with a client-side counter, or a reload restarts the cycle and
+  two visitors disagree.
+- The turn length is `data.adsRotationSeconds` (default 8, clamped 2-120), set from the Ads screen. The storefront
+  hook re-reads the store on `storage` and sleeps until the next turn boundary, so a place with one banner does
+  no periodic work.

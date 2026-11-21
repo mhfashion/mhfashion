@@ -52,6 +52,7 @@ export default function AdSlotBanner({
     return (
       <section
         data-ad-slot-banner={slot}
+        data-ad-id={ad.id}
         data-ad-fit={ad.fit ?? "cover"}
         className={`relative isolate overflow-hidden rounded-2xl bg-bg-surface ${contained ? "" : "min-h-[155px] sm:min-h-[250px] lg:min-h-[300px]"}`}
       >
@@ -61,7 +62,7 @@ export default function AdSlotBanner({
   }
 
   return (
-    <section data-ad-slot-banner={slot} data-ad-fit={ad.fit ?? "cover"} className="mb-6 overflow-hidden rounded-2xl bg-bg-surface">
+    <section data-ad-slot-banner={slot} data-ad-id={ad.id} data-ad-fit={ad.fit ?? "cover"} className="mb-6 overflow-hidden rounded-2xl bg-bg-surface">
       {contained ? content : <div className="aspect-[16/7] sm:aspect-[20/3]">{content}</div>}
     </section>
   );

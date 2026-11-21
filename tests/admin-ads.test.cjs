@@ -154,8 +154,8 @@ test("Ads is a registered admin module with its own route and screen", () => {
   for (const marker of [
     'active="ads"',
     "data-ad-slot-row={slot.id}",
-    'data-ad-status={status ?? "Empty"}',
-    'data-ad-media={ad?.mediaType ?? "none"}',
+    "data-ad-status={status}",
+    "data-ad-media={ad.mediaType}",
     "formatAdminDate(ad.startsAt)",
     "data-ad-preview",
     'aria-label="Ad media URL"',
@@ -172,13 +172,70 @@ test("Ads is a registered admin module with its own route and screen", () => {
     "toggleAd",
     "removeAd",
     "data-ad-slot-row={slot.id}",
-    "adForSlot(data.ads, slot.id)",
+    "data-ad-count={banners.length}",
+    "data-ad-banner={ad.id}",
+    "adsForSlot(data.ads, slot.id)",
+    'aria-label="Seconds between banners"',
+    "adsRotationSeconds",
     'aria-label={`Add a banner to ${slot.label}`}',
-    'aria-label={`Edit ${slot.label}`}',
-    'aria-label={`Clear ${slot.label}`}',
+    'aria-label={`Edit ${ad.name}`}',
+    'aria-label={`Clear ${ad.name}`}',
+    'aria-label={`${ad.enabled ? "Pause" : "Enable"} ${ad.name}`}',
   ]) {
     assert.ok(source.includes(marker), `AdminAds is missing ${marker}`);
   }
+});
+
+test("a place can hold many banners, and they take turns by the clock", () => {
+  const first = { ...base, id: "ad_a", slot: "home-strip", startsAt: "2026-11-01T00:00:00.000Z" };
+  const second = { ...base, id: "ad_b", slot: "home-strip", startsAt: "2026-11-02T00:00:00.000Z" };
+  const third = { ...base, id: "ad_c", slot: "home-strip", startsAt: "2026-11-03T00:00:00.000Z" };
+  const all = [third, first, second];
+
+  // Every banner filed under a place is listed, in the order it was added.
+  assert.deepEqual(ads.adsForSlot(all, "home-strip").map((ad) => ad.id), ["ad_c", "ad_a", "ad_b"]);
+  assert.deepEqual(ads.adsForSlot(all, "guide-top"), []);
+
+  // Only live ones take part in the turn, oldest first, so the cycle is stable.
+  const paused = { ...base, id: "ad_paused", slot: "home-strip", enabled: false };
+  assert.deepEqual(ads.liveAdsFor([...all, paused], "home-strip", NOW).map((ad) => ad.id), ["ad_a", "ad_b", "ad_c"]);
+
+  // One live banner stays up for as long as it runs.
+  assert.equal(ads.adForMoment([first], "home-strip", NOW, 8).id, "ad_a");
+  assert.equal(ads.adForMoment([first], "home-strip", NOW + 5 * 60 * 1000, 8).id, "ad_a");
+
+  // Several live banners share the place: each turn lasts the configured number of seconds.
+  const at = (ms) => ads.adForMoment([...all, paused], "home-strip", ms, 10).id;
+  const turn = 10 * 1000;
+  const base0 = Math.floor(NOW / turn) * turn;
+  assert.equal(at(base0), "ad_a");
+  assert.equal(at(base0 + turn), "ad_b");
+  assert.equal(at(base0 + 2 * turn), "ad_c");
+  assert.equal(at(base0 + 3 * turn), "ad_a");
+  // The turn comes from the clock alone, so two visitors asking at the same moment agree.
+  assert.equal(at(base0 + turn + 1), at(base0 + turn + 999));
+
+  // A scheduled banner waits for its dates and then joins the turn.
+  const later = { ...base, id: "ad_later", slot: "home-strip", startsAt: "2026-11-25T00:00:00.000Z", endsAt: "2026-12-20T23:59:59.999Z" };
+  assert.equal(ads.liveAdsFor([...all, later], "home-strip", NOW).length, 3);
+  assert.equal(ads.liveAdsFor([...all, later], "home-strip", Date.parse("2026-11-26T00:00:00.000Z")).length, 4);
+  // Once the older three expire the place keeps showing the one still inside its window.
+  const afterExpiry = Date.parse("2026-12-10T00:00:00.000Z");
+  assert.deepEqual(ads.liveAdsFor([...all, later], "home-strip", afterExpiry).map((ad) => ad.id), ["ad_later"]);
+
+  // A place with nothing live renders nothing, so the page falls back to its own markup.
+  assert.equal(ads.adForMoment([paused], "home-strip", NOW, 10), null);
+});
+
+test("the speed a place changes banners is saved and clamped", () => {
+  assert.equal(admin.DEFAULT_ADS_ROTATION_SECONDS, 8);
+  assert.deepEqual([...admin.ADS_ROTATION_CHOICES], [4, 6, 8, 12, 20, 30]);
+  assert.equal(admin.normalizeAdsRotationSeconds(12), 12);
+  assert.equal(admin.normalizeAdsRotationSeconds("20"), 20);
+  assert.equal(admin.normalizeAdsRotationSeconds(undefined), 8);
+  assert.equal(admin.normalizeAdsRotationSeconds(0), 2);
+  assert.equal(admin.normalizeAdsRotationSeconds(9999), 120);
+  assert.equal(admin.createAdminDemoData().adsRotationSeconds, 8);
 });
 
 test("the board shows one row per place, and the same ad is what the storefront shows", () => {
@@ -227,6 +284,7 @@ test("the home page renders the live hero ad and falls back to the green hero", 
 
   const store = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/storefront-ads.ts"), "utf8");
   assert.match(store, /"mh-fashion-admin-demo-data-v1"/);
-  assert.match(store, /activeAdFor\(readStorefrontAds\(\), slot\)/);
+  assert.match(store, /adForMoment\(store\.ads, slot, now, store\.rotationSeconds\)/);
+  assert.match(store, /rotationSeconds: normalizeAdsRotationSeconds\(parsed\.adsRotationSeconds\)/);
   assert.match(store, /addEventListener\("storage"/);
 });

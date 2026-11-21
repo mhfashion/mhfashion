@@ -2198,3 +2198,18 @@ them must be visible and editable together, each with its own name and place.
 - The guide rail was a 220px column; it became `guide-top`, full width above the articles.
 - Verified in Chromium: 6 rows on the board at 1440 and 390 (no sideways scroll), and the banner renders on
   `/` (3), `/new`, `/products` and `/guide` (1136x140 desktop, 358x44 phone). Suite 377/377, e2e passes.
+
+### 2026-11-21 (later still) — many banners per place, changing with time
+Owner: a place should not hold a single banner but many, and the place should change banner by time.
+- A place keeps every banner filed under it; the board row lists them all with Edit / Pause / Delete and an
+  **Add banner** button that is always there, not only when the place is empty.
+- `liveAdsFor()` is the set a place may show (enabled, inside its dates, oldest first). `adForMoment()` picks
+  one: with a single live banner it simply stays; with several they take turns, and the turn index is
+  `floor(now / period) % live.length` — a function of the clock only, so a reload does not restart the cycle
+  and two visitors asking at the same moment see the same banner.
+- The turn length is one setting on the Ads screen ("Change banner every N seconds", 4/6/8/12/20/30, stored as
+  `adsRotationSeconds`, clamped 2-120), applied wherever a place has more than one live banner.
+- `useStorefrontAd()` re-reads the store on `storage` and wakes up on the next turn boundary (not every second),
+  so a page with one banner does no work at all.
+- Verified in Chromium with three live hero banners and a 2 s turn: the hero cycled 3 → 1 → 2 without a reload
+  while a place with one live and one paused banner never changed; no console errors.

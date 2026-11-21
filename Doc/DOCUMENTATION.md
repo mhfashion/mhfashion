@@ -1351,3 +1351,25 @@ board row and the drawer's slot list all follow.
 
 The board edits the ad `adForSlot()` returns (live, else next scheduled, else newest on file); the storefront
 only ever renders `activeAdFor()`, so a scheduled banner never shows early and a paused one stays editable.
+
+### 2026-11-21 — Many banners in one place, and they change with time
+
+A place is not limited to one banner. `/admin/ads` lists every banner filed under a place, each with its own
+dates, and **Add banner** stays available on every row.
+
+What a place shows, and when:
+
+| Situation | What the visitor sees |
+|---|---|
+| no banner inside its dates | nothing — the page keeps its own markup |
+| one live banner | that banner, for as long as it runs |
+| several live banners | they take turns, one every *N* seconds |
+| a banner starts later | it joins the turn on its start date |
+| a banner is paused or expired | it leaves the turn, and comes back if re-enabled |
+
+The turn length is set once on the Ads screen ("Change banner every …"), stored as `adsRotationSeconds`
+(default 8 s, clamped 2–120). The turn is derived from the clock (`floor(now / period) % live.length`), so a
+reload never restarts the cycle and every visitor sees the same banner at the same moment.
+
+`liveAdsFor()` answers "which banners may this place show now"; `adForMoment()` answers "which one is up".
+The board uses `adsForSlot()` (everything filed) so paused and scheduled banners stay editable.

@@ -550,6 +550,8 @@ export type AdminDemoData = {
   priceHistory: AdminPriceHistoryEntry[];
   promotions: AdminPromotion[];
   ads: AdminAd[];
+  /** How long each banner stays up when a place has several live ones. */
+  adsRotationSeconds: number;
   team: AdminTeamMember[];
   settings: AdminSettings;
 };
@@ -1676,6 +1678,16 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
   ];
 }
 
+/** Default time each banner stays up when a place holds several live ones. */
+export const DEFAULT_ADS_ROTATION_SECONDS = 8;
+export const ADS_ROTATION_CHOICES = [4, 6, 8, 12, 20, 30] as const;
+
+export function normalizeAdsRotationSeconds(value: unknown): number {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds)) return DEFAULT_ADS_ROTATION_SECONDS;
+  return Math.min(120, Math.max(2, Math.round(seconds)));
+}
+
 /** No seeded ads: an ad is artwork the owner supplies, so the module starts empty. */
 export function createSeedAds(): AdminAd[] {
   return [];
@@ -1844,6 +1856,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     priceHistory: [],
     promotions,
     ads: createSeedAds(),
+    adsRotationSeconds: DEFAULT_ADS_ROTATION_SECONDS,
     team,
     settings: {
       storeName: "MH Fashion",
@@ -1898,6 +1911,7 @@ export function readAdminDemoData(): AdminDemoData {
           ads: Array.isArray(parsed.ads)
             ? parsed.ads.filter((ad) => ad?.mediaType === "image" || ad?.mediaType === "video")
             : createSeedAds(),
+          adsRotationSeconds: normalizeAdsRotationSeconds(parsed.adsRotationSeconds),
           orders,
           tshirtPosts: Array.isArray(parsed.tshirtPosts)
             ? parsed.tshirtPosts.map(normalizeTshirtPost)
