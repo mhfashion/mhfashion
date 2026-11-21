@@ -465,3 +465,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   from the product page. Do not write "planned" articles: `editor-guide` replaced
   `the-planned-editor-flow` for that reason, and the article banner now reads "Where a feature is still
   being built, this article says so".
+- The Editor Guide is linked from the guide menu box (desktop nav row) and the phone shortcut row as its
+  second chip, both marked `data-guide-editor`. Because that link is on every guide page, the HTTP test
+  strips those anchors before counting article links; a new always-visible `/guide/...` link needs the
+  same treatment or the category-filter assertions break.
+- The guide hero is deliberately short (`min-h-[96px] sm:min-h-[124px] lg:min-h-[132px]`). Do not raise it
+  back to the old 196px/`text-5xl` banner; `tests/guide-card.test.cjs` fails if you do.

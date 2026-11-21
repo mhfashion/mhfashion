@@ -930,6 +930,14 @@ This section records the current repository state and overrides earlier draft bu
   `rounded-xl border bg-bg-surface p-1.5 sm:p-2.5` shell as `ProductCard`, and the grid is the product
   grid (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`). The old cover-plus-excerpt card stood about twice
   as tall as a product tile. Do not reintroduce the `aspect-[1.9/1]` cover band or the excerpt.
+- **The Editor Guide sits in the guide menu box (2026-11-21).** `app/guide/page.tsx` links
+  `/guide/editor-guide` from the desktop menu box (a row after the categories, marked `data-guide-editor`)
+  and from the phone shortcut row (second chip, so it is visible without scrolling). The HTTP test counts
+  only the article grid (`data-guide-editor` anchors are stripped) so the menu link cannot break the
+  category-filter assertions.
+- **The guide hero is compact (2026-11-21).** `min-h-[96px]` on a phone, `sm:min-h-[124px]`,
+  `lg:min-h-[132px]`, with the heading at `text-lg / sm:text-2xl / lg:text-[26px]`. The 196px desktop
+  banner and the 5xl heading are gone; the banner is roughly 200px tall at 1440px wide.
 - **The Editor Guide replaced the "planned editor flow" article (2026-11-21).** `editor-guide` is written
   from the editor that ships (print canvas, tools, Layers panel, free transform, mockups, draft save) and
   says plainly that the Save and Buy boxes are not connected yet. A "planned" article cannot sit beside
@@ -2055,3 +2063,15 @@ the old "planned editor flow" text. Both were fixed without touching the custome
   "On this page" list, and `?q=editor` returning only the new article. `tests/guide-card.test.cjs` guards
   the card geometry and the grid; `tests/guides.test.cjs` guards the article's content and that the old
   slug is gone. Full suite 363/363.
+
+### Follow-up — Editor Guide in the menu box, shorter hero
+
+- The desktop menu box (`Guide categories` nav) gained an **Editor Guide** row after the categories, and
+  the phone shortcut row gained the same chip as its second item so it is reachable without scrolling.
+  Both carry `data-guide-editor`; `tests/guide-http.test.cjs` strips those anchors before counting
+  article links, otherwise the always-present menu link broke the `?category=payment-guide` assertion.
+- The guide hero dropped from a 196px desktop banner with a 5xl heading to `min-h-[132px]` with a 26px
+  heading (96px / `text-lg` on a phone, 124px / `text-2xl` at `sm`), and the decorative egg, shirt and
+  "Your Style" art shrank with it. Measured at 1440x780: 320px → 200px; at 390x844: 126px → 113px.
+- Verified in Chromium at both sizes; `tests/guide-card.test.cjs` now also guards the two menu entries and
+  the compact hero heights. Full suite **365/365**.

@@ -115,6 +115,10 @@ export default async function GuidePage({ searchParams }: PageProps) {
                   {category.name}
                 </Link>
               ))}
+              <Link href="/guide/editor-guide" data-guide-editor className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg">
+                <span className="flex h-7 w-7 items-center justify-center text-text-secondary"><Pencil size={16} aria-hidden="true" /></span>
+                Editor Guide
+              </Link>
               <div className="my-2 border-t border-border" />
               <Link href="/faq" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> FAQ</Link>
               <Link href="/contact" data-guide-contact className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><ShieldAlert size={17} /> Contact / copyright claim</Link>
@@ -128,24 +132,28 @@ export default async function GuidePage({ searchParams }: PageProps) {
           </aside>
 
           <div className="min-w-0">
-            <section className="relative isolate mb-4 min-h-[124px] overflow-hidden rounded-xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-3.5 py-3 text-[#172810] sm:min-h-[180px] sm:rounded-2xl sm:px-9 sm:py-6 lg:min-h-[196px] lg:px-10 lg:py-7">
+            <section className="relative isolate mb-4 min-h-[96px] overflow-hidden rounded-xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-3.5 py-2.5 text-[#172810] sm:min-h-[124px] sm:rounded-2xl sm:px-8 sm:py-3.5 lg:min-h-[132px] lg:px-9 lg:py-3.5">
               <div className="relative z-10 max-w-[70%] sm:max-w-[48%]">
                 <span className="inline-flex rounded-full bg-[#5aa817] px-2 py-1 text-[8px] font-black uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[10px]">MH Fashion Guide</span>
-                <h1 className="mt-1.5 text-xl font-black leading-[0.95] tracking-tight sm:mt-3 sm:text-4xl lg:text-5xl">Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></h1>
-                <p className="mt-1.5 hidden max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-3 sm:block sm:text-sm">Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience.</p>
-                <Link href="#articles" className="mt-2 inline-flex items-center rounded-full bg-[#55a918] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm sm:mt-4 sm:px-4 sm:py-2.5 sm:text-xs">Browse All Guides <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" /></Link>
+                <h1 className="mt-1 text-lg font-black leading-[0.95] tracking-tight sm:mt-2 sm:text-2xl lg:text-[26px]">Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></h1>
+                <p className="mt-1.5 hidden max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-2 sm:block sm:text-[11px]">Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience.</p>
+                <Link href="#articles" className="mt-2 inline-flex items-center rounded-full bg-[#55a918] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm sm:mt-3 sm:px-3.5 sm:py-1.5 sm:text-[11px]">Browse All Guides <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" /></Link>
               </div>
-              <div className="absolute -right-10 -top-12 h-48 w-48 rounded-full bg-[#9bda45]/50 blur-sm sm:right-10 sm:h-80 sm:w-80" />
-              <div className="absolute bottom-[-55px] right-[13%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block" aria-hidden="true">
-                <div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div>
+              <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[#9bda45]/50 blur-sm sm:right-8 sm:h-52 sm:w-52" />
+              <div className="absolute bottom-[-48px] right-[13%] hidden h-44 w-32 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block" aria-hidden="true">
+                <div className="absolute left-1/2 top-12 -translate-x-1/2 text-center text-base font-black leading-none text-[#4c9d16]">MH<br /><span className="text-[9px]">FASHION</span></div>
               </div>
-              <div className="absolute bottom-3 right-3 text-2xl font-black italic text-[#54a817]/80 sm:bottom-4 sm:right-12 sm:text-4xl">Your<br />Style</div>
+              <div className="absolute bottom-2 right-3 text-base font-black italic leading-none text-[#54a817]/80 sm:bottom-3 sm:right-10 sm:text-2xl">Your<br />Style</div>
             </section>
 
             <div className="mb-4 -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:hidden">
               <Link href={guideUrl("", query)} className={`group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><BookOpen size={13} /></span>
                 <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">All Guides</span>
+              </Link>
+              <Link href="/guide/editor-guide" data-guide-editor className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Pencil size={13} /></span>
+                <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">Editor Guide</span>
               </Link>
               {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
               <Link href="/faq" className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4">

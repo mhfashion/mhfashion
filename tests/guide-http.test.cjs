@@ -8,7 +8,9 @@ async function page(path, userAgent) {
   });
   const html = await response.text();
   const visible = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
-  const articleLinks = [...visible.matchAll(/href="(\/guide\/[^"?#]+)"/g)].map((match) => match[1]);
+  // The menu box links the Editor Guide on every page; only the article grid should be counted.
+  const grid = visible.replace(/<a\b[^>]*data-guide-editor[^>]*>[\s\S]*?<\/a>/g, "");
+  const articleLinks = [...grid.matchAll(/href="(\/guide\/[^"?#]+)"/g)].map((match) => match[1]);
   return { response, html, visible, articleLinks };
 }
 
@@ -18,6 +20,8 @@ test("guide landing serves article content and categories without JavaScript", a
   assert.match(result.visible, /Product Guide/);
   assert.match(result.visible, /Payment Guide/);
   assert.match(result.visible, /How MH Fashion products are organized/);
+  assert.match(result.visible, /Editor Guide/);
+  assert.ok(result.visible.includes('href="/guide/editor-guide"'), "the Editor Guide is missing from the guide menu");
   assert.equal(new Set(result.articleLinks).size, 8);
   assert.match(result.visible, /<h1\b/);
   assert.match(result.html, /MH Fashion Guide — Products, Design &amp; Payment/);

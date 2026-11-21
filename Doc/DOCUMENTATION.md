@@ -1218,3 +1218,16 @@ Checked the remaining-work register against the source and corrected the entries
   article. `tests/guide-card.test.cjs` (3 tests) guards the card geometry and the grid;
   `tests/guides.test.cjs` gains a test for the article's content and the retired slug. Full Node suite
   **363/363**; `tsc --noEmit` clean; Next.js production build passed.
+
+### 2026-11-21 — Editor Guide in the guide menu, shorter guide hero
+
+- `app/guide/page.tsx` links `/guide/editor-guide` from the desktop menu box (a row after the category
+  links) and from the phone shortcut row (second chip, visible without scrolling). Both anchors carry
+  `data-guide-editor`.
+- The guide hero is smaller: `min-h-[96px] sm:min-h-[124px] lg:min-h-[132px]`, heading
+  `text-lg sm:text-2xl lg:text-[26px]`, and the decorative egg, shirt and "Your Style" art reduced to
+  match. The 196px desktop banner and the `lg:text-5xl` heading are gone (320px → 200px at 1440px wide).
+- `tests/guide-http.test.cjs` strips `data-guide-editor` anchors before counting article links, so the
+  always-present menu link does not inflate the category-filter assertions; it also asserts the menu link
+  is on the page. `tests/guide-card.test.cjs` guards the two menu entries and the compact hero heights.
+  Full suite **365/365**; `tsc --noEmit` clean; production build passed.

@@ -23,3 +23,14 @@ test("the tall cover band and the excerpt are gone from the guide card", () => {
 test("the guide grid matches the product grid", () => {
   assert.match(page, /grid grid-cols-2 gap-2\.5 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4/);
 });
+
+test("the guide menu box carries an Editor Guide entry", () => {
+  assert.equal(page.split("data-guide-editor").length - 1, 2, "expected the sidebar row and the phone chip");
+  assert.match(page, /href="\/guide\/editor-guide"/);
+});
+
+test("the guide hero stays compact", () => {
+  assert.match(page, /min-h-\[96px\]/, "the phone hero grew back");
+  assert.match(page, /sm:min-h-\[124px\]/);
+  assert.equal(page.includes("lg:min-h-[196px]"), false, "the tall desktop hero is back");
+});
