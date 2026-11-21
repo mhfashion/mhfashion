@@ -200,6 +200,22 @@ async function main() {
     assert.ok(guide.cards > 0, "the guide lists articles");
     assert.equal(guide.width, guide.client, "the guide index does not scroll sideways");
 
+    // The MH Fashion category row is a strip of icon buttons, like the home page: no labels, no counts.
+    await visit("/mh-fashion", "[data-category]");
+    const categoryIcons = await evaluate(() => {
+      const links = [...document.querySelectorAll("#category-nav a")];
+      return {
+        count: links.length,
+        labelled: links.every((link) => Boolean(link.getAttribute("aria-label"))),
+        text: links.map((link) => link.innerText.trim()).join(""),
+        boxes: links.map((link) => Math.round(link.getBoundingClientRect().width)),
+      };
+    });
+    assert.equal(categoryIcons.count, 6, `category icons: ${categoryIcons.count}`);
+    assert.ok(categoryIcons.labelled, "every category icon keeps an accessible name");
+    assert.equal(categoryIcons.text, "", "the category row shows icons only");
+    assert.ok(categoryIcons.boxes.every((width) => width >= 40 && width <= 48), `icon sizes: ${categoryIcons.boxes.join(",")}`);
+
     // The real purchase path: cart -> checkout -> order -> account. The cart is seeded from another
     // page: navigating to the URL already on screen would not remount the cart provider.
     await visit("/", "header");

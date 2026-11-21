@@ -1262,3 +1262,12 @@ Checked the remaining-work register against the source and corrected the entries
 - The customer account does not exist on the server yet, so the address is per device, not per login.
 - Verified in Chromium at 1440x1000 and 390x844 (2x): card, prefilled edit form, phone layout; plus the
   storefront e2e (desktop + phone). Full suite **367/367**, `tsc` clean, ESLint 0 errors, build passed.
+
+### 2026-11-21 — MH Fashion categories are icons, without counts
+
+- `/mh-fashion` renders its category row as six round icon buttons (All = Sparkles, T-Shirts = Shirt,
+  Kids = Smile, Phone Covers = Smartphone, Bags = ShoppingBag, Cups = Coffee), 44px, matching the home
+  page strip; the selected category is filled with the accent colour.
+- The text labels and the stale counts (48/22/9/7/6/4) are gone from both the row and the sidebar filter.
+  Each button keeps `aria-label` and `title` so the name is still available, plus `data-category`.
+- Verified in Chromium at 1440x560 and 390x600 (2x); the e2e asserts the row is icons only.

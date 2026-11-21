@@ -2113,3 +2113,18 @@ again."
 - `tests/checkout.test.cjs` covers the lib and the card markers; `tests/storefront-e2e.cjs` now asserts
   that the second checkout shows the saved address with the fields closed (desktop and phone), and its
   `fillCheckout` clicks `Change` first. Full suite **367/367**, e2e PASS on desktop and phone.
+
+## 2026-11-21 — MH Fashion category row is icons only
+
+The owner: the "All MH Fashion 48 / T-Shirts 22 / Kids 9 / Phone Covers 7 / Bags 6 / Cups 4" strip on
+`/mh-fashion` should be icons, like the home page, without the numbers.
+
+- `app/mh-fashion/page.tsx`: the category nav is now six 44px round icon buttons (Sparkles, Shirt, Smile,
+  Smartphone, ShoppingBag, Coffee) with the active one filled with the accent colour, exactly the shape of
+  the home page strip. No labels and no counts are rendered; each link keeps `aria-label` + `title` and
+  `data-category`, so it is still readable by a screen reader and by tests.
+- The hard-coded counts were also dropped from the sidebar filter list (they were stale: the page can show
+  "0 MH Fashion Products" while the list claimed 22 T-shirts) and the `count` field was removed from
+  `CATEGORIES`.
+- `tests/storefront-e2e.cjs` asserts six icon links, no text, an accessible name on each and 40-48px boxes.
+  Full suite **367/367**, e2e PASS desktop + phone.

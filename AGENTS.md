@@ -489,3 +489,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `[data-checkout-address-cancel]` restores the card.
 - `tests/storefront-e2e.cjs` must keep clicking `[data-checkout-address-change]` inside `fillCheckout`,
   and its `resetBrowser` must clear the address key, or the second checkout in a run has no fields to fill.
+
+## `/mh-fashion` category row
+- The category strip is icon-only on purpose (owner request 2026-11-21): six 44px round buttons, active one
+  filled with `bg-accent`. Do not bring back the labels or the old 48/22/9/7/6/4 counts — they were static
+  and disagreed with the product count on the page. Each link keeps `aria-label`, `title` and
+  `data-category`; `tests/storefront-e2e.cjs` fails if the row renders text.

@@ -6,6 +6,8 @@ The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN
 
 - [x] **Guide cards sized like product cards.** `GuideCard` is a square tile on the product grid
   (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`); the tall cover band and the excerpt are gone.
+- [x] **MH Fashion categories as icons.** The "All MH Fashion 48 / T-Shirts 22 …" strip is now six round
+  icon buttons with no counts, like the home page.
 - [x] **Checkout reuses the saved address.** The address from the last order is shown as a card with a
   Change button, so a returning customer never retypes it (`lib/delivery-address.ts`). 1 unit + e2e.
 - [x] **Icon language/currency switchers.** `EN / MM` and `Ks / $` pills replaced by flag + money icons
