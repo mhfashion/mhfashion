@@ -57,15 +57,15 @@ function CategoryShortcut({
   return (
     <Link
       href={guideUrl(category.slug, query)}
-      className={`group flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border p-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent sm:min-h-[92px] sm:min-w-[150px] sm:flex-none sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4 ${selected ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}
+      className={`group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4 ${selected ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}
       aria-current={selected ? "page" : undefined}
     >
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground sm:h-10 sm:w-10 sm:rounded-xl">
         <CategoryIcon slug={category.slug} size={13} />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-center text-[8px] font-bold leading-tight sm:text-left sm:text-xs">{category.name.replace(" Guide", "")}</span>
-        <span className="mt-0.5 block text-center text-[7px] text-text-muted sm:mt-1 sm:text-left sm:text-[10px]">{count} {count === 1 ? "Post" : "Posts"}</span>
+        <span className="line-clamp-2 block text-center text-[9px] font-bold leading-tight sm:line-clamp-1 sm:text-left sm:text-xs">{category.name.replace(" Guide", "")}</span>
+        <span className="mt-0.5 block text-center text-[8px] text-text-muted sm:mt-1 sm:text-left sm:text-[10px]">{count} {count === 1 ? "Post" : "Posts"}</span>
       </span>
       <ArrowRight size={14} className="ml-auto hidden shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:block" aria-hidden="true" />
     </Link>
@@ -126,12 +126,12 @@ export default async function GuidePage({ searchParams }: PageProps) {
           </aside>
 
           <div className="min-w-0">
-            <section className="relative isolate mb-5 min-h-[155px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-4 py-4 text-[#172810] sm:min-h-[210px] sm:px-9 sm:py-7 lg:min-h-[220px] lg:px-10 lg:py-8">
+            <section className="relative isolate mb-4 min-h-[124px] overflow-hidden rounded-xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-3.5 py-3 text-[#172810] sm:min-h-[180px] sm:rounded-2xl sm:px-9 sm:py-6 lg:min-h-[196px] lg:px-10 lg:py-7">
               <div className="relative z-10 max-w-[70%] sm:max-w-[48%]">
                 <span className="inline-flex rounded-full bg-[#5aa817] px-2 py-1 text-[8px] font-black uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[10px]">MH Fashion Guide</span>
-                <h1 className="mt-2 text-2xl font-black leading-[0.95] tracking-tight sm:mt-4 sm:text-5xl">Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></h1>
-                <p className="mt-2 max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-4 sm:text-sm">Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience.</p>
-                <Link href="#articles" className="mt-3 inline-flex items-center rounded-full bg-[#55a918] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:px-4 sm:py-2.5 sm:text-xs">Browse All Guides <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" /></Link>
+                <h1 className="mt-1.5 text-xl font-black leading-[0.95] tracking-tight sm:mt-3 sm:text-4xl lg:text-5xl">Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></h1>
+                <p className="mt-1.5 hidden max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-3 sm:block sm:text-sm">Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience.</p>
+                <Link href="#articles" className="mt-2 inline-flex items-center rounded-full bg-[#55a918] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm sm:mt-4 sm:px-4 sm:py-2.5 sm:text-xs">Browse All Guides <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" /></Link>
               </div>
               <div className="absolute -right-10 -top-12 h-48 w-48 rounded-full bg-[#9bda45]/50 blur-sm sm:right-10 sm:h-80 sm:w-80" />
               <div className="absolute bottom-[-55px] right-[13%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block" aria-hidden="true">
@@ -140,26 +140,22 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <div className="absolute bottom-3 right-3 text-2xl font-black italic text-[#54a817]/80 sm:bottom-4 sm:right-12 sm:text-4xl">Your<br />Style</div>
             </section>
 
-            <div className="mb-7 flex gap-1 overflow-hidden lg:hidden">
-              <Link href={guideUrl("", query)} className={`group flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border p-1 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:min-h-[92px] sm:min-w-[150px] sm:flex-none sm:flex-row sm:justify-start sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>
+            <div className="mb-4 -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:hidden">
+              <Link href={guideUrl("", query)} className={`group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><BookOpen size={13} /></span>
-                <span className="text-center text-[8px] font-bold leading-tight sm:text-left sm:text-xs">All Guides</span>
+                <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">All Guides</span>
               </Link>
-              <div className="min-w-0 flex-1 overflow-hidden pb-1">
-                <div className="flex w-full gap-1">
-                  {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
-                  <Link href="/faq" className="group flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-bg-surface p-1 hover:border-accent/60 sm:min-h-[92px] sm:min-w-[150px] sm:flex-none sm:flex-row sm:justify-start sm:gap-3 sm:p-4">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Star size={13} /></span>
-                    <span className="text-center text-[8px] font-bold leading-tight sm:text-left sm:text-xs">Points &<br />Rewards</span>
-                  </Link>
-                </div>
-              </div>
+              {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
+              <Link href="/faq" className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Star size={13} /></span>
+                <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">Points &amp; Rewards</span>
+              </Link>
             </div>
 
             <section id="articles" aria-labelledby="articles-heading" className="scroll-mt-24">
-              <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <h2 id="articles-heading" className="border-l-4 border-accent pl-3 text-xl font-black"><GuideLabel id="guide.latest" fallback="Latest Guides" /></h2>
+                  <h2 id="articles-heading" className="border-l-4 border-accent pl-3 text-lg font-black sm:text-xl"><GuideLabel id="guide.latest" fallback="Latest Guides" /></h2>
                   <p className="mt-1 pl-4 text-xs text-text-muted">{posts.length} {posts.length === 1 ? "post" : "posts"}{activeCategory ? ` in ${activeCategory.name}` : ""}</p>
                 </div>
                 <div className="flex items-center justify-end">
@@ -170,7 +166,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               {catalog.source === "unavailable" ? (
                 <div className="rounded-2xl border border-border bg-bg-surface px-6 py-12 text-center" role="status"><BookOpen size={26} className="mx-auto mb-4 text-text-muted" /><h3 className="text-lg font-bold">Posts are temporarily unavailable.</h3></div>
               ) : posts.length ? (
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                   {posts.map((post, index) => <GuideCard key={post.id} post={post} categoryName={catalog.categories.find((category) => category.slug === post.categorySlug)?.name ?? "Guide"} index={index} />)}
                 </div>
               ) : (

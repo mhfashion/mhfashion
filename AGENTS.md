@@ -67,7 +67,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Tests: `tests/sheet-prices.test.cjs` (URL building, CSV quoting, header aliases, price parsing, duplicates, merge, and the route handler's 200/400/502 paths with an injected fetcher).
 
 ## Product page preview (`components/ProductMockupPreview.tsx`)
-- The media column is `minmax(0,560px)` on `lg`. The photo box is **landscape**, never square: `h-[200px]` on phones, `sm:aspect-[4/3]` above, so the media block costs one photo's height and nothing more. The box is white while a photo is showing (mockups ship on white) and `bg-bg` for the placeholder.
+- The media column is `minmax(0,640px)` on `lg`. The photo box is **landscape**, never square: `h-[170px]` on phones, `sm:aspect-[16/10]` above, so the media block costs one photo's height and nothing more. The box is white while a photo is showing (mockups ship on white) and `bg-bg` for the placeholder.
 - The thumbnails are a **rail on the left**, not a strip underneath: `data-product-thumbs` is `absolute inset-y-0 left-0` inside the box's wrapper, the photo gets `ml-12 sm:ml-16`, and the rail scrolls internally with `[scrollbar-width:none]`. Tiles are fixed `h-11 w-11 sm:h-14 sm:w-14` — sizing them with `w-full`/`aspect-square` let a classic scrollbar narrow the rail and squash them to 41px.
 - One tile per colour, `data-product-thumb="<Colour>"`. A tile shows that colour's mockup photo when the bucket has one and its swatch (`data-thumb-swatch`) otherwise, so the rail never collapses to nothing. Clicking a tile selects the colour (`onSelectColour`), which also updates price and the swatch row — it is not a separate "gallery" state.
 - The `NEW` badge sits top-**right** (`right-3`); at `left-3` it landed on the thumbnail rail.
@@ -75,6 +75,12 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Zoom: hovering with a mouse scales the zoom layer to `ZOOM_SCALE` (2.4) around the pointer (`data-product-zoom-layer`, transform-origin in %); leaving resets it. A click or a touch tap opens the lightbox (`data-product-lightbox`, `role="dialog"`), closed by the X, the backdrop or Escape. The design overlay lives inside the same transformed layer, so it zooms with the shirt.
 - When nothing resolves (no catalog image, no R2 mockup — the current production state for most products) the box shows the selected colour's swatch and "Mockup photo coming soon" instead of an empty rectangle.
 - Tests: `tests/product-mockup.test.cjs` (candidate order, default-look exclusion, preview wiring).
+
+## Guide page density (`app/guide/page.tsx`, `components/guide/GuideCard.tsx`)
+- Phones get a **row** card, not a cover image: a 72px thumbnail plus title/meta, `h` ≈ 90px. A full-width `aspect-[1.7/1]` cover made every card taller than the phone screen (368px).
+- The card's category badge and read-time chip are `hidden sm:inline-flex` because the phone thumbnail is too small to hold them; the phone row prints the category as an inline pill instead.
+- The phone category row scrolls horizontally (`overflow-x-auto`, `[scrollbar-width:none]`, fixed `w-[74px]` items). With `flex-1` items the seven labels overlapped and were clipped by `overflow-hidden`.
+- Desktop cards use `sm:aspect-[1.9/1]` covers and `p-3`; the hero is `min-h-[124px]` on phones.
 
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.

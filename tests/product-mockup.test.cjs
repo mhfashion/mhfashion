@@ -103,7 +103,7 @@ test("the product page renders the mockup from the selection with the design on 
   assert.match(client, /selection=\{\{ color: selectedColor, fit: selectedFit, sleeve: selectedSleeve, size: selectedSize \}\}/);
   assert.match(client, /design=\{design\}/);
   assert.match(client, /resolveDesignOverlay\(\{ svgUrl: shared \?\? product\.designSvgUrl, draft: readDesignDraft\(\) \}\)/);
-  assert.match(client, /lg:grid-cols-\[minmax\(0,560px\)_minmax\(0,1fr\)\]/);
+  assert.match(client, /lg:grid-cols-\[minmax\(0,640px\)_minmax\(0,1fr\)\]/);
   assert.match(client, /colours=\{colors\}/);
   assert.match(client, /onSelectColour=\{setSelectedColor\}/);
   assert.equal(/activeImage/.test(client), false, "the fake 4-image carousel is gone");
@@ -125,7 +125,7 @@ test("the product page renders the mockup from the selection with the design on 
   assert.match(preview, /pointerType !== "mouse"/);
   assert.match(preview, /transform: zoom\.active \? `scale\(\$\{ZOOM_SCALE\}\)` : "scale\(1\)"/);
   // the photo box is wider than it is tall, and short on phones
-  assert.match(preview, /h-\[200px\] overflow-hidden rounded-2xl .* sm:aspect-\[4\/3\] sm:h-auto/);
+  assert.match(preview, /h-\[170px\] overflow-hidden rounded-2xl .* sm:aspect-\[16\/10\] sm:h-auto/);
   // thumbnails ride beside the photo instead of under it
   assert.match(preview, /absolute inset-y-0 left-0 flex w-11 flex-col gap-1\.5 overflow-y-auto/);
   assert.match(preview, /ml-12 sm:ml-16/);

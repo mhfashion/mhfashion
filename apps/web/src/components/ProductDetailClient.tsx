@@ -122,8 +122,8 @@ export default function ProductDetailClient({ product, related }: Props) {
 
   return (
     <>
-      <section className="grid gap-2 rounded-xl border-0 bg-transparent p-0 shadow-none sm:border sm:border-border/70 sm:bg-bg-surface sm:p-2 sm:shadow-[0_8px_30px_rgba(30,40,20,0.06)] lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:gap-2.5 lg:p-2.5">
-        <div className="mx-auto min-w-0 w-full max-w-[min(100%,560px)] lg:max-w-[560px]">
+      <section className="grid gap-2 rounded-xl border-0 bg-transparent p-0 shadow-none sm:border sm:border-border/70 sm:bg-bg-surface sm:p-2 sm:shadow-[0_8px_30px_rgba(30,40,20,0.06)] lg:grid-cols-[minmax(0,640px)_minmax(0,1fr)] lg:gap-2.5 lg:p-2.5">
+        <div className="mx-auto min-w-0 w-full max-w-[min(100%,640px)] lg:max-w-[640px]">
           <div className="relative">
             <ProductMockupPreview
               slug={product.slug}
@@ -136,7 +136,7 @@ export default function ProductDetailClient({ product, related }: Props) {
             />
             {product.isNew && <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-accent px-3 py-1 text-[10px] font-black text-accent-foreground">NEW</span>}
           </div>
-          <p data-mockup-caption className="mt-2 text-center text-[10px] text-text-muted">
+          <p data-mockup-caption className="mt-1 text-center text-[9px] text-text-muted">
             {selectedColor || selectedMaterial || selectedGsm
               ? `Mockup: ${[selectedColor, selectedFit, selectedSleeve].filter(Boolean).join(" · ")}`
               : "Pick a colour and fit to see the mockup"}

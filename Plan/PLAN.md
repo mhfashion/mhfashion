@@ -2738,3 +2738,8 @@ The previous change removed the image strip under the product photo and left the
 ### Follow-up — landscape photo, thumbnails on the side
 
 The photo box is now landscape instead of square (200 px tall on phones, 4:3 on desktop) and the colour thumbnails moved into a rail on the left, so nothing is added below the photo: the media block is exactly one photo tall. The column widened to 560 px, the box is white while a photo shows (mockups are shot on white), and the `NEW` badge moved to the top right so it no longer sits on the rail.
+
+### Follow-up — guide density, wider product photo
+
+- Guide: phone cards became a 90px thumbnail row (they were 368px tall with a full-width cover), the phone category row scrolls instead of squeezing seven labels into one line, and the hero/cards shrank on desktop too (370 → 319px).
+- Product: the photo box widened again to a 640px column with a 16:10 box (576×360 on desktop, 326×170 on phones) and the caption tightened to one small line.

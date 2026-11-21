@@ -211,7 +211,7 @@ export default function ProductMockupPreview({
           onPointerLeave={() => setZoom((current) => ({ ...current, active: false }))}
           // Mockup photos ship on a white background, so the box is white while one is showing and the
           // letterbox bars disappear into the photo.
-          className={`group relative h-[200px] overflow-hidden rounded-2xl border border-border/70 sm:aspect-[4/3] sm:h-auto ${src ? "bg-white" : "bg-bg"} ${rail ? "ml-12 sm:ml-16" : ""}`}
+          className={`group relative h-[170px] overflow-hidden rounded-2xl border border-border/70 sm:aspect-[16/10] sm:h-auto ${src ? "bg-white" : "bg-bg"} ${rail ? "ml-12 sm:ml-16" : ""}`}
         >
           {src ? (
             <>
