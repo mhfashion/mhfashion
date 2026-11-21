@@ -97,6 +97,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `applyChainPatch` refuses to remove an option that still prices rows, to switch off an attribute that prices rows, and to take an empty/duplicate label. It returns the untouched data plus `issues`; the UI renders those and writes nothing.
 - Tests: `tests/admin-attributes.test.cjs`.
 
+## Payments (`lib/payments.ts`, `lib/payment-webhook.ts`, `app/api/payments/*`)
+- `applyPaymentEvent(order, event)` is the **only** place an order changes stage because of money. Paid → Confirmed, failed → Cancelled, refunded → Refunded. A replay changes nothing; a paid event never confirms a non-pending order; an amount that does not match `orderAmountKs` never confirms.
+- The webhook verifies HMAC-SHA256 over `` `${timestamp}.${body}` `` from the **raw** request text (`request.text()`), rejects a timestamp outside 300 s, and records each provider event id once. Do not parse JSON before verifying — the signature covers the bytes.
+- `POST /api/payments/intent` falls back to the demo provider when a provider's keys are missing and says so in `warning`; with `PAYMENTS_ALLOW_MOCK=0` it returns 501 with the missing variable names instead. Keys: `PAYMENT_WEBHOOK_SECRET`, `KBZPAY_APP_ID`/`KBZPAY_SECRET`, `WAVEPAY_MERCHANT_ID`/`WAVEPAY_SECRET`, `AYAPAY_MERCHANT_ID`/`AYAPAY_SECRET`, `CARD_ACQUIRER_KEY`.
+- `POST /api/payments/simulate` is the demo provider's side: it signs a callback and feeds it through `handlePaymentWebhook`, so the demo exercises signature, replay and idempotency. It refuses a non-mock intent.
+- Intents live in an in-memory map (`lib/payment-store.ts`), so a restart forgets open intents. That is fine while nothing is charged; it becomes a Supabase table with P0 item 1.
+- Tests: `tests/payments.test.cjs` (Web Crypto is global in Node 22, so no Node-only crypto import).
+
 ## Checkout (`lib/checkout.ts`, `components/CheckoutClient.tsx`)
 - `placeOrder(data, draft)` is the only writer of a storefront order. The draft carries `idempotencyKey`; the order stores it as `checkoutKey`, and a repeat submit with the same key returns the **first** order (`created: false`) instead of adding a second one. The page keeps the key in `sessionStorage` (`mh-fashion-checkout-key`) so a refresh reuses it.
 - A new order starts at **Pending Payment**; `confirmPayment` is the demo stand-in for the provider webhook and refuses anything that is not pending. Do not create orders at `Confirmed`.

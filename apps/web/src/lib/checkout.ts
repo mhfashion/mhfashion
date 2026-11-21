@@ -3,6 +3,7 @@
 
 import type { CartItem } from "@/lib/cart-items";
 import { type AdminDemoData, type AdminOrder, type AdminOrderItem, type AdminPaymentMethod } from "@/lib/admin-demo-data";
+import { applyPaymentEvent, orderAmountKs, type PaymentEvent, type PaymentProviderId, type PaymentStatus } from "@/lib/payments";
 
 /** Plan §8: Visa plus the three wallets. There is no cash on delivery. */
 export const CHECKOUT_PAYMENTS: { id: CheckoutPayment; label: string; hint: string }[] = [
@@ -138,21 +139,42 @@ export function placeOrder(
   return { data: { ...data, orders: [order, ...data.orders] }, order, created: true, issues: [] };
 }
 
-/** Demo stand-in for the payment webhook (P0 item 4): Pending Payment → Confirmed. */
-export function confirmPayment(
+/** The provider id for a checkout payment method. */
+export function providerIdFor(payment: string): PaymentProviderId {
+  const key = payment.toLowerCase().replace(/[^a-z]/g, "");
+  if (key === "kbzpay") return "kbzpay";
+  if (key === "wavepay") return "wavepay";
+  if (key === "ayapay") return "ayapay";
+  return "visa";
+}
+
+/**
+ * Applies a status the provider reported back (via its webhook) to the local order. The transition
+ * itself lives in `applyPaymentEvent`, so the browser and the webhook cannot disagree.
+ */
+export function applyPaymentStatus(
   data: AdminDemoData,
   orderId: string,
+  status: PaymentStatus,
+  ref = "",
 ): { data: AdminDemoData; order: AdminOrder | null; issues: string[] } {
   const order = data.orders.find((entry) => entry.id === orderId);
   if (!order) return { data, order: null, issues: ["That order no longer exists."] };
-  if (order.stage !== "Pending Payment") {
-    return { data, order, issues: [`${order.id} is already ${order.stage}.`] };
-  }
-  const paid: AdminOrder = { ...order, stage: "Confirmed" };
+  const event: PaymentEvent = {
+    id: `local_${ref || orderId}_${status}`,
+    ref,
+    orderId,
+    provider: "mock",
+    status,
+    amountKs: orderAmountKs(order),
+    occurredAt: new Date().toISOString(),
+  };
+  const result = applyPaymentEvent(order, event);
+  if (!result.changed) return { data, order: result.order, issues: result.issues };
   return {
-    data: { ...data, orders: data.orders.map((entry) => (entry.id === orderId ? paid : entry)) },
-    order: paid,
-    issues: [],
+    data: { ...data, orders: data.orders.map((entry) => (entry.id === orderId ? result.order : entry)) },
+    order: result.order,
+    issues: result.issues,
   };
 }
 

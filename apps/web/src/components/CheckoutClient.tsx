@@ -7,9 +7,10 @@ import { useCurrency } from "@/lib/currency-context";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import type { AdminOrder } from "@/lib/admin-demo-data";
 import {
-  CHECKOUT_CITIES, CHECKOUT_PAYMENTS, EMPTY_ADDRESS, checkoutSubtotalKs, confirmPayment, placeOrder,
-  type CheckoutAddress, type CheckoutDraft, type CheckoutPayment,
+  CHECKOUT_CITIES, CHECKOUT_PAYMENTS, EMPTY_ADDRESS, applyPaymentStatus, checkoutSubtotalKs, placeOrder,
+  providerIdFor, type CheckoutAddress, type CheckoutDraft, type CheckoutPayment,
 } from "@/lib/checkout";
+import { orderAmountKs, type PaymentStatus } from "@/lib/payments";
 
 const CHECKOUT_KEY_STORAGE = "mh-fashion-checkout-key";
 
@@ -42,6 +43,7 @@ export default function CheckoutClient() {
   const [accepted, setAccepted] = useState(false);
   const [issues, setIssues] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState<AdminOrder | null>(null);
   const [message, setMessage] = useState("");
   const submittingRef = useRef(false);
@@ -89,17 +91,57 @@ export default function CheckoutClient() {
     submittingRef.current = false;
   }
 
-  function pay() {
-    if (!order) return;
-    const outcome: { order: AdminOrder | null; issues: string[] } = { order: null, issues: [] };
-    updateAdminData((current) => {
-      const result = confirmPayment(current, order.id);
-      outcome.order = result.order;
-      outcome.issues = result.issues;
-      return result.data;
-    });
-    setIssues(outcome.issues);
-    if (outcome.order) setMessage(`${outcome.order.id} is confirmed. The print desk picks it up next.`);
+  async function pay() {
+    if (!order || paying) return;
+    setPaying(true);
+    setIssues([]);
+    setMessage("");
+    try {
+      const intentResponse = await fetch("/api/payments/intent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ orderId: order.id, amountKs: orderAmountKs(order), provider: providerIdFor(order.payment) }),
+      });
+      const intent = await intentResponse.json();
+      if (!intentResponse.ok) {
+        setIssues(intent.error === "provider_not_configured"
+          ? [`${order.payment} is not configured on this deployment yet (${(intent.missing ?? []).join(", ")}).`]
+          : ["The payment could not start. Nothing was charged."]);
+        return;
+      }
+      if (intent.warning) setMessage(intent.warning);
+
+      // The demo provider plays its own part: it signs a callback and the webhook verifies it, so the
+      // same signature, replay and idempotency checks run as they will in production.
+      const callback = await fetch("/api/payments/simulate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ref: intent.ref }),
+      });
+      const callbackBody = await callback.json();
+      if (!callback.ok) {
+        setIssues([`The provider callback was refused (${callbackBody.error ?? "unknown"}). Nothing was charged.`]);
+        return;
+      }
+
+      const statusResponse = await fetch(`/api/payments/status/${intent.ref}`);
+      const statusBody = await statusResponse.json();
+      const outcome: { order: AdminOrder | null; issues: string[] } = { order: null, issues: [] };
+      updateAdminData((current) => {
+        const result = applyPaymentStatus(current, order.id, (statusBody.status ?? "pending") as PaymentStatus, intent.ref);
+        outcome.order = result.order;
+        outcome.issues = result.issues;
+        return result.data;
+      });
+      setIssues(outcome.issues);
+      if (outcome.order) {
+        setMessage(`${outcome.order.id} is ${outcome.order.stage} — payment reference ${intent.ref}.`);
+      }
+    } catch {
+      setIssues(["The payment service could not be reached. Nothing was charged."]);
+    } finally {
+      setPaying(false);
+    }
   }
 
   if (order) {
@@ -128,11 +170,22 @@ export default function CheckoutClient() {
             </div>
           ) : null}
           {order.stage === "Pending Payment" ? (
-            <button type="button" onClick={pay} data-checkout-pay className="mt-5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-3 text-xs font-bold text-accent-foreground">
-              <CreditCard size={14} /> Pay with {order.payment} (demo)
+            <button
+              type="button"
+              onClick={pay}
+              disabled={paying}
+              data-checkout-pay
+              className="mt-5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-3 text-xs font-bold text-accent-foreground disabled:opacity-60"
+            >
+              {paying ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
+              {paying ? "Confirming with the provider…" : `Pay with ${order.payment}`}
             </button>
           ) : null}
-          <p className="mt-3 text-[10px] text-text-muted">Demo checkout: no money moves and no card is charged. A real provider is the next P0 step.</p>
+          <p className="mt-3 text-[10px] text-text-muted">
+            The provider callback is signed (HMAC-SHA256 over the timestamp and body) and verified by
+            <code className="mx-1">/api/payments/webhook/&lt;provider&gt;</code>; a replayed or altered callback is refused.
+            No real provider is configured yet, so the demo provider stands in and no money moves.
+          </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <a href="/new" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[11px] font-bold">Continue shopping <ArrowRight size={13} /></a>
             <a href="/account" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[11px] font-bold">My account</a>

@@ -130,20 +130,34 @@ test("order numbers continue the existing sequence", () => {
   assert.equal(checkout.nextOrderId([{ id: "#MH1105" }]), "#MH1106");
 });
 
-test("payment confirmation moves the order once and refuses a second time", () => {
+test("a provider status moves the order once and never twice", () => {
   const placed = checkout.placeOrder(data, draft());
-  const paid = checkout.confirmPayment(placed.data, placed.order.id);
+  const paid = checkout.applyPaymentStatus(placed.data, placed.order.id, "paid", "pi_test");
   assert.deepEqual(paid.issues, []);
   assert.equal(paid.order.stage, "Confirmed");
   assert.equal(paid.data.orders[0].stage, "Confirmed");
 
-  const again = checkout.confirmPayment(paid.data, placed.order.id);
+  const again = checkout.applyPaymentStatus(paid.data, placed.order.id, "paid", "pi_test");
   assert.equal(again.order.stage, "Confirmed");
-  assert.match(again.issues[0], /already Confirmed/);
+  assert.equal(again.data, paid.data, "a replay writes nothing");
 
-  const missing = checkout.confirmPayment(data, "#MH9999");
+  const failedOrder = checkout.placeOrder(placed.data, draft({ idempotencyKey: "co_test_fail" }));
+  const failed = checkout.applyPaymentStatus(failedOrder.data, failedOrder.order.id, "failed");
+  assert.equal(failed.order.stage, "Cancelled");
+
+  const refunded = checkout.applyPaymentStatus(paid.data, placed.order.id, "refunded");
+  assert.equal(refunded.order.stage, "Refunded");
+
+  const missing = checkout.applyPaymentStatus(data, "#MH9999", "paid");
   assert.equal(missing.order, null);
   assert.match(missing.issues[0], /no longer exists/);
+});
+
+test("each payment method maps to its provider", () => {
+  assert.equal(checkout.providerIdFor("KBZPay"), "kbzpay");
+  assert.equal(checkout.providerIdFor("WavePay"), "wavepay");
+  assert.equal(checkout.providerIdFor("AYAPay"), "ayapay");
+  assert.equal(checkout.providerIdFor("Visa"), "visa");
 });
 
 test("the summary totals match the cart", () => {

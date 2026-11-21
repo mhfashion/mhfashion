@@ -1019,7 +1019,17 @@ proposal, not an approved order.
    `lib/checkout.ts` writes the order into the admin store with a `checkoutKey`. The same key returns
    the first order instead of a second one, so a double submit or a refresh cannot charge twice; a
    new order starts at **Pending Payment** and only a payment step moves it to **Confirmed**.
-   Still open: the real provider, its webhook and the delivery fee quote.
+   **Payment provider interface and signed webhook shipped 2026-11-21:** `lib/payments.ts` holds the
+   provider registry (KBZPay / Wave Pay / AYA Pay / Visa) with the environment variables each one
+   needs, HMAC-SHA256 signing over `${timestamp}.${body}`, a 300-second replay window and
+   `applyPaymentEvent`, the single order transition (paid → Confirmed, failed → Cancelled, refunded →
+   Refunded; a replay changes nothing, a late event never rewinds a printed order, an amount mismatch
+   never confirms). `POST /api/payments/webhook/<provider>` verifies the raw body and records the
+   event once; `POST /api/payments/intent` creates the intent and names the missing keys instead of
+   pretending a provider ran; `GET /api/payments/status/<ref>` reports it. `confirmPayment` is gone —
+   the checkout calls the intent, then reads the status the verified callback left behind.
+   **Still open:** the provider accounts themselves (the keys above), the delivery fee quote, and
+   moving intents from memory to Supabase. `PAYMENTS_ALLOW_MOCK=0` turns the demo provider off.
 
 ### P1 — before launch
 
