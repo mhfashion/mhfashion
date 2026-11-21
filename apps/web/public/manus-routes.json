@@ -1,27 +1,160 @@
 {
   "routes": [
-    { "path": "/", "title": "Home" },
-    { "path": "/admin", "title": "Admin Dashboard Preview" },
-    { "path": "/admin/customers", "title": "Admin Customers" },
-    { "path": "/admin/designs", "title": "Admin Designs" },
-    { "path": "/admin/inventory", "title": "Admin Inventory" },
-    { "path": "/admin/login", "title": "Admin Sign In" },
-    { "path": "/admin/orders", "title": "Admin Orders" },
-    { "path": "/admin/posts", "title": "Admin Posts" },
-    { "path": "/admin/products", "title": "Admin Products" },
-    { "path": "/admin/promotions", "title": "Admin Promotions" },
-    { "path": "/admin/reports", "title": "Admin Reports" },
-    { "path": "/admin/settings", "title": "Admin Settings" },
-    { "path": "/account", "title": "My Account" },
-    { "path": "/cart", "title": "Cart" },
-    { "path": "/collections", "title": "Collections" },
-    { "path": "/create", "title": "Create Design" },
-    { "path": "/guide", "title": "Guide" },
-    { "path": "/guide/:slug", "title": "Guide Article" },
-    { "path": "/mh-fashion", "title": "MH Fashion" },
-    { "path": "/new", "title": "New Arrivals" },
-    { "path": "/nyein", "title": "Nyein Collection" },
-    { "path": "/popular", "title": "Popular Products" },
-    { "path": "/products/:slug", "title": "Product Details" }
+    {
+      "path": "/",
+      "title": "Home"
+    },
+    {
+      "path": "/about",
+      "title": "About Us"
+    },
+    {
+      "path": "/account",
+      "title": "My Account"
+    },
+    {
+      "path": "/admin",
+      "title": "Admin Dashboard Preview"
+    },
+    {
+      "path": "/admin/attributes",
+      "title": "Admin Attributes"
+    },
+    {
+      "path": "/admin/customers",
+      "title": "Admin Customers"
+    },
+    {
+      "path": "/admin/designs",
+      "title": "Admin Designs"
+    },
+    {
+      "path": "/admin/inventory",
+      "title": "Admin Inventory"
+    },
+    {
+      "path": "/admin/jersey",
+      "title": "Admin Jersey"
+    },
+    {
+      "path": "/admin/login",
+      "title": "Admin Sign In"
+    },
+    {
+      "path": "/admin/loyalty",
+      "title": "Admin Loyalty"
+    },
+    {
+      "path": "/admin/orders",
+      "title": "Admin Orders"
+    },
+    {
+      "path": "/admin/posts",
+      "title": "Admin Posts"
+    },
+    {
+      "path": "/admin/products",
+      "title": "Admin Products"
+    },
+    {
+      "path": "/admin/promotions",
+      "title": "Admin Promotions"
+    },
+    {
+      "path": "/admin/reports",
+      "title": "Admin Reports"
+    },
+    {
+      "path": "/admin/settings",
+      "title": "Admin Settings"
+    },
+    {
+      "path": "/admin/settlements",
+      "title": "Admin Settlements"
+    },
+    {
+      "path": "/best-sellers",
+      "title": "Best Sellers"
+    },
+    {
+      "path": "/cart",
+      "title": "Cart"
+    },
+    {
+      "path": "/checkout",
+      "title": "Checkout"
+    },
+    {
+      "path": "/collections",
+      "title": "Collections"
+    },
+    {
+      "path": "/contact",
+      "title": "Contact"
+    },
+    {
+      "path": "/cookie-policy",
+      "title": "Cookie Policy"
+    },
+    {
+      "path": "/create",
+      "title": "Create Design"
+    },
+    {
+      "path": "/faq",
+      "title": "FAQ"
+    },
+    {
+      "path": "/guide",
+      "title": "Guide"
+    },
+    {
+      "path": "/guide/:slug",
+      "title": "Guide Article"
+    },
+    {
+      "path": "/mh-fashion",
+      "title": "MH Fashion"
+    },
+    {
+      "path": "/new",
+      "title": "New Arrivals"
+    },
+    {
+      "path": "/nyein",
+      "title": "Nyein Collection"
+    },
+    {
+      "path": "/popular",
+      "title": "Popular Products"
+    },
+    {
+      "path": "/privacy",
+      "title": "Privacy Policy"
+    },
+    {
+      "path": "/products",
+      "title": "All Products"
+    },
+    {
+      "path": "/products/:slug",
+      "title": "Product Details"
+    },
+    {
+      "path": "/returns",
+      "title": "Returns"
+    },
+    {
+      "path": "/shipping",
+      "title": "Shipping"
+    },
+    {
+      "path": "/size-guide",
+      "title": "Size Guide"
+    },
+    {
+      "path": "/terms",
+      "title": "Terms of Use"
+    }
   ]
 }

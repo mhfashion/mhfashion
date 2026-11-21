@@ -8,6 +8,7 @@ import {
   Pencil,
   Ruler,
   Search,
+  ShieldAlert,
   Shirt,
   Sparkles,
   Star,
@@ -116,6 +117,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               ))}
               <div className="my-2 border-t border-border" />
               <Link href="/faq" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> FAQ</Link>
+              <Link href="/contact" data-guide-contact className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><ShieldAlert size={17} /> Contact / copyright claim</Link>
             </nav>
             <div className="overflow-hidden rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]">
               <Sparkles size={25} className="mx-auto text-[#6eae18]" aria-hidden="true" />

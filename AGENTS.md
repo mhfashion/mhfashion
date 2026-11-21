@@ -105,6 +105,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Intents live in an in-memory map (`lib/payment-store.ts`), so a restart forgets open intents. That is fine while nothing is charged; it becomes a Supabase table with P0 item 1.
 - Tests: `tests/payments.test.cjs` (Web Crypto is global in Node 22, so no Node-only crypto import).
 
+## Storefront information pages (`lib/storefront-info.ts`, `components/InfoPage.tsx`)
+- All copy lives in `INFO_PAGES`; the eight routes (`/about`, `/faq`, `/shipping`, `/returns`, `/size-guide`, `/terms`, `/privacy`, `/cookie-policy`) are three-line wrappers around `InfoPage`. Edit the content module, not the pages.
+- `draft` on a page renders the amber "draft for legal review" banner. Terms, Privacy and Cookie Policy carry it until a lawyer signs them off; do not remove it without the owner's word.
+- `/best-sellers` redirects to `/popular` — one ranked list, no duplicate page.
+- `/contact` is the §8.1 claim channel: `ContactForm` composes a `mailto:` (topic, order number, design, message) and never claims to have sent anything. The address is `NEXT_PUBLIC_CONTACT_EMAIL`, falling back to a placeholder the owner must replace.
+- `tests/storefront-info.test.cjs` fails when a footer link has no route, when the legal pages lose their draft banner, or when the payment/delivery/takedown facts drift from the plan.
+
 ## Checkout (`lib/checkout.ts`, `components/CheckoutClient.tsx`)
 - `placeOrder(data, draft)` is the only writer of a storefront order. The draft carries `idempotencyKey`; the order stores it as `checkoutKey`, and a repeat submit with the same key returns the **first** order (`created: false`) instead of adding a second one. The page keeps the key in `sessionStorage` (`mh-fashion-checkout-key`) so a refresh reuses it.
 - A new order starts at **Pending Payment**; `confirmPayment` is the demo stand-in for the provider webhook and refuses anything that is not pending. Do not create orders at `Confirmed`.

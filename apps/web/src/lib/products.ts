@@ -102,6 +102,24 @@ export async function getBestSellers(limit = 6): Promise<Product[]> {
   return rows.map((r) => toProduct(r, ranges));
 }
 
+export async function getAllProducts(limit = 60): Promise<Product[]> {
+  const supabase = getServerSupabase();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("getAllProducts failed:", error.message);
+    return [];
+  }
+  const rows = (data ?? []) as ProductRow[];
+  const ranges = await getPriceRanges(rows.map((r) => r.id));
+  return rows.map((r) => toProduct(r, ranges));
+}
+
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const supabase = getServerSupabase();
   if (!supabase) return null;

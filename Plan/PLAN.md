@@ -422,8 +422,11 @@ The detailed editor feature list below is a **forward plan**, not a claim that t
   MH Fashion the right to advertise and sell the design; the user is responsible
   for holding the rights to what they submit; MH Fashion may remove a design
   after a claim.
-- **Claim channel:** one contact email or form, listed in the Terms and in the
-  Guide.
+- **Claim channel (built 2026-11-21):** `/contact` is the single channel, linked from the Terms, the
+  Guide and the footer. It explains what a claim must include, states the paid-order rule, and builds
+  a `mailto:` with the topic, order number, design and message, so the claim reaches the inbox without
+  a server. The address comes from `NEXT_PUBLIC_CONTACT_EMAIL` (the fallback is a placeholder the owner
+  must replace). A server-side inbox is not built; the mail app is the delivery path.
 - **Admin action:** Designs module → Hide / Delete, with a short record (design,
   who claimed, date, admin).
 - **Answered (owner, 2026-11-21): a takedown never stops an order that is already paid.** The
@@ -541,7 +544,9 @@ catalog-facing items.
   Pillow, Phone Cover are rough placeholders).
 - Pillow and Sling Bag attributes and mockups.
 - Payment gateway API details; DHL integration (waiting on DHL).
-- Legal page content (Myanmar-specific clauses).
+- Legal page content (Myanmar-specific clauses). **Draft pages exist (2026-11-21):** `/terms`,
+  `/privacy` and `/cookie-policy` render from `lib/storefront-info.ts` with a visible "draft for legal
+  review" banner. The Myanmar-specific clauses still need a lawyer's review.
 - Private R2 connection and uploads for Elements, licensed fonts, text-style
   previews, and mockup assets remain deferred. The editor uses its local
   Elements catalog and browser/system font fallbacks; the storefront continues
@@ -1041,11 +1046,17 @@ proposal, not an approved order.
 7. **SVG handling.** Admin-only upload lowers the risk; still strip scripts and event attributes
    when an SVG is rendered inline.
 8. ~~**Design takedown handling** per 8.1~~ — **done 2026-11-21**: Designs → Takedown records the
-   claimant and note, hides the design, and leaves paid orders untouched (owner answer). Remaining:
-   the claim channel (contact email/form) has to exist on the storefront before launch.
+   claimant and note, hides the design, and leaves paid orders untouched (owner answer).
+   **Claim channel built 2026-11-21:** `/contact` (see 8.1) is linked from the Terms, the Guide and
+   the footer.
 9. **Rate limiting / abuse protection** for uploads, AI points and public forms.
 10. **Testing.** Automated tests for checkout, pricing and orders; E2E smoke tests; real-device
     checks on phone.
+    **Storefront pages built 2026-11-21:** every footer link resolves — `/about`, `/faq`, `/shipping`,
+    `/returns`, `/size-guide`, `/terms`, `/privacy`, `/cookie-policy`, `/products` and `/contact` are
+    new pages; `/best-sellers` redirects to the one ranked list at `/popular`.
+    `tests/storefront-info.test.cjs` fails if a footer link has no route. Still open: a numeric size
+    chart per product (the catalog has no measurements yet) and a real inbox behind `/contact`.
 
 ### P2 — later
 
