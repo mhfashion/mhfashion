@@ -31,11 +31,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 
 ## Posts module (`/admin/posts`)
 - Posting is three tabs: `data-post-tab="guide" | "tshirt" | "nyein"`. Guide lists the starter catalog read-only; Nyein is a placeholder until its brief lands; T-shirt posts are the working module (`components/admin/AdminPosts.tsx`).
-- A T-shirt post stores `tshirtPosts` in the same demo store (`lib/admin-demo-data.ts`): title, description, one SVG (`{ url, fileName, sizeBytes }`), ticked colours with an optional extra `priceKs`, and ticked sizes that each carry **their own hand-typed** `priceKs`.
-- Do not reintroduce a single base price or derive one price from another: the requirement is that size, colour and other differences are entered directly. `validateTshirtPostDraft` rejects a ticked size with no price, and `tshirtPostFromPriceKs` only *reports* the cheapest combination for the list.
+- **Price depends on the full attribute combination, not the size.** A post carries `attributes` (ticked from `TSHIRT_POST_ATTRIBUTES`: size, material, fit, color, sleeve, gsm, cutting, print, each with the options the drop sells) and `prices`, where every row is one complete combination plus its own hand-typed `priceKs`. Two XL rows are normal and expected to differ. Never reintroduce a base price, a size ladder or a colour surcharge; `tshirtPostFromPriceKs` only *reports* the cheapest row for the list.
+- Combinations without a row are not sold. `reconcileTshirtPriceRows` runs on every attribute/option change so a row never keeps a value that is no longer offered (it falls back to the attribute's first option).
+- `validateTshirtPostDraft` rejects a row missing an attribute value, a zero price, a repeated combination, more than 40 rows and anything over Ks 10,000,000. Combination identity is `tshirtCombinationKey` (palette order, `key=value` pairs), so reordering selects must not create duplicates.
+- A new draft starts with size/material/fit/color enabled and the other four off; `emptyTshirtPriceRow` pre-fills every active attribute so only the price needs typing.
 - SVG files are read by `lib/post-assets.ts` and kept as a `data:image/svg+xml;utf8,` URL because Cloudflare R2 is not provisioned yet. That function is the only place to swap for the R2 upload; keep the `{ url, fileName, sizeBytes }` shape so the form, store and tests stay unchanged.
-- Entries saved before the module existed have no `tshirtPosts` key, so `readAdminDemoData` backfills `createSeedTshirtPosts(...)` instead of discarding the store.
-- Tests: `tests/admin-posts.test.cjs` covers the data helpers, the SVG helper and the wiring; `tests/guide-http.test.cjs` asserts the exact `manus-routes.json` order, so a new admin route must be added to that expected list too.
+- `normalizeTshirtPost` converts posts saved by the earlier per-size module (sizes × colours with a colour surcharge) into combinations on read; a store without posts is backfilled with `createSeedTshirtPosts(...)`.
+- Tests: `tests/admin-posts.test.cjs` covers the combination helpers, validation, migration and the screen wiring; `tests/guide-http.test.cjs` asserts the exact `manus-routes.json` order, so a new admin route must be added to that expected list too.
 
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.

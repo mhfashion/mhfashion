@@ -89,26 +89,13 @@ export type AdminPostSvg = {
   sizeBytes: number;
 };
 
-export type AdminTshirtPostSize = {
-  size: string;
-  priceKs: number;
-};
-
-// A colour carries its own optional surcharge: the storefront already prices colour
-// separately, so a post has to be able to say "Navy +Ks 1,000" per colour.
-export type AdminTshirtPostColor = {
-  name: string;
-  hex: string;
-  priceKs: number;
-};
-
 export type AdminTshirtPost = {
   id: string;
   title: string;
   description: string;
   svg: AdminPostSvg | null;
-  colors: AdminTshirtPostColor[];
-  sizes: AdminTshirtPostSize[];
+  attributes: AdminTshirtPostAttribute[];
+  prices: AdminTshirtPostPriceRow[];
   status: AdminPostStatus;
   createdAt: string;
   publishedAt: string | null;
@@ -483,36 +470,128 @@ export function removeProduct(data: AdminDemoData, productId: string): AdminDemo
 
 // ---------------------------------------------------------------- t-shirt posts
 
-// The six colours the storefront offers for shirts. A post ticks the ones it sells.
-export const TSHIRT_POST_COLORS: { name: string; hex: string }[] = [
-  { name: "Black", hex: "#111111" },
-  { name: "White", hex: "#ffffff" },
-  { name: "Green", hex: "#236b42" },
-  { name: "Sand", hex: "#d4b78b" },
-  { name: "Red", hex: "#b83219" },
-  { name: "Navy", hex: "#203459" },
+// Price depends on the whole attribute combination, not on size alone: an XL in cotton
+// with DTF is not the same price as an XL in premium cotton with sublimation. A post
+// therefore ticks the attributes and options it sells and then carries one price per
+// combination. Combinations without a row are simply not offered.
+
+export type AdminTshirtPostAttributeKey =
+  | "size"
+  | "material"
+  | "fit"
+  | "color"
+  | "sleeve"
+  | "gsm"
+  | "cutting"
+  | "print";
+
+export type AdminTshirtPostAttribute = {
+  key: AdminTshirtPostAttributeKey;
+  label: string;
+  options: string[];
+};
+
+export const TSHIRT_POST_ATTRIBUTES: AdminTshirtPostAttribute[] = [
+  { key: "size", label: "Size", options: ["S", "M", "L", "XL", "2XL"] },
+  { key: "material", label: "Material", options: ["Cotton", "Premium Cotton", "Polyester", "Blend"] },
+  { key: "fit", label: "Fit Type", options: ["Regular", "Oversized", "Slim"] },
+  { key: "color", label: "Colour", options: ["Black", "White", "Green", "Sand", "Red", "Navy"] },
+  { key: "sleeve", label: "Sleeve", options: ["Short Sleeve", "Long Sleeve"] },
+  { key: "gsm", label: "GSM", options: ["160 GSM", "180 GSM", "200 GSM", "240 GSM"] },
+  { key: "cutting", label: "Cutting", options: ["Standard", "Raw Edge", "Raglan"] },
+  { key: "print", label: "Print", options: ["DTF", "Sublimation", "Screen Print"] },
 ];
 
-export const TSHIRT_POST_SIZES = APPAREL_SIZES;
+export function tshirtAttributeLabel(key: AdminTshirtPostAttributeKey) {
+  return TSHIRT_POST_ATTRIBUTES.find((attribute) => attribute.key === key)?.label ?? key;
+}
+
+export type AdminTshirtPostPriceRow = {
+  id: string;
+  options: Partial<Record<AdminTshirtPostAttributeKey, string>>;
+  priceKs: number;
+};
+
+export type AdminTshirtPostDraftPriceRow = {
+  id: string;
+  options: Partial<Record<AdminTshirtPostAttributeKey, string>>;
+  priceKs: string;
+};
+
+export type AdminTshirtPostDraftAttribute = AdminTshirtPostAttribute & { enabled: boolean };
 
 export type AdminTshirtPostDraft = {
   title: string;
   description: string;
   svg: AdminPostSvg | null;
-  colors: { name: string; hex: string; priceKs: string }[];
-  sizes: { size: string; priceKs: string }[];
+  attributes: AdminTshirtPostDraftAttribute[];
+  prices: AdminTshirtPostDraftPriceRow[];
   status: AdminPostStatus;
 };
+
+// A new post starts with the four attributes that almost every drop varies; the rest
+// (sleeve, GSM, cutting, print) are one tick away when a drop needs them.
+const DEFAULT_TSHIRT_DRAFT_ATTRIBUTES: AdminTshirtPostAttributeKey[] = ["size", "material", "fit", "color"];
 
 export function tshirtPostDraftFrom(post?: AdminTshirtPost): AdminTshirtPostDraft {
   return {
     title: post?.title ?? "",
     description: post?.description ?? "",
     svg: post?.svg ?? null,
-    colors: (post?.colors ?? []).map((color) => ({ name: color.name, hex: color.hex, priceKs: color.priceKs ? String(color.priceKs) : "" })),
-    sizes: (post?.sizes ?? []).map((size) => ({ size: size.size, priceKs: String(size.priceKs) })),
+    attributes: TSHIRT_POST_ATTRIBUTES.map((attribute) => {
+      const saved = post?.attributes.find((entry) => entry.key === attribute.key);
+      return {
+        key: attribute.key,
+        label: attribute.label,
+        options: saved ? [...saved.options] : [...attribute.options],
+        enabled: saved ? saved.options.length > 0 : DEFAULT_TSHIRT_DRAFT_ATTRIBUTES.includes(attribute.key),
+      };
+    }),
+    prices: (post?.prices ?? []).map((row) => ({ id: row.id, options: { ...row.options }, priceKs: String(row.priceKs) })),
     status: post?.status ?? "Draft",
   };
+}
+
+export function tshirtDraftAttributes(draft: AdminTshirtPostDraft) {
+  return draft.attributes.filter((attribute) => attribute.enabled && attribute.options.length > 0);
+}
+
+export function tshirtCombinationKey(
+  attributes: AdminTshirtPostAttribute[],
+  options: Partial<Record<AdminTshirtPostAttributeKey, string>>,
+) {
+  return attributes.map((attribute) => `${attribute.key}=${options[attribute.key] ?? ""}`).join("|");
+}
+
+export function tshirtCombinationLabel(
+  attributes: AdminTshirtPostAttribute[],
+  options: Partial<Record<AdminTshirtPostAttributeKey, string>>,
+) {
+  return attributes.map((attribute) => options[attribute.key] ?? "—").join(" · ");
+}
+
+export function emptyTshirtPriceRow(attributes: AdminTshirtPostAttribute[]): AdminTshirtPostDraftPriceRow {
+  return {
+    id: makeAdminId("price"),
+    options: Object.fromEntries(attributes.map((attribute) => [attribute.key, attribute.options[0]])),
+    priceKs: "",
+  };
+}
+
+// Keeping rows complete as the admin ticks options on and off: a value that is no longer
+// offered falls back to the first option still on the attribute.
+export function reconcileTshirtPriceRows(
+  attributes: AdminTshirtPostAttribute[],
+  rows: AdminTshirtPostDraftPriceRow[],
+): AdminTshirtPostDraftPriceRow[] {
+  return rows.map((row) => {
+    const options: Partial<Record<AdminTshirtPostAttributeKey, string>> = {};
+    for (const attribute of attributes) {
+      const current = row.options[attribute.key];
+      options[attribute.key] = current && attribute.options.includes(current) ? current : attribute.options[0];
+    }
+    return { ...row, options };
+  });
 }
 
 function postPriceError(value: string) {
@@ -524,42 +603,57 @@ function postPriceError(value: string) {
 
 export function validateTshirtPostDraft(draft: AdminTshirtPostDraft): string[] {
   const errors: string[] = [];
+  const attributes = tshirtDraftAttributes(draft);
   if (!draft.title.trim()) errors.push("Post title is required.");
   if (draft.title.trim().length > 80) errors.push("Post title must stay under 80 characters.");
   if (!draft.svg) errors.push("Attach the SVG file for this post.");
-  if (!draft.colors.length) errors.push("Tick at least one colour.");
-  if (!draft.sizes.length) errors.push("Tick at least one size.");
-  for (const size of draft.sizes) {
-    const price = Number(size.priceKs);
-    if (!Number.isFinite(price) || price <= 0) {
-      errors.push(`Set a price for size ${size.size}.`);
+  if (!attributes.length) errors.push("Tick at least one attribute option, for example Size and Colour.");
+  if (!draft.prices.length) errors.push("Add at least one price combination.");
+  if (attributes.length && draft.prices.length > 40) errors.push("Keep the price list under 40 combinations.");
+
+  const seen = new Set<string>();
+  for (const row of draft.prices) {
+    const missing = attributes.find((attribute) => !row.options[attribute.key]);
+    if (missing) {
+      errors.push(`Every price row needs a ${missing.label.toLowerCase()} value.`);
       continue;
     }
-    const problem = postPriceError(size.priceKs);
-    if (problem) errors.push(`${size.size}: ${problem}`);
-  }
-  for (const color of draft.colors) {
-    if (!color.priceKs.trim()) continue;
-    const problem = postPriceError(color.priceKs);
-    if (problem) errors.push(`${color.name}: ${problem}`);
+    const price = Number(row.priceKs);
+    if (!Number.isFinite(price) || price <= 0) {
+      errors.push(`Set a price for ${tshirtCombinationLabel(attributes, row.options)}.`);
+      continue;
+    }
+    const problem = postPriceError(row.priceKs);
+    if (problem) {
+      errors.push(`${tshirtCombinationLabel(attributes, row.options)}: ${problem}`);
+      continue;
+    }
+    const key = tshirtCombinationKey(attributes, row.options);
+    if (seen.has(key)) {
+      errors.push(`Two price rows repeat ${tshirtCombinationLabel(attributes, row.options)}.`);
+      continue;
+    }
+    seen.add(key);
   }
   return errors;
 }
 
 export function tshirtPostFromDraft(draft: AdminTshirtPostDraft, existing?: AdminTshirtPost, now = new Date()): AdminTshirtPost {
-  const publishedAt = draft.status === "Published"
-    ? existing?.publishedAt ?? now.toISOString()
-    : null;
+  const attributes = tshirtDraftAttributes(draft);
   return {
     id: existing?.id ?? makeAdminId("post"),
     title: draft.title.trim(),
     description: draft.description.trim(),
     svg: draft.svg,
-    colors: draft.colors.map((color) => ({ name: color.name, hex: color.hex, priceKs: Math.round(Number(color.priceKs || 0)) })),
-    sizes: draft.sizes.map((size) => ({ size: size.size, priceKs: Math.round(Number(size.priceKs || 0)) })),
+    attributes: attributes.map((attribute) => ({ key: attribute.key, label: attribute.label, options: [...attribute.options] })),
+    prices: draft.prices.map((row) => ({
+      id: row.id,
+      options: Object.fromEntries(attributes.map((attribute) => [attribute.key, row.options[attribute.key] ?? attribute.options[0]])),
+      priceKs: Math.round(Number(row.priceKs || 0)),
+    })),
     status: draft.status,
     createdAt: existing?.createdAt ?? now.toISOString(),
-    publishedAt,
+    publishedAt: draft.status === "Published" ? existing?.publishedAt ?? now.toISOString() : null,
   };
 }
 
@@ -577,15 +671,58 @@ export function removeTshirtPost(data: AdminDemoData, postId: string): AdminDemo
   return { ...data, tshirtPosts: data.tshirtPosts.filter((post) => post.id !== postId) };
 }
 
-// Cheapest combination a shopper can buy, so the list can show "from Ks 21,000".
 export function tshirtPostFromPriceKs(post: AdminTshirtPost): number {
-  if (!post.sizes.length) return 0;
-  const colourFloor = post.colors.length ? Math.min(...post.colors.map((color) => color.priceKs)) : 0;
-  return Math.min(...post.sizes.map((size) => size.priceKs)) + colourFloor;
+  if (!post.prices.length) return 0;
+  return Math.min(...post.prices.map((row) => row.priceKs));
 }
 
-export function tshirtPostSizeLabel(post: AdminTshirtPost) {
-  return post.sizes.map((size) => `${size.size} ${formatKs(size.priceKs)}`).join(" · ");
+export function tshirtPostAttributeSummary(post: AdminTshirtPost) {
+  return post.attributes
+    .filter((attribute) => attribute.options.length)
+    .map((attribute) => `${attribute.label}: ${attribute.options.join(", ")}`)
+    .join(" · ");
+}
+
+// Posts saved before combination pricing stored a size list and colour surcharges. They are
+// converted on read so an existing browser keeps its posts instead of failing the store check.
+export function normalizeTshirtPost(post: AdminTshirtPost | (Record<string, unknown> & { id: string })): AdminTshirtPost {
+  const legacy = post as Record<string, unknown> & {
+    id: string;
+    title?: string;
+    description?: string;
+    svg?: AdminPostSvg | null;
+    status?: AdminPostStatus;
+    createdAt?: string;
+    publishedAt?: string | null;
+    sizes?: { size: string; priceKs: number }[];
+    colors?: { name: string; hex: string; priceKs: number }[];
+  };
+  if (Array.isArray((post as AdminTshirtPost).attributes) && Array.isArray((post as AdminTshirtPost).prices)) {
+    return post as AdminTshirtPost;
+  }
+  const sizes = legacy.sizes ?? [];
+  const colors = legacy.colors ?? [];
+  const legacyAttributes: AdminTshirtPostAttribute[] = [
+    { key: "size", label: "Size", options: sizes.map((entry) => entry.size) },
+    { key: "color", label: "Colour", options: colors.map((entry) => entry.name) },
+  ];
+  const attributes = legacyAttributes.filter((attribute) => attribute.options.length);
+  const prices: AdminTshirtPostPriceRow[] = sizes.flatMap((size) => (colors.length ? colors : [{ name: "", priceKs: 0 }]).map((color) => ({
+    id: makeAdminId("price"),
+    options: { size: size.size, ...(color.name ? { color: color.name } : {}) },
+    priceKs: size.priceKs + color.priceKs,
+  })));
+  return {
+    id: legacy.id,
+    title: legacy.title ?? "Untitled post",
+    description: legacy.description ?? "",
+    svg: legacy.svg ?? null,
+    attributes,
+    prices,
+    status: legacy.status ?? "Draft",
+    createdAt: legacy.createdAt ?? new Date().toISOString(),
+    publishedAt: legacy.publishedAt ?? null,
+  };
 }
 
 // ---------------------------------------------------------------- designs
@@ -806,16 +943,19 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
       title: "Peacock Line Tee",
       description: "Single-colour line art printed on combed cotton.",
       svg: seedPostSvg("PEACOCK", "#236b42"),
-      colors: [
-        { name: "Black", hex: "#111111", priceKs: 0 },
-        { name: "White", hex: "#ffffff", priceKs: 500 },
-        { name: "Sand", hex: "#d4b78b", priceKs: 500 },
+      attributes: [
+        { key: "size", label: "Size", options: ["S", "M", "L", "XL"] },
+        { key: "material", label: "Material", options: ["Cotton", "Premium Cotton"] },
+        { key: "fit", label: "Fit Type", options: ["Regular"] },
+        { key: "color", label: "Colour", options: ["Black", "White", "Sand"] },
+        { key: "print", label: "Print", options: ["DTF", "Sublimation"] },
       ],
-      sizes: [
-        { size: "S", priceKs: 21000 },
-        { size: "M", priceKs: 22000 },
-        { size: "L", priceKs: 23000 },
-        { size: "XL", priceKs: 24000 },
+      prices: [
+        { id: "price-peacock-1", options: { size: "S", material: "Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 21000 },
+        { id: "price-peacock-2", options: { size: "M", material: "Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 22000 },
+        { id: "price-peacock-3", options: { size: "M", material: "Premium Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 25000 },
+        { id: "price-peacock-4", options: { size: "XL", material: "Cotton", fit: "Regular", color: "White", print: "DTF" }, priceKs: 24000 },
+        { id: "price-peacock-5", options: { size: "XL", material: "Premium Cotton", fit: "Regular", color: "Sand", print: "Sublimation" }, priceKs: 31000 },
       ],
       status: "Published",
       createdAt: daysAgo(6),
@@ -826,14 +966,18 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
       title: "Mandalay Nights Tee",
       description: "Two-colour night market print, oversized fit.",
       svg: seedPostSvg("MANDALAY", "#b83219"),
-      colors: [
-        { name: "Black", hex: "#111111", priceKs: 0 },
-        { name: "Navy", hex: "#203459", priceKs: 1000 },
+      attributes: [
+        { key: "size", label: "Size", options: ["M", "L", "2XL"] },
+        { key: "fit", label: "Fit Type", options: ["Oversized"] },
+        { key: "color", label: "Colour", options: ["Black", "Navy"] },
+        { key: "gsm", label: "GSM", options: ["220 GSM"] },
+        { key: "cutting", label: "Cutting", options: ["Raw Edge"] },
+        { key: "print", label: "Print", options: ["Sublimation"] },
       ],
-      sizes: [
-        { size: "M", priceKs: 27000 },
-        { size: "L", priceKs: 28000 },
-        { size: "2XL", priceKs: 30000 },
+      prices: [
+        { id: "price-mandalay-1", options: { size: "M", fit: "Oversized", color: "Black", gsm: "220 GSM", cutting: "Raw Edge", print: "Sublimation" }, priceKs: 27000 },
+        { id: "price-mandalay-2", options: { size: "L", fit: "Oversized", color: "Navy", gsm: "220 GSM", cutting: "Raw Edge", print: "Sublimation" }, priceKs: 29000 },
+        { id: "price-mandalay-3", options: { size: "2XL", fit: "Oversized", color: "Black", gsm: "220 GSM", cutting: "Raw Edge", print: "Sublimation" }, priceKs: 31000 },
       ],
       status: "Draft",
       createdAt: daysAgo(2),
@@ -1007,7 +1151,7 @@ export function readAdminDemoData(): AdminDemoData {
       if (parsed && parsed.version === 1 && Array.isArray(parsed.orders) && Array.isArray(parsed.products)) {
         // Entries saved before the Posts module existed have no tshirtPosts key.
         cache = Array.isArray(parsed.tshirtPosts)
-          ? parsed
+          ? { ...parsed, tshirtPosts: parsed.tshirtPosts.map(normalizeTshirtPost) }
           : { ...parsed, tshirtPosts: createSeedTshirtPosts(Date.now()) };
         return cache;
       }

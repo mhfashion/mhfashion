@@ -10,10 +10,11 @@ import {
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import {
-  TSHIRT_POST_COLORS, TSHIRT_POST_SIZES, formatKs, formatAdminDate,
-  removeTshirtPost, tshirtPostDraftFrom, tshirtPostFromDraft, tshirtPostFromPriceKs,
-  upsertTshirtPost, validateTshirtPostDraft,
-  type AdminPostStatus, type AdminTshirtPost, type AdminTshirtPostDraft,
+  emptyTshirtPriceRow, formatAdminDate, formatKs, reconcileTshirtPriceRows,
+  removeTshirtPost, tshirtCombinationLabel, tshirtDraftAttributes, tshirtPostDraftFrom,
+  tshirtPostFromDraft, tshirtPostFromPriceKs, upsertTshirtPost, validateTshirtPostDraft,
+  type AdminPostStatus, type AdminTshirtPost, type AdminTshirtPostAttributeKey,
+  type AdminTshirtPostDraft,
 } from "@/lib/admin-demo-data";
 import { GUIDE_STARTER_CATALOG } from "@/lib/guide-starter";
 import { storePostSvg } from "@/lib/post-assets";
@@ -51,6 +52,7 @@ export default function AdminPosts() {
     && `${post.title} ${post.description}`.toLowerCase().includes(query)
   )), [data.tshirtPosts, statusFilter, query]);
   const guidePosts = GUIDE_STARTER_CATALOG.posts;
+  const activeAttributes = draft ? tshirtDraftAttributes(draft) : [];
 
   function startCreate() {
     setEditingId("new");
@@ -105,36 +107,52 @@ export default function AdminPosts() {
     }
   }
 
-  function toggleColor(name: string) {
+  // Every attribute or option change re-checks the price rows, so a row never keeps a value
+  // that is no longer offered and each combination stays complete.
+  function updateAttributes(next: AdminTshirtPostDraft["attributes"]) {
     if (!draft) return;
-    const palette = TSHIRT_POST_COLORS.find((color) => color.name === name);
-    if (!palette) return;
-    const ticked = draft.colors.some((color) => color.name === name);
+    const attributes = next.filter((attribute) => attribute.enabled && attribute.options.length > 0);
+    setDraft({ ...draft, attributes: next, prices: reconcileTshirtPriceRows(attributes, draft.prices) });
+  }
+
+  function toggleAttribute(key: AdminTshirtPostAttributeKey) {
+    if (!draft) return;
+    updateAttributes(draft.attributes.map((attribute) => (
+      attribute.key === key ? { ...attribute, enabled: !attribute.enabled } : attribute
+    )));
+  }
+
+  function toggleOption(key: AdminTshirtPostAttributeKey, option: string) {
+    if (!draft) return;
+    updateAttributes(draft.attributes.map((attribute) => {
+      if (attribute.key !== key) return attribute;
+      const ticked = attribute.options.includes(option);
+      const options = ticked ? attribute.options.filter((entry) => entry !== option) : [...attribute.options, option];
+      return { ...attribute, options: options.length ? options : attribute.options };
+    }));
+  }
+
+  function setRowOption(rowId: string, key: AdminTshirtPostAttributeKey, value: string) {
+    if (!draft) return;
     setDraft({
       ...draft,
-      colors: ticked
-        ? draft.colors.filter((color) => color.name !== name)
-        : [...draft.colors, { name: palette.name, hex: palette.hex, priceKs: "" }],
+      prices: draft.prices.map((row) => (row.id === rowId ? { ...row, options: { ...row.options, [key]: value } } : row)),
     });
   }
 
-  function setColorPrice(name: string, priceKs: string) {
+  function setRowPrice(rowId: string, priceKs: string) {
     if (!draft) return;
-    setDraft({ ...draft, colors: draft.colors.map((color) => (color.name === name ? { ...color, priceKs } : color)) });
+    setDraft({ ...draft, prices: draft.prices.map((row) => (row.id === rowId ? { ...row, priceKs } : row)) });
   }
 
-  function toggleSize(size: string) {
-    if (!draft) return;
-    const ticked = draft.sizes.some((entry) => entry.size === size);
-    setDraft({
-      ...draft,
-      sizes: ticked ? draft.sizes.filter((entry) => entry.size !== size) : [...draft.sizes, { size, priceKs: "" }],
-    });
+  function addRow() {
+    if (!draft || !activeAttributes.length) return;
+    setDraft({ ...draft, prices: [...draft.prices, emptyTshirtPriceRow(activeAttributes)] });
   }
 
-  function setSizePrice(size: string, priceKs: string) {
+  function removeRow(rowId: string) {
     if (!draft) return;
-    setDraft({ ...draft, sizes: draft.sizes.map((entry) => (entry.size === size ? { ...entry, priceKs } : entry)) });
+    setDraft({ ...draft, prices: draft.prices.filter((row) => row.id !== rowId) });
   }
 
   return (
@@ -212,13 +230,13 @@ export default function AdminPosts() {
 
           <AdminCard className="mt-3 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-left text-[10px]">
+              <table className="w-full min-w-[860px] text-left text-[10px]">
                 <thead className="bg-[#fafbfc] text-[9px] font-semibold text-[#828c99]">
                   <tr>
                     <th className="px-4 py-2.5 font-semibold sm:px-5">Post</th>
                     <th className="px-3 py-2.5 font-semibold">SVG</th>
-                    <th className="px-3 py-2.5 font-semibold">Colours</th>
-                    <th className="px-3 py-2.5 font-semibold">Sizes &amp; prices</th>
+                    <th className="px-3 py-2.5 font-semibold">Attributes</th>
+                    <th className="px-3 py-2.5 font-semibold">Price combinations</th>
                     <th className="px-3 py-2.5 font-semibold">Status</th>
                     <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Actions</th>
                   </tr>
@@ -243,23 +261,17 @@ export default function AdminPosts() {
                         ) : <span className="text-[9px] text-[#a2aab4]">No file</span>}
                       </td>
                       <td className="px-3 py-2.5">
-                        <span className="flex flex-wrap items-center gap-1">
-                          {post.colors.map((color) => (
-                            <span key={color.name} title={color.priceKs ? `${color.name} +${formatKs(color.priceKs)}` : color.name} className="flex items-center gap-1 rounded-full border border-[#e6e9ed] bg-white px-1.5 py-0.5 text-[8px] font-semibold text-[#4a5462]">
-                              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border border-black/10" style={{ background: color.hex }} />
-                              {color.name}
-                              {color.priceKs ? <span className="text-[#87909b]">+{formatKs(color.priceKs)}</span> : null}
+                        <span className="flex max-w-[260px] flex-wrap gap-1">
+                          {post.attributes.filter((attribute) => attribute.options.length).map((attribute) => (
+                            <span key={attribute.key} title={`${attribute.label}: ${attribute.options.join(", ")}`} className="rounded-full border border-[#e6e9ed] bg-white px-1.5 py-0.5 text-[8px] font-semibold text-[#4a5462]">
+                              {attribute.label}: {attribute.options.join(", ")}
                             </span>
                           ))}
                         </span>
                       </td>
                       <td className="px-3 py-2.5">
-                        <span className="flex flex-wrap gap-1">
-                          {post.sizes.map((size) => (
-                            <span key={size.size} className="rounded-md bg-[#f2f5f8] px-1.5 py-0.5 text-[8px] font-semibold text-[#4a5462]">{size.size} · {formatKs(size.priceKs)}</span>
-                          ))}
-                        </span>
-                        <span className="mt-1 block text-[8px] text-[#919aa6]">from {formatKs(tshirtPostFromPriceKs(post))}</span>
+                        <span className="block text-[9px] font-semibold text-[#4a5462]">{post.prices.length} combination{post.prices.length === 1 ? "" : "s"}</span>
+                        <span className="mt-0.5 block text-[8px] text-[#919aa6]">from {formatKs(tshirtPostFromPriceKs(post))}</span>
                       </td>
                       <td className="px-3 py-2.5"><AdminBadge tone={STATUS_TONES[post.status]}>{post.status}</AdminBadge></td>
                       <td className="px-4 py-2.5 text-right sm:px-5">
@@ -286,7 +298,7 @@ export default function AdminPosts() {
       <AdminDrawer
         open={Boolean(editingId && draft)}
         title={editingId === "new" ? "New T-shirt post" : `Edit ${editing?.title ?? "T-shirt post"}`}
-        description="Attach the print SVG, tick the colours and sizes you sell, then price each size by hand."
+        description="Attach the print SVG, tick the attributes you sell, then price each combination by hand."
         onClose={closeEditor}
         footer={(
           <div className="flex items-center justify-end gap-2">
@@ -311,7 +323,7 @@ export default function AdminPosts() {
               <AdminTextarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} rows={3} placeholder="Single-colour line art on combed cotton." aria-label="Post description" />
             </AdminField>
 
-            <AdminField label="SVG file" hint="Stored per post; R2 upload replaces the local copy once the bucket is live.">
+            <AdminField label="SVG file" hint="Stored per post; the R2 upload replaces the local copy once the bucket is live.">
               <div className="space-y-2">
                 <label className="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[#cfd6dd] bg-[#f8f9fb] px-3 text-[10px] font-semibold text-[#4a5462] hover:border-[#a5d972] hover:bg-white">
                   <FileUp size={14} />
@@ -342,55 +354,84 @@ export default function AdminPosts() {
               </div>
             </AdminField>
 
-            <AdminField label="Colours" hint="Tick every colour this post is sold in. The extra price is optional.">
-              <div className="grid grid-cols-2 gap-1.5" data-post-colors>
-                {TSHIRT_POST_COLORS.map((color) => {
-                  const ticked = draft.colors.find((entry) => entry.name === color.name);
-                  return (
-                    <div key={color.name} className={`rounded-lg border p-1.5 ${ticked ? "border-[#a5d972] bg-[#f6fbf1]" : "border-[#e6e9ed] bg-white"}`}>
-                      <label className="flex items-center gap-2 text-[10px] font-semibold text-[#3b4552]">
-                        <input type="checkbox" checked={Boolean(ticked)} onChange={() => toggleColor(color.name)} aria-label={`${color.name} colour`} data-post-color={color.name} className="h-3.5 w-3.5 accent-[#4cae22]" />
-                        <span aria-hidden="true" className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ background: color.hex }} />
-                        {color.name}
-                      </label>
-                      {ticked ? (
-                        <input
-                          value={ticked.priceKs}
-                          onChange={(event) => setColorPrice(color.name, event.target.value)}
-                          inputMode="numeric"
-                          placeholder="Extra Ks (optional)"
-                          aria-label={`${color.name} colour price`}
-                          className="mt-1.5 h-7 w-full rounded border border-[#e6e9ed] bg-white px-2 text-[9px] text-[#252c37] outline-none focus:border-[#a5d972]"
-                        />
-                      ) : null}
-                    </div>
-                  );
-                })}
+            <AdminField label="Attributes" hint="Tick the attributes and options this drop is sold in. Untick what does not vary.">
+              <div className="space-y-1.5" data-post-attributes>
+                {draft.attributes.map((attribute) => (
+                  <div key={attribute.key} className={`rounded-lg border p-1.5 ${attribute.enabled ? "border-[#a5d972] bg-[#f6fbf1]" : "border-[#e6e9ed] bg-white"}`}>
+                    <label className="flex items-center gap-2 text-[10px] font-bold text-[#3b4552]">
+                      <input
+                        type="checkbox"
+                        checked={attribute.enabled}
+                        onChange={() => toggleAttribute(attribute.key)}
+                        aria-label={`Use ${attribute.label}`}
+                        data-post-attribute={attribute.key}
+                        className="h-3.5 w-3.5 accent-[#4cae22]"
+                      />
+                      {attribute.label}
+                      <span className="ml-auto text-[8px] font-semibold text-[#919aa6]">{attribute.options.length} option{attribute.options.length === 1 ? "" : "s"}</span>
+                    </label>
+                    {attribute.enabled ? (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {attribute.options.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            data-post-option={`${attribute.key}:${option}`}
+                            onClick={() => toggleOption(attribute.key, option)}
+                            className="rounded-full border border-[#cfe3bd] bg-white px-1.5 py-0.5 text-[8px] font-semibold text-[#3f8c22] hover:border-[#c9424a] hover:text-[#c9424a]"
+                            title={`Remove ${option}`}
+                          >
+                            {option} ×
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
               </div>
             </AdminField>
 
-            <AdminField label="Sizes and prices" hint="Each ticked size keeps its own price. No base price is derived.">
-              <div className="space-y-1.5" data-post-sizes>
-                {TSHIRT_POST_SIZES.map((size) => {
-                  const ticked = draft.sizes.find((entry) => entry.size === size);
-                  return (
-                    <div key={size} className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${ticked ? "border-[#a5d972] bg-[#f6fbf1]" : "border-[#e6e9ed] bg-white"}`}>
-                      <label className="flex w-16 shrink-0 items-center gap-2 text-[10px] font-bold text-[#3b4552]">
-                        <input type="checkbox" checked={Boolean(ticked)} onChange={() => toggleSize(size)} aria-label={`${size} size`} data-post-size={size} className="h-3.5 w-3.5 accent-[#4cae22]" />
-                        {size}
-                      </label>
+            <AdminField
+              label="Price combinations"
+              hint="Each row is one full combination with its own hand-typed price. Combinations without a row are not sold."
+            >
+              <div className="space-y-1.5" data-post-prices>
+                {draft.prices.length ? draft.prices.map((row, index) => (
+                  <div key={row.id} data-post-price-row={row.id} className="rounded-lg border border-[#e6e9ed] bg-white p-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[8px] font-bold text-[#919aa6]">#{index + 1}</span>
+                      <button type="button" aria-label={`Remove combination ${index + 1}`} onClick={() => removeRow(row.id)} className="ml-auto rounded p-0.5 text-[#87909b] hover:bg-[#f2f5f8] hover:text-[#c9424a]"><X size={12} /></button>
+                    </div>
+                    <div className="mt-1 grid grid-cols-2 gap-1">
+                      {activeAttributes.map((attribute) => (
+                        <label key={attribute.key} className="min-w-0">
+                          <span className="block text-[7px] font-bold uppercase tracking-wide text-[#9aa3ad]">{attribute.label}</span>
+                          <select
+                            value={row.options[attribute.key] ?? attribute.options[0]}
+                            onChange={(event) => setRowOption(row.id, attribute.key, event.target.value)}
+                            aria-label={`Row ${index + 1} ${attribute.label}`}
+                            className="h-7 w-full min-w-0 rounded border border-[#e6e9ed] bg-white px-1 text-[9px] text-[#252c37] outline-none focus:border-[#a5d972]"
+                          >
+                            {attribute.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mt-1 flex items-center gap-1.5">
                       <input
-                        value={ticked?.priceKs ?? ""}
-                        onChange={(event) => setSizePrice(size, event.target.value)}
-                        disabled={!ticked}
+                        value={row.priceKs}
+                        onChange={(event) => setRowPrice(row.id, event.target.value)}
                         inputMode="numeric"
                         placeholder="Price in Ks"
-                        aria-label={`${size} size price`}
-                        className="h-7 min-w-0 flex-1 rounded border border-[#e6e9ed] bg-white px-2 text-[9px] text-[#252c37] outline-none focus:border-[#a5d972] disabled:bg-[#f7f9fb] disabled:text-[#a2aab4]"
+                        aria-label={`Row ${index + 1} price`}
+                        className="h-7 min-w-0 flex-1 rounded border border-[#e6e9ed] bg-white px-2 text-[9px] text-[#252c37] outline-none focus:border-[#a5d972]"
                       />
+                      <span className="shrink-0 text-[8px] text-[#919aa6]">{row.priceKs ? formatKs(Number(row.priceKs) || 0) : "—"}</span>
                     </div>
-                  );
-                })}
+                    <p className="mt-1 truncate text-[8px] text-[#87909b]">{tshirtCombinationLabel(activeAttributes, row.options)}</p>
+                  </div>
+                )) : <p className="rounded-lg bg-[#f7f9fb] px-2.5 py-2 text-[9px] text-[#87909b]">No combinations yet.</p>}
+                <AdminButton compact variant="secondary" onClick={addRow} aria-label="Add combination"><Plus size={12} /> Add combination</AdminButton>
               </div>
             </AdminField>
 
