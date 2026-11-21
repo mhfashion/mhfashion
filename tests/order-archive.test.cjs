@@ -85,8 +85,10 @@ test("the order archive is a valid ZIP with a file per design", () => {
   assert.ok(names.includes(`print-sheet-${stem}.html`));
   assert.ok(names.includes(`invoice-${stem}.html`), "the customer receipt is in the bundle");
   assert.ok(names.includes(`print-spec-${stem}.csv`));
+  assert.ok(names.includes(`measurements-${stem}.csv`), "every layer measurement is in the bundle");
   assert.ok(names.includes("manifest.json"));
   assert.ok(names.includes(`delivery-${stem}.json`), "the MH Delivery quote request is in the bundle");
+  assert.ok(names.includes("README.txt"), "the bundle explains itself");
 
   const designs = print.orderDesignFiles(order);
   assert.ok(designs.length > 0);
@@ -154,8 +156,10 @@ test("an order without designs still archives its sheet and manifest", () => {
     `print-sheet-${print.orderFileStem(bare)}.html`,
     `invoice-${print.orderFileStem(bare)}.html`,
     `print-spec-${print.orderFileStem(bare)}.csv`,
+    `measurements-${print.orderFileStem(bare)}.csv`,
     `delivery-${print.orderFileStem(bare)}.json`,
     "manifest.json",
+    "README.txt",
   ].sort());
   const manifest = JSON.parse(files.find((file) => file.name === "manifest.json").content);
   assert.equal(manifest.items[0].design, null);
@@ -181,4 +185,40 @@ test("the receipt shows what was bought and leaves delivery to MH Delivery", () 
     assert.ok(html.includes(shipTo.phone), "the phone number is on the receipt");
     assert.ok(html.includes(shipTo.township), "the township is on the receipt");
   }
+});
+
+test("the measurements CSV carries one row per layer, in centimetres", () => {
+  const order = data.orders.find((entry) => entry.items.some((item) => item.design && item.design.layers.length > 0));
+  assert.ok(order, "the demo data has a designed order");
+  const rows = print.orderMeasurementRows(order);
+  assert.deepEqual(rows[0], [...print.ORDER_MEASUREMENT_COLUMNS]);
+  const designed = order.items.filter((item) => item.design && item.design.layers.length > 0);
+  const layerCount = designed.reduce((total, item) => total + item.design.layers.length, 0);
+  const blankLines = order.items.length - designed.length;
+  assert.equal(rows.length - 1, layerCount + blankLines, "every layer gets a row, and undecorated lines get one");
+
+  const first = designed[0].design;
+  const row = rows.find((entry) => entry[14] === first.layers[0].name);
+  const size = admin.designLayerSize(first.layers[0], first.unitsPerCm);
+  assert.equal(row[9], `${first.printWidthCm} × ${first.printHeightCm}`);
+  assert.equal(row[15], first.layers[0].kind);
+  assert.equal(row[16], size.xCm);
+  assert.equal(row[17], size.yCm);
+  assert.equal(row[18], size.widthCm);
+  assert.equal(row[19], size.heightCm);
+  assert.equal(row[20], first.layers[0].rotation);
+  assert.equal(row[21], first.layers[0].scale);
+});
+
+test("the bundle README names every file it ships", () => {
+  const order = data.orders.find((entry) => entry.items.some((item) => item.design));
+  const readme = print.buildArchiveReadme(order);
+  const stem = print.orderFileStem(order);
+  for (const name of ["print-sheet", "invoice", "print-spec", "measurements", "manifest.json", "delivery"]) {
+    assert.ok(readme.includes(name), `README misses ${name}`);
+  }
+  assert.ok(readme.includes(`order ${order.id}`));
+  assert.ok(readme.includes("designs/"));
+  assert.ok(readme.includes("Quoted") === false, "the README sends the fee question to MH Delivery");
+  assert.ok(readme.includes("MH Delivery"));
 });

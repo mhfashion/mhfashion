@@ -339,14 +339,96 @@ export function orderArchiveEntries(order: AdminOrder): ZipEntry[] {
     { name: `print-sheet-${orderFileStem(order)}.html`, data: buildOrderPrintSheetHtml(order) },
     { name: `invoice-${orderFileStem(order)}.html`, data: buildOrderInvoiceHtml(order) },
     { name: `print-spec-${orderFileStem(order)}.csv`, data: orderPrintRows(order).map((row) => row.map(csvCell).join(",")).join("\r\n") },
+    { name: `measurements-${orderFileStem(order)}.csv`, data: measurementCsv(order) },
     { name: "manifest.json", data: JSON.stringify(orderManifest(order), null, 2) },
     { name: deliveryFileName(order), data: deliveryQuoteJson(order) },
+    { name: "README.txt", data: buildArchiveReadme(order) },
   ];
   for (const design of designs) {
     entries.push({ name: `designs/${design.fileName}`, data: design.svg });
     entries.push({ name: `designs/${design.fileName.replace(/\.svg$/i, "")}-mockup.svg`, data: buildMockupDiagramSvg(design) });
   }
   return entries;
+}
+
+/**
+ * Every measurement in the order, one row per design layer: where the print area sits on the
+ * garment, how big it is, and the exact position, size, rotation and scale of each layer inside
+ * it. The sheet shows these on paper; this CSV is the same numbers for a spreadsheet or a RIP.
+ */
+export const ORDER_MEASUREMENT_COLUMNS = [
+  "Order", "Line", "Product", "Colour", "Size", "Quantity",
+  "Design", "Design file", "Placement", "Print area (cm)", "Units/cm", "Print size (cm)",
+  "Mockup garment (cm)", "Print area at (cm)",
+  "Layer", "Type", "X (cm)", "Y (cm)", "Width (cm)", "Height (cm)", "Rotation (deg)", "Scale",
+] as const;
+
+export function orderMeasurementRows(order: AdminOrder): (string | number)[][] {
+  const rows: (string | number)[][] = [[...ORDER_MEASUREMENT_COLUMNS]];
+  order.items.forEach((item, index) => {
+    const design = item.design;
+    const base: (string | number)[] = [
+      order.id, index + 1, item.name, item.color, item.size, item.quantity,
+      design?.name ?? "—", design?.fileName ?? "—", design?.placement ?? "—",
+      design ? `${design.printWidthCm} × ${design.printHeightCm}` : "—",
+      design?.unitsPerCm ?? "—",
+      design ? `${design.printWidthCm} × ${design.printHeightCm}` : "—",
+      design ? `${design.mockup.garmentWidthCm} × ${design.mockup.garmentHeightCm}` : "—",
+      design ? `${design.mockup.printAreaXCm}, ${design.mockup.printAreaYCm}` : "—",
+    ];
+    if (!design || design.layers.length === 0) {
+      rows.push([...base, "—", "—", "—", "—", "—", "—", "—", "—"]);
+      return;
+    }
+    const units = design.unitsPerCm || DESIGN_UNITS_PER_CM;
+    for (const layer of design.layers) {
+      const size = designLayerSize(layer, units);
+      rows.push([...base, layer.name, layer.kind, size.xCm, size.yCm, size.widthCm, size.heightCm, layer.rotation, layer.scale]);
+    }
+  });
+  return rows;
+}
+
+function measurementCsv(order: AdminOrder): string {
+  return orderMeasurementRows(order).map((row) => row.map(csvCell).join(",")).join("\r\n");
+}
+
+/** Plain-text index so whoever opens the ZIP knows what each file is for. */
+export function buildArchiveReadme(order: AdminOrder): string {
+  const stem = orderFileStem(order);
+  const designs = orderDesignFiles(order);
+  const lines = order.items.length;
+  const units = orderUnits(order);
+  return [
+    `MH Fashion — print files for order ${order.id}`,
+    `Placed ${formatAdminDateTime(order.placedAt)} · ${order.stage} · ${order.payment}`,
+    `${lines} line${lines === 1 ? "" : "s"} · ${units} unit${units === 1 ? "" : "s"} · ${formatKs(orderTotalKs(order))}`,
+    "",
+    "What is in this ZIP",
+    "-------------------",
+    `print-sheet-${stem}.html    The press sheet: every line, its spec, the artwork and the layer layout.`,
+    `invoice-${stem}.html         The customer receipt. Open it and print to PDF.`,
+    `print-spec-${stem}.csv       One row per order line: product, size, colour, print method, design.`,
+    `measurements-${stem}.csv     One row per design layer: print area, X/Y, size, rotation, scale in cm.`,
+    "manifest.json                The same data as JSON, with every file path inside this ZIP.",
+    `delivery-${stem}.json        The MH Delivery quote request (customer, address, parcel weight).`,
+    "",
+    "designs/",
+    `  ${designs.length} file${designs.length === 1 ? "" : "s"}: each design as an SVG at print size, plus a`,
+    "  -mockup.svg diagram showing where it sits on the garment.",
+    "",
+    "How to use the SVGs",
+    "-------------------",
+    'Open in Illustrator, Inkscape or a RIP. Each SVG is sized in cm (width="...cm"), so it prints',
+    "at the measured size without scaling. Text is drawn as text: convert to outlines if your RIP",
+    "does not have the font.",
+    "",
+    "Delivery",
+    "--------",
+    "No delivery fee is in this bundle. Send delivery-*.json to MH Delivery; the fee they quote is",
+    "what the customer pays.",
+    "",
+  ].join("\n");
 }
 
 function csvCell(value: string | number): string {

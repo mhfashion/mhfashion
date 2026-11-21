@@ -114,7 +114,8 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Size never enters a look key; extensions are tried in the order `webp, png, jpg`.
 
 ## Print bundle and delivery (`lib/order-print.ts`, `lib/delivery.ts`)
-- `print-files.zip` carries `print-sheet-<id>.html` (press), `invoice-<id>.html` (customer receipt, A5), `print-spec-<id>.csv`, `manifest.json`, `delivery-<id>.json` and `designs/*.svg` + `designs/*-mockup.svg`. Adding an entry means updating the exact-list assertion in `tests/order-archive.test.cjs`.
+- `print-files.zip` carries `README.txt`, `print-sheet-<id>.html` (press), `invoice-<id>.html` (customer receipt, A5), `print-spec-<id>.csv` (one row per line), `measurements-<id>.csv` (one row per design layer, cm), `manifest.json`, `delivery-<id>.json` and `designs/*.svg` + `designs/*-mockup.svg`. `Doc/PRINT-BUNDLE.md` lists every column. Adding an entry means updating the exact-list assertion in `tests/order-archive.test.cjs`.
+- `orderMeasurementRows()` is the single source of the layer measurements: print area, units/cm, layer X/Y/width/height in cm, rotation and scale. The sheet, the CSV and the manifest all read the same `designLayerSize()` numbers, so they cannot drift.
 - The receipt and the print sheet are self-contained HTML: they print through the browser's own dialog (Ctrl+P → save as PDF), so there is no PDF library and no font to ship.
 - The receipt never invents a delivery fee — the line reads "Quoted by MH Delivery" until MH Delivery returns a price.
 - `buildDeliveryQuoteRequest(order)` is the JSON MH Delivery prices from: consignee name / phone / email / address line / township / city, per-item size + colour + quantity + weight, parcel totals and the COD amount. `deliveryQuoteJson` / `downloadDeliveryJson` are the file, and `Doc/MH-DELIVERY.md` is the contract. Weights come from `UNIT_WEIGHT_GRAMS`; change them when the courier publishes real ones.

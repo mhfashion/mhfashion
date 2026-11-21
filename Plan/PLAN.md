@@ -2780,3 +2780,7 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 - `invoice-<id>.html` joins the bundle: an A5 receipt the browser prints to PDF, with a "Quoted by MH Delivery" line instead of an invented fee.
 - Drawer now has **Delivery JSON** and **Receipt** buttons next to the ZIP and print sheet.
 - `mockups/3d/` + `models/<slug>.glb` are reserved in R2 for the 3D mockup viewer, with the look keys and print-area convention documented.
+
+### Print bundle completeness
+- The ZIP is now self-describing: `README.txt` indexes it, `measurements-<id>.csv` gives one row per design layer (print area, units/cm, X/Y, width/height in cm, rotation, scale), and `Doc/PRINT-BUNDLE.md` explains every column for the press.
+- Bundle order: README, press sheet, receipt, line CSV, measurements CSV, manifest, delivery JSON, then `designs/`.
