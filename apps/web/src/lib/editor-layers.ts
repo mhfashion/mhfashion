@@ -407,6 +407,10 @@ export type EditorTextLineMetrics = {
   inkAscent: number;
   /** Ink descent: baseline down to the bottom of the painted glyphs (descenders). */
   inkDescent: number;
+  /** Ink left edge relative to the layout origin; negative when the glyphs lean left of it (italic). */
+  inkLeft: number;
+  /** Ink right edge relative to the layout origin; a trailing letter-space adds no ink. */
+  inkRight: number;
 };
 
 // Character advance varies a lot with the glyph (a bold "M" is ~0.99em, a lowercase
@@ -416,13 +420,16 @@ function fallbackTextLineMetrics(text: EditorTextContent, line: string): EditorT
   const glyphs = Math.max(1, line.length);
   const hasInk = line.trim().length > 0;
   const spacing = text.letterSpacing ?? 0;
+  const width = glyphs * text.fontSize * 0.58 + Math.max(0, glyphs - 1) * spacing;
   return {
-    width: glyphs * text.fontSize * 0.58 + Math.max(0, glyphs - 1) * spacing,
+    width,
     advance: glyphs * text.fontSize * 0.58 + glyphs * spacing,
     ascent: text.fontSize * 0.9,
     descent: text.fontSize * 0.24,
     inkAscent: hasInk ? text.fontSize * 0.72 : 0,
     inkDescent: hasInk ? text.fontSize * 0.2 : 0,
+    inkLeft: 0,
+    inkRight: width,
   };
 }
 
@@ -477,6 +484,12 @@ export function editorTextLineMetrics(text: EditorTextContent, line: string): Ed
   const supportsFontMetrics = measured.fontBoundingBoxAscent > 0 || measured.fontBoundingBoxDescent > 0;
   const inkAscent = hasInk ? (supportsFontMetrics ? measured.actualBoundingBoxAscent : fallback.inkAscent) : 0;
   const inkDescent = hasInk ? (supportsFontMetrics ? measured.actualBoundingBoxDescent : fallback.inkDescent) : 0;
+  // Italic glyphs lean past the advance box, so the painted ink can start left of the layout
+  // origin (`actualBoundingBoxLeft` is positive there). The advance width alone therefore
+  // cropped the outline on italic text. Keep the true ink edges so the box follows the paint.
+  // SVG adds `letter-spacing` after every glyph, which shifts the last glyph's ink right.
+  const hasInkExtents = hasInk && Number.isFinite(measured.actualBoundingBoxLeft) && Number.isFinite(measured.actualBoundingBoxRight) && measured.actualBoundingBoxRight > 0;
+  const trailingSpacing = Math.max(0, line.length - 1) * spacing;
   return {
     width: Number.isFinite(width) && width > 0 ? width : fallback.width,
     advance: Number.isFinite(advance) && advance > 0 ? advance : fallback.advance,
@@ -484,6 +497,8 @@ export function editorTextLineMetrics(text: EditorTextContent, line: string): Ed
     descent,
     inkAscent,
     inkDescent,
+    inkLeft: hasInkExtents ? Math.min(0, -measured.actualBoundingBoxLeft) : 0,
+    inkRight: hasInkExtents ? measured.actualBoundingBoxRight + trailingSpacing : Math.max(0, width),
   };
 }
 
@@ -499,11 +514,11 @@ export function editorTextMetrics(text: EditorTextContent) {
   // Each line is anchored on its own advance, so the ink can start left of `text.x` (centred)
   // or end exactly on it (right-aligned). Only lines with ink matter for the outline.
   const align = text.textAlign ?? "center";
-  const inkLefts = lineMetrics.map((metrics) => {
-    const anchor = align === "left" ? 0 : align === "right" ? -metrics.advance : -metrics.advance / 2;
-    return anchor;
-  });
-  const inkRights = lineMetrics.map((metrics, index) => inkLefts[index] + metrics.width);
+  // The line's layout origin: where its advance starts, relative to `text.x`.
+  const lineOrigins = lineMetrics.map((metrics) => (align === "left" ? 0 : align === "right" ? -metrics.advance : -metrics.advance / 2));
+  // Ink is measured from that origin, not from the advance: italic glyphs lean past it.
+  const inkLefts = lineMetrics.map((metrics, index) => lineOrigins[index] + metrics.inkLeft);
+  const inkRights = lineMetrics.map((metrics, index) => lineOrigins[index] + metrics.inkRight);
   const ascent = Math.max(...lineMetrics.map((metrics) => metrics.ascent));
   const descent = Math.max(...lineMetrics.map((metrics) => metrics.descent));
   // The transform box must hug the painted glyphs, so union each line's ink box around its

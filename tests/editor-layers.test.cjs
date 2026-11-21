@@ -1011,3 +1011,45 @@ test("duplicating a gradient layer deep-copies its stops", () => {
   assert.notEqual(duplicated.gradient.stops, layer.gradient.stops, "the stop array is a new array");
   assert.notEqual(duplicated.gradient.stops[0], layer.gradient.stops[0], "each stop is a new object");
 });
+
+test("italic ink leans left of the layout origin, so the box widens to contain it", () => {
+  // Italic glyphs slant past their advance box: Chrome reports a positive
+  // `actualBoundingBoxLeft`, meaning the paint starts left of the anchor. Measuring only the
+  // advance width cropped the outline through the first glyph of italic text, which is the
+  // reported Free Transform inaccuracy.
+  const single = { value: "ffl", x: 500, y: 600, fontSize: 100, color: "#000000", textAlign: "center" };
+  const previousDocument = globalThis.document;
+  globalThis.document = {
+    createElement: () => ({
+      getContext: () => ({
+        font: "",
+        measureText: (line) => ({
+          width: line.length * 60,
+          fontBoundingBoxAscent: 90,
+          fontBoundingBoxDescent: 24,
+          actualBoundingBoxAscent: 74,
+          actualBoundingBoxDescent: 0,
+          // The paint overhangs the anchor by 12 units on the left and 8 on the right.
+          actualBoundingBoxLeft: 12,
+          actualBoundingBoxRight: line.length * 60 + 8,
+        }),
+      }),
+    }),
+  };
+  resetEditorTextMeasurementCache();
+  try {
+    const upright = editorTextLineMetrics(single, "ffl");
+    assert.ok(upright.inkLeft < 0, "the ink starts left of the layout origin");
+    assert.ok(upright.inkRight > upright.advance / 2, "the ink reaches past the advance midpoint");
+
+    const bounds = editorTextCanvasBounds(single);
+    // Centred: the origin sits half an advance left of `text.x`, then the ink overhangs it.
+    const advance = upright.advance;
+    assert.ok(bounds.width > advance, "the box is wider than the advance, so no ink is cropped");
+    assert.equal(bounds.x, single.x - advance / 2 - 12, "the box starts at the leftmost painted ink");
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+    resetEditorTextMeasurementCache();
+  }
+});
