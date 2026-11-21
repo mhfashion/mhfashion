@@ -1,146 +1,261 @@
-# MH Fashion Editor — how it behaves
+# MH Fashion Editor — how it works
 
-Documentation for the editor at `/create`, as built on 2026-11-21 (commit `571d60b`). The plan and
-roadmap live in `Plan/EDITOR_PLAN.md`; the Kittl comparison lives in
-`Doc/KITTL_CANVAS_EDITOR_AUDIT.md`. This file describes what the code does, so a maintainer can change
-it without breaking the contracts in §9.
+This document describes the editor at `/create` exactly as the code behaves today. It is written from
+the source, not from earlier plans: every section names the file that implements it. What the editor
+does not do is listed in `Plan/EDITOR_PLAN.md` §5, not here.
 
-## 1. Shape of the thing
+## 1. Layout
+
+`app/create/page.tsx` renders three stacked parts inside one screen-height column:
+
+1. the site `Header`,
+2. `EditorHeaderBar2` — product, GSM, colour, size, save, buy and the live price,
+3. `KittlCanvas` (the file name in the code) — everything else: the canvas, the mockups, the tool bar,
+   the Edit sidebar, the Layers box and the Adjustment box.
+
+The canvas area does not scroll; panels open over it. On a phone the bottom navigation keeps its real
+height, so the editor never sits under it.
+
+## 2. Canvas and workspace
+
+- The print canvas is 4500 × 5400 px at 300 dpi, transparent, and starts blank (`lib/editor-canvas-spec.ts`).
+  It never holds placeholder artwork.
+- Around it is a pasteboard (`aria-label="Artwork pasteboard"`) where a layer can be parked outside the
+  print area. A layer can travel up to 2400 units from the canvas (`CANVAS_LAYER_TRAVEL_LIMIT`).
+- Drawing tools stay on the canvas; moving, resizing and rotating a layer do not, so a layer can be
+  dragged partly or fully outside and still be grabbed.
+- `Ctrl`/`Cmd` + wheel zooms between 0.25× and 3×; a plain wheel pans. `+`, `−` and `Reset view` do the
+  same from the buttons in the workspace corner.
+- Holding Space and dragging pans, whichever tool is active.
+- A grid can be shown over the canvas from the canvas options menu (the small circle on the canvas edge).
+
+## 3. Tools
+
+`components/EditorToolsBar.tsx` shows nine tools, in this order:
+
+| Tool | What it does |
+|---|---|
+| Move | selects a layer or group and drags it; arrow keys nudge the selection |
+| Hand | drags the view |
+| Pencil | freehand line drawing at the pen width |
+| Pen | click to place anchors, drag to pull a Bézier handle, Enter finishes, Escape discards |
+| Text | click to place a text box and type in it |
+| Brush | freehand painting with the brush settings |
+| Eraser | erases with the brush nib, or deletes a whole stroke in stroke mode |
+| Shape | drags out a shape from the selected preset |
+| Gradient | drags out the gradient axis |
+
+The bar also carries the foreground and background colour swatches with a swap button, the shape
+presets, and Undo / Redo. It collapses to a small bar, and on a phone it becomes a compact bar at the
+bottom centre with ~44 px targets.
+
+Tool settings are kept in `EditorToolOptions` and normalised on load, so a partial or stale settings
+object cannot break a tool.
+
+## 4. Layers
+
+A layer (`EditorArtworkLayer`, `lib/editor-layers.ts`) has an id, a name, a kind, visibility, lock,
+opacity, fill opacity, blend mode, a group id, a link id, and the content for its kind:
+
+| Kind | Content |
+|---|---|
+| `artwork` | freehand strokes plus eraser passes |
+| `text` | the text content object |
+| `shape` | one or more SVG paths with a style |
+| `image` | the image source and its adjustment values |
+| `gradient` | gradient type, stops and axis |
+
+The Layers box (`components/EditorLayersPanel.tsx`) is the list of layers:
+
+- Rows can be dragged to any position in the stack.
+- A group is a folder row with its children underneath; a child can still be selected and edited on its
+  own, and moving the folder moves the group.
+- Each row has visibility, lock, mask, name (renamed in place) and an options menu.
+- The header has Opacity and Fill number inputs, a blend mode control (normal, multiply, screen,
+  overlay), Group / Ungroup, Link / Unlink, and mask add/toggle.
+- Selecting a mask thumbnail switches the brush to paint that mask instead of artwork.
+- Thumbnails show the layer as painted, including erasures, masks, text effects and gradient fills.
+
+Linked layers move and resize together; links are separate from groups.
+
+Masks are non-destructive: a mask stores its own strokes, black hides and white reveals, and the artwork
+underneath is never changed, so a mask can be edited or removed later.
+
+Erasures are a second, subtractive channel on artwork layers; they are painted as a mask in the canvas
+and in the thumbnail, and a button clears them.
+
+## 5. Selection and transform
+
+- The selection box is computed from the content: the union of a group's children, the painted text plus
+  its effects and decorations, a shape's paths, or an image's box.
+- Eight square handles resize; a round handle below the box rotates. Handle hit areas scale with the box
+  (`min(15, max(5, shortestSide * 0.3))` px) and the rotate handle sits far enough below to never overlap
+  the bottom-centre handle.
+- Pressing a layer selects and drags it. Pressing the selection box drags the current selection, unless
+  another layer sits under the pointer, in which case that layer is picked.
+- With the Move tool, arrow keys nudge the selection by 1 unit, or 10 with Shift.
+- Rotation snaps to 15° while snapping is on.
+
+## 6. Text
+
+Text is added with the Text tool, with `Add Text` in the Edit sidebar, or by adding a text layer from a
+design; each one creates a text layer and opens the inline editor.
+
+- Typing happens in a text box drawn over the canvas, aligned to the drawn baseline. It grows with every
+  wrapped line instead of scrolling the caret out of view.
+- While typing, the workspace pans so the caret line stays visible.
+- Enter adds a line, Escape stops editing. Choosing another tool also ends editing, and re-entering a
+  text layer puts the caret at the end of the text.
+- Text wraps to the layer's `wrapWidth` (880 units for new text). Text saved before wrapping existed has
+  no width and stays unwrapped.
+- The Adjustment box styles the whole layer: font family (with search and recent fonts), size, colour,
+  weight, italic, underline, alignment, letter-spacing and line height.
+- Effects are a stack: shadow, outline, glow, offset, echo, extrude and stripe. Each can be added,
+  enabled or disabled, moved up or down, removed, and given its own colour, offset, blur or width.
+- Decorations: a horizontal line, a colour cut or an oblique cut, each with its own colour and width.
+- Transform presets: plain, arch and wave are painted; circle is offered but paints nothing (see
+  `Plan/EDITOR_PLAN.md` §5).
+- The transform box follows the painted glyphs plus effects and decorations, so it never cuts through the
+  artwork.
+
+## 7. Shapes
+
+Nine presets: rectangle, rounded rectangle, ellipse, triangle, diamond, line, arrow, star, hexagon.
+
+- Style: stroke colour and width, fill on/off and colour, line style (solid, dash, dot), corner rounding,
+  drop shadow and glow.
+- Shape Builder: merge, subtract and intersect. It operates on the first two axis-aligned rectangles of
+  the layer.
+- New shapes are added as paths on one shape layer rather than a new layer per shape.
+
+## 8. Pen
+
+- Click places a corner anchor, click-drag pulls a Bézier handle, and clicking near the first anchor
+  closes the path.
+- Enter finishes an open path; Escape discards the path being drawn.
+- Once the path exists, anchors and handles can be dragged (Alt breaks handle symmetry), a node can be
+  inserted on the path, and a node can be removed.
+- Pen width and cap (round, butt, square) come from the tool options.
+
+## 9. Brush and eraser
+
+- Brush: size, hardness, flow, spacing, shape (round, square) and blend (normal, multiply, screen), with
+  presets in the tool options.
+- Eraser: brush mode erases with the nib, stroke mode removes a whole stroke; both are stored as erasure
+  passes on the layer, so they can be cleared.
+- Strokes are smoothed as they are drawn and stored as points on the layer.
+
+## 10. Gradients
+
+- Types: linear, radial, angle, reflected, diamond.
+- Up to 8 stops, each with colour and opacity, plus presets.
+- The gradient axis is drawn on the canvas and can be re-dragged; the Adjustment box also exposes the
+  start and end coordinates.
+- The gradient is stored on a gradient layer and previewed in its Layers thumbnail.
+
+## 11. Images
+
+- Upload from the Edit sidebar or with the upload control. An upload is compressed in the browser to at
+  most 2 MB and 2000 px on its long edge before it becomes a layer.
+- The Adjustment box offers photo adjustments in nine groups: basic tone, curves, colour mixer, colour
+  grading, levels, selective colour, channel mixers, detail and effects. Auto and reset buttons are
+  provided per group.
+- Values are stored on the layer as instructions, so the photo itself is never overwritten.
+- An image layer can carry a mask like any other layer.
+
+## 12. Mockups
+
+- Front and Back mockups are separate boxes on the pasteboard, each connected to the canvas by a wire.
+  They are added from the canvas options menu; the Back mockup is not offered for the Phone product.
+- Each mockup shows the artwork mirrored from the canvas and clipped to the print area, so a layer
+  dragged off the canvas disappears from the mockup exactly as it would print.
+- Each mockup's artwork overlay can be moved and resized independently, and shows its pixel size while
+  selected.
+- The large artwork tier (3500 px) is shared: either mockup can claim it by growing past 1500 px, the
+  other is then capped at 1500 px, and returning to 1500 px or removing the mockup releases it.
+
+## 13. Header bar
+
+`components/EditorHeaderBar2.tsx` holds the order-facing controls:
+
+- Product: T-Shirt and Phone selectable; Hoodie, Cup, Kids and Bag are shown but disabled.
+- GSM: 160, 180, 200 and 240.
+- Colour and size: selectable, with the colour swatch shown in the trigger.
+- The price updates as soon as an option changes.
+- Save and Buy are present but disabled: the editor has no save or order hand-off yet.
+
+## 14. Edit sidebar
+
+`components/EditorEditSidebar.tsx` starts as a narrow icon rail and opens a panel for the selected
+section:
+
+| Section | Contents |
+|---|---|
+| Designs | MH Fashion designs, each added to the canvas as layers |
+| Elements | the individual layers of those designs as thumbnail cards, plus a search field |
+| Text | `Add Text` and the text layers that exist in the designs |
+| Upload | upload an image to the canvas, and the images already uploaded |
+| Image Create | a prompt field for generated images |
+
+The rail stays visible while a panel is open, and choosing another rail item swaps the panel content.
+Anything added here also appears in the Layers box.
+
+The design library is a local placeholder until the storage endpoint exists
+(`DESIGN_LIBRARY_STATUS = "pending-r2-endpoint"` in `lib/editor-design-library.ts`).
+
+## 15. Undo and state
+
+- Undo and Redo keep the last 30 layer-array snapshots and cover layer changes: add, delete, move,
+  resize, style, reorder, group and mask.
+- Viewport zoom, pan and mockup positions are not in the history.
+- Editor state lives in memory only: reloading `/create` starts a blank canvas. Nothing is written to
+  `localStorage`, `sessionStorage` or the database from this route.
+
+## 16. Phone
+
+- Touch targets are about 44 px and stay that size at any zoom.
+- `Pan view` mode: one finger pans the whole view; `+`, `−` and `Reset view` change the view only.
+- With pan off, drawing, dragging nodes, moving mockups, moving the artwork and corner resizing all work.
+- A second finger cannot take over a gesture the first finger started.
+- The Edit sidebar and the Layers box close before they can overlap at phone width.
+- Verified with browser touch emulation at 390×844 and in landscape; not yet checked on a physical phone.
+
+## 17. Keyboard and pointer
+
+| Input | Result |
+|---|---|
+| Space + drag | pan the view |
+| Middle-button drag | pan the view |
+| Ctrl/Cmd + wheel | zoom |
+| Wheel | pan |
+| Arrow keys (Move tool) | nudge the selection 1 unit; 10 with Shift |
+| Enter (Pen) | finish the open path |
+| Escape (Pen) | discard the path being drawn |
+| Enter (text) | new line |
+| Escape (text) | stop editing |
+| Escape (menus) | close the menu |
+
+There are no global undo/redo shortcuts; use the buttons in the tool bar.
+
+## 18. Tests
 
 ```
-app/create/page.tsx          shared site Header + EditorHeaderBar2 + KittlCanvas
-  components/KittlCanvas.tsx everything interactive: tools, selection, layers,
-                             mockups, undo, the inline text editor
-  components/EditorLayersPanel.tsx     Photoshop-style Layers box
-  components/EditorAdjustmentsPanel.tsx the per-layer Adjustment box
-  components/EditorToolsBar.tsx        tool rail (desktop) / bottom bar (phone)
-  components/EditorEditSidebar.tsx     Designs, Elements, Text, Upload, Image Create
-  components/EditorArtworkLayers.tsx   paints layers as SVG
-  components/EditorLayerPreview.tsx    paints layer thumbnails
-  components/MockupArtwork.tsx         mirrors the artwork onto a mockup
-  lib/editor-layers.ts         the layer model, text metrics, shapes, gradients
-  lib/editor-pen-path.ts       pen anchors and path data
-  lib/editor-transform.ts      resize and rotation maths
-```
-
-All editor state is React state inside `KittlCanvas`. Nothing is saved: no `localStorage`, no
-`sessionStorage`, no Supabase write. Reloading `/create` starts a blank 4500 × 5400 px canvas.
-
-## 2. Canvas
-
-- Print canvas: 4500 × 5400 px at 300 dpi, transparent (`lib/editor-canvas-spec.ts`).
-- Artwork coordinates are canvas pixels. The order record stores `unitsPerCm` so the press can convert a
-  layer to centimetres; keep the two in step.
-- The pasteboard around the canvas is where a layer can be parked off-print. Drawing tools clamp to the
-  canvas; move, resize and rotate do not (`toCanvasPointUnclamped`), and `CANVAS_LAYER_TRAVEL_LIMIT`
-  (2400 units) stops a layer being dragged out of reach.
-
-## 3. Layers
-
-`EditorArtworkLayer` holds `id`, `name`, `kind` (`artwork` | `text` | `shape` | `image` | `gradient`),
-`visible`, `locked`, `opacity`, `fillOpacity`, `blendMode`, `groupId`, `linkId`, `strokes`, `erasures`,
-`mask`, and the per-kind content object.
-
-- **Groups** behave like folders: a header row with nested children, children still individually
-  selectable, transforms on the folder apply to the whole group.
-- **Links** are explicit transform membership, separate from groups: linked layers move and resize
-  together.
-- **Masks** are non-destructive. `mask` holds brush strokes; black hides, white reveals; the artwork
-  underneath is never changed, so a mask can be edited or removed later. Selecting the mask thumbnail
-  makes the brush paint the mask with the editor's foreground/background colour.
-- **Erasures** are a second, subtractive channel over `strokes`; they are painted as an SVG mask in both
-  the canvas and the thumbnail.
-- Layer edits are pure functions in `lib/editor-layers.ts` (`reorderEditorLayer`,
-  `moveEditorLayerToIndex`, `groupEditorLayers`, `linkEditorLayers`, `duplicateEditorLayer`,
-  `deleteEditorLayer`, …). Keep them pure: the undo stack stores whole layer arrays.
-
-## 4. Selection and transform
-
-- The selection box is computed from the selected content: the union of a group's children, the ink box
-  of a text layer (plus effects and decorations), the geometry of a shape, the box of an image.
-- Eight resize handles plus a rotate handle. Handle hit radius is `min(15, max(5, shortestSide * 0.3))`
-  px and the rotate handle sits `max(58, (handleR + rotateR + 10) / unitScale)` below the box, so a small
-  text box can still be moved and the rotate handle never overlaps the bottom-centre handle.
-- A press picks the layer under the pointer (`hitTestLayerAt`). The selection box is a solid rect, so it
-  re-picks a different layer when pressed instead of swallowing the press.
-- Rotation snaps to 15° when snapping is on.
-
-## 5. Text
-
-- `EditorTextContent` is per layer: string, font, size, weight, italic, underline, alignment,
-  letter-spacing, line-height, colour, `wrapWidth`, effects, decoration, `textTransform`.
-- Painted lines come from `editorTextLines`: split on `\n`, then soft-wrap to `wrapWidth`. Never rebuild
-  lines from `value.split("\n")`; that is how a long line used to run off the canvas.
-- `editorTextLineMetrics` measures the layout box and the ink box separately, and
-  `editorTextMetrics` unions each line's ink around its own origin. The transform box uses the ink, which
-  is why an italic or a trailing letter-space no longer gets clipped.
-- Effects (`shadow`, `outline`, `glow`, `offset`, `echo`, `extrude`, `stripe`) paint one extra copy of
-  the text each, in list order; `editorTextPaintPadding` grows the bounds by the same amount so the box
-  still hugs what is painted.
-- Decorations (horizontal line, colour cut, oblique) come from `editorTextDecoration` in absolute layer
-  units; renderer and padding both read it.
-- `textTransform` supports `arch` and `wave`. `circle` is selectable but paints nothing yet.
-- Typing happens in a `foreignObject` textarea whose height is `wrapped lines × line height + 4`. It is
-  positioned on the drawn baseline, so the caret sits where the glyphs are. Committing returns the tool
-  to Move; re-entering a layer puts the caret at the end.
-- While typing, `keepTextCaretVisible` pans the workspace by the caret's line, coalesced per frame.
-
-## 6. Tools
-
-Move, Hand, Pencil, Pen, Text, Brush, Eraser, Shape, Gradient (default `pen`). Tool settings live in
-`EditorToolOptions` and are normalised on load.
-
-- **Pen** anchors carry Bézier handles; dragging an anchor moves it, dragging a handle reshapes the
-  curve, Alt breaks handle symmetry, and a node can be inserted on a path.
-- **Shape** presets: rectangle, rounded-rectangle, ellipse, triangle, diamond, line, arrow, star, hexagon,
-  with stroke/fill, line style, shadow and glow. Shape Builder supports merge/subtract/intersect, but only
-  on the first two axis-aligned rectangles.
-- **Gradient** supports linear, radial, angle, reflected and diamond with up to 8 stops; the conic and
-  diamond cases are computed as explicit facets so SVG and thumbnails match.
-- **Upload** compresses an image to ≤2 MB and ≤2000 px on the long edge before it becomes a layer.
-
-## 7. Mockups
-
-Front and Back are independent boxes with their own overlay transforms; the artwork on each is a mirror
-of the canvas clipped to the print area. The large artwork tier (3500 px) is shared and transferable:
-either side may claim it by growing past 1500 px, the other is then capped at 1500 px, and returning to
-1500 px or removing the mockup releases it.
-
-## 8. Phone
-
-Touch targets are ~44 px. With `Pan view` on, one finger pans the view and `+`/`−`/`Reset view` change
-zoom only. With pan off, drawing, node dragging, mockup moving and corner resizing work. The layout
-leaves room for the bottom navigation and closes the side panels before they overlap. This is verified
-with Chromium touch emulation, not on a physical device.
-
-## 9. Contracts
-
-Breaking one of these has caused a real bug before:
-
-1. Text box hugs the ink, plus effects and decorations — never the font line box.
-2. Pure text layers get no grab margin; strokes, shapes and images get 18 units.
-3. `editorTextLines` is the only source of painted lines.
-4. The inline editor's height follows the wrapped line count.
-5. Handle hit radius scales with the box; the rotate handle stays clear of the resize handles.
-6. Move/resize/rotate use the unclamped point; drawing tools stay on the canvas.
-7. A press on the selection re-picks a different layer underneath before dragging.
-8. Mockup artwork is clipped to the print area.
-9. Print geometry (canvas size, `unitsPerCm`, layer records) is a contract with the press.
-10. Header language and currency pills always show the active option.
-
-## 10. Tests
-
-```
-node --test tests/*.test.cjs            # unit suites, including the editor helpers
+node --test tests/*.test.cjs
 npm run start --workspace=apps/web -- --port 3000
-EDITOR_TEST_ORIGIN=http://127.0.0.1:3000 node tests/editor-touch.cjs   # CDP interaction
+EDITOR_TEST_ORIGIN=http://127.0.0.1:3000 node tests/editor-touch.cjs
 ```
 
-`tests/editor-layers.test.cjs` covers the layer model, masks, shapes and pen nodes;
-`tests/canvas-shell.test.cjs` the shell and panels; `tests/photo-adjustments.test.cjs` the image maths;
-`tests/editor-pen-path.test.cjs` the path geometry; `tests/editor-price.test.cjs` the price table;
-`tests/canvas-spec.test.cjs` the frozen canvas spec.
+| Suite | Covers |
+|---|---|
+| `tests/editor-layers.test.cjs` | layer defaults, brush metadata, eraser masks, layer masks, live strokes, properties, duplicate, text/element/upload layers, shape paths and style, rounded corners, pen nodes |
+| `tests/canvas-shell.test.cjs` | canvas shell, tool bar, layers dock, header bar |
+| `tests/photo-adjustments.test.cjs` | image adjustment values and clamps |
+| `tests/editor-attributes.test.cjs` | print method, fabric, knit and cuttings option sets |
+| `tests/editor-pen-path.test.cjs` | path data, snapping, anchor insert and remove |
+| `tests/editor-price.test.cjs` | product, GSM and size price table |
+| `tests/canvas-spec.test.cjs` | the frozen canvas spec |
+| `tests/editor-touch.cjs` | phone and desktop interaction driven through the browser: tiny artwork, landscape, dark/light, dock arrows, tier resize, drawing |
 
 Known pre-existing failure: the phone **Edit sidebar** section of `tests/editor-touch.cjs` throws on a
-`null` `getBoundingClientRect`. It is unrelated to the editor logic; assertions earlier in the file still
+`null` `getBoundingClientRect`. It is unrelated to the editor logic, and the assertions before it still
 run.

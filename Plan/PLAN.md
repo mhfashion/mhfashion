@@ -313,9 +313,9 @@ and no other section of this plan may assign editor work.
 
 | File | Contents |
 |---|---|
-| [`Plan/EDITOR_PLAN.md`](EDITOR_PLAN.md) | the editor plan: verified state, contracts, limits, roadmap, the owner's decisions, the specification moved out of this file, and the owner corrections recorded in Appendix C |
-| [`Doc/EDITOR.md`](Doc/EDITOR.md) | how the editor behaves today, written for a maintainer |
-| `Doc/KITTL_CANVAS_EDITOR_AUDIT.md` | the Kittl behaviour audit the plan is derived from |
+| [`Plan/EDITOR_PLAN.md`](EDITOR_PLAN.md) | the editor plan: what the code does today, the contracts that must not drift, the verified gaps, the next steps with acceptance, and the owner's decisions |
+| [`Doc/EDITOR.md`](Doc/EDITOR.md) | how the editor behaves today, written from the source |
+| [`Plan/EDITOR_HISTORY.md`](EDITOR_HISTORY.md) | archive of the older editor specification, notes and owner corrections that used to sit in this file |
 
 Do not add editor detail to this file: it links to the editor plan instead. An item from that plan ships
 only when the owner approves that item.
@@ -1874,15 +1874,17 @@ The owner asked for the editor plan and the editor documentation to be kept sepa
 checked carefully and only the plan written. No editor behaviour changed; this was a documentation
 move plus a fresh code audit.
 
-- `Plan/EDITOR_PLAN.md` is the editor plan: where the editor lives (file by file, with sizes), canvas
-  and coordinate rules, the nine tools, the layer model, the Layers box, selection and transform, text,
-  shapes/pen/gradients, images and photo adjustments, mockups and the shared artwork tier, Header Bar 2
-  and the price, state and undo, phone parity, the ten contracts that must not drift, today's test
-  coverage, the verified limits, the roadmap and the owner's six decisions, and the change policy.
-- `Doc/EDITOR.md` documents how the editor behaves today, written for a maintainer.
-- Moved out of this file, verbatim, into `Plan/EDITOR_PLAN.md`: the Unified Editor Vision, the editor
-  implementation plan and its specification sections, the Fabric.js appendix, the audit rewrite, and the
-  24 owner corrections that were recorded under §6. The old anchors stay here so existing links resolve.
+- `Plan/EDITOR_PLAN.md` is the editor plan, written from the source: where the editor lives (file by
+  file, with sizes), what works today item by item, the ten contracts that must not drift, the verified
+  gaps, the next steps E1–E11 with files and acceptance, six decisions for the owner, and the change
+  policy.
+- `Doc/EDITOR.md` documents how the editor behaves today: layout, canvas, tools, layers, selection,
+  text, shapes, pen, brush and eraser, gradients, images, mockups, the header bar, the Edit sidebar,
+  undo, phone behaviour, keyboard and pointer.
+- `Plan/EDITOR_HISTORY.md` keeps the older editor material that used to sit in this file — the
+  product-direction document, the editor specification and its appendix, the notes comparing other
+  design tools, and the 24 owner corrections recorded under §6 — as an archive, not as the plan. The old
+  anchors stay here so existing links resolve.
 - Verified in the code while writing it: `circle` is selectable but paints no transform, `flag`/`rise`/
   `angle`/`distort` do not exist, Shape Builder handles only the first two axis-aligned rectangles,
   there is no align/tidy, flip, hover highlight, snap guides, context menu, glyph panel, character runs,
