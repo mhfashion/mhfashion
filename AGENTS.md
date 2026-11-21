@@ -453,3 +453,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   rotation happens about the box centre, so a rotated layer can reach past its unrotated box.
 - A low-resolution photo warning is **not** possible yet: `AdminDesignLayer` stores no pixel size, so the
   editor's save path would have to carry it (that touches `/create` and needs owner approval).
+
+## Guide page (`apps/web/src/components/guide/GuideCard.tsx`, `app/guide/page.tsx`)
+- A guide card is a **square product tile**: `aspect-square`, `rounded-xl border border-border
+  bg-bg-surface p-1.5 sm:p-2.5`, cover with the category pill and read time, a two-line title, one meta
+  row. The grid is the product grid (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`). The old
+  `aspect-[1.9/1]` cover band plus excerpt made every card twice the height of a product card; do not
+  bring either back. `tests/guide-card.test.cjs` fails if you do.
+- Guide copy must describe the code that works. The editor's Save and Buy boxes are **disabled**
+  (`EditorHeaderBar2`), so the editor article says the draft saves in the browser and the order is placed
+  from the product page. Do not write "planned" articles: `editor-guide` replaced
+  `the-planned-editor-flow` for that reason, and the article banner now reads "Where a feature is still
+  being built, this article says so".

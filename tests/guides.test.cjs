@@ -133,6 +133,25 @@ test("starter handbook has four categories and eight valid article links", async
   assert.equal(await guides.getGuidePostBySlug("does-not-exist"), null);
 });
 
+test("the editor guide describes the editor that ships", () => {
+  const catalog = starter();
+  const post = catalog.posts.find((candidate) => candidate.slug === "editor-guide");
+  assert.ok(post, "the editor guide is missing from the starter catalog");
+  assert.equal(post.categorySlug, "design-guide");
+  assert.equal(catalog.posts.some((candidate) => candidate.slug === "the-planned-editor-flow"), false);
+
+  const text = JSON.stringify(post.sections);
+  for (const phrase of ["print canvas", "layers panel", "free transform", "mockup"]) {
+    assert.ok(text.toLowerCase().includes(phrase), `the editor guide never mentions ${phrase}`);
+  }
+  // The editor's Save and Buy boxes are disabled, so the guide must not promise them.
+  assert.match(text, /not connected yet/);
+
+  const guides = loadGuides();
+  const found = guides.filterGuidePosts(catalog.posts, "", "editor guide");
+  assert.deepEqual(found.map((candidate) => candidate.slug), ["editor-guide"]);
+});
+
 test("guide search normalizes whitespace and case and searches article body", () => {
   const guides = loadGuides();
   const catalog = starter();

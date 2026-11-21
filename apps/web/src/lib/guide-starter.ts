@@ -17,7 +17,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       slug: "design-guide",
       name: "Design Guide",
       description:
-        "Learn the planned editor, preview, mockup, and design workflow.",
+        "Learn the editor, the preview, the mockup and the design workflow.",
     },
     {
       id: "10000000-0000-4000-8000-000000000003",
@@ -105,32 +105,53 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     },
     {
       id: "20000000-0000-4000-8000-000000000003",
-      slug: "the-planned-editor-flow",
+      slug: "editor-guide",
       categorySlug: "design-guide",
-      title: "The planned editor flow",
+      title: "Editor Guide: make your first print",
       excerpt:
-        "The planned create flow gives designers separate Front and Back canvases, tools, layers, and a final mockup check.",
+        "Open the editor, draw and type on the print canvas, arrange the layers, then check the mockup before you order.",
       sections: [
         {
-          heading: "Build on two canvases",
+          heading: "Open the editor",
           paragraphs: [
-            "The planned /create editor places Upload, Elements, Text, Effects, and AI in a left rail, with a tools palette below it and a layers panel on the right. Front and Back canvases sit side by side on a transparent background, with the attribute bar along the bottom.",
+            "Pick Create in the menu, or the Create tab on a phone. The editor fills the screen: the shop header, then the bar that carries the Product, GSM, Color and Size choices, then the print canvas with the tools on the left, the layers panel beside it and the front and back mockups.",
+            "The print canvas is the area that gets printed, so anything you draw there is at real print size.",
           ],
         },
         {
-          heading: "Finish before ordering",
+          heading: "Draw, type and add images",
           paragraphs: [
-            "The top bar is planned to include Undo, Redo, live price, Save, Add to Cart, and Buy Now. Add to Cart and Buy Now stay disabled until the mockup is attached, and Save is intended to happen after the full flow completes.",
-            "These are planned product behaviors from the project plan, not a claim that every editor feature or integration is live today. Terms acceptance and a watermark are also part of the planned first-use flow.",
+            "The tools run down the left side: Move, Hand, Pencil, Pen, Text, Brush, Eraser, Shapes and Gradient. Pick Text and click the canvas to type; a long line wraps to the print width, Enter starts a new line and the caret keeps following you down the page.",
+            "Photos and logos go in as PNG, JPG or SVG up to 2 MB. A large photo is resized to 2000 pixels on its longest edge, so it still prints sharply at the sizes a shirt allows.",
+          ],
+        },
+        {
+          heading: "Arrange the layers",
+          paragraphs: [
+            "Every element is a layer in the Layers panel: reorder them, hide one to see what is behind it, or lock one so a drag cannot move it. Blend mode, opacity and fill sit at the top of the panel.",
+            "The free transform box moves, resizes and rotates the selected layer. Drag a corner or edge handle to resize, hold Shift to stretch freely, hold Alt to scale from the centre, and hold Shift while rotating to snap to 15-degree steps.",
+          ],
+        },
+        {
+          heading: "Check the mockup",
+          paragraphs: [
+            "The front and back mockups show where the print sits on the garment. Artwork you park outside the print canvas is clipped there, and the print desk is warned about it when the order is packed, so keep the design inside the canvas.",
+          ],
+        },
+        {
+          heading: "Keep your work and order it",
+          paragraphs: [
+            "The editor saves your draft in this browser about half a second after each change, so a refresh does not lose the design. The Save and Buy boxes on the editor bar are not connected yet: open the product page to see the design on the product and place the order there.",
+            "The print desk receives the artwork as an SVG at real print size, together with the layer measurements and a quality check.",
           ],
         },
       ],
-      readingMinutes: 2,
+      readingMinutes: 4,
       featured: true,
       publishedAt: PUBLISHED_AT,
-      seoTitle: "MH Fashion custom design editor guide",
+      seoTitle: "MH Fashion editor guide — draw, arrange and print",
       seoDescription:
-        "Learn the planned MH Fashion editor layout, Front and Back canvases, design tools, layers, and mockup check.",
+        "A walkthrough of the MH Fashion editor: the print canvas, drawing and text tools, the layers panel, the free transform box, the mockups, and how a design reaches the print desk.",
     },
     {
       id: "20000000-0000-4000-8000-000000000004",

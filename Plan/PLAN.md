@@ -926,6 +926,14 @@ This section records the current repository state and overrides earlier draft bu
 - Guide shortcut cards are compact on phone. `All Guides` is the first fixed card and the remaining categories/Points & Rewards are presented in the same compact row; desktop uses the sidebar navigation and does not duplicate the shortcut row.
 - Guide search UI was intentionally removed from both desktop and phone. Category filtering/query support remains in the data layer only if needed for future content management, but the current visible search form must not be restored without an explicit request.
 - Guide posts support cover images, categories, detail pages, metadata, starter fallback data, and Supabase published-content reads. Post Admin CRUD/auth remains future work.
+- **Guide cards are square product tiles (2026-11-21).** The card is `aspect-square` with the same
+  `rounded-xl border bg-bg-surface p-1.5 sm:p-2.5` shell as `ProductCard`, and the grid is the product
+  grid (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`). The old cover-plus-excerpt card stood about twice
+  as tall as a product tile. Do not reintroduce the `aspect-[1.9/1]` cover band or the excerpt.
+- **The Editor Guide replaced the "planned editor flow" article (2026-11-21).** `editor-guide` is written
+  from the editor that ships (print canvas, tools, Layers panel, free transform, mockups, draft save) and
+  says plainly that the Save and Buy boxes are not connected yet. A "planned" article cannot sit beside
+  the real editor.
 
 ### 15.4 Cart and commerce prototype state
 
@@ -2026,3 +2034,24 @@ product or per garment type.
 - A PDF library — the receipt and the sheet print through the browser, which keeps the admin
   bundle free of a font/raster pipeline.
 - Per-size mockup photos — size never changes the silhouette, so it is not a look key.
+
+## 2026-11-21 — Guide cards, and an Editor Guide written from the editor
+
+The Guide page's boxes were about twice the height of a product tile, and the only editor article was
+the old "planned editor flow" text. Both were fixed without touching the customer editor.
+
+- `components/guide/GuideCard.tsx` is now the product card's geometry: a square tile with a cover, a
+  two-line title and one meta row (category pill and read time sit on the cover). The tall cover band and
+  the excerpt are gone, so a guide card no longer stands twice as tall as a product card.
+- The guide grid matches the product grid: two columns on a phone, three from `sm`, four from `xl`
+  (`app/guide/page.tsx`). The phone list used to be one full-width row per post.
+- `editor-guide` replaces `the-planned-editor-flow` in the starter catalog: open the editor, draw and
+  type, arrange layers (reorder, hide, lock, blend/opacity/fill), the free transform handles (Shift to
+  stretch, Alt to scale from the centre, Shift+rotate to snap 15°), the front and back mockups, and the
+  draft that saves in the browser — with the honest note that Save and Buy are not connected yet.
+- The article banner no longer says the guide is "planned": it reads "Where a feature is still being
+  built, this article says so", and the Design Guide category blurb lost its "planned" wording.
+- Verified in Chromium at 1440x900 and 390x844 (2x): square cards on both, the article page with its
+  "On this page" list, and `?q=editor` returning only the new article. `tests/guide-card.test.cjs` guards
+  the card geometry and the grid; `tests/guides.test.cjs` guards the article's content and that the old
+  slug is gone. Full suite 363/363.

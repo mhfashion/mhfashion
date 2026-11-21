@@ -847,7 +847,7 @@ set
   status = 'draft',
   published_at = null,
   updated_at = now()
-where slug = 'the-planned-editor-flow';
+where slug = 'editor-guide';
 ```
 
 Category names and descriptions can be edited in `public.guide_categories` by slug. Keep category and post slugs lowercase, hyphen-separated, and stable after a URL is public. The database constraints enforce the slug format and title/excerpt/SEO limits.
@@ -863,7 +863,7 @@ where slug = 'design-guide';
 
 update public.guide_posts
 set status = 'published', published_at = now(), updated_at = now()
-where slug = 'the-planned-editor-flow';
+where slug = 'editor-guide';
 ```
 
 Public reads never return drafts, posts scheduled for the future, or posts whose category is not currently published. To unpublish, set `status = 'draft'` and `published_at = null`.
@@ -1197,3 +1197,24 @@ Checked the remaining-work register against the source and corrected the entries
   payment intents and the verified webhook all exist. What is left is the provider accounts and moving
   intents out of memory.
 
+### 2026-11-21 — Guide cards sized like product cards, and an Editor Guide
+
+- `components/guide/GuideCard.tsx` is a square tile now: `aspect-square`, the product card's
+  `rounded-xl border bg-bg-surface p-1.5 sm:p-2.5` shell, a cover with the category pill and the read
+  time on it, a two-line title and one meta row. The `aspect-[1.9/1]` cover band and the excerpt are
+  gone, so a guide card is the same box as a product card instead of twice as tall.
+- The guide grid in `app/guide/page.tsx` is the product grid: `grid-cols-2 sm:grid-cols-3
+  xl:grid-cols-4`. Phones used to get one full-width row per post.
+- `lib/guide-starter.ts` now carries `editor-guide`, "Editor Guide: make your first print", written from
+  the editor that ships: the print canvas, the tool column, text wrapping, the Layers panel, the free
+  transform handles, the front and back mockups, the draft that saves in the browser, and the fact that
+  the Save and Buy boxes are not connected yet. It replaced `the-planned-editor-flow`, so the Guide no
+  longer shows a plan beside the real thing; `Doc/DOCUMENTATION.md`'s SQL examples were updated to the
+  new slug.
+- The article banner and the Design Guide category blurb lost their "planned" wording: the banner now
+  reads "Where a feature is still being built, this article says so", which is true for every article.
+- Verified in Chromium at 1440x900 and 390x844 (deviceScaleFactor 2): square cards in both, the article
+  page renders its five sections and "On this page" list, and `/guide?q=editor` returns only the new
+  article. `tests/guide-card.test.cjs` (3 tests) guards the card geometry and the grid;
+  `tests/guides.test.cjs` gains a test for the article's content and the retired slug. Full Node suite
+  **363/363**; `tsc --noEmit` clean; Next.js production build passed.

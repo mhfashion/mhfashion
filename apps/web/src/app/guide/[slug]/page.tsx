@@ -124,7 +124,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
               </div>
             </header>
 
-            {catalog.source === "starter" && <p className="mt-4 rounded-xl border border-border bg-bg-surface px-4 py-3 text-xs leading-relaxed text-text-muted">Starter guide · This article describes the planned experience. Some features and integrations are still in development.</p>}
+            {catalog.source === "starter" && <p className="mt-4 rounded-xl border border-border bg-bg-surface px-4 py-3 text-xs leading-relaxed text-text-muted">MH Fashion Guide · Where a feature is still being built, this article says so.</p>}
 
             <div className="mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_230px] lg:items-start">
               <article aria-label={post.title} className="min-w-0 rounded-2xl border border-border bg-bg-surface p-6 sm:p-8 lg:p-10">

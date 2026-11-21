@@ -4,6 +4,13 @@ The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN
 
 ## Work record — 2026-11-21
 
+- [x] **Guide cards sized like product cards.** `GuideCard` is a square tile on the product grid
+  (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`); the tall cover band and the excerpt are gone.
+- [x] **Editor Guide added.** `editor-guide` ("Editor Guide: make your first print") is written from the
+  editor that ships and replaced the stale "planned editor flow" article; the "planned" banner wording
+  is corrected. 4 new tests; full suite 363/363.
+
+
 - [x] **Print quality checks in the print bundle.** `lib/print-quality.ts` flags artwork past the print
   area (error) and slivers under 3 mm / 0.2 cm² (warning); the list appears in the archive README, the
   manifest and a press-sheet banner. 16 new tests; full suite 358/358. Editor untouched.

@@ -168,7 +168,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               {catalog.source === "unavailable" ? (
                 <div className="rounded-2xl border border-border bg-bg-surface px-6 py-12 text-center" role="status"><BookOpen size={26} className="mx-auto mb-4 text-text-muted" /><h3 className="text-lg font-bold">Posts are temporarily unavailable.</h3></div>
               ) : posts.length ? (
-                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
                   {posts.map((post, index) => <GuideCard key={post.id} post={post} categoryName={catalog.categories.find((category) => category.slug === post.categorySlug)?.name ?? "Guide"} index={index} />)}
                 </div>
               ) : (
