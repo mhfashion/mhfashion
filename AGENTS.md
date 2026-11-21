@@ -105,6 +105,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Intents live in an in-memory map (`lib/payment-store.ts`), so a restart forgets open intents. That is fine while nothing is charged; it becomes a Supabase table with P0 item 1.
 - Tests: `tests/payments.test.cjs` (Web Crypto is global in Node 22, so no Node-only crypto import).
 
+## Account orders (`lib/my-orders.ts`, `app/account/page.tsx`)
+- Orders live in the same browser store as the admin demo data (`mh-fashion-admin-demo-data-v1`), read through `useAdminDemoData()` (`useSyncExternalStore`).
+- **Filter on `checkoutKey`.** The seed contains ~26 demo orders for the admin preview; only an order the checkout created has `checkoutKey`, so `myOrders()` is what the customer sees. Showing `data.orders` directly puts fake orders in a customer's history.
+- `myOrders()` copies before sorting; `readAdminDemoData` caches the object, so sorting in place would reorder the admin's list too.
+- `formatOrderDate` builds the month name from a fixed table: en-GB renders September as "Sept" in some ICU builds, and the server and the browser must print the same text.
+- The card header is two rows below `sm` (`basis-full` on the identity block, then badge + total). A plain `flex-1` identity block shrinks to one word per line on a phone.
+
 ## Wishlist (`lib/wishlist.ts`, `lib/wishlist-context.tsx`, `app/wishlist/page.tsx`)
 - The list is a **snapshot** of the saved products in `localStorage` (`mh-fashion-wishlist`), not a live catalog query: `/wishlist` must render with no server and no Supabase credentials. The page says the price shown is the saved one.
 - `wishlist.toggle(product)` is a toggle, never an append. `normalizeWishlist` drops an entry without id/slug/name, collapses duplicates and caps at `WISHLIST_LIMIT` (100); a non-numeric price becomes 0 so `toLocaleString` cannot print `NaN`.

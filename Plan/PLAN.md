@@ -1070,6 +1070,12 @@ proposal, not an approved order.
     — the product page is where the current price lives. Saving is a toggle, a stored entry without an
     id, slug or name is dropped, duplicates collapse and the list stops at 100. `tests/wishlist.test.cjs`
     covers the store, the card, the header, the page and the account tab.
+    **Account orders built 2026-11-21:** the Orders tab and the dashboard counter read the orders the
+    checkout actually wrote (`checkoutKey` set) and ignore the seeded admin demo orders, so a customer
+    sees only what this browser bought. Each order shows its id, Yangon date, stage badge, payment
+    method, the print detail of every line and the total. `tests/account-orders.test.cjs` covers the
+    filter, the totals, the date formatter and the stage tones. Points and the wallet are still demo
+    numbers: they need a ledger in Supabase.
 
 ### P2 — later
 

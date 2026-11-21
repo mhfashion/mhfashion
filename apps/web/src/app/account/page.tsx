@@ -29,23 +29,13 @@ import { useCurrency } from "@/lib/currency-context";
 import { useTheme } from "@/lib/theme-context";
 import { useI18n } from "@/lib/i18n";
 import { useWishlist } from "@/lib/wishlist-context";
+import { useAdminDemoData } from "@/lib/admin-demo-store";
+import {
+  formatOrderDate, myOrders, orderItemDetail, orderStageTone, orderTotalKs, orderUnits, STAGE_TONE_CLASS,
+} from "@/lib/my-orders";
+import type { AdminOrder } from "@/lib/admin-demo-data";
 
 type SectionId = "dashboard" | "profile" | "orders" | "designs" | "wishlist" | "points" | "settings";
-
-type Order = {
-  id: string;
-  date: string;
-  stage: "Delivered" | "Processing" | "Cancelled";
-  totalKs: number;
-  items: number;
-  variant: "white" | "black" | "green";
-};
-
-const ORDERS: Order[] = [
-  { id: "#MH20250901", date: "Sep 1, 2025", stage: "Delivered", totalKs: 38000, items: 2, variant: "white" },
-  { id: "#MH20250825", date: "Aug 25, 2025", stage: "Processing", totalKs: 24000, items: 1, variant: "black" },
-  { id: "#MH20250820", date: "Aug 20, 2025", stage: "Cancelled", totalKs: 16000, items: 1, variant: "green" },
-];
 
 const SECTIONS: { id: SectionId; labelKey: string; fallback: string; Icon: typeof User }[] = [
   { id: "dashboard", labelKey: "account.dashboard", fallback: "Dashboard", Icon: Package },
@@ -151,9 +141,46 @@ const COPY = {
   },
 } as const;
 
-function ProductThumb({ variant }: { variant: Order["variant"] }) {
-  const background = variant === "black" ? "from-slate-800 to-slate-950" : variant === "green" ? "from-[#dff1c5] to-[#b7d98d]" : "from-slate-100 to-white";
-  return <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${background}`}><span className={`text-[9px] font-black leading-none ${variant === "black" ? "text-white" : "text-[#4c9d16]"}`}>MH<br />FASHION</span></div>;
+function OrderStageBadge({ stage }: { stage: string }) {
+  return <span data-order-stage={stage} className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${STAGE_TONE_CLASS[orderStageTone(stage)]}`}>{stage}</span>;
+}
+
+function AccountOrderCard({ order, formatMoney, detailed = false }: { order: AdminOrder; formatMoney: (value: number) => string; detailed?: boolean }) {
+  const units = orderUnits(order);
+  return (
+    <div data-account-order={order.id} className="rounded-xl border border-border p-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 flex-1 basis-full items-center gap-3 sm:basis-0">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#eaf8d7] to-[#cbeaa9] text-center text-[8px] font-black leading-tight text-[#4c9d16]">MH<br />FASHION</div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold">Order {order.id}</p>
+            <p className="mt-1 text-xs text-text-muted">{formatOrderDate(order.placedAt)} · {units} {units === 1 ? "item" : "items"} · {order.payment}</p>
+          </div>
+        </div>
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+          <OrderStageBadge stage={order.stage} />
+          <p className="text-sm font-black">{formatMoney(orderTotalKs(order))}</p>
+        </div>
+      </div>
+      {detailed ? (
+        <ul className="mt-3 space-y-1.5 border-t border-border pt-3">
+          {order.items.map((item, index) => {
+            const detail = orderItemDetail(item);
+            return (
+              <li key={`${item.productId}-${index}`} className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="min-w-0 break-words">
+                  {item.name} <span className="text-text-muted">× {Math.max(1, item.quantity)}</span>
+                  {detail ? <span className="text-text-muted"> · {detail}</span> : null}
+                </span>
+                <span className="shrink-0 font-semibold">{formatMoney(item.unitPriceKs * Math.max(1, item.quantity))}</span>
+              </li>
+            );
+          })}
+          {order.note ? <li className="text-[11px] text-text-muted">Note: {order.note}</li> : null}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
 
 function StatCard({ Icon, label, value, helper, tone = "green" }: { Icon: typeof Package; label: string; value: string; helper?: string; tone?: "green" | "yellow" | "blue" | "red" }) {
@@ -169,6 +196,8 @@ export default function AccountPage() {
   const copy = COPY[locale];
   const formatMoney = (value: number) => `${value.toLocaleString("en-US")} ${currency}`;
   const wishlist = useWishlist();
+  const store = useAdminDemoData();
+  const orders = useMemo(() => myOrders(store.orders), [store.orders]);
   const sectionLabel = (section: (typeof SECTIONS)[number]) => t(section.labelKey) === section.labelKey ? section.fallback : t(section.labelKey);
 
   const sectionContent = useMemo(() => active, [active]);
@@ -193,9 +222,16 @@ export default function AccountPage() {
             {sectionContent === "dashboard" ? (
               <>
                 <section className="relative isolate mb-5 min-h-[205px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-6 py-7 text-[#172810] sm:px-9 sm:py-9"><div className="relative z-10 max-w-[58%]"><h1 className="text-3xl font-black leading-tight sm:text-4xl">{copy.welcome}</h1><p className="mt-3 text-sm text-[#355128]">{copy.welcomeSub}</p><button onClick={() => window.location.href = "/create"} className="mt-5 inline-flex items-center rounded-full bg-[#55a918] px-4 py-2.5 text-xs font-bold text-white">{copy.start} <ArrowRight size={15} className="ml-1.5" /></button></div><div className="absolute -right-8 -top-12 h-72 w-72 rounded-full bg-[#9bda45]/50" /><div className="absolute bottom-[-55px] right-[18%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block"><div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div></div><div className="absolute bottom-5 right-6 text-3xl font-black italic text-[#54a817]/80 sm:right-12">Create<br />Your Style</div></section>
-                <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard Icon={ShoppingBag} label={copy.totalOrders} value="12" helper={`↑ +2 ${copy.thisMonth}`} /><StatCard Icon={Star} label={copy.points} value="250" helper={`↑ +50 ${copy.thisMonth}`} tone="yellow" /><StatCard Icon={Wallet} label={copy.wallet} value={formatMoney(12500)} helper={`↑ +${formatMoney(2000)}`} tone="blue" /><StatCard Icon={Heart} label={copy.wishlist} value="8" helper="View all →" tone="red" /></section>
+                <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard Icon={ShoppingBag} label={copy.totalOrders} value={String(orders.length)} helper={orders.length ? copy.recentOrders : copy.viewAllOrders} /><StatCard Icon={Star} label={copy.points} value="250" helper={`↑ +50 ${copy.thisMonth}`} tone="yellow" /><StatCard Icon={Wallet} label={copy.wallet} value={formatMoney(12500)} helper={`↑ +${formatMoney(2000)}`} tone="blue" /><StatCard Icon={Heart} label={copy.wishlist} value="8" helper="View all →" tone="red" /></section>
                 <div className="grid gap-5 lg:grid-cols-[1.25fr_0.9fr]">
-                  <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><ShoppingBag size={19} className="text-accent" /> {copy.recentOrders}</h2><button onClick={() => setActive("orders")} className="text-xs font-semibold text-accent">{copy.viewAllOrders} <ArrowRight size={13} className="ml-1 inline" /></button></div><div className="space-y-3">{ORDERS.map((order) => <div key={order.id} className="flex items-center gap-3 rounded-xl border border-border p-2.5"><ProductThumb variant={order.variant} /><div className="min-w-0 flex-1"><p className="text-xs font-bold">Order {order.id}</p><p className="mt-1 text-[10px] text-text-muted">{order.date} · {order.items} {order.items === 1 ? "item" : "items"}</p></div><span className={`hidden rounded-full px-2.5 py-1 text-[10px] font-bold sm:inline-flex ${order.stage === "Delivered" ? "bg-[#e4f6d0] text-[#4e9917]" : order.stage === "Processing" ? "bg-[#e6f1ff] text-[#3d7cc1]" : "bg-bg text-text-secondary"}`}>{order.stage}</span><div className="text-right"><p className="text-xs font-black">{formatMoney(order.totalKs)}</p><button onClick={() => setActive("orders")} className="mt-1 text-[10px] font-semibold text-accent">{copy.viewDetails} <ChevronRight size={12} className="inline" /></button></div></div>)}</div></section>
+                  <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><ShoppingBag size={19} className="text-accent" /> {copy.recentOrders}</h2><button onClick={() => setActive("orders")} className="text-xs font-semibold text-accent">{copy.viewAllOrders} <ArrowRight size={13} className="ml-1 inline" /></button></div>{orders.length ? (
+                    <div className="space-y-3">{orders.slice(0, 3).map((order) => <AccountOrderCard key={order.id} order={order} formatMoney={formatMoney} />)}</div>
+                  ) : (
+                    <div data-account-recent-orders-empty className="rounded-xl border border-dashed border-border p-5 text-center">
+                      <p className="text-xs text-text-muted">No orders on this device yet. Design something and check out — the order will land here.</p>
+                      <Link href="/products" className="mt-3 inline-flex rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">Browse products</Link>
+                    </div>
+                  )}</section>
                   <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><Star size={19} className="text-accent" /> {copy.rewards}</h2><button onClick={() => setActive("points")} className="text-xs font-semibold text-accent">{copy.viewHistory} <ArrowRight size={13} className="ml-1 inline" /></button></div><div className="flex items-center gap-5"><div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-[10px] border-accent/25 border-l-accent border-t-accent"><div className="text-center"><p className="text-2xl font-black">250</p><p className="text-[10px] text-text-muted">Points</p></div></div><div><p className="text-xs text-text-muted">{copy.nextReward}</p><p className="mt-1 text-lg font-black text-accent">{copy.pointsNeeded}</p><p className="mt-2 text-xs leading-relaxed text-text-secondary">{copy.closer}</p></div></div><button onClick={() => setActive("points")} className="mt-5 w-full rounded-full bg-accent py-2.5 text-xs font-bold text-accent-foreground">{copy.explore} <ArrowRight size={14} className="ml-1 inline" /></button></section>
                 </div>
                 <div className="mt-5 grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-border bg-bg-surface p-5"><h2 className="text-lg font-black"><Settings size={18} className="mr-2 inline text-accent" />{copy.accountSettings}</h2><p className="mt-1 text-xs text-text-muted">{copy.manage}</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{[{ Icon: Pencil, label: copy.editProfile }, { Icon: ShieldCheck, label: copy.changePassword }, { Icon: Bell, label: copy.notificationSettings }, { Icon: ShieldCheck, label: copy.privacy }].map(({ Icon, label }) => <button key={label} onClick={() => setActive("settings")} className="flex items-center gap-2 rounded-xl border border-border px-3 py-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}</button>)}</div></section><section className="rounded-2xl border border-border bg-bg-surface p-5"><h2 className="text-lg font-black"><HelpCircle size={18} className="mr-2 inline text-accent" />{copy.needHelp}</h2><p className="mt-1 text-xs text-text-muted">{copy.support}</p><div className="mt-4 space-y-2">{[{ Icon: HelpCircle, label: copy.faqs }, { Icon: MapPin, label: copy.contact }, { Icon: Bell, label: copy.chat }].map(({ Icon, label }) => <button key={label} className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}<ChevronRight size={14} className="ml-auto text-text-muted" /></button>)}</div></section></div>
@@ -203,7 +239,21 @@ export default function AccountPage() {
             ) : (
               <section className="rounded-2xl border border-border bg-bg-surface p-5 sm:p-7">
                 <div className="mb-6 flex items-end justify-between border-b border-border pb-5"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent">MH Fashion Account</p><h1 className="mt-2 text-2xl font-black">{sectionLabel(SECTIONS.find((section) => section.id === active) ?? SECTIONS[0])}</h1></div><button onClick={() => setActive("dashboard")} className="text-xs font-semibold text-accent">← Dashboard</button></div>
-                {active === "orders" && <div className="space-y-3">{ORDERS.map((order) => <div key={order.id} className="flex items-center gap-3 rounded-xl border border-border p-3"><ProductThumb variant={order.variant} /><div className="flex-1"><p className="text-sm font-bold">Order {order.id}</p><p className="mt-1 text-xs text-text-muted">{order.date} · {order.items} items</p></div><span className="hidden rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent sm:block">{order.stage}</span><p className="text-sm font-black">{formatMoney(order.totalKs)}</p></div>)}</div>}
+                {active === "orders" && (orders.length ? (
+                  <div data-account-orders>
+                    <p className="mb-3 text-xs text-text-muted">{orders.length} {orders.length === 1 ? "order" : "orders"} placed on this device.</p>
+                    <div className="space-y-3">{orders.map((order) => <AccountOrderCard key={order.id} order={order} formatMoney={formatMoney} detailed />)}</div>
+                  </div>
+                ) : (
+                  <div data-account-orders-empty className="rounded-xl border border-border p-6 text-center">
+                    <p className="text-sm font-semibold">No orders yet</p>
+                    <p className="mx-auto mt-1 max-w-sm text-xs text-text-muted">An order you place on this device shows up here, with the print details and the stage the print desk has it at.</p>
+                    <div className="mt-3 flex flex-wrap justify-center gap-2">
+                      <Link href="/products" className="rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">Browse products</Link>
+                      <Link href="/new" className="rounded-full border border-border px-4 py-2 text-[11px] font-bold">New arrivals</Link>
+                    </div>
+                  </div>
+                ))}
                 {active === "profile" && <div className="grid max-w-2xl gap-4 sm:grid-cols-2"><label className="text-xs text-text-muted">{copy.fullName}<input defaultValue="Min Thu Aung" className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><label className="text-xs text-text-muted">{copy.email}<input defaultValue="minthu.aung@example.com" className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><label className="text-xs text-text-muted">{copy.phone}<input defaultValue="+95 9 400 686 925" className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><label className="text-xs text-text-muted sm:col-span-2">{copy.address}<textarea rows={3} placeholder="Street, township, city, country" className="mt-1 w-full resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><button className="rounded-full bg-accent px-5 py-2 text-xs font-bold text-accent-foreground sm:col-span-2 sm:w-fit">{copy.save}</button></div>}
                 {active === "designs" && <div className="grid gap-4 sm:grid-cols-3">{["Chaos Theory remix", "Team jersey #10"].map((name) => <div key={name} className="overflow-hidden rounded-xl border border-border"><div className="flex aspect-square items-center justify-center bg-gradient-to-br from-[#dff1c5] to-[#b7d98d] text-center text-sm font-black text-[#4c9d16]">MH<br />FASHION</div><div className="p-3"><p className="truncate text-xs font-bold">{name}</p><p className="mt-1 text-[10px] text-text-muted">T-shirt · Crew Neck · M</p><div className="mt-3 flex gap-3"><a href="/create" className="text-[10px] font-semibold text-accent">Edit</a><button className="flex items-center gap-1 text-[10px] text-text-muted"><Trash2 size={11} /> Delete</button></div></div></div>)}<a href="/create" className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-border-light text-xs text-text-muted">{copy.newDesign}</a></div>}
                 {active === "wishlist" && (
