@@ -1035,9 +1035,13 @@ proposal, not an approved order.
 
 11. **Posts ↔ Product relationship** as a data model (how a T-shirt post relates to
     Product → Style → Color and to fixed-design products). The Nyein brief is still pending.
-12. **Admin modules not yet built:** Brush Management, Delivery Settlement Report, Loyalty rules,
-    Jersey mapping setup. **Pricing Management (web grid + phone cards) and Attribute Management
-    shipped 2026-11-21** (4.5.1, §16); Brush Management stays blocked on the editor.
+12. **Admin modules not yet built:** Brush Management, Loyalty rules, Jersey mapping setup.
+    **Pricing Management (web grid + phone cards), Attribute Management and the Delivery Settlement
+    Report shipped 2026-11-21** (4.5.1, §16); Brush Management stays blocked on the editor.
+    The settlement report lives at `/admin/settlements`: period / courier / status / settlement
+    filters, fee against courier cost with the margin per row and per courier, "Mark settled" as a
+    batch that never overwrites an existing stamp, "Reopen", and a CSV sheet with a total block.
+    Returns keep their cost, so a returned parcel shows a negative margin instead of hiding it.
 13. **Order operations:** order QR/barcode on the print sheet, reprint flow, refund request flow
     (deferred).
 14. **Operations:** error monitoring, Supabase backups, timestamps stored in UTC and displayed in

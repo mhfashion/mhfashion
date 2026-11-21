@@ -97,6 +97,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `applyChainPatch` refuses to remove an option that still prices rows, to switch off an attribute that prices rows, and to take an empty/duplicate label. It returns the untouched data plus `issues`; the UI renders those and writes nothing.
 - Tests: `tests/admin-attributes.test.cjs`.
 
+## Delivery Settlement Report (`lib/admin-settlements.ts`, `components/admin/AdminSettlements.tsx`)
+- `data.deliveries` seeds one row per order in `Handed to Delivery` / `Out for Delivery` / `Delivered` / `Refunded`; `feeKs` is what the shopper paid, `costKs` what the courier is owed.
+- `markDeliveriesSettled` is idempotent and keeps the **first** stamp, so a re-run cannot rewrite history; `unsettleDeliveries` clears it. Both return new data, never mutate the input.
+- Returns keep their cost, which is why a returned parcel shows a negative margin — do not clamp it.
+- `buildSettlementCsv` writes a BOM, one line per delivery, a `Total` line and one `Subtotal <courier>` per courier.
+- Tests: `tests/admin-settlements.test.cjs`.
+
 ## Design takedown (`recordDesignTakedown`)
 - Designs → Takedown records claimant + note, sets the design to `Hidden` and appends to `designTakedowns`; the row shows a `Claim` badge.
 - Owner rule (2026-11-21): a takedown never touches `orders` — a paid order is still produced and delivered. `recordDesignTakedown` returns `{ ...setDesignStatus(...), designTakedowns: [...] }` and nothing else; `tests/admin-takedown.test.cjs` asserts the orders are byte-identical afterwards.

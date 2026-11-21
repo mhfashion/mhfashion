@@ -15,6 +15,7 @@ export type AdminModuleId =
   | "posts"
   | "pricing"
   | "attributes"
+  | "settlements"
   | "customers"
   | "inventory"
   | "promotions"
@@ -415,6 +416,27 @@ export type AdminAttributeDefinition = {
   enabled: boolean;
 };
 
+export const ADMIN_COURIERS = ["MH Rider", "Royal Express", "City Link", "Nay Pyi Taw Gate"] as const;
+export type AdminCourier = (typeof ADMIN_COURIERS)[number];
+export type AdminDeliveryStatus = "In transit" | "Delivered" | "Returned";
+
+/**
+ * One delivery handed to a courier (Plan §16 P2, Delivery Settlement Report). `feeKs` is what the
+ * shopper paid for shipping, `costKs` what MH Fashion owes the courier, so the margin is per row.
+ */
+export type AdminDelivery = {
+  id: string;
+  orderId: string;
+  courier: AdminCourier;
+  township: string;
+  handedAt: string;
+  status: AdminDeliveryStatus;
+  feeKs: number;
+  costKs: number;
+  settledAt: string | null;
+  settledBy: string | null;
+};
+
 export type AdminDemoData = {
   version: 1;
   orders: AdminOrder[];
@@ -423,6 +445,7 @@ export type AdminDemoData = {
   designs: AdminDesign[];
   designTakedowns: AdminDesignTakedown[];
   attributeChain: AdminAttributeDefinition[];
+  deliveries: AdminDelivery[];
   tshirtPosts: AdminTshirtPost[];
   productPrices: AdminProductPriceRow[];
   priceHistory: AdminPriceHistoryEntry[];
@@ -439,6 +462,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "posts", label: "Posts" },
   { id: "pricing", label: "Pricing" },
   { id: "attributes", label: "Attributes" },
+  { id: "settlements", label: "Settlements" },
   { id: "customers", label: "Customers" },
   { id: "inventory", label: "Inventory" },
   { id: "promotions", label: "Promotions" },
@@ -1415,6 +1439,33 @@ function seedPostSvg(label: string, accent: string): AdminPostSvg {
   return { url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`, fileName: `${label.toLowerCase()}.svg`, sizeBytes: svg.length };
 }
 
+const DELIVERY_STAGES: AdminOrderStage[] = ["Handed to Delivery", "Out for Delivery", "Delivered", "Refunded"];
+
+function createSeedDeliveries(orders: AdminOrder[]): AdminDelivery[] {
+  const handed = orders.filter((order) => DELIVERY_STAGES.includes(order.stage));
+  return handed.map((order, index) => {
+    const courier = ADMIN_COURIERS[index % ADMIN_COURIERS.length];
+    const units = order.items.reduce((total, item) => total + item.quantity, 0);
+    const feeKs = 2000 + units * 500;
+    const costKs = courier === "MH Rider" ? 1200 + units * 350 : 1500 + units * 400;
+    const handedAt = new Date(new Date(order.placedAt).getTime() + 36 * 3600_000).toISOString();
+    const status: AdminDeliveryStatus = order.stage === "Refunded" ? "Returned" : order.stage === "Delivered" ? "Delivered" : "In transit";
+    const settled = index % 3 === 0;
+    return {
+      id: `delivery-${order.id.replace("#", "")}`,
+      orderId: order.id,
+      courier,
+      township: order.shipTo?.township ?? "Yangon",
+      handedAt,
+      status,
+      feeKs,
+      costKs,
+      settledAt: settled ? new Date(new Date(handedAt).getTime() + 3 * 24 * 3600_000).toISOString() : null,
+      settledBy: settled ? "MH Fashion Owner" : null,
+    };
+  });
+}
+
 function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
   const daysAgo = (days: number) => new Date(now - days * DAY_MS).toISOString();
   return [
@@ -1622,6 +1673,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     designs,
     designTakedowns: [],
     attributeChain: createSeedAttributeChain(),
+    deliveries: createSeedDeliveries(orders),
     tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
     productPrices,
     priceHistory: [],
@@ -1667,6 +1719,7 @@ export function readAdminDemoData(): AdminDemoData {
           attributeChain: Array.isArray(parsed.attributeChain) && parsed.attributeChain.length
             ? parsed.attributeChain
             : createSeedAttributeChain(),
+          deliveries: Array.isArray(parsed.deliveries) ? parsed.deliveries : createSeedDeliveries(orders),
           productPrices: Array.isArray(parsed.productPrices) ? parsed.productPrices : [],
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
           orders,
