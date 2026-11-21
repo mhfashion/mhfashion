@@ -306,10 +306,16 @@ photo-box sizes; do not re-specify them.
 
 ## 6. Editor (`/create`)
 
-**Status: final as built (owner decision, 2026-11-21).** The editor is treated as finished — no
-further editor planning, and no change to its design or behaviour. The remaining-work register
-(section 16) therefore contains no editor items, and no other section of this plan may assign
-editor work. The dated owner corrections below are kept as the record of what was built.
+**Status: final as built (owner decision, 2026-11-21).** The editor is built as the owner asked, and
+its behaviour does not change on its own. The remaining-work register (section 16) contains no editor
+items, and no other section of this plan may assign editor work. The dated owner corrections below are
+kept as the record of what was built.
+
+**Editor plan rewritten (owner instruction, 2026-11-21).** The plan of record for editor scope is now
+[editor plan from the audit](#editor-plan-from-audit), written from `Doc/KITTL_CANVAS_EDITOR_AUDIT.md`:
+what Kittl does, what the editor already has, what the current layer model can carry, and the six
+decisions that are the owner's. Writing that plan changes no behaviour — an item ships only when the
+owner approves that item.
 
 **Detailed editor implementation plan:** [editor implementation plan](#editor-implementation-plan). This section is the canonical location for the editor specification, milestones, and acceptance criteria; this project section records only the verified current state and short roadmap.
 
@@ -1418,6 +1424,170 @@ Fast template actions must always be inspectable in Pro mode. Professional opera
 ## Editor section maintenance policy
 
 Keep detailed editor work in this section of the single master plan. Add new editor tools, Fabric.js implementation details, interaction rules, data contracts, export behavior, performance constraints, and tests here. When a major editor milestone changes product status, update the short reference in the project plan section above; do not recreate standalone plan documents or duplicate the full editor specification elsewhere.
+
+<a id="editor-plan-from-audit"></a>
+## Editor Plan — rewritten from `Doc/KITTL_CANVAS_EDITOR_AUDIT.md`
+
+**Rewritten:** 2026-11-21, on the owner's instruction *"Editor ထဲ doc အတိုင်း Editor Plan ကို ပြန်ရေးထားပါ"*.
+
+**Source:** `Doc/KITTL_CANVAS_EDITOR_AUDIT.md` — the Kittl canvas audit of 2026-11-15. That document
+stays the reference for what Kittl does and for its help-page citations; this section is the plan
+derived from it, kept current against the code.
+
+**Authority:** writing a plan authorises no code. §6 still records the owner's decision that the
+editor is final as built, so an item below ships only when the owner approves that item, and the six
+decisions in §4 are the owner's to make. Where this section and the forward-looking lists in the older
+editor sections disagree, this section wins; the older sections keep the behaviour specification
+(coordinate model, layer contracts, export rules) unchanged.
+
+### 1. What the audit concluded
+
+The present layer model is the right base. Layer objects, the Layers panel, group/ungroup, links,
+content-derived selection bounds, eight resize handles, a rotate handle, the mask brush, the Text tool
+and the Text adjustment panel already carry most of Kittl's canvas workflow, so those interactions can
+be extended rather than replaced.
+
+Six areas do not fit the present data model and need it to grow first: character-level text
+formatting, text box geometry and wrapping, text transformation and effect stacks, glyph/ligature
+controls, vector node editing and clipping, and artboard nesting. §2 records how much of that has
+shipped since the audit was written — wrapping, the effect stack and node editing have, the rest has
+not. The audit also lists the
+project-level systems it puts out of reach — real-time collaboration and version history — and asks
+for an owner decision before any of them is started.
+
+### 2. Verified state (audit item → today)
+
+Checked against the source on 2026-11-21; the audit predates several of these.
+
+| Audit item | Today | Evidence |
+|---|---|---|
+| Content-derived selection bounds | built | `editorTextCanvasBounds`, `layerCanvasBounds` in `lib/editor-layers.ts` |
+| Eight resize handles, aspect behaviour | built | `[data-resize-handle]` `top-left` … `bottom-right` in `KittlCanvas.tsx` |
+| Rotate handle, per-layer and per-group rotation | built | rotate handle below the bounds in `KittlCanvas.tsx`; `snapEditorRotationDelta` in `lib/editor-transform.ts` |
+| Group transform versus child transform | built | group selection uses the union of child bounds |
+| Linked-layer transform | built | `Link Layers` action; links move and resize together |
+| Text tool click-to-type, return to Move | built | inline `foreignObject` editor; `commitEditingText` switches back |
+| Text adjustment sections, live style updates | built | `EditorAdjustmentsPanel.tsx` |
+| Layers reorder, rename, hide, lock, group, ungroup | built | `EditorLayersPanel.tsx` (drag rows, folder groups) |
+| Foreground/background mask painting | built | mask target + brush painting in `KittlCanvas.tsx` |
+| Layer ↔ canvas selection sync | partial | canvas → panel works; hover highlighting does not exist |
+| Alignment to the print canvas, tidy/distribution | missing | no alignment or distribute helpers anywhere in `lib/` or the panel |
+| Collapsible adjustment sections | built | `EditorAdjustmentsPanel.tsx` sections |
+| Text box width/height, multiline wrapping | partial | `wrapWidth` + `editorTextLines` soft-wrap; the box is not drawn by dragging |
+| Text transform presets (arch, wave, circle, flag) | partial | `textTransform` paints `arch` and `wave`; `circle` is a no-op and `flag`/`rise`/`angle`/`distort` do not exist |
+| Shadow / outline / decoration effect objects | built | seven effect kinds in `editorTextEffects`, `editorTextDecoration`, `editorTextPaintPadding` |
+| Glyph panel, uppercase, ligatures | missing | — |
+| Font search, recent fonts, weight options | built | `EditorAdjustmentsPanel.tsx` font search + recents; `fontWeight` |
+| Canvas hover ↔ Layers hover highlight | missing | — |
+| Flip horizontal / vertical | missing | — |
+| Snap guides, smart alignment lines | missing | only 15° rotation snapping exists |
+| Context menu actions | missing | — |
+| Per-layer effect previews in thumbnails | built | `EditorLayerPreview.tsx` paints the same effects |
+| Undo/redo of layer state | built, layer-level | `undoStack`/`redoStack` hold `EditorArtworkLayer[][]` in `KittlCanvas.tsx` |
+| Vector path model, node editing, Shape Builder | built, with limits | `lib/editor-pen-path.ts` stores anchors with Bézier handles; `movePenEditNode` drags anchors and handles (Alt breaks symmetry) and nodes can be added on a path; `applyEditorShapeBuilderOperation` does merge/subtract/intersect, but only on the first two axis-aligned rectangles — no `exclude`, no arbitrary paths |
+| Artboard hierarchy, infinite canvas | missing | single print canvas plus mockups |
+| Collaboration, version history | missing | — |
+
+### 3. Roadmap
+
+Ordered by the audit's own recommendation, minus what §2 shows is already built. Every item needs the
+owner's go-ahead before it is coded; the "approval" column says whether it is a normal change or one
+of the model-level decisions in §4.
+
+| # | Item | Model change | Approval |
+|---|---|---|---|
+| R1 | Canvas ↔ Layers hover highlighting | none | normal |
+| R2 | Align to print canvas, tidy/distribute | geometry helpers only | normal |
+| R3 | Flip horizontal/vertical | two layer fields | normal |
+| R4 | Drag-to-create text box | `wrapWidth` from the drag, height from the wrapped lines | normal |
+| R5 | `circle` and `flag` text transforms | transform matrix per preset | normal |
+| R6 | Effect stacking order and 3D shadow | effect list already ordered; add 3D kinds | D3 |
+| R7 | Character-level text runs | `runs[]` + migration of saved layers | D1 |
+| R8 | Shape Builder for arbitrary paths, `exclude` | boolean ops on stored path strings | D4 |
+| R9 | Artboards, collaboration, version history | workspace/export/persistence | D5, D6 |
+
+**R1 — hover highlighting.** A hovered canvas layer highlights its Layers row and a hovered row
+outlines its canvas layer, without selecting it. Files: `KittlCanvas.tsx` (hover state, outline),
+`EditorLayersPanel.tsx` (row highlight), `lib/editor-layers.ts` (`hitTestLayerAt` already resolves the
+top layer under a point). Acceptance: hovering either side highlights the other within one frame,
+touch devices are unaffected, and a CDP test asserts the row class and the outline element appear and
+clear.
+
+**R2 — align and tidy.** Align a layer or group to the print canvas (left, centre, right, top, middle,
+bottom) and tidy the spacing of three or more selected layers. Files: new `lib/editor-align.ts`,
+actions in `EditorAdjustmentsPanel.tsx` or the Layers box. Constraint: alignment moves layer origins,
+never scales, and must respect linked groups as one unit. Acceptance: unit tests on the helper
+against `PRINT_CANVAS_SPEC` (4500×5400 px at 300 dpi) with layers of mixed size, plus a canvas test
+that the artwork lands on the print area.
+
+**R3 — flip.** Horizontal and vertical flip on the selected layer or group, mirrored in the mockup
+and the print export. Files: `EditorArtworkLayer` fields, `EditorLayerPreview.tsx`,
+`MockupArtwork.tsx`, `layerCanvasBounds` (a flip does not change the bounds, but the ink box of a
+flipped italic does). Acceptance: the printed PNG is the mirror of the unflipped one and the
+transform box still hugs the ink.
+
+**R4 — drag-to-create text box.** Dragging with the Text tool fixes `wrapWidth` at the drag width and
+the box height follows the wrapped line count; a plain click keeps today's 880-unit default. Files:
+`KittlCanvas.tsx` (text-tool drag), `editor-layers.ts` (already wraps to `wrapWidth`). Acceptance:
+a 300-unit-wide box wraps a long line at the drag width and the caret stays inside the box while
+typing (the `keepTextCaretVisible` contract).
+
+**R5 — `circle` and `flag` transforms.** `circle` currently resolves to "no transform" and `flag`
+does not exist, so the preset list over-promises. Either paint them (a circular baseline for
+`circle`, a per-line phase shift for `flag`) or remove them from the control. Files:
+`editorTextTransform` in `lib/editor-layers.ts`, the transform bounds in `editorTextCanvasBounds`,
+the panel list. Acceptance: the ink stays inside the transform box at every preset, verified by frame
+differencing as the other presets were.
+
+**R6 — effect stack and 3D shadow.** The effect list is already ordered and painted in order; what is
+missing is Kittl's "Detailed 3D shadow" and user-controlled stacking. Needs D3. Acceptance: stacked
+shadow + outline + decoration render in list order on canvas, thumbnail, mockup and print sheet.
+
+**R7 — character-level runs.** Needs D1: text becomes `runs[]` (ranges with their own font, size,
+colour, weight, italic, underline, letter-spacing) with a migration for saved layers, and every
+consumer of `text.value` plus the shared style fields has to read the runs. Acceptance: a saved design
+with mixed runs round-trips through localStorage, the mockup and the print sheet, and old layers open
+unchanged.
+
+**R8 — Shape Builder beyond rectangles.** Needs D4. Node editing is already there (anchors, handles,
+adding nodes); what the builder cannot do is operate on anything but the first two axis-aligned
+rectangles, and there is no `exclude`. Files: `applyEditorShapeBuilderOperation` in
+`lib/editor-layers.ts` (path intersection on the stored `d` strings), the Adjustments panel mode list.
+Acceptance: merge/subtract/intersect/exclude on two rotated shapes and on a pen path produce one path
+that prints and exports correctly, with the layer's bounds following the result.
+
+**R9 — artboards and collaboration.** Needs D5 and D6. These change the workspace, export scope and
+persistence, so they are planned only if the owner wants them.
+
+### 4. Decisions for the owner
+
+| # | Question | Recommendation |
+|---|---|---|
+| D1 | Character-level formatting now, or text-box-level styling only? | Keep text-box-level styling. Runs touch every renderer, both bounds, the print sheet and saved designs; nothing in the shop needs per-word styling yet. |
+| D2 | Which text transformations in the first version? | `arch` and `wave` are painted today; finish `circle` and `flag`, and leave `distort`/`rise`/`angle` out. |
+| D3 | Shadow/outline only, or the full effect stack? | The seven painted effects already cover the designs in the catalogue; add stacking control before adding 3D. |
+| D4 | Full Shape Builder (arbitrary paths, `exclude`) in scope? | Not now. Node editing already ships and the rectangle-only builder covers the catalogue shapes; full path booleans are a separate tool with its own geometry tests. |
+| D5 | Single print canvas plus mockups, or multi-artboard/infinite canvas? | Keep one print canvas. Every mockup, export and order line assumes a single print area. |
+| D6 | Collaboration and version history in scope? | No. Autosave per browser and the order record already cover recovery; collaboration needs backend state, conflicts and permissions. |
+
+### 5. Deliberately out of scope
+
+- Copying Kittl's interface, assets or presets; only the interaction patterns are modelled.
+- Fabric.js object-level editing: the editor paints SVG layers and has no Fabric canvas.
+- Per-character fonts before D1, 3D effects before D3, full path booleans before D4.
+- Anything that changes the print contract (print area in cm, artwork units per cm, layer records) —
+  that contract is fixed by the order sheet and the press files.
+
+### 6. How each item is verified
+
+- Unit tests in `tests/*.test.cjs` for the pure helpers (`node --test tests/*.test.cjs`), following
+  the existing `editor-layers`, `editor-pen-path` and `editor-attributes` suites.
+- Interaction tests in `tests/editor-touch.cjs` and CDP probes for canvas behaviour, with the phone
+  checks at 390×844 touch (the editor is used on a phone on the shop floor).
+- Frame differencing for anything that paints (effects, transforms, flips): hide the glyphs, diff two
+  screenshots, and require ≤1.1 px of ink outside the transform box, as the current text box is
+  verified.
+- The print sheet and mockup are part of the acceptance for any layer change, not an afterthought.
 
 ## 1. Product direction
 
@@ -3164,7 +3334,25 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 
 ---
 
-<a id="print-delivery-storage-plan"></a>
+## 2026-11-21 — Editor plan rewritten from the audit doc
+
+The owner asked for the editor plan to be rewritten from the audit document. `Plan/PLAN.md` now
+carries [editor plan from the audit](#editor-plan-from-audit), derived from
+`Doc/KITTL_CANVAS_EDITOR_AUDIT.md` and re-checked against the source:
+
+- The audit's "already compatible" list is now a state table with the file that implements each item,
+  and the audit's "needs expansion" list is marked built, partial or missing as of today. Several
+  items the audit called missing have since shipped — text wrapping, the seven painted text effects
+  and decorations, font search with recent fonts, per-layer effect thumbnails — while `circle` turns
+  out to be a no-op preset and `flag` does not exist.
+- The roadmap keeps the audit's order and drops what is built: hover highlighting, align/tidy, flip,
+  drag-to-create text box, `circle`/`flag` presets, then the model-level items. Node editing and a
+  rectangle-only Shape Builder turned out to be built too, so R8 is now the builder's missing cases.
+- The audit's six open questions are recorded as D1–D6 with a recommendation each, so the owner can
+  accept or overturn them one by one.
+- The plan states plainly that it authorises no code: §6 still treats the editor as final as built, so
+  each item needs the owner's approval before it is implemented.
+
 ## 2026-11-21 — Rate limiting on the payment API
 
 The four payment routes were open to a script that could hammer them:
@@ -3195,6 +3383,7 @@ The four payment routes were open to a script that could hammer them:
 
 Found and fixed while writing it: `useAdminDemoData` passed the browser snapshot as its own server snapshot, so the first client render (with saved orders) disagreed with the server HTML (seeded data). React threw the tree away and re-rendered it, which appended a second copy of the root layout's JSON-LD scripts on `/account`. The hook now has a separate cached `readSeedSnapshot` for the server and hydration render.
 
+<a id="print-delivery-storage-plan"></a>
 ## 2026-11-21 — Forward plan: print, delivery and storage
 
 The work log above records what shipped. This section is the plan for what is left, in the order
