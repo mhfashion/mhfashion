@@ -18,6 +18,8 @@ import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
 import { getGuideCatalog, getGuidePostBySlug } from "@/lib/guides";
 import { guideMetadata } from "@/lib/guide-metadata";
+import JsonLd from "@/components/JsonLd";
+import { articleSchema, breadcrumbSchema } from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +80,14 @@ export default async function GuideArticlePage({ params }: PageProps) {
   const categoryUrl = `/guide?category=${encodeURIComponent(post.categorySlug)}#articles`;
 
   return (
+    <>
+      <JsonLd data={articleSchema(post, { categoryName: category?.name })} />
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", path: "/" },
+        { name: "Guide", path: "/guide" },
+        ...(category ? [{ name: category.name, path: `/guide?category=${encodeURIComponent(category.slug)}#articles` }] : []),
+        { name: post.title, path: `/guide/${post.slug}` },
+      ])} />
     <div>
       <Header />
       <main className="w-full bg-bg px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
@@ -141,5 +151,6 @@ export default async function GuideArticlePage({ params }: PageProps) {
       </main>
 
     </div>
+    </>
   );
 }

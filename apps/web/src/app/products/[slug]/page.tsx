@@ -3,6 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
 import ProductDetailClient from "@/components/ProductDetailClient";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbSchema, productSchema } from "@/lib/structured-data";
 import { getBestSellers, getNewArrivals, getProductBySlug } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +26,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   return (
     <div>
+      <JsonLd data={productSchema(product)} />
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", path: "/" },
+        { name: "Products", path: "/products" },
+        { name: product.name, path: `/products/${product.slug}` },
+      ])} />
       <Header />
       <main className="w-full bg-bg px-2 py-3 sm:px-4 lg:px-6 lg:py-4">
         <div className="mx-auto w-full max-w-[1500px]">

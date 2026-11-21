@@ -8,6 +8,8 @@ import { LocaleProvider } from "@/lib/i18n";
 import CopyrightBar from "@/components/CopyrightBar";
 import BrowserZoomGuard from "@/components/BrowserZoomGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import JsonLd from "@/components/JsonLd";
+import { organizationSchema, websiteSchema } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
   title: "MH Fashion — Design Your Own World",
@@ -26,6 +28,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body>
+        <JsonLd data={organizationSchema()} />
+        <JsonLd data={websiteSchema()} />
         <ThemeProvider>
           <LocaleProvider>
             <CurrencyProvider>

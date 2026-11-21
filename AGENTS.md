@@ -105,6 +105,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Intents live in an in-memory map (`lib/payment-store.ts`), so a restart forgets open intents. That is fine while nothing is charged; it becomes a Supabase table with P0 item 1.
 - Tests: `tests/payments.test.cjs` (Web Crypto is global in Node 22, so no Node-only crypto import).
 
+## SEO structured data (`lib/structured-data.ts`, `components/JsonLd.tsx`)
+- `serializeJsonLd` escapes `<`, `>`, `&` and U+2028/2029. Never inline `JSON.stringify` into the script: a product name containing `</script>` closes the element.
+- `lib/site.ts` owns the origin policy (`getSiteOrigin`): https only, no credentials, no path, no localhost. With no configured origin, absolute URLs are simply omitted — never guessed, so a preview host cannot leak into a canonical. `guide-metadata.ts` re-exports it as `getGuideSiteOrigin` (a **relative** import, because the test loader only resolves `.`-relative specifiers).
+- Product uses `AggregateOffer` with `priceCurrency: "MMK"` and numeric `lowPrice`/`highPrice`: the catalog carries a range, and a reversed range is repaired rather than emitted.
+- The FAQ node is built from `INFO_PAGES.faq.sections` (heading = question), so the markup cannot drift from the copy; a section with no answer is dropped.
+- Pages: Organization + WebSite in `layout.tsx`, Product + BreadcrumbList on `/products/[slug]`, FAQPage on `/faq`, Article + BreadcrumbList on `/guide/[slug]`. `/search` stays `noindex`.
+- The deploy workflow passes `NEXT_PUBLIC_SITE_URL` from the repository **variable** `NEXT_PUBLIC_SITE_URL`; unset means canonical links and JSON-LD `url` stay off (correct behaviour, not a failure).
+
 ## Account orders (`lib/my-orders.ts`, `app/account/page.tsx`)
 - Orders live in the same browser store as the admin demo data (`mh-fashion-admin-demo-data-v1`), read through `useAdminDemoData()` (`useSyncExternalStore`).
 - **Filter on `checkoutKey`.** The seed contains ~26 demo orders for the admin preview; only an order the checkout created has `checkoutKey`, so `myOrders()` is what the customer sees. Showing `data.orders` directly puts fake orders in a customer's history.

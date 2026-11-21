@@ -1076,6 +1076,14 @@ proposal, not an approved order.
     method, the print detail of every line and the total. `tests/account-orders.test.cjs` covers the
     filter, the totals, the date formatter and the stage tones. Points and the wallet are still demo
     numbers: they need a ledger in Supabase.
+    **SEO structured data built 2026-11-21:** `lib/structured-data.ts` builds Organization and WebSite
+    (with the SearchAction for `/search`), Product (an `AggregateOffer` in MMK, because the catalog
+    carries a price range), BreadcrumbList, FAQPage and Article nodes; `components/JsonLd.tsx` renders
+    them and escapes `<`, `>` and `&` so a product name cannot close the script tag. Absolute URLs only
+    appear when `NEXT_PUBLIC_SITE_URL` is set to a clean https origin — nothing is guessed from a
+    preview host. `tests/structured-data.test.cjs` covers every node, the escaping and the origin
+    policy; the rendered pages were checked in Chromium (4 nodes on a product and a guide article, 3 on
+    `/faq`, 2 on the home page, no relative URL, no `undefined`).
 
 ### P2 — later
 

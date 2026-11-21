@@ -1,21 +1,8 @@
 import type { Metadata } from "next";
+import { getSiteOrigin } from "./site";
 
-// Do not guess the production domain or derive canonical links from Preview.
-export function getGuideSiteOrigin(): string | undefined {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!configured) return undefined;
-  try {
-    const url = new URL(configured);
-    if (
-      url.protocol !== "https:" || url.username || url.password ||
-      url.hostname === "localhost" || url.hostname === "127.0.0.1" ||
-      url.pathname !== "/" || url.search || url.hash
-    ) return undefined;
-    return url.origin;
-  } catch {
-    return undefined;
-  }
-}
+// The origin policy lives in `site.ts`; this name is kept for the guide pages and their tests.
+export { getSiteOrigin as getGuideSiteOrigin } from "./site";
 
 export function guideMetadata({
   title,
@@ -30,7 +17,7 @@ export function guideMetadata({
   article?: boolean;
   noindex?: boolean;
 }): Metadata {
-  const origin = getGuideSiteOrigin();
+  const origin = getSiteOrigin();
   const url = origin ? `${origin}${path}` : undefined;
   return {
     title,
