@@ -97,6 +97,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `applyChainPatch` refuses to remove an option that still prices rows, to switch off an attribute that prices rows, and to take an empty/duplicate label. It returns the untouched data plus `issues`; the UI renders those and writes nothing.
 - Tests: `tests/admin-attributes.test.cjs`.
 
+## Jersey mapping (`lib/admin-jersey.ts`, `components/admin/AdminJersey.tsx`)
+- `data.jerseyStyles` holds one worn photo path plus a quad per panel (Plan §4.4). Corners are **percentages of the photo**, ordered top-left, top-right, bottom-right, bottom-left; `panelPath` turns them into the preview path.
+- `panel.view` is derived from the key: only `back` belongs to the back photo. `panelIssues` refuses a corner outside 0-100, a quad under `MIN_PANEL_AREA` (25 %², shoelace) and a panel on the wrong view.
+- `JERSEY_REQUIRED_PANELS` is `front-left`, `front-right`, `back`; `completePanels` fills the rest so a new style validates immediately.
+- Corner edits save on every valid change (the preview and the export must never disagree); an invalid quad is refused and the reason is shown, so the stored zones stay printable.
+- `removeStyle` keeps the last style. `duplicateStyle` rewrites the photo path to the copy's id, matching `jersey-mockups/<id>/worn_photo.png`.
+- Tests: `tests/admin-jersey.test.cjs`.
+
 ## Loyalty (`lib/admin-loyalty.ts`, `components/admin/AdminLoyalty.tsx`)
 - `data.loyalty` = `{ rules, tiers, milestones }` (Plan §9). `createSeedLoyalty()` is both the seed and the reset target; `readAdminDemoData` falls back to it when a stored blob predates the field, so an old `localStorage` entry does not lose the module.
 - `spendPoints` spends **daily first, then the kept purchase points**, and returns the shortfall instead of clamping silently. `expireDailyPoints` clears only the daily bucket.

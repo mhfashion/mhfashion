@@ -17,6 +17,7 @@ export type AdminModuleId =
   | "attributes"
   | "settlements"
   | "loyalty"
+  | "jersey"
   | "customers"
   | "inventory"
   | "promotions"
@@ -472,6 +473,21 @@ export type AdminLoyalty = {
   milestones: AdminMilestone[];
 };
 
+/** Jersey panel mapping (Plan §4.4): one worn photo plus a quad per garment region. */
+export const JERSEY_PANEL_KEYS = ["front-left", "front-right", "left-sleeve", "right-sleeve", "collar", "back"] as const;
+export type JerseyPanelKey = (typeof JERSEY_PANEL_KEYS)[number];
+export const JERSEY_REQUIRED_PANELS: JerseyPanelKey[] = ["front-left", "front-right", "back"];
+export type JerseyPoint = { x: number; y: number };
+/** Corners run top-left, top-right, bottom-right, bottom-left, as a percentage of the worn photo. */
+export type JerseyPanel = { key: JerseyPanelKey; view: "front" | "back"; corners: [JerseyPoint, JerseyPoint, JerseyPoint, JerseyPoint] };
+export type JerseyStyle = {
+  id: string;
+  name: string;
+  wornPhoto: string | null;
+  panels: JerseyPanel[];
+  updatedAt: string;
+};
+
 export type AdminDemoData = {
   version: 1;
   orders: AdminOrder[];
@@ -482,6 +498,7 @@ export type AdminDemoData = {
   attributeChain: AdminAttributeDefinition[];
   deliveries: AdminDelivery[];
   loyalty: AdminLoyalty;
+  jerseyStyles: JerseyStyle[];
   tshirtPosts: AdminTshirtPost[];
   productPrices: AdminProductPriceRow[];
   priceHistory: AdminPriceHistoryEntry[];
@@ -500,6 +517,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "attributes", label: "Attributes" },
   { id: "settlements", label: "Settlements" },
   { id: "loyalty", label: "Loyalty" },
+  { id: "jersey", label: "Jersey" },
   { id: "customers", label: "Customers" },
   { id: "inventory", label: "Inventory" },
   { id: "promotions", label: "Promotions" },
@@ -1476,6 +1494,44 @@ function seedPostSvg(label: string, accent: string): AdminPostSvg {
   return { url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`, fileName: `${label.toLowerCase()}.svg`, sizeBytes: svg.length };
 }
 
+/** Two worn jerseys with the quads the catalog preview and the post-edit mockup share. */
+export function createSeedJerseyStyles(now: number): JerseyStyle[] {
+  const stamp = new Date(now).toISOString();
+  const front = (left: number, right: number, top: number, bottom: number) => [
+    { x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom },
+  ] as JerseyPanel["corners"];
+  return [
+    {
+      id: "jersey-home",
+      name: "MH Sport Home",
+      wornPhoto: "jersey-mockups/jersey-home/worn_photo.png",
+      updatedAt: stamp,
+      panels: [
+        { key: "front-left", view: "front", corners: front(30, 49, 30, 62) },
+        { key: "front-right", view: "front", corners: front(51, 70, 30, 62) },
+        { key: "left-sleeve", view: "front", corners: front(17, 29, 26, 44) },
+        { key: "right-sleeve", view: "front", corners: front(71, 83, 26, 44) },
+        { key: "collar", view: "front", corners: front(42, 58, 22, 29) },
+        { key: "back", view: "back", corners: front(28, 72, 28, 70) },
+      ],
+    },
+    {
+      id: "jersey-away",
+      name: "MH Sport Away",
+      wornPhoto: "jersey-mockups/jersey-away/worn_photo.png",
+      updatedAt: stamp,
+      panels: [
+        { key: "front-left", view: "front", corners: front(29, 48, 31, 63) },
+        { key: "front-right", view: "front", corners: front(52, 71, 31, 63) },
+        { key: "left-sleeve", view: "front", corners: front(16, 28, 27, 45) },
+        { key: "right-sleeve", view: "front", corners: front(72, 84, 27, 45) },
+        { key: "collar", view: "front", corners: front(41, 59, 23, 30) },
+        { key: "back", view: "back", corners: front(27, 73, 29, 71) },
+      ],
+    },
+  ];
+}
+
 /** Plan §9: 300 daily (they expire), 100 per generated image, +50 per purchased piece (kept). */
 export function createSeedLoyalty(): AdminLoyalty {
   return {
@@ -1729,6 +1785,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     attributeChain: createSeedAttributeChain(),
     deliveries: createSeedDeliveries(orders),
     loyalty: createSeedLoyalty(),
+    jerseyStyles: createSeedJerseyStyles(now),
     tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
     productPrices,
     priceHistory: [],
@@ -1778,6 +1835,9 @@ export function readAdminDemoData(): AdminDemoData {
           loyalty: parsed.loyalty?.rules && Array.isArray(parsed.loyalty.tiers) && Array.isArray(parsed.loyalty.milestones)
             ? parsed.loyalty
             : createSeedLoyalty(),
+          jerseyStyles: Array.isArray(parsed.jerseyStyles) && parsed.jerseyStyles.length
+            ? parsed.jerseyStyles
+            : createSeedJerseyStyles(Date.now()),
           productPrices: Array.isArray(parsed.productPrices) ? parsed.productPrices : [],
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
           orders,

@@ -1035,7 +1035,7 @@ proposal, not an approved order.
 
 11. **Posts ↔ Product relationship** as a data model (how a T-shirt post relates to
     Product → Style → Color and to fixed-design products). The Nyein brief is still pending.
-12. **Admin modules not yet built:** Brush Management, Jersey mapping setup.
+12. **Admin modules not yet built:** Brush Management only.
     **Pricing Management (web grid + phone cards), Attribute Management, the Delivery Settlement
     Report and Loyalty rules shipped 2026-11-21** (4.5.1, §9, §16); Brush Management stays blocked on
     the editor. `/admin/loyalty` holds the §9 economy (300 daily that expire after 24h, 100 per AI
@@ -1043,7 +1043,11 @@ proposal, not an approved order.
     spend → discount) and the milestone benefits (trigger on pieces, orders or spend). A tier that
     demo customers sit in cannot be deleted, a duplicate tier name or milestone threshold is refused,
     and a "Check a shopper" panel shows the tier, the points and the milestones a basket would earn
-    without writing anything.
+    without writing anything. `/admin/jersey` is the §4.4 mapping setup: one worn photo per style plus
+    a quad per panel (front left, front right, back required; sleeves and collar optional), edited as
+    corner percentages over a garment preview and exported as `mapping_zones.json` for
+    `jersey-mockups/<id>/`. The catalog preview and the post-edit mockup read the same zones; R2 is not
+    connected, so the photo path is shown instead of an upload.
     The settlement report lives at `/admin/settlements`: period / courier / status / settlement
     filters, fee against courier cost with the margin per row and per courier, "Mark settled" as a
     batch that never overwrites an existing stamp, "Reopen", and a CSV sheet with a total block.
