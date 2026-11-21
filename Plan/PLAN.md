@@ -2754,3 +2754,8 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 - "Print sheet" opens a standalone A4 document (identity, ship-to, spec per line, artwork, file list, totals, note) and sends it to the print dialog; "Print spec CSV" exports the same columns for a spreadsheet.
 - Orders saved before this change are backfilled on read, so no order opens with an empty spec.
 - Designs are saved as SVG at real print size, with the layer layout recorded: print area in cm, artwork units per cm, and every layer's X/Y/W×H in cm, rotation and scale. The drawer, the printable sheet and the CSV all show those measurements.
+
+## 2026-11-21 — Print position on the mockup, separate cart lines
+
+- Every order line now records where the print area sits on the garment: the mockup name, the flat garment size in cm, and the print-area origin (cm from the top-left). The A4 sheet draws the garment with the print area and the layer boxes, so the press can align the job without guessing.
+- Adding to the cart with a different size, colour, material, GSM, fit or sleeve now creates a separate line instead of overwriting the previous one; identical combinations still just increase the quantity. Each line shows its own variant and price.

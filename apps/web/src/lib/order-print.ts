@@ -1,6 +1,7 @@
 import type { AdminOrder, AdminOrderDesign, AdminOrderItem } from "./admin-demo-data";
 import {
-  DESIGN_UNITS_PER_CM, designLayerSize, formatAdminDateTime, formatKs, orderTotalKs, orderUnits,
+  DESIGN_UNITS_PER_CM, buildMockupDiagramSvg, designLayerSize, formatAdminDateTime, formatKs,
+  orderTotalKs, orderUnits,
 } from "./admin-demo-data";
 
 /**
@@ -12,6 +13,7 @@ export const ORDER_PRINT_COLUMNS = [
   "Product", "Colour", "Size", "Material", "GSM", "Fit", "Sleeve", "Print", "Placement", "Print size (cm)",
   "Quantity", "Unit price (Ks)", "Line total (Ks)", "Design", "Design file", "Ink",
   "Print area (cm)", "Units/cm", "Layers", "Layer layout",
+  "Mockup", "Garment (cm)", "Print area at (cm)",
 ] as const;
 
 /** "Backdrop shape 5.6,3.5 16.8×15.4cm r0 s1" — the layer measurements in one CSV cell. */
@@ -51,6 +53,9 @@ export function orderItemPrintValues(order: AdminOrder, item: AdminOrderItem): (
     item.design?.unitsPerCm ?? "—",
     item.design?.layers.length ?? 0,
     item.design ? designLayoutSummary(item.design) : "—",
+    item.design?.mockup.name ?? "—",
+    item.design ? `${item.design.mockup.garmentWidthCm} × ${item.design.mockup.garmentHeightCm}` : "—",
+    item.design ? `${item.design.mockup.printAreaXCm} from left, ${item.design.mockup.printAreaYCm} from top` : "—",
   ];
 }
 
@@ -94,6 +99,9 @@ function specRows(item: AdminOrderItem): [string, string][] {
     ["Print size", design ? `${design.printWidthCm} × ${design.printHeightCm} cm` : "—"],
     ["Ink", design?.ink ?? "—"],
     ["Artwork units", design ? `${design.unitsPerCm} per cm` : "—"],
+    ["Mockup", design?.mockup.name ?? "—"],
+    ["Garment size", design ? `${design.mockup.garmentWidthCm} × ${design.mockup.garmentHeightCm} cm` : "—"],
+    ["Print area at", design ? `${design.mockup.printAreaXCm} cm from left · ${design.mockup.printAreaYCm} cm from top` : "—"],
     ["Quantity", String(item.quantity)],
     ["Design", design?.name ?? "No design"],
     ["Design file", design?.fileName ?? "—"],
@@ -114,6 +122,9 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
     const artwork = design
       ? `<img class="art" alt="${escapeHtml(design.fileName)}" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(design.svg)}" />`
       : `<p class="empty">No design file attached</p>`;
+    const placementFigure = design
+      ? `<figure class="design"><img class="mockup" alt="Print position on ${escapeHtml(design.mockup.name)}" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(buildMockupDiagramSvg(design))}" /><figcaption>${escapeHtml(design.placement)} · print at ${design.mockup.printAreaXCm} cm from left, ${design.mockup.printAreaYCm} cm from top</figcaption></figure>`
+      : "";
     const layoutRows = design
       ? design.layers
         .map((layer) => {
@@ -134,6 +145,7 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
           ${artwork}
           <figcaption>${design ? `${escapeHtml(design.name)}<br /><b>${escapeHtml(design.fileName)}</b>` : "—"}</figcaption>
         </figure>
+        ${placementFigure}
       </div>
       ${layout}
     </section>`;
@@ -166,6 +178,7 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
   table.spec th { width: 42%; color: #6b7481; font-weight: 600; }
   figure.design { margin: 0; width: 150px; text-align: center; }
   figure.design .art { width: 140px; height: auto; border: 1px dashed #c9d0d8; }
+  figure.design .mockup { width: 90px; height: auto; border: 1px solid #e2e7ec; }
   figure.design figcaption { font-size: 9px; color: #4a5461; margin-top: 4px; word-break: break-all; }
   .files li { margin-bottom: 2px; }
   h3 { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #6b7481; margin: 10px 0 4px; }

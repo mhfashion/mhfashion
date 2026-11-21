@@ -2,15 +2,19 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Product } from "@/lib/types";
+import {
+  addCartItem, normalizeCartItems, removeCartItem, updateCartQuantity,
+  type CartItem, type CartVariant,
+} from "@/lib/cart-items";
 
-export type CartItem = Product & { quantity: number };
+export type { CartItem, CartVariant } from "@/lib/cart-items";
 
 type CartContextValue = {
   itemCount: number;
   items: CartItem[];
-  addItem: (product: Product) => void;
-  updateQuantity: (id: string, quantity: number) => void;
-  removeItem: (id: string) => void;
+  addItem: (product: Product, variant?: Partial<CartVariant> | null, quantity?: number, unitPriceKs?: number) => void;
+  updateQuantity: (key: string, quantity: number) => void;
+  removeItem: (key: string) => void;
   clearCart: () => void;
 };
 
@@ -33,8 +37,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as CartItem[];
-        if (Array.isArray(parsed)) setItems(parsed);
+        setItems(normalizeCartItems(JSON.parse(stored)));
       } else {
         const legacyCount = Number(window.localStorage.getItem(LEGACY_COUNT_KEY) || 0);
         if (legacyCount > 0) setItems([]);
@@ -49,23 +52,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(LEGACY_COUNT_KEY, String(items.reduce((total, item) => total + item.quantity, 0)));
   }, [items]);
 
-  const addItem = (product: Product) => {
-    setItems((current) => {
-      const existing = current.find((item) => item.id === product.id);
-      if (existing) return current.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...current, { ...product, quantity: 1 }];
-    });
+  // A different size, colour, material, GSM, fit or sleeve is a separate line, never merged.
+  const addItem = (product: Product, variant?: Partial<CartVariant> | null, quantity = 1, unitPriceKs?: number) => {
+    setItems((current) => addCartItem(current, product, variant, quantity, unitPriceKs));
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
-    if (quantity <= 0) {
-      setItems((current) => current.filter((item) => item.id !== id));
-      return;
-    }
-    setItems((current) => current.map((item) => item.id === id ? { ...item, quantity } : item));
+  const updateQuantity = (key: string, quantity: number) => {
+    setItems((current) => updateCartQuantity(current, key, quantity));
   };
 
-  const removeItem = (id: string) => setItems((current) => current.filter((item) => item.id !== id));
+  const removeItem = (key: string) => setItems((current) => removeCartItem(current, key));
   const clearCart = () => setItems([]);
   const itemCount = items.reduce((total, item) => total + item.quantity, 0);
 

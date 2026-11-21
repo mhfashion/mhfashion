@@ -85,6 +85,7 @@ export default function ProductDetailClient({ product, related }: Props) {
   );
   const [favorite, setFavorite] = useState(false);
   const [added, setAdded] = useState(false);
+  const [variantWarning, setVariantWarning] = useState(false);
 
   // `?design=` carries a shared artwork; otherwise the design open in the editor is used.
   useEffect(() => {
@@ -102,15 +103,34 @@ export default function ProductDetailClient({ product, related }: Props) {
   const price = hasCompleteVariantSelection
     ? `${(variantPriceMax * quantity).toLocaleString("en-US")} Ks`
     : formatRangeKs(variantPriceMin * quantity, variantPriceMax * quantity);
+  const variant = {
+    size: selectedSize,
+    color: selectedColor,
+    material: selectedMaterial,
+    gsm: selectedGsm,
+    fit: selectedFit,
+    sleeve: selectedSleeve,
+  };
+  const missingVariant = !selectedSize || !selectedColor;
   const addQuantityToCart = () => {
-    for (let index = 0; index < quantity; index += 1) addItem(product);
+    // One line per exact combination: a different size or colour never merges into this one.
+    addItem(product, variant, quantity, hasCompleteVariantSelection ? variantPriceMax : undefined);
   };
   const addToCart = () => {
+    if (missingVariant) {
+      setVariantWarning(true);
+      return;
+    }
+    setVariantWarning(false);
     addQuantityToCart();
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1800);
   };
   const buyNow = () => {
+    if (missingVariant) {
+      setVariantWarning(true);
+      return;
+    }
     addQuantityToCart();
     router.push("/cart");
   };
@@ -175,7 +195,8 @@ export default function ProductDetailClient({ product, related }: Props) {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xs font-black">Quantity</span><div className="flex items-center rounded-full border border-border bg-bg"><button type="button" aria-label="Decrease quantity" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-2.5"><Minus size={14} /></button><span className="min-w-8 text-center text-sm font-bold">{quantity}</span><button type="button" aria-label="Increase quantity" onClick={() => setQuantity((value) => value + 1)} className="p-2.5"><Plus size={14} /></button></div><span className="flex items-center gap-1 text-[11px] font-bold text-accent"><Check size={14} /> In Stock · Ready to ship</span></div>
-          <div className="mt-3 grid grid-cols-3 gap-1 sm:gap-1.5"><button type="button" onClick={buyNow} className="min-w-0 whitespace-nowrap rounded-lg bg-accent px-1 py-2.5 text-[9px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:px-2 sm:text-xs"><ShoppingCart size={12} className="mr-0.5 inline sm:mr-1 sm:h-[14px] sm:w-[14px]" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} className="min-w-0 whitespace-nowrap rounded-lg border-2 border-accent px-1 py-2.5 text-[9px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:px-2 sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button><a href={`/create?product=${encodeURIComponent(product.slug)}`} className="min-w-0 whitespace-nowrap rounded-lg border border-border px-1 py-2.5 text-center text-[9px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:px-2 sm:text-xs">Edit Design</a></div>
+          <div className="mt-3 grid grid-cols-3 gap-1 sm:gap-1.5"><button type="button" onClick={buyNow} data-buy-now className="min-w-0 whitespace-nowrap rounded-lg bg-accent px-1 py-2.5 text-[9px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:px-2 sm:text-xs"><ShoppingCart size={12} className="mr-0.5 inline sm:mr-1 sm:h-[14px] sm:w-[14px]" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} data-add-to-cart className="min-w-0 whitespace-nowrap rounded-lg border-2 border-accent px-1 py-2.5 text-[9px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:px-2 sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button><a href={`/create?product=${encodeURIComponent(product.slug)}`} className="min-w-0 whitespace-nowrap rounded-lg border border-border px-1 py-2.5 text-center text-[9px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:px-2 sm:text-xs">Edit Design</a></div>
+          {variantWarning ? <p data-variant-warning role="status" className="mt-2 rounded-lg bg-[#fff6e6] px-2.5 py-1.5 text-[10px] font-semibold text-[#9a6a12]">Choose a size and colour first — every combination is a separate order line.</p> : null}
         </div>
       </section>
 

@@ -54,6 +54,17 @@ export type AdminDesignLayer = {
   text?: string;
 };
 
+export type AdminDesignMockup = {
+  /** Mockup the artwork was laid out on, e.g. "Classic T-shirt · White · 2XL". */
+  name: string;
+  /** Flat garment size on the mockup, in centimetres. */
+  garmentWidthCm: number;
+  garmentHeightCm: number;
+  /** Top-left corner of the print area on the garment, in centimetres. */
+  printAreaXCm: number;
+  printAreaYCm: number;
+};
+
 export type AdminOrderDesign = {
   id: string;
   name: string;
@@ -69,6 +80,8 @@ export type AdminOrderDesign = {
   unitsPerCm: number;
   layers: AdminDesignLayer[];
   placement: "Front" | "Back" | "Left chest" | "Sleeve";
+  /** Where on the garment the print area sits — without this the desk cannot align the press. */
+  mockup: AdminDesignMockup;
 };
 
 export const DESIGN_UNITS_PER_CM = 10;
@@ -177,7 +190,72 @@ function hashString(value: string): number {
   return hash;
 }
 
-export function seedOrderDesign(name: string, color: string, seed: number): AdminOrderDesign {
+const GARMENT_SIZES_CM: Record<string, { width: number; height: number }> = {
+  S: { width: 46, height: 68 },
+  M: { width: 50, height: 70 },
+  L: { width: 54, height: 72 },
+  XL: { width: 58, height: 74 },
+  XXL: { width: 62, height: 76 },
+  "2XL": { width: 62, height: 76 },
+  "One size": { width: 38, height: 42 },
+};
+
+const round1 = (value: number) => Math.round(value * 10) / 10;
+
+/** Garment size and print-area origin for a placement, in centimetres. */
+export function designMockupPlacement(
+  placement: AdminOrderDesign["placement"],
+  printWidthCm: number,
+  printHeightCm: number,
+  garment: { name?: string; category?: AdminProductCategory; size?: string; color?: string } = {},
+): AdminDesignMockup {
+  const size = garment.size ?? "M";
+  const base = GARMENT_SIZES_CM[size] ?? GARMENT_SIZES_CM.M;
+  const garmentWidthCm = base.width;
+  const garmentHeightCm = garment.category === "Hoodie" ? base.height + 6 : base.height;
+  let x: number;
+  let y: number;
+  if (placement === "Left chest") {
+    x = garmentWidthCm - printWidthCm - 6;
+    y = garmentHeightCm * 0.16;
+  } else if (placement === "Sleeve") {
+    x = 4;
+    y = garmentHeightCm * 0.28;
+  } else {
+    x = (garmentWidthCm - printWidthCm) / 2;
+    y = garmentHeightCm * 0.22;
+  }
+  return {
+    name: `${garment.name ?? "Garment"} · ${garment.color ?? "—"} · ${size}`,
+    garmentWidthCm: round1(garmentWidthCm),
+    garmentHeightCm: round1(garmentHeightCm),
+    printAreaXCm: round1(Math.max(0, Math.min(garmentWidthCm - printWidthCm, x))),
+    printAreaYCm: round1(Math.max(0, Math.min(garmentHeightCm - printHeightCm, y))),
+  };
+}
+
+/** Garment outline with the print area and every layer box, so the position is unmistakable. */
+export function buildMockupDiagramSvg(design: AdminOrderDesign): string {
+  const mockup = design.mockup;
+  const width = mockup.garmentWidthCm;
+  const height = mockup.garmentHeightCm;
+  const layers = design.layers
+    .map((layer) => {
+      const size = designLayerSize(layer, design.unitsPerCm);
+      const x = mockup.printAreaXCm + size.xCm;
+      const y = mockup.printAreaYCm + size.yCm;
+      return `<rect x="${x}" y="${y}" width="${size.widthCm}" height="${size.heightCm}" fill="none" stroke="${design.ink}" stroke-width="0.15" opacity="0.85" />`;
+    })
+    .join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${Math.round(width * 4)}" height="${Math.round(height * 4)}"><rect x="0.2" y="0.2" width="${width - 0.4}" height="${height - 0.4}" rx="2" fill="#f2f4f5" stroke="#c9d0d8" stroke-width="0.3" /><rect x="${mockup.printAreaXCm}" y="${mockup.printAreaYCm}" width="${design.printWidthCm}" height="${design.printHeightCm}" fill="none" stroke="#4cae22" stroke-width="0.3" stroke-dasharray="1 0.6" />${layers}</svg>`;
+}
+
+export function seedOrderDesign(
+  name: string,
+  color: string,
+  seed: number,
+  garment: { name?: string; category?: AdminProductCategory; size?: string; color?: string } = {},
+): AdminOrderDesign {
   const placement = (["Front", "Back", "Left chest", "Sleeve"] as const)[seed % 4];
   const printWidthCm = placement === "Left chest" ? 9 : placement === "Sleeve" ? 7 : 28;
   const printHeightCm = placement === "Left chest" ? 9 : placement === "Sleeve" ? 7 : 35;
@@ -200,6 +278,7 @@ export function seedOrderDesign(name: string, color: string, seed: number): Admi
     unitsPerCm,
     layers,
     placement,
+    mockup: designMockupPlacement(placement, printWidthCm, printHeightCm, { color, ...garment }),
   };
   return { ...design, svg: buildDesignSvg(design) };
 }
@@ -217,7 +296,7 @@ export function backfillOrderPrintSpec(order: AdminOrder, products: AdminProduct
     city: "Yangon",
   };
   const items = order.items.map((item, index) => {
-    const design = item.design && Array.isArray(item.design.layers) && item.design.layers.length
+    const design = item.design && Array.isArray(item.design.layers) && item.design.layers.length && item.design.mockup
       ? item.design
       : null;
     if (design && item.material && item.fit && item.sleeve && item.printMethod) return item;
@@ -232,7 +311,7 @@ export function backfillOrderPrintSpec(order: AdminOrder, products: AdminProduct
       fit: item.fit ?? (apparel ? "Oversized" : "Standard"),
       sleeve: item.sleeve ?? (apparel ? "Short Sleeve" : "—"),
       printMethod: item.printMethod ?? "DTF",
-      design: design ?? seedOrderDesign(designName, item.color, seed),
+      design: design ?? seedOrderDesign(designName, item.color, seed, { name: product?.name, category: product?.category, size: item.size, color: item.color }),
     };
   });
   return { ...order, shipTo, items };
@@ -1342,7 +1421,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
         fit: apparel ? (index % 2 === 0 ? "Oversized" : "Regular") : "Standard",
         sleeve: apparel ? (index % 3 === 0 ? "Long Sleeve" : "Short Sleeve") : "—",
         printMethod: (["DTF", "Sublimation", "Screen print"] as const)[index % 3],
-        design: seedOrderDesign(designName, color, index + 1),
+        design: seedOrderDesign(designName, color, index + 1, { name: product.name, category: product.category, size, color }),
       }],
       stage: stageForAge(daysAgo, random()),
       payment,

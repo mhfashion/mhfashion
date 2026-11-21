@@ -86,6 +86,17 @@ test("every seeded order line carries the full print spec and a design file", ()
         assert.equal(typeof layer.rotation, "number");
         assert.ok(layer.scale > 0);
       }
+      // Where on the garment the print area sits must be recorded, or the press cannot align it.
+      const mockup = design.mockup;
+      assert.ok(mockup && mockup.name.includes(order.items[0].size), `${order.id} mockup has no garment name`);
+      assert.ok(mockup.garmentWidthCm > 0 && mockup.garmentHeightCm > 0);
+      assert.ok(mockup.printAreaXCm >= 0 && mockup.printAreaYCm >= 0);
+      assert.ok(mockup.printAreaXCm + design.printWidthCm <= mockup.garmentWidthCm + 0.01);
+      assert.ok(mockup.printAreaYCm + design.printHeightCm <= mockup.garmentHeightCm + 0.01);
+      const diagram = admin.buildMockupDiagramSvg(design);
+      assert.match(diagram, /^<svg /);
+      assert.ok(diagram.includes(`width="${design.printWidthCm}"`), "the diagram draws the print area");
+
       // The file is sized in centimetres, so it prints at the recorded print size.
       assert.ok(design.svg.includes(`width="${design.printWidthCm}cm"`));
       assert.ok(design.svg.includes(`height="${design.printHeightCm}cm"`));
@@ -120,6 +131,9 @@ test("the print CSV carries every column the press needs", () => {
   assert.equal(line["Units/cm"], admin.DESIGN_UNITS_PER_CM);
   assert.equal(line.Layers, printDesign.layers.length);
   assert.ok(line["Layer layout"].includes("Title text"));
+  assert.equal(line.Mockup, printDesign.mockup.name);
+  assert.equal(line["Garment (cm)"], `${printDesign.mockup.garmentWidthCm} × ${printDesign.mockup.garmentHeightCm}`);
+  assert.equal(line["Print area at (cm)"], `${printDesign.mockup.printAreaXCm} from left, ${printDesign.mockup.printAreaYCm} from top`);
 });
 
 test("an order without a design still exports a complete row", () => {
@@ -141,6 +155,7 @@ test("the print sheet contains the whole spec, the shipping address and the artw
     "Classic T-shirt", "Black", "M", "Combed Cotton", "180", "Oversized", "Short Sleeve",
     "DTF", order.items[0].design.placement, `${order.items[0].design.printWidthCm} × ${order.items[0].design.printHeightCm} cm`, "Street Vibes", "street-vibes-black.svg",
     "Layout · print area", "Title", "text",
+    "Mockup", "Garment size", "Print area at", "Print position on",
     "MH FASHION", "Print sheet",
   ]) {
     assert.ok(html.includes(fragment), `print sheet is missing ${fragment}`);
@@ -198,6 +213,8 @@ test("orders saved before the print sheet existed are backfilled on read", () =>
   assert.equal(item.sleeve, "Short Sleeve");
   assert.equal(item.printMethod, "DTF");
   assert.ok(item.design && item.design.svg.startsWith("<svg "));
+  assert.equal(item.design.mockup.garmentWidthCm, 54, "a size L tee is 54 cm wide");
+  assert.ok(item.design.mockup.name.includes("L"));
   assert.match(item.design.fileName, /-navy\.svg$/);
   assert.deepEqual(filled.shipTo, {
     name: legacy.customerName,

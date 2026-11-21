@@ -16,7 +16,8 @@ import {
 } from "@/lib/order-print";
 import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
-  adminDayKey, adminDayLabel, adminTodayKey, designLayerSize, formatAdminDateTime, formatKs, nextOrderStage,
+  adminDayKey, adminDayLabel, adminTodayKey, buildMockupDiagramSvg, designLayerSize,
+  formatAdminDateTime, formatKs, nextOrderStage,
   orderDateRangeForPreset, orderDayGroups, orderStageIndex, orderTotalKs, orderUnits,
   ordersInDateRange, setOrderNote, setOrderStage, sortOrders, summarizeOrders,
   type AdminDateRange, type AdminOrder, type AdminOrderDatePreset, type AdminOrderSort,
@@ -328,6 +329,9 @@ export default function AdminOrders() {
                     ["Print size", design ? `${design.printWidthCm} × ${design.printHeightCm} cm` : "—"],
                     ["Design", design?.name ?? "No design"],
                     ["Ink", design?.ink ?? "—"],
+                    ["Mockup", design?.mockup.name ?? "—"],
+                    ["Garment", design ? `${design.mockup.garmentWidthCm} × ${design.mockup.garmentHeightCm} cm` : "—"],
+                    ["Print at", design ? `${design.mockup.printAreaXCm} cm left · ${design.mockup.printAreaYCm} cm top` : "—"],
                   ];
                   return (
                     <div key={`${item.productId}-${item.size}-${item.color}-${index}`} className="rounded-xl border border-[#edf0f3] p-2.5">
@@ -346,6 +350,7 @@ export default function AdminOrders() {
                       {design ? (
                         <div className="mt-2 flex items-center gap-2 rounded-lg bg-[#fafbfc] p-2">
                           <img src={designPreviewSrc(design)} alt={`${design.name} artwork`} data-order-design-preview className="h-14 w-12 shrink-0 rounded border border-[#e6e9ed] bg-white object-contain" />
+                          <img src={designPreviewSrc({ ...design, svg: buildMockupDiagramSvg(design) })} alt={`Print position on ${design.mockup.name}`} data-order-design-placement className="h-14 w-10 shrink-0 rounded border border-[#e6e9ed] bg-white object-contain" />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-[9px] font-bold text-[#394250]">{design.fileName}</p>
                             <p className="text-[8px] text-[#87909b]">SVG · {design.printWidthCm} × {design.printHeightCm} cm</p>

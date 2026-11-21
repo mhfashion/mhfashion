@@ -88,9 +88,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Designs are stored **as SVG sized in centimetres** (`buildDesignSvg`: `width="28cm" height="35cm"` + a `viewBox` in artwork units) and are drawn from the stored layer boxes, so the file the press opens is exactly the layout on the order. Never hand-write artwork next to the layers — they would drift.
 - `AdminOrderDesign` carries `ink`, `unitsPerCm` and `layers` (`name`, `kind`, `x`, `y`, `width`, `height`, `rotation`, `scale`). `designLayerSize` converts a layer to centimetres (0.1 cm steps); the drawer (`data-order-design-layout`), the print sheet and the CSV all read it.
 - Text layers shrink their font to fit the layer box (`width / (label.length * 0.56)`), otherwise the artwork paints wider than the box the layout table reports.
+- `design.mockup` records where the print area sits on the garment: mockup name, flat garment size in cm and the print-area origin (`printAreaXCm`/`printAreaYCm` from the top-left). `designMockupPlacement` derives it from the size table (`GARMENT_SIZES_CM`) and the placement; `buildMockupDiagramSvg` draws the garment with the print area and every layer box. The drawer (`data-order-design-placement`), the A4 sheet and the CSV all show it — a design without it cannot be lined up on the press.
 - `orderPrintRows` is the single column list for both the drawer's "Print spec CSV" and the sheet; do not re-add a second, thinner `productionRows`.
 - `buildOrderPrintSheetHtml(order)` returns a standalone A4 document (spec tables, ship-to, artwork, design-file list, totals) with `@page { size: A4 }`; `openOrderPrintSheet` writes it into a new window and calls `print()`. Headless Chromium blocks the popup, so verify the sheet by rendering the HTML string from Node (see `tests/admin-order-print.test.cjs`).
 - Design artwork is inline SVG (`orderDesignArtwork`), so preview and download work without a bucket. Escape every interpolated value with `escapeHtml` — a design or customer name must not be able to inject markup.
+
+## Cart lines (`lib/cart-items.ts`, `lib/cart-context.tsx`)
+- A cart line is keyed by `cartItemKey(productId, variant)` — product id **plus** size, colour, material, GSM, fit and sleeve. Two adds with any different value are separate lines; only an identical combination increments. Merging by product id alone collapsed different variants into one line and lost the variant entirely.
+- `CartItem` carries `key`, `variant` and an optional `unitPriceKs` (the variant price the product page computed). `cartLineTotal`/`cartSubtotal` prefer `unitPriceKs` and fall back to `priceMinKs`.
+- Both cart surfaces (`CartBox`, `CartPageClient`) render `[data-cart-line]` with `[data-cart-variant]` and call `updateQuantity`/`removeItem` with `item.key`. Never key by `item.id`.
+- The product page requires size and colour before adding (`data-add-to-cart`), and shows `[data-variant-warning]` otherwise, so no line reaches the print desk without a size or colour.
+- `normalizeCartItems` gives pre-variant carts a key per stored line instead of collapsing them.
 
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.
