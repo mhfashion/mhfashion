@@ -13,6 +13,7 @@ export type AdminModuleId =
   | "products"
   | "designs"
   | "posts"
+  | "pricing"
   | "customers"
   | "inventory"
   | "promotions"
@@ -387,13 +388,31 @@ export type AdminSettings = {
   orderNoteTemplate: string;
 };
 
+/**
+ * Plan §8.1: MH Fashion accepts a copyright claim, takes the design down and keeps a short record.
+ * Owner answer 2026-11-21: an order that is already paid is still produced and delivered, so a
+ * takedown never touches `orders` — it only stops new sales.
+ */
+export type AdminDesignTakedown = {
+  id: string;
+  designId: string;
+  designName: string;
+  claimant: string;
+  note: string;
+  admin: string;
+  at: string;
+};
+
 export type AdminDemoData = {
   version: 1;
   orders: AdminOrder[];
   products: AdminProduct[];
   stock: Record<string, Record<string, number>>;
   designs: AdminDesign[];
+  designTakedowns: AdminDesignTakedown[];
   tshirtPosts: AdminTshirtPost[];
+  productPrices: AdminProductPriceRow[];
+  priceHistory: AdminPriceHistoryEntry[];
   promotions: AdminPromotion[];
   team: AdminTeamMember[];
   settings: AdminSettings;
@@ -405,6 +424,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "products", label: "Products" },
   { id: "designs", label: "Designs" },
   { id: "posts", label: "Posts" },
+  { id: "pricing", label: "Pricing" },
   { id: "customers", label: "Customers" },
   { id: "inventory", label: "Inventory" },
   { id: "promotions", label: "Promotions" },
@@ -848,6 +868,31 @@ export type AdminTshirtPostPriceRow = {
   id: string;
   options: Partial<Record<AdminTshirtPostAttributeKey, string>>;
   priceKs: number;
+  /** Bumped on every save; a save carrying an older version is rejected (Plan §4.5.1). */
+  version?: number;
+  updatedBy?: string;
+  updatedAt?: string;
+};
+
+/** Product scope prices one row per stocked size; the catalogue price seeds it. */
+export type AdminProductPriceRow = {
+  productId: string;
+  size: string;
+  priceKs: number;
+  version: number;
+  updatedBy: string;
+  updatedAt: string;
+};
+
+export type AdminPriceHistoryEntry = {
+  id: string;
+  scopeKind: "post" | "product";
+  scopeId: string;
+  options: Partial<Record<AdminTshirtPostAttributeKey, string>>;
+  oldPriceKs: number | null;
+  newPriceKs: number;
+  actor: string;
+  at: string;
 };
 
 export type AdminTshirtPostDraftPriceRow = {
@@ -1100,6 +1145,32 @@ export function normalizeTshirtPost(post: AdminTshirtPost | (Record<string, unkn
 
 // ---------------------------------------------------------------- designs
 
+/** Hides the design and keeps the claim record. Paid orders are deliberately left untouched. */
+export function recordDesignTakedown(
+  data: AdminDemoData,
+  entry: { designId: string; claimant: string; note: string; admin: string; at?: string },
+): AdminDemoData {
+  const design = data.designs.find((candidate) => candidate.id === entry.designId);
+  if (!design) return data;
+  const record: AdminDesignTakedown = {
+    id: `takedown-${entry.designId}-${Date.parse(entry.at ?? "") || Date.now()}`,
+    designId: design.id,
+    designName: design.name,
+    claimant: entry.claimant.trim(),
+    note: entry.note.trim(),
+    admin: entry.admin,
+    at: entry.at ?? new Date().toISOString(),
+  };
+  return {
+    ...setDesignStatus(data, design.id, "Hidden"),
+    designTakedowns: [record, ...data.designTakedowns],
+  };
+}
+
+export function designTakedownsFor(data: AdminDemoData, designId: string): AdminDesignTakedown[] {
+  return data.designTakedowns.filter((entry) => entry.designId === designId);
+}
+
 export function setDesignStatus(data: AdminDemoData, designId: string, status: AdminDesignStatus): AdminDemoData {
   return {
     ...data,
@@ -1337,7 +1408,8 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
         { id: "price-peacock-2", options: { size: "M", material: "Combed Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 22000 },
         { id: "price-peacock-3", options: { size: "M", material: "Compact Combed Cotton", fit: "Regular", color: "Black", print: "DTF" }, priceKs: 25000 },
         { id: "price-peacock-4", options: { size: "XL", material: "Combed Cotton", fit: "Regular", color: "White", print: "DTF" }, priceKs: 24000 },
-        { id: "price-peacock-5", options: { size: "XL", material: "Compact Combed Cotton", fit: "Regular", color: "Sand", print: "Sublimation" }, priceKs: 31000 },
+        // Sublimation is polyester-only (§4.1), so the seeded rows stay on DTF.
+        { id: "price-peacock-5", options: { size: "XL", material: "Compact Combed Cotton", fit: "Regular", color: "Sand", print: "DTF" }, priceKs: 31000 },
       ],
       status: "Published",
       createdAt: daysAgo(6),
@@ -1506,13 +1578,25 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     },
   ];
 
+  const productPrices: AdminProductPriceRow[] = products.flatMap((product) => product.sizes.map((size) => ({
+    productId: product.id,
+    size,
+    priceKs: product.priceKs,
+    version: 1,
+    updatedBy: "Seed",
+    updatedAt: new Date(now - 30 * DAY_MS).toISOString(),
+  })));
+
   return {
     version: 1,
     orders,
     products,
     stock,
     designs,
+    designTakedowns: [],
     tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
+    productPrices,
+    priceHistory: [],
     promotions,
     team,
     settings: {
@@ -1551,6 +1635,9 @@ export function readAdminDemoData(): AdminDemoData {
         const orders = parsed.orders.map((order) => backfillOrderPrintSpec(order, products));
         cache = {
           ...parsed,
+          designTakedowns: Array.isArray(parsed.designTakedowns) ? parsed.designTakedowns : [],
+          productPrices: Array.isArray(parsed.productPrices) ? parsed.productPrices : [],
+          priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
           orders,
           tshirtPosts: Array.isArray(parsed.tshirtPosts)
             ? parsed.tshirtPosts.map(normalizeTshirtPost)

@@ -184,6 +184,26 @@ Buy Now/Add to Cart actions.
 
 Proposed 2026-11-21; Web and Phone are specified together (owner directive 1).
 
+**Status (2026-11-21): the Web grid is built** (`/admin/pricing`, `components/admin/AdminPricing.tsx`,
+`lib/admin-pricing.ts`, `lib/pricing-combinations.ts`). Shipped: scope picker (T-shirt post or
+product) with a priced/unpriced summary, one row per valid combination with one column per
+attribute and an editable Price column (sticky header and first column), one filter per attribute
+plus search and an "Unpriced only" toggle with the filtered count, row selection with select-all-
+filtered and shift-click ranges, a bulk bar (set exact price / copy from the first selected row)
+that states "n rows will change", staged edits with a sticky save/discard bar, per-row price
+history, and CSV export (BOM, so Excel reads Myanmar text) plus file-import preview that classifies
+every line as new / changed / unchanged / invalid with a reason before writing. Prices accept
+`24000`, `24,000` and `Ks 24,000`; 0, negative, over-limit and non-numeric values are rejected with
+a message. A stale save (older row version) is rejected instead of overwriting. Post scope writes
+the post's own price rows, so the Posts editor and the grid share one source of truth; product
+scope writes one row per stocked size, seeded from the catalogue price.
+
+**Still open in 4.5.1:** the Phone card layout (grouped cards, bottom sheets, keypad) — the Web
+grid is first by owner answer — and the "no valid combinations → link to Attribute Management"
+state, which needs Attribute Management (16 P2). The grid currently renders the page without
+horizontal scroll at 390 px and keeps the table inside its own scroll container, but it is not yet
+the designed phone experience.
+
 **Rules.** Price belongs to one full valid combination. Only combinations the cascading rules allow
 exist as rows, so pricing can never create an invalid combination (Sublimation with Combed Cotton,
 for example). A valid combination with no price is **not sold** and shows as "Unpriced" in admin.
@@ -396,6 +416,12 @@ The detailed editor feature list below is a **forward plan**, not a claim that t
 - **Answered (owner, 2026-11-21): a takedown never stops an order that is already paid.** The
   paid order is produced and delivered as normal; the takedown only stops new sales of the design
   (it is hidden/removed from the storefront and the editor).
+- **Built (2026-11-21):** Designs → **Takedown** opens a drawer for the claimant and a claim note,
+  then hides the design and appends a record (`designId`, `designName`, `claimant`, `note`,
+  `admin`, `at`) shown on the row as a `Claim` badge and listed in the drawer. `recordDesignTakedown`
+  never touches `orders`, which is the owner's rule encoded in the store; `tests/admin-takedown.test.cjs`
+  asserts the orders are byte-identical after a takedown. Deleting a design stays separate and
+  still needs the two-step confirm.
 
 ## 9. Promotions, Loyalty & AI Points
 
@@ -841,6 +867,14 @@ browser-local demo data (section 16 P0).
   its panel), so prices are hand-entered only. Deploy rule unchanged (every `main` push deploys),
   Inventory is raw garment stock and does not cap sales, and a takedown never stops a paid order.
   Pricing Management is approved as written and the Web grid is designed first.
+- Pricing Management Web grid + design takedown (2026-11-21): `/admin/pricing` is built against
+  4.5.1 (scope picker, valid-combination table with filters, bulk set/copy, staged saves, row
+  history, CSV export/import preview, stale-save rejection); the pure rules live in
+  `lib/pricing-combinations.ts` and the store in `lib/admin-pricing.ts`. Post scope writes the
+  post's own price rows, product scope one row per stocked size. Designs gained a Takedown drawer
+  that records the claimant and hides the design without touching paid orders (8.1). The seeded
+  Peacock post had a Sublimation + Combed Cotton row, which the cascade forbids; it is now DTF.
+  Phone cards and Attribute Management remain open (4.5.1, 16 P2).
 
 
 
@@ -974,7 +1008,9 @@ proposal, not an approved order.
    (colour, bleed), and confirmation that the print-size export opens on phones.
 7. **SVG handling.** Admin-only upload lowers the risk; still strip scripts and event attributes
    when an SVG is rendered inline.
-8. **Design takedown handling** per 8.1 — admin action, record, and the effect on open orders.
+8. ~~**Design takedown handling** per 8.1~~ — **done 2026-11-21**: Designs → Takedown records the
+   claimant and note, hides the design, and leaves paid orders untouched (owner answer). Remaining:
+   the claim channel (contact email/form) has to exist on the storefront before launch.
 9. **Rate limiting / abuse protection** for uploads, AI points and public forms.
 10. **Testing.** Automated tests for checkout, pricing and orders; E2E smoke tests; real-device
     checks on phone.
@@ -984,7 +1020,9 @@ proposal, not an approved order.
 11. **Posts ↔ Product relationship** as a data model (how a T-shirt post relates to
     Product → Style → Color and to fixed-design products). The Nyein brief is still pending.
 12. **Admin modules not yet built:** Attribute Management, Brush Management, Delivery Settlement
-    Report, Loyalty rules, Jersey mapping setup.
+    Report, Loyalty rules, Jersey mapping setup. **Pricing Management is partly built** — the Web
+    grid shipped 2026-11-21 (4.5.1); the Phone cards and the admin-driven attribute chain
+    (Attribute Management) are still open.
 13. **Order operations:** order QR/barcode on the print sheet, reprint flow, refund request flow
     (deferred).
 14. **Operations:** error monitoring, Supabase backups, timestamps stored in UTC and displayed in

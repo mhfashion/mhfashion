@@ -73,6 +73,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Prices are hand-entered only. `lib/sheet-prices.ts`, `app/api/admin/tshirt-prices/route.ts`, the "Google Sheet prices" panel in `AdminPosts.tsx` and `mergeSheetPriceRows` are gone; do not reintroduce a sheet link, a CSV fetch, or "the sheet defines the attributes".
 - The post editor copy now says "price each combination by hand".
 
+## Pricing Management (`apps/web/src/lib/pricing-combinations.ts`, `lib/admin-pricing.ts`, `components/admin/AdminPricing.tsx`)
+- One price belongs to one **full valid combination** (Plan §4.5.1). `combinationsFor` builds the cartesian product of the scope's attributes and drops anything `isValidCombination` rejects, so the grid can never create Sublimation + Combed Cotton or Polyester + Single Jersey.
+- Do **not** sort the combination rows by key: an alphabetical sort puts `2XL` first and breaks the chain order. Generation order (attribute order, last attribute fastest) is the intended reading order.
+- Post scope reads/writes `post.prices` (shared with the Posts editor); product scope reads/writes `productPrices` (one row per stocked size). `scopeRows` / `scopePrices` / `scopeVersions` must agree on `rowKey(options, attributeKeys)` — a mismatch shows every row as unpriced.
+- Prices parse `24000`, `24,000`, `Ks 24,000`; 0, negatives, `10,000,000`+ and non-numeric text are rejected with a message. Rows carry `version`, so a save built from a stale grid is rejected (`conflicts`) instead of overwriting; every applied change appends to `priceHistory`.
+- CSV export is UTF-8 with a BOM (Excel needs it for Myanmar text). An unpriced row exports an empty Price cell and re-imports as "same" — that is what makes export → import a no-op. Import only previews; `importChanges` writes new/changed rows only.
+- The price cell needs `bg-white`: the admin theme's global input styling otherwise paints it dark and the number becomes unreadable.
+- Tests: `tests/admin-pricing.test.cjs`.
+
+## Design takedown (`recordDesignTakedown`)
+- Designs → Takedown records claimant + note, sets the design to `Hidden` and appends to `designTakedowns`; the row shows a `Claim` badge.
+- Owner rule (2026-11-21): a takedown never touches `orders` — a paid order is still produced and delivered. `recordDesignTakedown` returns `{ ...setDesignStatus(...), designTakedowns: [...] }` and nothing else; `tests/admin-takedown.test.cjs` asserts the orders are byte-identical afterwards.
+- Tests: `tests/admin-takedown.test.cjs`.
+
 ## Product page preview (`components/ProductMockupPreview.tsx`)
 - The media column is `minmax(0,640px)` on `lg`. The photo box is **landscape**, never square: `h-[170px]` on phones, `sm:aspect-[16/10]` above, so the media block costs one photo's height and nothing more. The box is white while a photo is showing (mockups ship on white) and `bg-bg` for the placeholder.
 - The thumbnails are a **rail on the left**, not a strip underneath: `data-product-thumbs` is `absolute inset-y-0 left-0` inside the box's wrapper, the photo gets `ml-12 sm:ml-16`, and the rail scrolls internally with `[scrollbar-width:none]`. Tiles are fixed `h-11 w-11 sm:h-14 sm:w-14` — sizing them with `w-full`/`aspect-square` let a classic scrollbar narrow the rail and squash them to 41px.

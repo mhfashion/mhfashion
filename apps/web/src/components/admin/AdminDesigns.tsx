@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download, Eye, EyeOff, Layers3, Search, Trash2 } from "lucide-react";
+import { Download, Eye, EyeOff, Layers3, Search, ShieldAlert, Trash2 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
-import { AdminBadge, AdminButton, AdminCard, AdminEmpty, AdminStat, type AdminTone } from "@/components/admin/AdminUi";
+import { AdminBadge, AdminButton, AdminCard, AdminDrawer, AdminEmpty, AdminField, AdminInput, AdminStat, AdminTextarea, type AdminTone } from "@/components/admin/AdminUi";
+import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import {
-  formatAdminDate, removeDesign, setDesignStatus,
+  designTakedownsFor, formatAdminDate, recordDesignTakedown, removeDesign, setDesignStatus,
   type AdminDesign, type AdminDesignStatus,
 } from "@/lib/admin-demo-data";
 
@@ -23,6 +24,10 @@ export default function AdminDesigns() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<AdminDesignStatus | "All">("All");
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [takedownId, setTakedownId] = useState<string | null>(null);
+  const [claimant, setClaimant] = useState("");
+  const [claimNote, setClaimNote] = useState("");
+  const [takedownMessage, setTakedownMessage] = useState("");
 
   const query = search.trim().toLowerCase();
   const visible = useMemo(() => data.designs
@@ -35,6 +40,34 @@ export default function AdminDesigns() {
 
   function setStatus(design: AdminDesign, status: AdminDesignStatus) {
     updateAdminData((current) => setDesignStatus(current, design.id, status));
+  }
+
+  const takedownDesign = data.designs.find((design) => design.id === takedownId) ?? null;
+  const takedownRecords = takedownDesign ? designTakedownsFor(data, takedownDesign.id) : [];
+
+  function openTakedown(design: AdminDesign) {
+    setTakedownId(design.id);
+    setClaimant("");
+    setClaimNote("");
+    setTakedownMessage("");
+  }
+
+  function submitTakedown() {
+    if (!takedownDesign) return;
+    if (!claimant.trim()) {
+      setTakedownMessage("Record who made the claim.");
+      return;
+    }
+    const admin = getDemoAdminSession()?.name ?? "Admin";
+    updateAdminData((current) => recordDesignTakedown(current, {
+      designId: takedownDesign.id,
+      claimant,
+      note: claimNote,
+      admin,
+    }));
+    setClaimant("");
+    setClaimNote("");
+    setTakedownMessage(`${takedownDesign.name} is hidden and the claim is recorded. Paid orders continue to print.`);
   }
 
   function remove(design: AdminDesign) {
@@ -111,11 +144,17 @@ export default function AdminDesigns() {
                   <td className="whitespace-nowrap px-3 py-2.5 text-[#727d8a]">{design.product}</td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-[#919aa6]">{formatAdminDate(design.createdAt)}</td>
                   <td className="px-3 py-2.5 tabular-nums text-[#505a68]">{design.downloads}</td>
-                  <td className="px-3 py-2.5"><AdminBadge tone={STATUS_TONES[design.status]}>{design.status}</AdminBadge></td>
+                  <td className="px-3 py-2.5">
+                    <span className="inline-flex flex-wrap items-center gap-1">
+                      <AdminBadge tone={STATUS_TONES[design.status]}>{design.status}</AdminBadge>
+                      {designTakedownsFor(data, design.id).length ? <AdminBadge tone="red">Claim</AdminBadge> : null}
+                    </span>
+                  </td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-right sm:px-5">
                     <div className="inline-flex items-center gap-1.5">
                       {design.status !== "Published" ? <AdminButton compact variant="secondary" onClick={() => setStatus(design, "Published")} aria-label={`Publish ${design.name}`}><Eye size={12} /> Publish</AdminButton> : null}
                       {design.status !== "Hidden" ? <AdminButton compact variant="ghost" onClick={() => setStatus(design, "Hidden")} aria-label={`Hide ${design.name}`}><EyeOff size={12} /> Hide</AdminButton> : null}
+                      <AdminButton compact variant="ghost" onClick={() => openTakedown(design)} aria-label={`Record a takedown for ${design.name}`}><ShieldAlert size={12} /> Takedown</AdminButton>
                       <AdminButton compact variant="danger" onClick={() => remove(design)} aria-label={`Delete ${design.name}`}><Trash2 size={12} /> {confirmId === design.id ? "Confirm" : "Delete"}</AdminButton>
                     </div>
                   </td>
@@ -125,6 +164,46 @@ export default function AdminDesigns() {
           </table>
         </div>
       </AdminCard>
+
+      <AdminDrawer
+        open={Boolean(takedownDesign)}
+        title={takedownDesign ? `Takedown · ${takedownDesign.name}` : "Takedown"}
+        description="Plan §8.1: accept the claim, hide the design and keep a short record."
+        onClose={() => setTakedownId(null)}
+        footer={(
+          <div className="flex justify-end gap-1.5">
+            <AdminButton variant="ghost" onClick={() => setTakedownId(null)}>Close</AdminButton>
+            <AdminButton onClick={submitTakedown}><ShieldAlert size={13} /> Hide and record</AdminButton>
+          </div>
+        )}
+      >
+        <div className="space-y-3">
+          <AdminField label="Who made the claim" hint="Name or contact email from the claim channel.">
+            <AdminInput value={claimant} onChange={(event) => setClaimant(event.target.value)} aria-label="Claimant" placeholder="e.g. Studio Aye / legal@studioaye.com" />
+          </AdminField>
+          <AdminField label="What they claimed" hint="Kept in the record only; never shown to shoppers.">
+            <AdminTextarea rows={3} value={claimNote} onChange={(event) => setClaimNote(event.target.value)} aria-label="Claim note" placeholder="The floral line art matches their 2025 print." />
+          </AdminField>
+          <p className="rounded-xl bg-[#f6fbf1] px-3 py-2 text-[10px] font-semibold text-[#3f8c22]">
+            The design is hidden from the gallery and the editor. Orders that are already paid still print and ship — the owner confirmed this on 2026-11-21.
+          </p>
+          {takedownMessage ? <p role="status" className="text-[10px] font-semibold text-[#3f8c22]">{takedownMessage}</p> : null}
+          <div>
+            <h3 className="mb-1 text-[10px] font-bold text-[#3c4553]">Record for this design</h3>
+            {takedownRecords.length ? (
+              <ul className="space-y-1.5">
+                {takedownRecords.map((record) => (
+                  <li key={record.id} className="rounded-xl border border-[#f0f2f4] px-3 py-2 text-[10px] text-[#6c7683]">
+                    <span className="block font-bold text-[#3c4553]">{record.claimant}</span>
+                    {record.note ? <span className="block">{record.note}</span> : null}
+                    <span className="block text-[9px] text-[#98a1ac]">{record.admin} · {new Date(record.at).toLocaleString("en-GB", { timeZone: "Asia/Yangon" })}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-[10px] text-[#98a1ac]">No claim recorded yet.</p>}
+          </div>
+        </div>
+      </AdminDrawer>
     </AdminShell>
   );
 }
