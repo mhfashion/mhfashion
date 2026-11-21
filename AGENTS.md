@@ -97,6 +97,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `applyChainPatch` refuses to remove an option that still prices rows, to switch off an attribute that prices rows, and to take an empty/duplicate label. It returns the untouched data plus `issues`; the UI renders those and writes nothing.
 - Tests: `tests/admin-attributes.test.cjs`.
 
+## Loyalty (`lib/admin-loyalty.ts`, `components/admin/AdminLoyalty.tsx`)
+- `data.loyalty` = `{ rules, tiers, milestones }` (Plan §9). `createSeedLoyalty()` is both the seed and the reset target; `readAdminDemoData` falls back to it when a stored blob predates the field, so an old `localStorage` entry does not lose the module.
+- `spendPoints` spends **daily first, then the kept purchase points**, and returns the shortfall instead of clamping silently. `expireDailyPoints` clears only the daily bucket.
+- `tierFor` sorts by `minSpendKs` before matching (admins may leave rows shuffled) and the boundary is inclusive; validation requires the cheapest tier to start at Ks 0 or a new shopper has no tier.
+- `removeTier` refuses a tier that demo customers sit in (`tierUsage` over `aggregateCustomers`), naming them; `saveTier`/`saveMilestone` run `validateLoyalty` first and return the untouched data plus issues.
+- Seeded tier thresholds (100k / 200k) are chosen so the demo customers actually land in Silver and Gold — a threshold above the top demo spend leaves every usage column at 0 and the guard untestable.
+- Tests: `tests/admin-loyalty.test.cjs`.
+
 ## Delivery Settlement Report (`lib/admin-settlements.ts`, `components/admin/AdminSettlements.tsx`)
 - `data.deliveries` seeds one row per order in `Handed to Delivery` / `Out for Delivery` / `Delivered` / `Refunded`; `feeKs` is what the shopper paid, `costKs` what the courier is owed.
 - `markDeliveriesSettled` is idempotent and keeps the **first** stamp, so a re-run cannot rewrite history; `unsettleDeliveries` clears it. Both return new data, never mutate the input.

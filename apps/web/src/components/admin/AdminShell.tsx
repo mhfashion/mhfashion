@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BarChart3, Bell, Box, CircleHelp, ClipboardList, Globe2, House, Layers3, LogOut, Menu, Newspaper, Package, Percent, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, Box, CircleHelp, ClipboardList, Globe2, House, Layers3, LogOut, Menu, Newspaper, Package, Percent, Crown, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
 import { getDemoAdminSession, signOutDemoAdmin, type AdminDemoSession } from "@/lib/admin-demo-auth";
 import type { AdminModuleId } from "@/lib/admin-demo-data";
 
@@ -16,6 +16,7 @@ const NAV: { id: AdminModuleId; label: string; href: string; icon: LucideIcon }[
   { id: "pricing", label: "Pricing", href: "/admin/pricing", icon: Tags },
   { id: "attributes", label: "Attributes", href: "/admin/attributes", icon: SlidersHorizontal },
   { id: "settlements", label: "Settlements", href: "/admin/settlements", icon: HandCoins },
+  { id: "loyalty", label: "Loyalty", href: "/admin/loyalty", icon: Crown },
   { id: "customers", label: "Customers", href: "/admin/customers", icon: Users },
   { id: "inventory", label: "Inventory", href: "/admin/inventory", icon: Box },
   { id: "promotions", label: "Promotions", href: "/admin/promotions", icon: Percent },

@@ -16,6 +16,7 @@ export type AdminModuleId =
   | "pricing"
   | "attributes"
   | "settlements"
+  | "loyalty"
   | "customers"
   | "inventory"
   | "promotions"
@@ -437,6 +438,40 @@ export type AdminDelivery = {
   settledBy: string | null;
 };
 
+/** Points economy and membership (Plan §9). */
+export type AdminPointsRule = {
+  dailyGrant: number;
+  dailyExpiryHours: number;
+  imageCost: number;
+  purchasePointsPerUnit: number;
+};
+
+export type AdminTier = {
+  id: string;
+  name: string;
+  minSpendKs: number;
+  discountPercent: number;
+};
+
+export type AdminMilestoneTrigger = "quantity" | "orders" | "spend";
+
+/** A threshold a shopper crosses on one order: how much they bought, or how many orders they placed. */
+export type AdminMilestone = {
+  id: string;
+  label: string;
+  trigger: AdminMilestoneTrigger;
+  threshold: number;
+  benefit: "points" | "discount";
+  value: number;
+  enabled: boolean;
+};
+
+export type AdminLoyalty = {
+  rules: AdminPointsRule;
+  tiers: AdminTier[];
+  milestones: AdminMilestone[];
+};
+
 export type AdminDemoData = {
   version: 1;
   orders: AdminOrder[];
@@ -446,6 +481,7 @@ export type AdminDemoData = {
   designTakedowns: AdminDesignTakedown[];
   attributeChain: AdminAttributeDefinition[];
   deliveries: AdminDelivery[];
+  loyalty: AdminLoyalty;
   tshirtPosts: AdminTshirtPost[];
   productPrices: AdminProductPriceRow[];
   priceHistory: AdminPriceHistoryEntry[];
@@ -463,6 +499,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "pricing", label: "Pricing" },
   { id: "attributes", label: "Attributes" },
   { id: "settlements", label: "Settlements" },
+  { id: "loyalty", label: "Loyalty" },
   { id: "customers", label: "Customers" },
   { id: "inventory", label: "Inventory" },
   { id: "promotions", label: "Promotions" },
@@ -1439,6 +1476,23 @@ function seedPostSvg(label: string, accent: string): AdminPostSvg {
   return { url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`, fileName: `${label.toLowerCase()}.svg`, sizeBytes: svg.length };
 }
 
+/** Plan §9: 300 daily (they expire), 100 per generated image, +50 per purchased piece (kept). */
+export function createSeedLoyalty(): AdminLoyalty {
+  return {
+    rules: { dailyGrant: 300, dailyExpiryHours: 24, imageCost: 100, purchasePointsPerUnit: 50 },
+    tiers: [
+      { id: "tier-member", name: "Member", minSpendKs: 0, discountPercent: 0 },
+      { id: "tier-silver", name: "Silver", minSpendKs: 100_000, discountPercent: 3 },
+      { id: "tier-gold", name: "Gold", minSpendKs: 200_000, discountPercent: 6 },
+    ],
+    milestones: [
+      { id: "milestone-first-order", label: "First order", trigger: "orders", threshold: 1, benefit: "points", value: 100, enabled: true },
+      { id: "milestone-three-pieces", label: "Three pieces in one order", trigger: "quantity", threshold: 3, benefit: "points", value: 150, enabled: true },
+      { id: "milestone-100k", label: "Spend Ks 100,000", trigger: "spend", threshold: 100000, benefit: "discount", value: 5, enabled: true },
+    ],
+  };
+}
+
 const DELIVERY_STAGES: AdminOrderStage[] = ["Handed to Delivery", "Out for Delivery", "Delivered", "Refunded"];
 
 function createSeedDeliveries(orders: AdminOrder[]): AdminDelivery[] {
@@ -1674,6 +1728,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     designTakedowns: [],
     attributeChain: createSeedAttributeChain(),
     deliveries: createSeedDeliveries(orders),
+    loyalty: createSeedLoyalty(),
     tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
     productPrices,
     priceHistory: [],
@@ -1720,6 +1775,9 @@ export function readAdminDemoData(): AdminDemoData {
             ? parsed.attributeChain
             : createSeedAttributeChain(),
           deliveries: Array.isArray(parsed.deliveries) ? parsed.deliveries : createSeedDeliveries(orders),
+          loyalty: parsed.loyalty?.rules && Array.isArray(parsed.loyalty.tiers) && Array.isArray(parsed.loyalty.milestones)
+            ? parsed.loyalty
+            : createSeedLoyalty(),
           productPrices: Array.isArray(parsed.productPrices) ? parsed.productPrices : [],
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
           orders,
