@@ -5,7 +5,6 @@ import {
   Menu,
   Search,
   Heart,
-  DollarSign,
   Moon,
   Sun,
 } from "lucide-react";
@@ -13,6 +12,7 @@ import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
 import { useI18n } from "@/lib/i18n";
 import NotificationBell from "./NotificationBell";
+import { CurrencyIcon, FlagIcon, LANGUAGE_LABEL } from "./SwitcherIcons";
 
 const NAV_LINKS = [
   { label: "New", href: "/new" },
@@ -125,10 +125,19 @@ export default function MobileNav() {
 
           <div className="flex items-center justify-between border-b border-border/40 px-4 py-2.5 text-xs">
             <span className="text-text-muted">Language</span>
-            <div className="flex items-center gap-1.5 font-semibold">
-              <button type="button" onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : "text-text-secondary"}>EN</button>
-              <span className="text-border-light">/</span>
-              <button type="button" onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : "text-text-secondary"}>MM</button>
+            <div className="flex items-center gap-1.5" data-header-language={locale}>
+              {(["en", "my"] as const).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLocale(code)}
+                  aria-label={`Language: ${LANGUAGE_LABEL[code]}`}
+                  aria-pressed={locale === code}
+                  className={`flex h-6 w-6 items-center justify-center rounded-full border ${locale === code ? "border-accent bg-accent/10" : "border-border-light opacity-60"}`}
+                >
+                  <FlagIcon locale={code} />
+                </button>
+              ))}
             </div>
           </div>
 
@@ -146,9 +155,11 @@ export default function MobileNav() {
           </a>
           <button
             onClick={toggleCurrency}
+            data-header-currency={currency}
+            aria-label={`${t("actions.currency")}: ${currency === "Ks" ? "Kyat (Ks)" : "US dollar ($)"} — switch`}
             className="w-full flex items-center gap-2 px-4 py-2.5 text-left border-b border-border/40"
           >
-            <DollarSign size={15} /> {t("actions.currency")}: {currency}
+            <span className="text-accent"><CurrencyIcon currency={currency} size={15} /></span> {t("actions.currency")}
           </button>
           <button
             onClick={toggleTheme}

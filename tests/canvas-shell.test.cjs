@@ -971,29 +971,42 @@ test("editor reuses the existing web-app Header Bar above its full-height worksp
 });
 
 
-test("header language and currency switchers both show which option is active", () => {
+test("header language and currency switchers are icons that show the active state", () => {
   const actions = readFileSync(path.join(__dirname, "../apps/web/src/components/HeaderActions.tsx"), "utf8");
+  const icons = readFileSync(path.join(__dirname, "../apps/web/src/components/SwitcherIcons.tsx"), "utf8");
 
-  // Both are labelled segmented controls, not a single opaque icon: an icon that never changes
-  // reads as decoration, which is exactly how these two were broken before.
-  assert.match(actions, /aria-label="Language"/);
-  assert.match(actions, />EN</);
-  assert.match(actions, />MM</);
-  assert.match(actions, />Ks</);
-  assert.match(actions, />\$</);
+  // The owner asked for icons instead of the "EN / MM" and "Ks / $" pills, so the letters are gone.
+  assert.doesNotMatch(actions, />EN</, "the EN text label is back");
+  assert.doesNotMatch(actions, />MM</, "the MM text label is back");
+  assert.doesNotMatch(actions, />Ks</, "the Ks text label is back");
   assert.doesNotMatch(actions, /\$\/Ks/, "the old static label never reflected the current currency");
 
-  // The active option is highlighted, so the header shows the current language and currency.
-  assert.match(actions, /locale === "en" \? "text-accent" : ""/, "EN is highlighted when English is active");
-  assert.match(actions, /locale === "my" \? "text-accent" : ""/, "MM is highlighted when Myanmar is active");
-  assert.match(actions, /currency === "Ks" \? "text-accent" : ""/, "Ks is highlighted when Ks is active");
-  assert.match(actions, /currency === "USD" \? "text-accent" : ""/, "$ is highlighted when USD is active");
+  // Each icon has to change with the state, or it reads as decoration.
+  assert.match(icons, /locale === "my"[\s\S]*#fecb00/, "the Myanmar flag is missing");
+  assert.match(icons, /#012169/, "the English flag is missing");
+  assert.match(icons, /currency === "Ks" \? <Banknote/, "the Kyat icon is missing");
+  assert.match(icons, /<CircleDollarSign/, "the dollar icon is missing");
 
-  // Both still toggle, and both stay reachable for screen readers.
-  assert.match(actions, /onClick=\{\(\) => setLocale\("en"\)\}/);
-  assert.match(actions, /onClick=\{\(\) => setLocale\("my"\)\}/);
+  // Both controls carry their state for tests and screen readers, and both still toggle.
+  assert.match(actions, /data-header-language=\{locale\}/);
+  assert.match(actions, /data-header-currency=\{currency\}/);
+  assert.match(actions, /<FlagIcon locale=\{locale\} \/>/);
+  assert.match(actions, /<CurrencyIcon currency=\{currency\}/);
+  assert.match(actions, /onClick=\{\(\) => setLocale\(locale === "en" \? "my" : "en"\)\}/);
   assert.match(actions, /onClick=\{toggleCurrency\}/);
   assert.match(actions, /const \{ currency, toggleCurrency \} = useCurrency\(\)/);
+  assert.match(actions, /aria-label=\{`Language: \$\{LANGUAGE_LABEL\[locale\]\}/);
+});
+
+test("the mobile drawer uses the same icon switchers as the header", () => {
+  const nav = readFileSync(path.join(__dirname, "../apps/web/src/components/MobileNav.tsx"), "utf8");
+  assert.match(nav, /import \{ CurrencyIcon, FlagIcon, LANGUAGE_LABEL \} from "\.\/SwitcherIcons"/);
+  assert.doesNotMatch(nav, />EN</, "the EN text label is back in the drawer");
+  assert.doesNotMatch(nav, />MM</, "the MM text label is back in the drawer");
+  assert.match(nav, /data-header-language=\{locale\}/);
+  assert.match(nav, /data-header-currency=\{currency\}/);
+  assert.match(nav, /aria-pressed=\{locale === code\}/, "the drawer flags must show which language is active");
+  assert.match(nav, /<CurrencyIcon currency=\{currency\}/);
 });
 
 test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and a live price", () => {

@@ -278,10 +278,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Typing is verified end to end with CDP: `Input.insertText` for text and `Input.dispatchKeyEvent` with `text: "\r"` for Enter (a keyDown without `text` does not insert a newline).
 - Beware pixel probes that scan for "dark" or "lime" pixels: the docked sidebars (uniform `#0c0c0c`) and the t-shirt mockup both produce large false positives. Hide `[data-dock-side]` elements, or diff a frame with the layer hidden.
 
-## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`)
-- The language control is a labelled `EN / MM` pill and the currency control a `Ks / $` pill. **Both must show the active option**, by adding `text-accent` to the selected segment; `data-header-language` / `data-header-currency` carry the state for tests.
-- Do not replace them with a single icon (`Languages`, `Coins`): an icon that looks the same in every state reads as decoration, and the user cannot tell which language or currency is selected. That regression shipped once and had to be reverted.
-- The currency pill previously read a static `$/Ks` with a chevron, which never changed either — it now renders `Ks` and `$` separately and highlights the active one.
+## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
+- **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
+  `tests/canvas-shell.test.cjs` fails if they come back.
+- Header: two 22px circle buttons. The language button shows the **active** flag (Union Jack for `en`,
+  Myanmar tricolour for `my`, both hand-drawn in `SwitcherIcons.tsx`); the currency button shows a
+  `Banknote` for `Ks` and a `CircleDollarSign` for `USD`. Tapping toggles.
+- Drawer: two flag buttons with `aria-pressed` and an accent ring on the active one, and a currency row
+  whose icon carries the state.
+- The earlier "never use an icon" rule was about a *single* icon that looked identical in both states —
+  that reads as decoration. The current icons change with the state, and each control still carries
+  `aria-label` + `title` naming the current value and `data-header-language` / `data-header-currency`.
+  Keep all three or the state becomes invisible again.
 
 ## Pushing from this workspace (important)
 - The ambient `GITHUB_TOKEN` and the git credential helper token are the **same GitHub App

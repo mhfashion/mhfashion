@@ -2075,3 +2075,23 @@ the old "planned editor flow" text. Both were fixed without touching the custome
   "Your Style" art shrank with it. Measured at 1440x780: 320px → 200px; at 390x844: 126px → 113px.
 - Verified in Chromium at both sizes; `tests/guide-card.test.cjs` now also guards the two menu entries and
   the compact hero heights. Full suite **365/365**.
+
+## 2026-11-21 — Language and currency switchers are icons
+
+The owner asked for the header's `EN / MM` and `Ks / $` pills to become little icons.
+
+- `components/SwitcherIcons.tsx` (new) holds the two hand-drawn 14x10 flags (Union Jack for English, the
+  Myanmar tricolour with its white star), the currency icons (`Banknote` for Ks, `CircleDollarSign` for
+  USD) and the label maps.
+- `HeaderActions.tsx`: two 22px circle buttons that toggle on tap and show the **active** state in the
+  icon itself, with `aria-label` + `title` naming the current value ("Language: English — switch to
+  မြန်မာ") and `data-header-language` / `data-header-currency` for tests.
+- `MobileNav.tsx`: the drawer's Language row shows both flags with `aria-pressed` and an accent ring on
+  the active one; the Currency row keeps its label and the icon carries the state. `DollarSign` import
+  dropped.
+- This replaces the old rule ("never an icon"): that rule was about one icon that looked the same in
+  every state. These icons change with the state, so the header still shows which language and currency
+  are active — verified by clicking both in a real browser (flag flips to the Myanmar tricolour, the
+  banknote flips to the dollar coin) and by the phone drawer screenshot.
+- `tests/canvas-shell.test.cjs` now guards the icon contract (no letter labels, distinct flags, distinct
+  currency icons, the data attributes and the toggles) plus the drawer. Full suite **366/366**.

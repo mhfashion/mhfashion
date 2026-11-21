@@ -6,6 +6,8 @@ The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN
 
 - [x] **Guide cards sized like product cards.** `GuideCard` is a square tile on the product grid
   (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`); the tall cover band and the excerpt are gone.
+- [x] **Icon language/currency switchers.** `EN / MM` and `Ks / $` pills replaced by flag + money icons
+  that change with the state (`SwitcherIcons.tsx`), in the header and the phone drawer. 2 tests.
 - [x] **Editor Guide in the menu box.** Desktop menu box row + phone shortcut chip (`data-guide-editor`).
 - [x] **Guide hero shortened.** 320px → 200px on desktop, 126px → 113px on a phone; smaller heading and art.
 - [x] **Editor Guide added.** `editor-guide` ("Editor Guide: make your first print") is written from the

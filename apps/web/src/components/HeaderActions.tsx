@@ -18,6 +18,7 @@ import { useWishlist } from "@/lib/wishlist-context";
 import { useI18n } from "@/lib/i18n";
 import NotificationBell from "./NotificationBell";
 import CartBox from "./CartBox";
+import { CURRENCY_LABEL, CurrencyIcon, FlagIcon, LANGUAGE_LABEL } from "./SwitcherIcons";
 
 export default function HeaderActions() {
   const { theme, toggleTheme } = useTheme();
@@ -106,11 +107,17 @@ export default function HeaderActions() {
       </div>
 
       <div className="flex items-center gap-3.5 text-text-secondary">
-        <div className="flex items-center gap-1 text-[10px] font-semibold border border-border-light rounded-full px-2 py-1" aria-label="Language">
-          <button onClick={() => setLocale("en")} className={locale === "en" ? "text-accent" : ""}>EN</button>
-          <span className="text-border-light">/</span>
-          <button onClick={() => setLocale("my")} className={locale === "my" ? "text-accent" : ""}>MM</button>
-        </div>
+        {/* Language: the flag itself is the state, so the icon is never decoration. */}
+        <button
+          type="button"
+          onClick={() => setLocale(locale === "en" ? "my" : "en")}
+          aria-label={`Language: ${LANGUAGE_LABEL[locale]} — switch to ${LANGUAGE_LABEL[locale === "en" ? "my" : "en"]}`}
+          title={`Language: ${LANGUAGE_LABEL[locale]}`}
+          data-header-language={locale}
+          className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-border-light hover:border-accent"
+        >
+          <FlagIcon locale={locale} />
+        </button>
         <NotificationBell />
 
         <a href="/wishlist" aria-label={t("actions.wishlist")} data-header-wishlist className="relative">
@@ -120,17 +127,16 @@ export default function HeaderActions() {
           ) : null}
         </a>
 
-        {/* Currency switcher — Ks/$ toggle, base price stored in Ks */}
+        {/* Currency: notes for Kyat, a dollar coin for USD. Base price is stored in Ks. */}
         <button
+          type="button"
           onClick={toggleCurrency}
-          aria-label={`${t("actions.currency")}: ${currency}`}
-          title={currency === "Ks" ? "Ks · switch to $" : "$ · switch to Ks"}
-          className="flex items-center gap-1 text-[10px] font-semibold border border-border-light rounded-full px-2 py-1"
+          aria-label={`${t("actions.currency")}: ${CURRENCY_LABEL[currency]} — switch to ${CURRENCY_LABEL[currency === "Ks" ? "USD" : "Ks"]}`}
+          title={`${t("actions.currency")}: ${CURRENCY_LABEL[currency]}`}
+          className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-border-light text-accent hover:border-accent"
           data-header-currency={currency}
         >
-          <span className={currency === "Ks" ? "text-accent" : ""}>Ks</span>
-          <span className="text-border-light">/</span>
-          <span className={currency === "USD" ? "text-accent" : ""}>$</span>
+          <CurrencyIcon currency={currency} size={14} />
         </button>
 
         <button onClick={toggleTheme} aria-label={t("actions.theme")}>

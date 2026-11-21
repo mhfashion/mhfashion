@@ -1231,3 +1231,19 @@ Checked the remaining-work register against the source and corrected the entries
   always-present menu link does not inflate the category-filter assertions; it also asserts the menu link
   is on the page. `tests/guide-card.test.cjs` guards the two menu entries and the compact hero heights.
   Full suite **365/365**; `tsc --noEmit` clean; production build passed.
+
+### 2026-11-21 — Icon language and currency switchers
+
+- `components/SwitcherIcons.tsx` (new): `FlagIcon` draws a 14x10 Union Jack (`en`) or Myanmar tricolour
+  (`my`) as inline SVG, `CurrencyIcon` returns `Banknote` for `Ks` and `CircleDollarSign` for `USD`, and
+  `LANGUAGE_LABEL` / `CURRENCY_LABEL` name each value for `aria-label` and `title`.
+- `HeaderActions.tsx`: the `EN / MM` and `Ks / $` pills were replaced by two 22px circle buttons that
+  toggle on tap. The icon is the state, so the header always shows the active language and currency;
+  `data-header-language` and `data-header-currency` expose it to tests.
+- `MobileNav.tsx`: the drawer's Language row shows both flags (`aria-pressed`, accent ring on the active
+  one) and the Currency row keeps its label with the state in the icon.
+- Verified in Chromium: clicking the flag switches the UI to Myanmar and the flag becomes the tricolour;
+  clicking the currency button turns the banknote into the dollar coin; the phone drawer (390x844, 2x,
+  touch) shows the ringed flag pair and the money icon.
+- `tests/canvas-shell.test.cjs` covers both controls and the drawer. Full suite **366/366**;
+  `tsc --noEmit` clean; ESLint clean; production build passed.
