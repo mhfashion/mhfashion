@@ -102,6 +102,9 @@ const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
 // How far (in artwork units) a layer may be dragged past the print area. Large enough to
 // place artwork off-canvas and bring it back, small enough that it never leaves the workspace.
 const CANVAS_LAYER_TRAVEL_LIMIT = 2400;
+// On a touch screen the pasteboard stops this far (in local px) outside the print area. A
+// viewport-wide drawing surface would swallow the scroll gesture that reaches the mockups.
+const PASTEBOARD_TOUCH_RING_PX = 96;
 const DEFAULT_TEXT_FONT_SIZE = 110;
 const TEXT_EDIT_BOX_WIDTH = 900;
 // New text wraps at the print area width so a long line flows downward instead of
@@ -159,6 +162,9 @@ type Point = { x: number; y: number };
 type PenAnchorDrag = { pointerId: number; index: number; point: Point; corner: boolean };
 type PenEditDrag = { pointerId: number; layerId: string; pathIndex: number; index: number; kind: "anchor" | "handle-in" | "handle-out"; start: Point; origin: EditorPenAnchor };
 type CanvasBounds = { x: number; y: number; width: number; height: number };
+// The pasteboard's own box, in percent of the print canvas. Percent keeps it aligned with the
+// canvas at any zoom and pan without re-deriving artwork units.
+type PasteboardRect = { left: number; top: number; width: number; height: number };
 type CanvasArtworkDrag = { pointerId: number; start: Point; origin: Record<string, Point>; clamp: CanvasDeltaClamp | null };
 type CanvasDeltaClamp = { minX: number; maxX: number; minY: number; maxY: number };
 type CanvasLayerTransformSnapshot = { scale: Point; offset: Point; rotation: number; pivot: Point };
@@ -628,6 +634,7 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
     return unionCanvasBounds(bounds);
   }, [canvasLayerRotations, canvasLayerScales, canvasLayerTransforms, canvasLayerOrigins, layers]);
   const selectionBounds = useMemo(() => boundsForLayerIds(selectedLayerIds), [boundsForLayerIds, selectedLayerIds]);
+  const [pasteboardRect, setPasteboardRect] = useState<PasteboardRect | null>(null);
   // A layer may be parked far outside the print area, so the Move tool's pick surface has to
   // cover every visible layer, not a fixed margin around the canvas. Sized in percentages of
   // the print area, which is the same box the artwork coordinate space maps onto.
@@ -647,6 +654,13 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
       height: `${Math.max(100, bottom) - minTop}%`,
     };
   }, [boundsForLayerIds, layers]);
+  // The surface a press lands on: Move picks among the layers, the paint tools use the measured
+  // pasteboard. Before the first measurement the canvas box itself stands in.
+  const pasteboardSurface = activeTool === "move"
+    ? artworkPickSurface
+    : pasteboardRect
+      ? { left: `${pasteboardRect.left}%`, top: `${pasteboardRect.top}%`, width: `${pasteboardRect.width}%`, height: `${pasteboardRect.height}%` }
+      : { left: 0, top: 0, width: "100%", height: "100%" };
   function toggleLayersPanel() {
     if (!layersOpen && window.matchMedia("(max-width: 767px)").matches) setEditSidebarOpen(false);
     setLayersOpen((open) => !open);
@@ -760,6 +774,65 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
   const canvasArtworkDragRef = useRef<CanvasArtworkDrag | null>(null);
   const canvasLayerResizeRef = useRef<CanvasLayerResizeDrag | null>(null);
   const canvasLayerRotateRef = useRef<CanvasLayerRotateDrag | null>(null);
+
+  // The pasteboard is the artwork space around the print area, and a drawing or text tool
+  // stays live on it. It used to be a fixed 96px ring, so a stroke started further out fell
+  // through to the viewport and nothing happened. Measure the visible area instead and let the
+  // surface reach every point the user can see; the pointer mapping is already unclamped, so a
+  // mark lands exactly where it was clicked, on or off the canvas.
+  //
+  // Percent of the canvas box keeps the surface aligned through zoom and pan without
+  // re-deriving artwork units on every move.
+  useEffect(() => {
+    // The surface is only rendered for the tools that paint; leaving it measured while Move is
+    // active is harmless because Move uses its own pick surface.
+    if (!CANVAS_OUTSIDE_TOOLS.includes(activeTool)) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const canvasRect = canvasNodeRef.current?.getBoundingClientRect();
+      const viewportRect = viewportRef.current?.getBoundingClientRect();
+      if (!canvasRect || !canvasRect.width || !canvasRect.height || !viewportRect) return;
+      const coarse = window.matchMedia?.("(pointer: coarse)").matches === true;
+      const ring = PASTEBOARD_TOUCH_RING_PX * zoom;
+      const left = coarse ? canvasRect.left - ring : viewportRect.left;
+      const right = coarse ? canvasRect.right + ring : viewportRect.right;
+      const top = coarse ? canvasRect.top - ring : viewportRect.top;
+      const bottom = coarse ? canvasRect.bottom + ring : viewportRect.bottom;
+      const percentX = (value: number) => ((value - canvasRect.left) / canvasRect.width) * 100;
+      const percentY = (value: number) => ((value - canvasRect.top) / canvasRect.height) * 100;
+      // Nothing can be parked past the layer travel limit, so stop growing with the window.
+      const limitX = CANVAS_LAYER_TRAVEL_LIMIT / 10;
+      const limitY = CANVAS_LAYER_TRAVEL_LIMIT / 12;
+      const clamp = (value: number, limit: number) => Math.min(limit, Math.max(-limit, value));
+      const leftPercent = clamp(percentX(left), limitX);
+      const rightPercent = clamp(percentX(right), limitX);
+      const topPercent = clamp(percentY(top), limitY);
+      const bottomPercent = clamp(percentY(bottom), limitY);
+      setPasteboardRect({
+        left: leftPercent,
+        top: topPercent,
+        width: Math.max(1, rightPercent - leftPercent),
+        height: Math.max(1, bottomPercent - topPercent),
+      });
+    };
+    const schedule = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(measure);
+    };
+    schedule();
+    window.addEventListener("resize", schedule);
+    const viewport = viewportRef.current;
+    viewport?.addEventListener("scroll", schedule, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
+    if (viewport && observer) observer.observe(viewport);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("resize", schedule);
+      viewport?.removeEventListener("scroll", schedule);
+      observer?.disconnect();
+    };
+  }, [activeTool, zoom, pan, nodePositions, menuOpen, visibleMockups]);
   const handleLargeTierRequested = useCallback((side: MockupSide) => {
     setLargeArtworkTierOwner((current) => claimLargeArtworkTier(current, side));
   }, []);
@@ -2499,9 +2572,9 @@ export default function KittlCanvas({ product }: { product: EditorProduct }) {
                     onDoubleClick={() => activeTool === "pen" && finishPenPath(false)}
                     // Drawing needs the gesture; Move must not swallow the phone's vertical
                     // scroll, and a tap still selects because pointerdown fires first.
-                    className={`absolute z-10 ${activeTool === "move" ? "touch-pan-y" : "-inset-24 touch-none"}`}
+                    className={`absolute z-10 ${activeTool === "move" ? "touch-pan-y" : "touch-none"}`}
                     style={{
-                      ...(activeTool === "move" ? artworkPickSurface : null),
+                      ...pasteboardSurface,
                       cursor: activeTool === "eraser" ? "none" : activeToolCursorStyle,
                     }}
                   />

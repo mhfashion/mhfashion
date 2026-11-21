@@ -449,6 +449,24 @@ test("every tool paints outside the print canvas, not just inside it", () => {
   // chosen per tool instead of hard-coded.
   assert.match(source, /onPointerMove=\{activeTool === "move" \? moveCanvasArtwork : moveArtworkStroke\}/);
   assert.match(source, /onPointerDown=\{activeTool === "move"[\s\S]*?: startArtworkStroke\}/);
+  // The surface reaches the whole visible area, not a fixed 96px ring: it is measured from the
+  // viewport whenever the layout moves, so a stroke or a text box can start anywhere the user
+  // can see. The pointer mapping is unclamped, so the mark lands where it was clicked.
+  assert.match(source, /const \[pasteboardRect, setPasteboardRect\] = useState<PasteboardRect \| null>\(null\);/);
+  assert.match(source, /const viewportRect = viewportRef\.current\?\.getBoundingClientRect\(\);/);
+  assert.match(source, /const coarse = window\.matchMedia\?\.\("\(pointer: coarse\)"\)\.matches === true;/);
+  assert.match(source, /const PASTEBOARD_TOUCH_RING_PX = \d+;/);
+  assert.match(source, /width: `\$\{pasteboardRect\.width\}%`, height: `\$\{pasteboardRect\.height\}%`/);
+  assert.match(source, /const pasteboardSurface = activeTool === "move"/);
+  assert.match(source, /style=\{\{\s*\.\.\.pasteboardSurface,/);
+  assert.doesNotMatch(source, /-inset-24/);
+  assert.match(source, /window\.addEventListener\("resize", schedule\)/);
+  assert.match(source, /new ResizeObserver\(schedule\)/);
+  assert.match(source, /viewport\?\.addEventListener\("scroll", schedule, \{ passive: true \}\)/);
+  // A touch screen keeps a ring instead: a viewport-wide `touch-none` surface would swallow
+  // the scroll gesture that reaches the mockups.
+  assert.match(source, /const ring = PASTEBOARD_TOUCH_RING_PX \* zoom;/);
+  assert.match(source, /const left = coarse \? canvasRect\.left - ring : viewportRect\.left;/);
   // It must not double as the workspace node drag handle.
   assert.match(source, /event\.target\.closest\("\[data-editor-pasteboard\]"\)\) return;/);
   // Layer masks and erasure masks are clipped to their own region, so a canvas-sized mask

@@ -75,14 +75,19 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The Color swatch is a 20x20px rounded square (`rounded-md`), used in both the trigger and the dropdown options.
 - Selecting an option updates the price immediately (`data-editor-price`).
 
-## Editor layers outside the print canvas
-- Move/resize/rotate on the print canvas use `toCanvasPointUnclamped` in `KittlCanvas.tsx`; the drawing tools keep using the clamped `toCanvasPoint`, so strokes stay on the canvas.
+## Editor layers and tools outside the print canvas
+- Move/resize/rotate on the print canvas use `toCanvasPointUnclamped` in `KittlCanvas.tsx`; the drawing tools use `toCanvasPoint`, which is unclamped too, so a stroke can be painted on the pasteboard around the print area.
+- The pasteboard (`[data-editor-pasteboard]`) is measured from the visible viewport and applied as a percentage rect of the canvas box (`PasteboardRect`), so a brush/pencil/pen/shape/gradient/eraser/text gesture can start anywhere the user can see. It used to be a fixed `-inset-24` ring, which silently dropped strokes started further out.
+- It is re-measured on `resize`, viewport `scroll`, a `ResizeObserver` on the viewport, and the effect deps (`activeTool`, `zoom`, `pan`, `nodePositions`, `menuOpen`, `visibleMockups`), so zooming, panning, adding a mockup, or opening the menu cannot leave the surface behind.
+- On a coarse pointer the surface stops at `PASTEBOARD_TOUCH_RING_PX` (96 local px) around the canvas: a viewport-wide `touch-none` element would swallow the scroll gesture that reaches the mockups. Verified at 390x844 — the pasteboard rect is exactly canvas ± 96.
+- The mockup `<section>`s are later siblings at the same z-index, so they still paint above the pasteboard and keep their own input; a Brush press on a mockup creates no stroke.
 - A transparent `<rect aria-label="Move selected layer">` overlays the selection outline so a layer parked off-canvas is still grabbable (the artwork itself renders `pointerEvents="none"`).
-- `CANVAS_LAYER_TRAVEL_LIMIT` (2400 artwork units) bounds how far a layer can be dragged, so it stays reachable.
+- `CANVAS_LAYER_TRAVEL_LIMIT` (2400 artwork units) bounds how far a layer can be dragged, so it stays reachable; the pasteboard is clamped to the same limit.
 - `MockupArtwork` now receives `layerOffsets`/`layerScales`/`layerOrigins`/`layerRotations` and mirrors the canvas, then clips the artwork to the print area with a `clipPath` in overlay coordinates (`printScale = BASE_ARTWORK_SCALE * safeTransform.scale`). A layer dragged off-canvas therefore disappears from the mockup exactly as it would print.
 
 ## Testing pitfalls
 - `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.
+- `next dev` blocks cross-origin `/_next/*` resources requested from `127.0.0.1` (it logs `Blocked cross-origin request to Next.js dev resource /_next/hmr`). The page then renders the server HTML but never hydrates, so clicks, effects, and `useState` do nothing — which looks exactly like a broken feature. Drive CDP probes at `http://localhost:3000` (or add `allowedDevOrigins`).
 - When measuring on-screen glyph ink against the transform box, hide `[data-editor-transform-controls="true"]` first; the resize-handle squares otherwise pollute the dark-pixel bbox.
 - In CDP drag tests, check the target point is not covered by another panel (e.g. the mockup panel on the right of the canvas). Use `document.elementFromPoint` to confirm.
 - `getBoundingClientRect()` on `[aria-label="Move selected layer"]` returns the **axis-aligned** box of a *rotated* rect, so it is legitimately larger than the ink's own AABB. On a rotated layer assert containment only; tightness is only meaningful at rotation 0.
