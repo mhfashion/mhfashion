@@ -1272,24 +1272,33 @@ Checked the remaining-work register against the source and corrected the entries
   Each button keeps `aria-label` and `title` so the name is still available, plus `data-category`.
 - Verified in Chromium at 1440x560 and 390x600 (2x); the e2e asserts the row is icons only.
 
-### 2026-11-21 — Ads module and the Jersey tab inside Posts
+### 2026-11-21 — Ads module (banner photo / animation video) and the Jersey tab inside Posts
 
-**Ads** (`/admin/ads`, `AdminAds.tsx`, `lib/admin-ads.ts`)
-- Five storefront slots: Home hero (1200x400), Home strip (1200x160), Category banner (1200x220),
-  Guide rail (220x300), Checkout aside (360x180).
-- A campaign holds a slot, an internal name, headline, body, button label + link, optional image URL and a
-  start/end date. Status is derived: Disabled → Scheduled → Expired → Live.
-- The screen shows live/scheduled/slots-filled/campaign totals, the campaign table, a slot map, and a
-  drawer editor with a banner preview. Pause/Enable, Edit and Delete write to the shared demo store
-  (`mh-fashion-admin-demo-data-v1`), so they survive a reload.
-- `activeAdFor(ads, slot)` is the single rule for "what shows now": newest live ad, otherwise nothing.
-  Storefront banners are not wired yet.
+**What an ad is**
+- One piece of media — a banner photo or an animation video — plus the window it runs. No headline, body or
+  button: the artwork carries the message. An optional link makes the banner clickable.
+- Two slots: **Home hero** (replaces the green hero while live) and **Home strip** (under the category row).
+  Both crop to fill, so keep the subject centred; phones crop the sides.
+
+**Admin** (`/admin/ads`, `AdminAds.tsx`, `lib/admin-ads.ts`)
+- Add a photo by path (`/ads/hero.jpg`), by `https://` URL, or by picking a file up to 900 KB (stored with the
+  ad as a data URL). A video needs a URL (`.mp4` / `.webm`) and can carry a poster photo; uploads belong in R2,
+  which is not connected yet, so a file committed under `apps/web/public/ads/` works today.
+- Status is derived: Disabled → Scheduled → Expired → Live. Pause/Enable, Edit and Delete persist in the demo
+  store (`mh-fashion-admin-demo-data-v1`), and the home page picks the change up on the next load (or through
+  the `storage` event when both tabs are open).
+- `activeAdFor(ads, slot)` is the only rule for "what shows now": the newest live ad, otherwise nothing.
+
+**Storefront** (`components/AdSlotBanner.tsx`, `lib/storefront-ads.ts`)
+- `<AdSlotBanner slot="home-hero" variant="hero">` wraps the default hero as its fallback; a live ad replaces it.
+  `<AdSlotBanner slot="home-strip" />` renders nothing when the slot is empty.
+- Photos render as `<img alt=…>`; videos as `<video autoplay muted loop playsinline>` with the poster as the
+  first frame. The alt text from the admin is what screen readers and search engines see.
 
 **Jersey inside Posts**
-- Posts tabs are now Guide posts, T-shirt posts, Nyein posts and Jersey mapping. The mapping panel keeps
-  every control (styles, zones, corners, mapping_zones.json export) but loses its own sidebar entry.
-- `/admin/jersey` is a server redirect to `/admin/posts?tab=jersey`; `AdminPosts` reads the tab from the
-  query string inside a `Suspense` boundary.
+- Posts tabs: Guide posts, T-shirt posts, Nyein posts, Jersey mapping. The panel keeps every control but no
+  longer has a sidebar entry; `/admin/jersey` redirects to `/admin/posts?tab=jersey`.
 
-Verified: `node --test` 373/373, tsc clean, ESLint 0 errors, `next build` OK, and Chromium screenshots of
-the Ads page, the editor drawer, a created campaign (Live, persisted) and the Posts → Jersey tab.
+Verified: `node --test` 373/373, tsc clean, ESLint 0 errors, `next build` OK, storefront e2e (desktop + phone)
+including hero-ad replace/restore, and Chromium checks of the admin table, the drawer with a picked photo, the
+home hero photo, the video branch, and hero + strip ads at 1440x1000 and 390x844.

@@ -1,7 +1,7 @@
-// Storefront ads (Plan §10): the admin owns the banner copy, the link and the run window.
-// An ad is shown only while it is enabled and inside its window — nothing else decides visibility.
+// Banner ads are media only (owner request 2026-11-21): one photo or one looping animation per slot.
+// An ad shows only while it is enabled and inside its window — nothing else decides visibility.
 
-import type { AdSlotId, AdminAd } from "@/lib/admin-demo-data";
+import type { AdminAd, AdMediaType, AdSlotId } from "@/lib/admin-demo-data";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -10,22 +10,22 @@ export type AdminAdStatus = "Live" | "Scheduled" | "Expired" | "Disabled";
 export type AdminAdDraft = {
   slot: AdSlotId;
   name: string;
-  headline: string;
-  body: string;
-  ctaLabel: string;
-  ctaHref: string;
-  imageUrl: string;
+  mediaType: AdMediaType;
+  mediaUrl: string;
+  posterUrl: string;
+  alt: string;
+  href: string;
   startsAt: string;
   endsAt: string;
 };
 
 export const AD_SLOTS: { id: AdSlotId; label: string; where: string; size: string }[] = [
-  { id: "home-hero", label: "Home hero", where: "Home page, above the first product row", size: "1200 x 400" },
-  { id: "home-strip", label: "Home strip", where: "Home page, between the category row and Popular", size: "1200 x 160" },
-  { id: "category-banner", label: "Category banner", where: "Category and collection pages, under the heading", size: "1200 x 220" },
-  { id: "guide-rail", label: "Guide rail", where: "Guide pages, under the category menu", size: "220 x 300" },
-  { id: "checkout-aside", label: "Checkout aside", where: "Checkout, under the order summary", size: "360 x 180" },
+  // Both banners crop to fill: keep the artwork's subject centred so phones (which crop the sides) still read.
+  { id: "home-hero", label: "Home hero", where: "Home page, replaces the green hero while it is live", size: "1600 x 600, centred" },
+  { id: "home-strip", label: "Home strip", where: "Home page, under the category row", size: "1600 x 240, centred" },
 ];
+
+export const MAX_IMAGE_BYTES = 900 * 1024;
 
 export function adSlotLabel(slot: AdSlotId): string {
   return AD_SLOTS.find((entry) => entry.id === slot)?.label ?? slot;
@@ -44,7 +44,7 @@ export function adIsLive(ad: AdminAd, now = Date.now()): boolean {
   return adStatus(ad, now) === "Live";
 }
 
-/** The ad a slot should render right now: the first live one wins, newest window first. */
+/** What a slot renders right now: the newest live ad, otherwise nothing. */
 export function activeAdFor(ads: readonly AdminAd[], slot: AdSlotId, now = Date.now()): AdminAd | null {
   return ads
     .filter((ad) => ad.slot === slot && adIsLive(ad, now))
@@ -60,27 +60,41 @@ export function adDraftFrom(ad?: AdminAd, now = Date.now()): AdminAdDraft {
   return {
     slot: ad?.slot ?? "home-hero",
     name: ad?.name ?? "",
-    headline: ad?.headline ?? "",
-    body: ad?.body ?? "",
-    ctaLabel: ad?.ctaLabel ?? "Shop now",
-    ctaHref: ad?.ctaHref ?? "/products",
-    imageUrl: ad?.imageUrl ?? "",
+    mediaType: ad?.mediaType ?? "image",
+    mediaUrl: ad?.mediaUrl ?? "",
+    posterUrl: ad?.posterUrl ?? "",
+    alt: ad?.alt ?? "",
+    href: ad?.href ?? "",
     startsAt: (ad?.startsAt ?? new Date(now).toISOString()).slice(0, 10),
     endsAt: (ad?.endsAt ?? new Date(now + 30 * DAY_MS).toISOString()).slice(0, 10),
   };
 }
 
+function isMediaUrl(value: string, type: AdMediaType): boolean {
+  if (/^https?:\/\//.test(value)) return true;
+  if (value.startsWith("/")) return true;
+  // A picked picture is stored inline; a video is far too large for that.
+  return type === "image" && /^data:image\//.test(value);
+}
+
 export function validateAdDraft(draft: AdminAdDraft): string[] {
   const issues: string[] = [];
-  if (!draft.name.trim()) issues.push("Give the campaign a name the team recognises.");
-  if (!draft.headline.trim()) issues.push("The headline is what the banner shows — it cannot be empty.");
-  else if (draft.headline.trim().length > 60) issues.push("Keep the headline under 60 characters so it fits the banner.");
-  if (draft.body.trim().length > 160) issues.push("Keep the body under 160 characters.");
-  const href = draft.ctaHref.trim();
-  if (!href) issues.push("Add a link for the button.");
-  else if (!/^\/|^https?:\/\//.test(href)) issues.push("The link must start with / or https://.");
-  const image = draft.imageUrl.trim();
-  if (image && !/^\/|^https?:\/\//.test(image)) issues.push("The image must be a path starting with / or an https:// URL.");
+  if (!draft.name.trim()) issues.push("Give the ad a name the team recognises.");
+  const media = draft.mediaUrl.trim();
+  if (!media) issues.push(draft.mediaType === "video" ? "Add the animation video URL." : "Add the banner photo.");
+  else if (!isMediaUrl(media, draft.mediaType)) {
+    issues.push(draft.mediaType === "video"
+      ? "The video must be a path starting with / or an https:// URL."
+      : "The photo must be a path starting with /, an https:// URL or a picked image.");
+  }
+  const poster = draft.posterUrl.trim();
+  if (poster && !/^https?:\/\//.test(poster) && !poster.startsWith("/") && !/^data:image\//.test(poster)) {
+    issues.push("The poster must be a path starting with /, an https:// URL or a picked image.");
+  }
+  if (!draft.alt.trim()) issues.push("Describe what the banner shows — screen readers read this.");
+  else if (draft.alt.trim().length > 120) issues.push("Keep the description under 120 characters.");
+  const href = draft.href.trim();
+  if (href && !href.startsWith("/") && !/^https?:\/\//.test(href)) issues.push("The link must start with / or https://.");
   const starts = Date.parse(draft.startsAt);
   const ends = Date.parse(draft.endsAt);
   if (Number.isNaN(starts)) issues.push("Pick a start date.");
@@ -94,11 +108,11 @@ export function adFromDraft(draft: AdminAdDraft, existing?: AdminAd, now = Date.
     id: existing?.id ?? makeAdId(now),
     slot: draft.slot,
     name: draft.name.trim(),
-    headline: draft.headline.trim(),
-    body: draft.body.trim(),
-    ctaLabel: draft.ctaLabel.trim(),
-    ctaHref: draft.ctaHref.trim(),
-    imageUrl: draft.imageUrl.trim(),
+    mediaType: draft.mediaType,
+    mediaUrl: draft.mediaUrl.trim(),
+    posterUrl: draft.mediaType === "video" ? draft.posterUrl.trim() : "",
+    alt: draft.alt.trim(),
+    href: draft.href.trim(),
     enabled: existing?.enabled ?? true,
     startsAt: new Date(`${draft.startsAt}T00:00:00.000Z`).toISOString(),
     endsAt: new Date(`${draft.endsAt}T23:59:59.999Z`).toISOString(),
@@ -118,4 +132,22 @@ export function removeAd<T extends AdStore>(data: T, id: string): T {
 
 export function toggleAd<T extends AdStore>(data: T, id: string): T {
   return { ...data, ads: data.ads.map((entry) => (entry.id === id ? { ...entry, enabled: !entry.enabled } : entry)) };
+}
+
+/** Reads a picked picture into a data URL, so a photo can be used before R2 is connected. */
+export function readImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("Pick a picture file (PNG, JPG, WebP or GIF)."));
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      reject(new Error(`Keep the picture under ${Math.round(MAX_IMAGE_BYTES / 1024)} KB — larger files belong in R2.`));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("That file could not be read."));
+    reader.readAsDataURL(file);
+  });
 }

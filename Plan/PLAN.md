@@ -2129,32 +2129,37 @@ The owner: the "All MH Fashion 48 / T-Shirts 22 / Kids 9 / Phone Covers 7 / Bags
 - `tests/storefront-e2e.cjs` asserts six icon links, no text, an accessible name on each and 40-48px boxes.
   Full suite **367/367**, e2e PASS desktop + phone.
 
-## 2026-11-21 — Ads module, and Jersey moves into Posts
+## 2026-11-21 — Ads module (banner photo / animation video), and Jersey moves into Posts
 
-The owner: add an **Ads** entry to the admin menu bar for controlling ads, and keep jersey inside **Posts**.
+The owner: an **Ads** entry in the admin menu bar, jersey kept inside **Posts**, and — clarified the same day —
+an ad is **only media**: a banner photo or an animation video, shown as the **home hero banner**.
 ("Plan ပြောင်းမှာပါ" — the plan will change later, so this is the current shape.)
 
 ### Ads (`/admin/ads`)
-- `lib/admin-demo-data.ts`: `AdminAd` / `AdSlotId`, five slots (`home-hero`, `home-strip`,
-  `category-banner`, `guide-rail`, `checkout-aside`), `createSeedAds()`, the `ads` field on
-  `AdminDemoData` (backfilled for browsers that already hold older demo data) and `"ads"` in
-  `AdminModuleId` / `ADMIN_MODULES`.
-- `lib/admin-ads.ts`: `adStatus` (Live / Scheduled / Expired / Disabled), `activeAdFor(slot)` (newest live
-  ad, or nothing), `adDraftFrom` / `validateAdDraft` / `adFromDraft`, and `upsertAd` / `toggleAd` /
-  `removeAd` over `{ ads }` — the same store the rest of the admin writes.
-- `components/admin/AdminAds.tsx`: four stats (live, scheduled, slots filled, campaigns), the campaign
-  table with status badges, the slot map, and a drawer editor with a live banner preview. Every change
-  goes through `updateAdminData`, so Pause/Enable/Delete persist.
-- Storefront rendering of the slots is the next step; the panel only controls copy, link and window today.
+- `lib/admin-demo-data.ts`: `AdminAd` / `AdMediaType` / `AdSlotId`, two slots (`home-hero`, `home-strip`),
+  the `ads` store field (older headline-based ads are dropped on read), `"ads"` in `AdminModuleId` /
+  `ADMIN_MODULES`. `createSeedAds()` is empty — the artwork is the owner's.
+- `lib/admin-ads.ts`: `adStatus` (Live / Scheduled / Expired / Disabled), `activeAdFor(slot)` (newest live ad,
+  otherwise nothing), `validateAdDraft` (name, media URL — `/`, `https://` or a picked `data:image/…`, poster,
+  description ≤ 120, optional link, window), `adFromDraft`, `upsertAd` / `toggleAd` / `removeAd`,
+  `readImageFile` (≤ 900 KB picture → data URL, so a photo works before R2 is connected).
+- `components/admin/AdminAds.tsx`: live/scheduled/slots-filled/videos totals, the ad table with a media
+  thumbnail, the slot map, and a drawer with a Banner photo / Animation video switch, URL or file pick,
+  optional poster for video, description, optional link, window and a live preview.
+- `lib/storefront-ads.ts` + `components/AdSlotBanner.tsx`: the home page asks for `home-hero` and `home-strip`;
+  a live ad renders as `<img>` or a muted looping `<video>`, inside a link only when a link is set. With no
+  live ad the green hero and the normal page flow come back untouched.
 
 ### Jersey inside Posts
-- `AdminJersey.tsx` now exports `AdminJerseyPanel` (body only, no shell) and the Posts module renders it
-  under a new **Jersey mapping** tab; the tab count comes from `jerseyStyles(data)`.
-- The sidebar no longer lists Jersey; `/admin/jersey` redirects to `/admin/posts?tab=jersey`, and
-  `AdminPosts` reads `?tab=` through `useSearchParams` (the page wraps it in `Suspense`).
+- `AdminJersey.tsx` exports `AdminJerseyPanel` (body only); Posts renders it under a **Jersey mapping** tab and
+  reads `?tab=` through `useSearchParams` inside a `Suspense` boundary.
+- The sidebar no longer lists Jersey; `/admin/jersey` redirects to `/admin/posts?tab=jersey`.
 
 ### Verification
-- `tests/admin-ads.test.cjs` (new): statuses, slot picking, validation, store round trip, seeds, nav/route.
-- `tests/admin-jersey.test.cjs` updated: no Jersey nav entry, Posts tab + panel, redirect.
-- Full suite **373/373**, `tsc` clean, ESLint 0 errors, build passed. Chromium at 1440x1100: Ads page,
-  editor drawer, a created ad landing Live in the table and in localStorage, Posts → Jersey mapping tab.
+- `tests/admin-ads.test.cjs`: statuses, slot picking, media validation (data URL only for photos), store round
+  trip, empty seeds, nav/route, and that the home page mounts both banners with the image/video markers.
+- `tests/storefront-e2e.cjs`: seeds a live hero ad, checks it replaces the hero without sideways scroll, then
+  clears it and checks the green hero returns — on desktop and phone.
+- Full suite **373/373**, `tsc` clean, ESLint 0 errors, build passed. Chromium: admin table + drawer with a
+  picked photo, the photo as the home hero, the video branch (`<video autoplay muted loop playsinline>`), and
+  hero + strip ads at 1440x1000 and 390x844.

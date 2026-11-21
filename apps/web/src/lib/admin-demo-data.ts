@@ -377,18 +377,29 @@ export type AdminPromotion = {
   enabled: boolean;
 };
 
-export type AdSlotId = "home-hero" | "home-strip" | "category-banner" | "guide-rail" | "checkout-aside";
+/** The two home-page banners. More slots are added here and mounted with <AdSlotBanner slot=… />. */
+export type AdSlotId = "home-hero" | "home-strip";
 
+export type AdMediaType = "image" | "video";
+
+/**
+ * An ad is one piece of media — a banner photo or a looping animation — plus when it runs.
+ * There is no headline or button: the artwork carries the message (owner request 2026-11-21).
+ */
 export type AdminAd = {
   id: string;
   slot: AdSlotId;
   /** Internal name the admin uses to tell campaigns apart. */
   name: string;
-  headline: string;
-  body: string;
-  ctaLabel: string;
-  ctaHref: string;
-  imageUrl: string;
+  mediaType: AdMediaType;
+  /** /path, https://… or a data:image/… URL for a picture; videos need a real URL. */
+  mediaUrl: string;
+  /** First frame of a video, also the fallback while it loads. */
+  posterUrl: string;
+  /** What the media shows, read by screen readers. */
+  alt: string;
+  /** Optional click-through; empty means the banner is not a link. */
+  href: string;
   enabled: boolean;
   startsAt: string;
   endsAt: string;
@@ -1650,53 +1661,9 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
   ];
 }
 
-export function createSeedAds(now = Date.now()): AdminAd[] {
-  const day = (offset: number, hour = 0) => {
-    const date = new Date(now + offset * DAY_MS);
-    date.setUTCHours(hour, 0, 0, 0);
-    return date.toISOString();
-  };
-  return [
-    {
-      id: "ad_seed_signature",
-      slot: "home-hero",
-      name: "Signature tee drop",
-      headline: "The Signature drop is here",
-      body: "New MH Fashion tees, printed on premium cotton and shipped from Yangon.",
-      ctaLabel: "Shop the drop",
-      ctaHref: "/new",
-      imageUrl: "",
-      enabled: true,
-      startsAt: day(-3),
-      endsAt: day(11, 23),
-    },
-    {
-      id: "ad_seed_guide",
-      slot: "guide-rail",
-      name: "Guide rail — design help",
-      headline: "Not sure where to start?",
-      body: "The editor guide walks you from a blank canvas to a print-ready file.",
-      ctaLabel: "Read the guide",
-      ctaHref: "/guide/editor-guide",
-      imageUrl: "",
-      enabled: true,
-      startsAt: day(-10),
-      endsAt: day(40, 23),
-    },
-    {
-      id: "ad_seed_nyein",
-      slot: "category-banner",
-      name: "Nyein collection teaser",
-      headline: "Nyein: quiet prints, loud quality",
-      body: "A small collection of tonal artwork for everyday wear.",
-      ctaLabel: "See Nyein",
-      ctaHref: "/nyein",
-      imageUrl: "",
-      enabled: false,
-      startsAt: day(6),
-      endsAt: day(26, 23),
-    },
-  ];
+/** No seeded ads: an ad is artwork the owner supplies, so the module starts empty. */
+export function createSeedAds(): AdminAd[] {
+  return [];
 }
 
 export function createAdminDemoData(now = Date.now()): AdminDemoData {
@@ -1861,7 +1828,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     productPrices,
     priceHistory: [],
     promotions,
-    ads: createSeedAds(now),
+    ads: createSeedAds(),
     team,
     settings: {
       storeName: "MH Fashion",
@@ -1912,7 +1879,10 @@ export function readAdminDemoData(): AdminDemoData {
             : createSeedJerseyStyles(Date.now()),
           productPrices: Array.isArray(parsed.productPrices) ? parsed.productPrices : [],
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
-          ads: Array.isArray(parsed.ads) ? parsed.ads : createSeedAds(),
+          // Ads saved before the media-only model (headline/body) are dropped rather than half-rendered.
+          ads: Array.isArray(parsed.ads)
+            ? parsed.ads.filter((ad) => ad?.mediaType === "image" || ad?.mediaType === "video")
+            : createSeedAds(),
           orders,
           tshirtPosts: Array.isArray(parsed.tshirtPosts)
             ? parsed.tshirtPosts.map(normalizeTshirtPost)

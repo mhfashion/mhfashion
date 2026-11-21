@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import AdSlotBanner from "@/components/AdSlotBanner";
 import CategoryRow from "@/components/CategoryRow";
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/lib/types";
@@ -28,11 +29,15 @@ export default async function HomePage() {
       <Header />
       <div className="w-full bg-bg px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
         <div className="mx-auto max-w-[1480px]">
+          <AdSlotBanner slot="home-hero" variant="hero">
           <section className="relative isolate min-h-[155px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdc] via-[#dcf4bc] to-[#b6e773] px-4 py-4 text-[#172810] sm:min-h-[250px] sm:px-10 sm:py-10 lg:min-h-[300px] lg:px-12">
             <div className="relative z-10 max-w-[68%] sm:max-w-[47%]"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4c9d16] sm:text-xs sm:tracking-[0.18em]">MH Fashion</p><h1 className="mt-2 text-2xl font-black leading-[0.95] tracking-tight sm:mt-3 sm:text-5xl lg:text-6xl">Design Your<br /><span className="text-[#4d9e16]">Own Style!</span></h1><p className="mt-2 max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-4 sm:text-sm">Wear what defines you — custom prints made your way.</p><a href="/create" className="mt-3 inline-flex items-center rounded-full bg-[#55a918] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:px-4 sm:py-2.5 sm:text-xs">Start Designing <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" /></a></div><div className="absolute -right-10 -top-12 h-52 w-52 rounded-full bg-[#95d64a]/60 blur-sm sm:-right-12 sm:-top-24 sm:h-80 sm:w-80" /><div className="absolute bottom-[-75px] right-[15%] hidden h-80 w-52 rotate-[-6deg] rounded-[44%] bg-white/80 shadow-xl sm:block"><div className="absolute left-1/2 top-20 -translate-x-1/2 text-center text-3xl font-black leading-none text-[#4d9e16]">MH<br /><span className="text-sm">FASHION</span></div></div><div className="absolute bottom-3 right-3 text-2xl font-black italic leading-tight text-[#37770e]/80 sm:bottom-8 sm:right-7 sm:text-4xl">Be Creative<br />Be Unique</div><div className="absolute bottom-3 left-4 flex gap-1"><span className="h-1.5 w-1.5 rounded-full bg-accent sm:h-2 sm:w-2" /><span className="h-1.5 w-1.5 rounded-full bg-accent/40 sm:h-2 sm:w-2" /><span className="h-1.5 w-1.5 rounded-full bg-accent/40 sm:h-2 sm:w-2" /></div>
           </section>
+          </AdSlotBanner>
 
           <CategoryRow />
+
+          <AdSlotBanner slot="home-strip" />
 
           <section className="mb-6"><div className="mb-3 flex items-center justify-between"><h2 className="flex items-center gap-2 text-sm font-black sm:text-base"><Heart size={17} className="text-accent" /> Popular Products</h2><a href="/products" className="text-[10px] font-semibold text-accent sm:text-xs">View All <ArrowRight size={13} className="ml-1 inline" /></a></div><ProductStrip products={bestSellers.length ? bestSellers : products} /></section>
           <section className="mb-6"><div className="mb-3 flex items-center justify-between"><h2 className="flex items-center gap-2 text-sm font-black sm:text-base"><Palette size={17} className="text-accent" /> New Arrivals</h2><a href="/products?new=true" className="text-[10px] font-semibold text-accent sm:text-xs">View All <ArrowRight size={13} className="ml-1 inline" /></a></div><ProductStrip products={newArrivals.length ? newArrivals : products} /></section>

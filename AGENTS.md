@@ -497,15 +497,22 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `data-category`; `tests/storefront-e2e.cjs` fails if the row renders text.
 
 ## Admin: Ads module and the Jersey tab
-- `lib/admin-ads.ts` holds the ad rules (`adStatus`, `activeAdFor`, `adDraftFrom`, `validateAdDraft`,
-  `adFromDraft`, `upsertAd` / `toggleAd` / `removeAd`) and the five `AD_SLOTS`. The model itself
-  (`AdminAd`, `AdSlotId`, `createSeedAds`) lives in `admin-demo-data.ts`, which stays import-free so tests
-  can load it on its own; `admin-demo-data.ts` backfills `ads` for browsers holding older demo data.
-- `AdminAds.tsx` writes through `updateAdminData` like every other module; the drawer preview is the only
-  place the banner look is defined. Nothing renders the ads on the storefront yet — when that lands, read
-  `activeAdFor(data.ads, slot)` and nothing else, so the admin and the site cannot disagree.
+- An ad is **media only**: `AdminAd` has `mediaType` ("image" | "video"), `mediaUrl`, `posterUrl`, `alt`,
+  optional `href` and the run window — no headline/body/button (owner, 2026-11-21). The model and
+  `createSeedAds()` (empty) live in `admin-demo-data.ts`, which stays import-free so tests can load it alone;
+  older headline-based ads are filtered out on read.
+- `lib/admin-ads.ts` holds the rules (`adStatus`, `activeAdFor`, `adDraftFrom`, `validateAdDraft`,
+  `adFromDraft`, `upsertAd` / `toggleAd` / `removeAd`, `readImageFile`). `activeAdFor(ads, slot)` is the single
+  "what shows now" answer — the storefront must never re-implement it.
+- `AdminAds.tsx` writes through `updateAdminData`. Photos may be a `/path`, an `https://` URL or a picked file
+  (≤ 900 KB → data URL); videos must be a URL (a data URL would blow up localStorage), with an optional poster.
+- Storefront: `lib/storefront-ads.ts` reads only `ads` from `mh-fashion-admin-demo-data-v1` (it never seeds the
+  demo store) and `components/AdSlotBanner.tsx` renders `<img>` or `<video autoplay muted loop playsinline>`,
+  wrapping in a link only when `href` is set. `app/page.tsx` wraps the green hero in
+  `<AdSlotBanner slot="home-hero" variant="hero">` as the fallback and mounts `<AdSlotBanner slot="home-strip" />`
+  under the category row. Both banners use `object-cover`, so artwork must keep its subject centred.
 - Jersey mapping is a **Posts tab**, not a sidebar entry: `AdminJersey.tsx` exports `AdminJerseyPanel`
   (body only) and `AdminPosts.tsx` renders it for `tab === "jersey"`, reading `?tab=` via `useSearchParams`
   (`app/admin/posts/page.tsx` wraps `AdminPosts` in `Suspense`). `/admin/jersey` only redirects.
-- `tests/admin-ads.test.cjs` and `tests/admin-jersey.test.cjs` guard both contracts, including that the
-  sidebar has no `id: "jersey"` entry.
+- `tests/admin-ads.test.cjs` and `tests/admin-jersey.test.cjs` guard both contracts (including that the sidebar
+  has no `id: "jersey"` entry); `tests/storefront-e2e.cjs` seeds a live hero ad and checks replace + restore.

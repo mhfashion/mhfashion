@@ -168,6 +168,39 @@ async function main() {
     assert.ok(home.footerLinks > 3, `footer links: ${home.footerLinks}`);
     assert.ok(home.wishlist, "header links to the wishlist");
 
+    // The admin's live hero ad replaces the green hero; pausing it brings the hero back.
+    const heroSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="600"><rect width="1600" height="600" fill="#cc0000"/></svg>';
+    await evaluate((svg) => {
+      localStorage.setItem("mh-fashion-admin-demo-data-v1", JSON.stringify({
+        version: 1, orders: [], products: [], ads: [{
+          id: "ad_e2e", slot: "home-hero", name: "E2E hero", mediaType: "image",
+          mediaUrl: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`, posterUrl: "",
+          alt: "E2E hero banner", href: "/new", enabled: true,
+          startsAt: "2020-01-01T00:00:00.000Z", endsAt: "2099-01-01T00:00:00.000Z",
+        }],
+      }));
+      return "seeded";
+    }, heroSvg);
+    await visit("/", "main");
+    await pause(900);
+    const heroAd = await evaluate(() => ({
+      banner: Boolean(document.querySelector('[data-ad-slot-banner="home-hero"] [data-ad-image]')),
+      defaultHero: [...document.querySelectorAll("h1")].some((node) => /Design Your/.test(node.innerText)),
+      width: document.documentElement.scrollWidth,
+      client: document.documentElement.clientWidth,
+    }));
+    assert.ok(heroAd.banner, "the live hero ad is rendered on the home page");
+    assert.equal(heroAd.defaultHero, false, "the green hero steps aside for the ad");
+    assert.equal(heroAd.width, heroAd.client, "the hero ad does not scroll sideways");
+
+    await evaluate(() => localStorage.removeItem("mh-fashion-admin-demo-data-v1"));
+    await visit("/", "main");
+    await pause(900);
+    assert.ok(
+      await evaluate(() => [...document.querySelectorAll("h1")].some((node) => /Design Your/.test(node.innerText))),
+      "the green hero returns when no ad is live",
+    );
+
     await visit("/search?q=butterfly", "main");
     const search = await evaluate(() => ({
       heading: document.querySelector("h1")?.innerText,
