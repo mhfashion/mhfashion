@@ -2686,3 +2686,14 @@ The `/admin` workspace is no longer a single dashboard preview: every module in 
 - **First run:** `/admin/register` stays closed, but a browser with no demo account now gets the single local account setup form on `/admin/login` (same warnings, no real passwords). Without it the preview was unreachable on a fresh browser.
 - **Validation:** `npm run test:admin-data` (13 tests) covers the data layer; the full `node --test tests/*.test.cjs` suite passes 135/135 against a production build; headless Chromium drove first-run setup, order advancement, product creation, stock adjustment, promotion creation, settings save, team add, reload persistence and every module page with no console errors.
 - This remains a preview, not a security boundary. Supabase Auth, RLS and server-side role checks are still required before live admin data is exposed.
+
+## 2026-11-21 Implementation Update — Posts module (Guide / T-shirt / Nyein)
+
+Posting lives in the admin workspace at `/admin/posts` with three tabs, because posting is split into three kinds of content.
+
+- **Tabs:** Guide posts (lists the published guide catalog with a link to `/guide/:slug`), T-shirt posts (the working module), Nyein posts (placeholder until the Nyein brief arrives).
+- **T-shirt post fields:** title, description, one attached **SVG** file (preview, size, replace/remove), the colours the drop is sold in (ticked from the six storefront shirt colours) and the sizes (S–2XL), each with its **own hand-typed price**.
+- **No base price is derived.** Price differences by size, colour or anything else are entered directly: every ticked size needs a price of its own, and a colour carries an optional extra amount that is added on top of the size price.
+- **SVG storage:** `apps/web/src/lib/post-assets.ts` reads the file and returns a data URL that the browser-local demo store can hold. The R2 route is not provisioned yet, so this is the single seam to replace with the Cloudflare R2 upload; the return shape (`url`, `fileName`, `sizeBytes`) stays the same.
+- **Validation:** title required (≤ 80 chars), SVG required, at least one colour and one size, every size priced above zero, prices capped at Ks 10,000,000.
+- **Persistence:** posts live in the same demo store (`tshirtPosts`), so they survive a reload; entries saved before this module existed are backfilled with the seed posts instead of failing the store check.

@@ -7,6 +7,7 @@
     { "path": "/admin/inventory", "title": "Admin Inventory" },
     { "path": "/admin/login", "title": "Admin Sign In" },
     { "path": "/admin/orders", "title": "Admin Orders" },
+    { "path": "/admin/posts", "title": "Admin Posts" },
     { "path": "/admin/products", "title": "Admin Products" },
     { "path": "/admin/promotions", "title": "Admin Promotions" },
     { "path": "/admin/reports", "title": "Admin Reports" },

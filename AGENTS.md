@@ -29,6 +29,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Re-entering an existing text layer must place the caret at the end (the overlay's `textAreaRef` effect); otherwise Enter inserts a line above the text and typing overwrites the start.
 - Pushing to GitHub from this environment is blocked: the injected `GITHUB_TOKEN` authenticates as the `mhfashion` user and can read the repo, but every write path (`git push`, `POST /git/refs`, `gh api`) returns `403 Resource not accessible by integration`. The commits are prepared locally on the branch; a human or a token with `contents: write` must push them.
 
+## Posts module (`/admin/posts`)
+- Posting is three tabs: `data-post-tab="guide" | "tshirt" | "nyein"`. Guide lists the starter catalog read-only; Nyein is a placeholder until its brief lands; T-shirt posts are the working module (`components/admin/AdminPosts.tsx`).
+- A T-shirt post stores `tshirtPosts` in the same demo store (`lib/admin-demo-data.ts`): title, description, one SVG (`{ url, fileName, sizeBytes }`), ticked colours with an optional extra `priceKs`, and ticked sizes that each carry **their own hand-typed** `priceKs`.
+- Do not reintroduce a single base price or derive one price from another: the requirement is that size, colour and other differences are entered directly. `validateTshirtPostDraft` rejects a ticked size with no price, and `tshirtPostFromPriceKs` only *reports* the cheapest combination for the list.
+- SVG files are read by `lib/post-assets.ts` and kept as a `data:image/svg+xml;utf8,` URL because Cloudflare R2 is not provisioned yet. That function is the only place to swap for the R2 upload; keep the `{ url, fileName, sizeBytes }` shape so the form, store and tests stay unchanged.
+- Entries saved before the module existed have no `tshirtPosts` key, so `readAdminDemoData` backfills `createSeedTshirtPosts(...)` instead of discarding the store.
+- Tests: `tests/admin-posts.test.cjs` covers the data helpers, the SVG helper and the wiring; `tests/guide-http.test.cjs` asserts the exact `manus-routes.json` order, so a new admin route must be added to that expected list too.
+
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.
 - The job's **first step** verifies the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets. If either is missing it exits 1 and every later step is skipped, so **the Cloudflare Worker is never deployed**.

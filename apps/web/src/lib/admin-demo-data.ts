@@ -12,6 +12,7 @@ export type AdminModuleId =
   | "orders"
   | "products"
   | "designs"
+  | "posts"
   | "customers"
   | "inventory"
   | "promotions"
@@ -80,6 +81,39 @@ export type AdminDesign = {
   downloads: number;
 };
 
+export type AdminPostStatus = "Draft" | "Published";
+
+export type AdminPostSvg = {
+  url: string;
+  fileName: string;
+  sizeBytes: number;
+};
+
+export type AdminTshirtPostSize = {
+  size: string;
+  priceKs: number;
+};
+
+// A colour carries its own optional surcharge: the storefront already prices colour
+// separately, so a post has to be able to say "Navy +Ks 1,000" per colour.
+export type AdminTshirtPostColor = {
+  name: string;
+  hex: string;
+  priceKs: number;
+};
+
+export type AdminTshirtPost = {
+  id: string;
+  title: string;
+  description: string;
+  svg: AdminPostSvg | null;
+  colors: AdminTshirtPostColor[];
+  sizes: AdminTshirtPostSize[];
+  status: AdminPostStatus;
+  createdAt: string;
+  publishedAt: string | null;
+};
+
 export type AdminPromotion = {
   id: string;
   code: string;
@@ -118,6 +152,7 @@ export type AdminDemoData = {
   products: AdminProduct[];
   stock: Record<string, Record<string, number>>;
   designs: AdminDesign[];
+  tshirtPosts: AdminTshirtPost[];
   promotions: AdminPromotion[];
   team: AdminTeamMember[];
   settings: AdminSettings;
@@ -128,6 +163,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "orders", label: "Orders" },
   { id: "products", label: "Products" },
   { id: "designs", label: "Designs" },
+  { id: "posts", label: "Posts" },
   { id: "customers", label: "Customers" },
   { id: "inventory", label: "Inventory" },
   { id: "promotions", label: "Promotions" },
@@ -445,6 +481,113 @@ export function removeProduct(data: AdminDemoData, productId: string): AdminDemo
   return { ...data, products: data.products.filter((product) => product.id !== productId), stock };
 }
 
+// ---------------------------------------------------------------- t-shirt posts
+
+// The six colours the storefront offers for shirts. A post ticks the ones it sells.
+export const TSHIRT_POST_COLORS: { name: string; hex: string }[] = [
+  { name: "Black", hex: "#111111" },
+  { name: "White", hex: "#ffffff" },
+  { name: "Green", hex: "#236b42" },
+  { name: "Sand", hex: "#d4b78b" },
+  { name: "Red", hex: "#b83219" },
+  { name: "Navy", hex: "#203459" },
+];
+
+export const TSHIRT_POST_SIZES = APPAREL_SIZES;
+
+export type AdminTshirtPostDraft = {
+  title: string;
+  description: string;
+  svg: AdminPostSvg | null;
+  colors: { name: string; hex: string; priceKs: string }[];
+  sizes: { size: string; priceKs: string }[];
+  status: AdminPostStatus;
+};
+
+export function tshirtPostDraftFrom(post?: AdminTshirtPost): AdminTshirtPostDraft {
+  return {
+    title: post?.title ?? "",
+    description: post?.description ?? "",
+    svg: post?.svg ?? null,
+    colors: (post?.colors ?? []).map((color) => ({ name: color.name, hex: color.hex, priceKs: color.priceKs ? String(color.priceKs) : "" })),
+    sizes: (post?.sizes ?? []).map((size) => ({ size: size.size, priceKs: String(size.priceKs) })),
+    status: post?.status ?? "Draft",
+  };
+}
+
+function postPriceError(value: string) {
+  const price = Number(value);
+  if (!Number.isFinite(price) || price < 0) return "Prices must be zero or more.";
+  if (price > 10000000) return "Prices must stay under Ks 10,000,000.";
+  return null;
+}
+
+export function validateTshirtPostDraft(draft: AdminTshirtPostDraft): string[] {
+  const errors: string[] = [];
+  if (!draft.title.trim()) errors.push("Post title is required.");
+  if (draft.title.trim().length > 80) errors.push("Post title must stay under 80 characters.");
+  if (!draft.svg) errors.push("Attach the SVG file for this post.");
+  if (!draft.colors.length) errors.push("Tick at least one colour.");
+  if (!draft.sizes.length) errors.push("Tick at least one size.");
+  for (const size of draft.sizes) {
+    const price = Number(size.priceKs);
+    if (!Number.isFinite(price) || price <= 0) {
+      errors.push(`Set a price for size ${size.size}.`);
+      continue;
+    }
+    const problem = postPriceError(size.priceKs);
+    if (problem) errors.push(`${size.size}: ${problem}`);
+  }
+  for (const color of draft.colors) {
+    if (!color.priceKs.trim()) continue;
+    const problem = postPriceError(color.priceKs);
+    if (problem) errors.push(`${color.name}: ${problem}`);
+  }
+  return errors;
+}
+
+export function tshirtPostFromDraft(draft: AdminTshirtPostDraft, existing?: AdminTshirtPost, now = new Date()): AdminTshirtPost {
+  const publishedAt = draft.status === "Published"
+    ? existing?.publishedAt ?? now.toISOString()
+    : null;
+  return {
+    id: existing?.id ?? makeAdminId("post"),
+    title: draft.title.trim(),
+    description: draft.description.trim(),
+    svg: draft.svg,
+    colors: draft.colors.map((color) => ({ name: color.name, hex: color.hex, priceKs: Math.round(Number(color.priceKs || 0)) })),
+    sizes: draft.sizes.map((size) => ({ size: size.size, priceKs: Math.round(Number(size.priceKs || 0)) })),
+    status: draft.status,
+    createdAt: existing?.createdAt ?? now.toISOString(),
+    publishedAt,
+  };
+}
+
+export function upsertTshirtPost(data: AdminDemoData, post: AdminTshirtPost): AdminDemoData {
+  const exists = data.tshirtPosts.some((item) => item.id === post.id);
+  return {
+    ...data,
+    tshirtPosts: exists
+      ? data.tshirtPosts.map((item) => (item.id === post.id ? post : item))
+      : [post, ...data.tshirtPosts],
+  };
+}
+
+export function removeTshirtPost(data: AdminDemoData, postId: string): AdminDemoData {
+  return { ...data, tshirtPosts: data.tshirtPosts.filter((post) => post.id !== postId) };
+}
+
+// Cheapest combination a shopper can buy, so the list can show "from Ks 21,000".
+export function tshirtPostFromPriceKs(post: AdminTshirtPost): number {
+  if (!post.sizes.length) return 0;
+  const colourFloor = post.colors.length ? Math.min(...post.colors.map((color) => color.priceKs)) : 0;
+  return Math.min(...post.sizes.map((size) => size.priceKs)) + colourFloor;
+}
+
+export function tshirtPostSizeLabel(post: AdminTshirtPost) {
+  return post.sizes.map((size) => `${size.size} ${formatKs(size.priceKs)}`).join(" · ");
+}
+
 // ---------------------------------------------------------------- designs
 
 export function setDesignStatus(data: AdminDemoData, designId: string, status: AdminDesignStatus): AdminDemoData {
@@ -650,6 +793,55 @@ function stageForAge(days: number, roll: number): AdminOrderStage {
   return "Delivered";
 }
 
+function seedPostSvg(label: string, accent: string): AdminPostSvg {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><circle cx="120" cy="120" r="76" fill="none" stroke="${accent}" stroke-width="14"/><text x="120" y="132" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="${accent}">${label}</text></svg>`;
+  return { url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`, fileName: `${label.toLowerCase()}.svg`, sizeBytes: svg.length };
+}
+
+function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
+  const daysAgo = (days: number) => new Date(now - days * DAY_MS).toISOString();
+  return [
+    {
+      id: "post-peacock-line",
+      title: "Peacock Line Tee",
+      description: "Single-colour line art printed on combed cotton.",
+      svg: seedPostSvg("PEACOCK", "#236b42"),
+      colors: [
+        { name: "Black", hex: "#111111", priceKs: 0 },
+        { name: "White", hex: "#ffffff", priceKs: 500 },
+        { name: "Sand", hex: "#d4b78b", priceKs: 500 },
+      ],
+      sizes: [
+        { size: "S", priceKs: 21000 },
+        { size: "M", priceKs: 22000 },
+        { size: "L", priceKs: 23000 },
+        { size: "XL", priceKs: 24000 },
+      ],
+      status: "Published",
+      createdAt: daysAgo(6),
+      publishedAt: daysAgo(5),
+    },
+    {
+      id: "post-mandalay-nights",
+      title: "Mandalay Nights Tee",
+      description: "Two-colour night market print, oversized fit.",
+      svg: seedPostSvg("MANDALAY", "#b83219"),
+      colors: [
+        { name: "Black", hex: "#111111", priceKs: 0 },
+        { name: "Navy", hex: "#203459", priceKs: 1000 },
+      ],
+      sizes: [
+        { size: "M", priceKs: 27000 },
+        { size: "L", priceKs: 28000 },
+        { size: "2XL", priceKs: 30000 },
+      ],
+      status: "Draft",
+      createdAt: daysAgo(2),
+      publishedAt: null,
+    },
+  ];
+}
+
 export function createAdminDemoData(now = Date.now()): AdminDemoData {
   const random = seededRandom(20261121);
   const products: AdminProduct[] = SEED_PRODUCTS.map((product) => ({
@@ -778,6 +970,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     products,
     stock,
     designs,
+    tshirtPosts: createSeedTshirtPosts(now),
     promotions,
     team,
     settings: {
@@ -812,7 +1005,10 @@ export function readAdminDemoData(): AdminDemoData {
     if (raw) {
       const parsed = JSON.parse(raw) as AdminDemoData;
       if (parsed && parsed.version === 1 && Array.isArray(parsed.orders) && Array.isArray(parsed.products)) {
-        cache = parsed;
+        // Entries saved before the Posts module existed have no tshirtPosts key.
+        cache = Array.isArray(parsed.tshirtPosts)
+          ? parsed
+          : { ...parsed, tshirtPosts: createSeedTshirtPosts(Date.now()) };
         return cache;
       }
     }
