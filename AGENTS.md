@@ -178,6 +178,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   endpoints (`POST /git/refs`) also return `403 Resource not accessible by integration`.
 - `git fetch` and the read APIs work fine, so local branches can be kept current with
   `origin/main`, but a push needs a token with `Contents: write` (or a human pushing).
+- A PAT pasted into chat on 2026-11-21 (`github_pat_11CNAE4QQ…`) was rejected by
+  `GET https://api.github.com/user` with `401 Bad credentials`, and `git push` with it returned
+  `Invalid username or token` / `403`. Treat a pasted token as unusable until the API accepts it.
 - To push without persisting the credential, pass a write-capable token inline and leave
   `origin` alone, so the read-only URL in `.git/config` is never overwritten:
   `git push "https://x-access-token:$TOKEN@github.com/mhfashion/mhfashion.git" HEAD:main`
