@@ -113,7 +113,7 @@ function ColourTile({
       aria-pressed={selected}
       title={name}
       onClick={onSelect}
-      className={`relative aspect-square overflow-hidden rounded-xl border-2 bg-bg ${selected ? "border-accent" : "border-border/60 hover:border-accent/50"}`}
+      className={`relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border-2 bg-bg sm:h-14 sm:w-14 ${selected ? "border-accent" : "border-border/60 hover:border-accent/50"}`}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -179,65 +179,76 @@ export default function ProductMockupPreview({
   }));
   const activeColour = colours.find((colour) => colour.name === color) ?? null;
 
+  // The thumbnails ride in a rail beside the photo instead of under it, so the media block costs
+  // only the photo's own height. The rail is pinned to the photo's box and scrolls internally.
+  const rail = thumbs.length ? (
+    <div
+      data-product-thumbs
+      // scrollbar hidden: a classic scrollbar would narrow the rail and shrink the square tiles
+      className="absolute inset-y-0 left-0 flex w-11 flex-col gap-1.5 overflow-y-auto [scrollbar-width:none] sm:w-14 sm:gap-2"
+    >
+      {thumbs.map((thumb) => (
+        <ColourTile
+          key={thumb.name}
+          name={thumb.name}
+          className={thumb.className}
+          candidates={thumb.candidates}
+          selected={color === thumb.name}
+          onSelect={() => onSelectColour?.(thumb.name)}
+        />
+      ))}
+    </div>
+  ) : null;
+
   return (
     <div className={className}>
-      <div
-        data-product-preview
-        data-mockup-status={status}
-        onPointerMove={trackZoom}
-        onPointerLeave={() => setZoom((current) => ({ ...current, active: false }))}
-        className="group relative h-[240px] w-full overflow-hidden rounded-2xl border border-border/70 bg-bg sm:aspect-square sm:h-auto"
-      >
-        {src ? (
-          <>
-            <button
-              type="button"
-              aria-label="Zoom product image"
-              data-product-zoom
-              onClick={() => setLightbox(true)}
-              className="block h-full w-full cursor-zoom-in"
-            >
-              <span
-                data-product-zoom-layer
-                className="relative block h-full w-full transition-transform duration-300 ease-out"
-                style={{
-                  transform: zoom.active ? `scale(${ZOOM_SCALE})` : "scale(1)",
-                  transformOrigin: `${zoom.x}% ${zoom.y}%`,
-                }}
+      <div className="relative">
+        {rail}
+        <div
+          data-product-preview
+          data-mockup-status={status}
+          onPointerMove={trackZoom}
+          onPointerLeave={() => setZoom((current) => ({ ...current, active: false }))}
+          // Mockup photos ship on a white background, so the box is white while one is showing and the
+          // letterbox bars disappear into the photo.
+          className={`group relative h-[200px] overflow-hidden rounded-2xl border border-border/70 sm:aspect-[4/3] sm:h-auto ${src ? "bg-white" : "bg-bg"} ${rail ? "ml-12 sm:ml-16" : ""}`}
+        >
+          {src ? (
+            <>
+              <button
+                type="button"
+                aria-label="Zoom product image"
+                data-product-zoom
+                onClick={() => setLightbox(true)}
+                className="block h-full w-full cursor-zoom-in"
               >
-                <Artwork src={src} design={design} alt={label ? `${name} — ${label}` : name} imageRef={imgRef} onError={advance} />
+                <span
+                  data-product-zoom-layer
+                  className="relative block h-full w-full transition-transform duration-300 ease-out"
+                  style={{
+                    transform: zoom.active ? `scale(${ZOOM_SCALE})` : "scale(1)",
+                    transformOrigin: `${zoom.x}% ${zoom.y}%`,
+                  }}
+                >
+                  <Artwork src={src} design={design} alt={label ? `${name} — ${label}` : name} imageRef={imgRef} onError={advance} />
+                </span>
+              </button>
+              <span className="pointer-events-none absolute bottom-2 right-2 hidden items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-[9px] font-bold text-white shadow-sm group-hover:flex">
+                <Maximize2 size={10} /> Zoom
               </span>
-            </button>
-            <span className="pointer-events-none absolute bottom-2 right-2 hidden items-center gap-1 rounded-full bg-white/85 px-2 py-1 text-[9px] font-bold text-text-secondary shadow-sm group-hover:flex">
-              <Maximize2 size={10} /> Zoom
-            </span>
-          </>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
-            <span
-              data-product-placeholder-swatch
-              className={`h-16 w-16 rounded-full border border-border ${activeColour?.className ?? "bg-bg-surface"}`}
-            />
-            <span className="text-[11px] font-bold text-text-primary">{activeColour?.name ?? name}</span>
-            <span className="text-[10px] text-text-muted">Mockup photo coming soon</span>
-          </div>
-        )}
-      </div>
-
-      {thumbs.length ? (
-        <div className="mt-2 grid grid-cols-6 gap-1.5 sm:gap-2" data-product-thumbs>
-          {thumbs.map((thumb) => (
-            <ColourTile
-              key={thumb.name}
-              name={thumb.name}
-              className={thumb.className}
-              candidates={thumb.candidates}
-              selected={color === thumb.name}
-              onSelect={() => onSelectColour?.(thumb.name)}
-            />
-          ))}
+            </>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-1.5 px-4 text-center">
+              <span
+                data-product-placeholder-swatch
+                className={`h-14 w-14 rounded-full border border-border ${activeColour?.className ?? "bg-bg-surface"}`}
+              />
+              <span className="text-[11px] font-bold text-text-primary">{activeColour?.name ?? name}</span>
+              <span className="text-[10px] text-text-muted">Mockup photo coming soon</span>
+            </div>
+          )}
         </div>
-      ) : null}
+      </div>
 
       {lightbox && src ? (
         <div
