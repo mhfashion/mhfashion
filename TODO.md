@@ -2,6 +2,15 @@
 
 The standalone task register has been consolidated into [Plan/PLAN.md](Plan/PLAN.md#historical-todo). Use the current project plan for active priorities and `Doc/DOCUMENTATION.md#work-log` for completed website work.
 
+## Work record — 2026-11-21
+
+- [x] **Print quality checks in the print bundle.** `lib/print-quality.ts` flags artwork past the print
+  area (error) and slivers under 3 mm / 0.2 cm² (warning); the list appears in the archive README, the
+  manifest and a press-sheet banner. 16 new tests; full suite 358/358. Editor untouched.
+- [x] **Register audit.** Rate limiting, the order QR, the SVG render paths and the checkout entry were
+  re-checked against the code and the register corrected; the stale "is there a checkout?" question was
+  answered in place.
+
 ## Current direct owner request — 2026-11-18
 
 - [x] **Text Free Transform hugs the glyph ink (2026-11-18).** The owner reported again that the Free Transform box was still wrong (the more obvious of the two text defects). Root cause: `editorTextCanvasBounds` used the font **line box** (`fontBoundingBoxAscent`/`Descent` = 102 + 26 = 128 units at the 110px default), while the drawn capitals only reach ~84 units of ink, so the outline was ~44 units too tall (~11px empty above, ~12px below). Fix: `editorTextLineMetrics` now measures both the font line box (still used to align the inline editor caret) and the glyph **ink** box (`actualBoundingBoxAscent`/`Descent`); `editorTextMetrics` unions each line's ink box around its own baseline and ignores blank lines; `editorTextCanvasBounds` returns the ink box. Result: the single-line box is 35px tall on screen (was 47.8px) with symmetric ~5px padding, and a two-line `AAAA`/`gggg` box is 273 units, matching the model. Verified desktop 1280×900 and phone 390×844; re-entry still writes downward (`"ONE"` → Enter → `"ONE\nTWO"`). Node tests **108/108**, `guide-http` **5/5**. See `Doc/DOCUMENTATION.md#work-log`.

@@ -6,6 +6,7 @@ import {
 import { createZip, type ZipEntry } from "./zip";
 import { deliveryFileName, deliveryQuoteJson } from "./delivery";
 import { orderQrPayload, qrSvg } from "./order-qr";
+import { orderQualityIssues, qualityReadmeLines, qualitySheetHtml } from "./print-quality";
 
 /**
  * Everything the print desk needs, one row per order line. Kept next to the print sheet so the
@@ -159,6 +160,7 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
     ? `<ul>${files.map((design) => `<li><b>${escapeHtml(design.fileName)}</b> — ${escapeHtml(design.name)} (${design.printWidthCm} × ${design.printHeightCm} cm, ${escapeHtml(design.placement)})</li>`).join("")}</ul>`
     : `<p class="empty">No design files on this order.</p>`;
 
+  const quality = qualitySheetHtml(orderQualityIssues(order));
   const qrTarget = orderQrPayload(order.id);
   const qr = `<figure class="qr">${qrSvg(qrTarget)}<figcaption>${escapeHtml(qrTarget.startsWith("http") ? "Scan to open this order" : qrTarget)}</figcaption></figure>`;
 
@@ -198,6 +200,10 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
   footer { margin-top: 10px; border-top: 1px solid #d8dde3; padding-top: 6px; color: #5c6673; }
   .totals { display: flex; justify-content: space-between; font-weight: 700; font-size: 12px; }
   .empty { color: #9aa2ae; font-style: italic; }
+  section.quality { border: 1px solid #d8a13a; background: #fdf6e6; border-radius: 6px; padding: 8px 10px; margin-bottom: 12px; }
+  section.quality ul { margin: 4px 0 0; padding-left: 18px; }
+  section.quality li { margin-bottom: 2px; }
+  section.quality li.error { color: #9c2b1b; font-weight: 600; }
   .printbar { margin-bottom: 10px; }
   .printbar button { font: inherit; padding: 6px 12px; border-radius: 999px; border: 1px solid #4cae22; background: #eef8e6; color: #3f8c22; font-weight: 700; cursor: pointer; }
   @media print { .printbar { display: none; } }
@@ -212,6 +218,7 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
   </div>
   ${qr}
 </header>
+${quality}
 <div class="grid">
   <div class="card">
     <h2>Customer</h2>
@@ -434,6 +441,10 @@ export function buildArchiveReadme(order: AdminOrder): string {
     "at the measured size without scaling. Text is drawn as text: convert to outlines if your RIP",
     "does not have the font.",
     "",
+    "Quality check",
+    "-------------",
+    ...qualityReadmeLines(orderQualityIssues(order)),
+    "",
     "Delivery",
     "--------",
     "No delivery fee is in this bundle. Send delivery-*.json to MH Delivery; the fee they quote is",
@@ -460,6 +471,7 @@ export function orderManifest(order: AdminOrder) {
       shipTo: order.shipTo ?? null,
       totals: { units: orderUnits(order), amountKs: orderTotalKs(order) },
     },
+    quality: orderQualityIssues(order),
     items: order.items.map((item) => ({
       product: item.name,
       productId: item.productId,

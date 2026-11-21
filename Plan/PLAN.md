@@ -1016,17 +1016,33 @@ proposal, not an approved order.
 5. **Delivery fee.** The MH Delivery API contract, behaviour when the API is down, per-product
    weight and package size, the Myanmar region/township address structure, and the DHL placeholder.
    The payload already exists (`Doc/MH-DELIVERY.md`); nothing is sent yet.
-6. **Print file quality checks.** Low-resolution photo warning, DTF vs Sublimation file requirements
-   (colour, bleed), and confirmation that the print-size export opens on phones.
-7. **SVG handling.** Admin-only upload lowers the risk; still strip scripts and event attributes
-   when an SVG is rendered inline.
+6. **Print file quality checks.** **Layer checks shipped 2026-11-21:** `lib/print-quality.ts` reads the
+   saved design and reports artwork that cannot print as drawn — a layer past the print area (error;
+   rotation is measured on the layer's real corner box) and a sliver of artwork under 3 mm or 0.2 cm²
+   (warning). The list reaches the press three ways: a `Quality check` section in the archive README,
+   `quality` in `manifest.json`, and a banner on the press sheet; `tests/print-quality.test.cjs` covers
+   the geometry, the thresholds and all three outputs. **Still open:** a low-resolution photo warning
+   (the order layer model stores no pixel size, so the editor's save path must carry it — owner
+   approval), DTF vs Sublimation colour/bleed rules, and opening the print-size export on a phone.
+7. **SVG handling.** Checked 2026-11-21: every uploaded or generated SVG reaches the page through
+   `<img src="data:image/svg+xml, ...">` (`post-assets.ts`, `order-print.ts`, `designPreviewSrc`), and a
+   script inside an `<img>` cannot run, so nothing needs stripping today. Keep the rule: if an SVG is
+   ever inlined (or set through `dangerouslySetInnerHTML`), strip `<script>`, event attributes and
+   `javascript:` URLs first. The only unsafe path left is a person opening a downloaded SVG in a
+   browser, which is outside the app.
 8. ~~**Design takedown handling** per 8.1~~ — **done 2026-11-21**: Designs → Takedown records the
    claimant and note, hides the design, and leaves paid orders untouched (owner answer).
    **Claim channel built 2026-11-21:** `/contact` (see 8.1) is linked from the Terms, the Guide and
    the footer.
-9. **Rate limiting / abuse protection** for uploads, AI points and public forms.
-10. **Testing.** Automated tests for checkout, pricing and orders; E2E smoke tests; real-device
-    checks on phone.
+9. ~~**Rate limiting / abuse protection**~~ — **done 2026-11-21**: `lib/rate-limit.ts` is a fixed-window
+   limiter held in module memory, and `enforceRateLimit` guards every payment route (`intent`, `status`,
+   `simulate`, `webhook`). It bounds one isolate per client, not a site-wide quota: a durable counter
+   (KV or Durable Objects) is still needed for that, and the upload/AI/contact paths are not public yet.
+10. **Testing.** **Automated coverage shipped:** `checkout`, `payments`, `admin-pricing`,
+    `admin-orders`, `order-archive`, `order-qr`, `rate-limit`, `print-quality` and the storefront suites
+    run under `node --test`, and `tests/storefront-e2e.cjs` drives the production build over CDP at
+    1440x900 and 390x844 with touch. **Still open:** real-device checks on a physical Android and iPhone
+    (also editor plan E2), and tests for the admin modules that only exist as demo data.
     **Storefront pages built 2026-11-21:** every footer link resolves — `/about`, `/faq`, `/shipping`,
     `/returns`, `/size-guide`, `/terms`, `/privacy`, `/cookie-policy`, `/products` and `/contact` are
     new pages; `/best-sellers` redirects to the one ranked list at `/popular`.
@@ -1081,8 +1097,9 @@ proposal, not an approved order.
     filters, fee against courier cost with the margin per row and per courier, "Mark settled" as a
     batch that never overwrites an existing stamp, "Reopen", and a CSV sheet with a total block.
     Returns keep their cost, so a returned parcel shows a negative margin instead of hiding it.
-13. **Order operations:** order QR/barcode on the print sheet, reprint flow, refund request flow
-    (deferred).
+13. **Order operations:** **order QR shipped** — `lib/order-qr.ts` prints a vector QR of the order link
+    on the press sheet (`tests/order-qr.test.cjs`). Still open: a reprint flow, a customer refund request
+    flow (today `/returns` and `/contact` are the only channel), and any barcode a specific scanner needs.
 14. **Operations:** error monitoring, Supabase backups, timestamps stored in UTC and displayed in
     UTC+6:30.
 15. **Mobile app decision:** PWA first vs React Native. The editor cannot be ported to React
@@ -1996,8 +2013,10 @@ product or per garment type.
 ### Open questions for the owner
 
 1. Editor mockups per garment type or per catalogue product? (P3, changes how many photos to shoot)
-2. Is there a checkout today, or does P2 build it? The order model exists; the customer-facing
-   checkout flow does not.
+2. ~~Is there a checkout today, or does P2 build it?~~ Answered 2026-11-21: `/checkout` and
+   `placeOrder` exist, and the payment intents and webhook are wired. What is left is the provider
+   accounts themselves (KBZPay, Wave Pay, AYA Pay, Visa keys) and moving intents from memory to
+   Supabase.
 3. 3D: per product or per garment type, and which renderer? (P4)
 4. Real per-item weights from MH Delivery, so `UNIT_WEIGHT_GRAMS` stops being an estimate.
 

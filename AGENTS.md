@@ -441,3 +441,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   or the page shows the previous confirmation instead of the form.
 - Test module loaders for `order-print.ts` must resolve `@/…` and pass bare specifiers to `require`,
   and compile with `esModuleInterop: true` (the `qrcode` default import needs it).
+
+## Print quality checks (`apps/web/src/lib/print-quality.ts`)
+- `checkDesignQuality` reads a saved `AdminOrderDesign`, so the press sheet, `manifest.json` and the
+  archive README all report the same list; `orderQualityIssues` de-duplicates by file name because one
+  design can sit on several lines.
+- Two checks: a layer whose **rotated** corner box leaves the print area is an `error`, and artwork under
+  3 mm on a side or 0.2 cm² in total is a `warning`. Do not raise the tiny threshold back to 5 mm — a
+  5 mm wordmark prints fine and the demo orders flagged it as a false positive.
+- The box is computed the way `designLayerSvg` draws it: `x/y` is the top-left of the unrotated box and
+  rotation happens about the box centre, so a rotated layer can reach past its unrotated box.
+- A low-resolution photo warning is **not** possible yet: `AdminDesignLayer` stores no pixel size, so the
+  editor's save path would have to carry it (that touches `/create` and needs owner approval).

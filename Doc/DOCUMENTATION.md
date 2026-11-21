@@ -1161,3 +1161,39 @@ references to other design products to go. No editor behaviour changed.
 Validation: TypeScript passed; ESLint exit 0 on the changed files; Next.js production build passed; the
 full Node suite passed **343/343**.
 
+### 2026-11-21 — Print quality checks in the print bundle
+
+The register asked for print-file quality checks. The artwork side of it now ships; nothing in the
+editor changed.
+
+- `apps/web/src/lib/print-quality.ts` reads a saved `AdminOrderDesign` and returns issues: a layer that
+  leaves the print area (`error`) and a sliver of artwork under 3 mm or 0.2 cm² (`warning`). The layer box
+  is the rotated corner box, computed the way `designLayerSvg` draws the layer, so a turned layer that
+  only reaches past the edge when rotated is caught.
+- The list reaches the press three ways: a `Quality check` section in the archive README, a `quality`
+  array in `manifest.json`, and a banner on the press sheet (`buildOrderPrintSheetHtml`). A clean order
+  prints "Quality check passed" and shows no banner; layer names are escaped, so a name cannot inject
+  markup.
+- Thresholds were tuned against the seeded orders: a 5 mm wordmark on `#MH1086` was flagged by the first
+  5 mm rule, so "tiny" now means a sliver. All 26 demo orders with a design report zero issues.
+- Still open: a low-resolution photo warning (the layer model has no pixel size), DTF vs Sublimation
+  colour/bleed rules, and opening the print-size export on a phone.
+
+Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
+ESLint clean on the new module; Next.js production build passed.
+
+### 2026-11-21 — Register audit: what the code already does
+
+Checked the remaining-work register against the source and corrected the entries that had drifted.
+
+- Rate limiting is done, not open: `lib/rate-limit.ts` is a fixed-window limiter and `enforceRateLimit`
+  guards `intent`, `status`, `simulate` and `webhook`. The caveat is that it is per isolate, not a global
+  quota.
+- The order QR is shipped on the press sheet (`lib/order-qr.ts`), so only the reprint and refund-request
+  flows remain in that item.
+- Uploaded SVG never renders inline: every path is an `<img src="data:image/svg+xml, ...">`, where a
+  script cannot run. The rule for any future inline render is written into the register.
+- The forward plan's open question "is there a checkout today?" was stale: `/checkout`, `placeOrder`, the
+  payment intents and the verified webhook all exist. What is left is the provider accounts and moving
+  intents out of memory.
+
