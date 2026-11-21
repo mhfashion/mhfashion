@@ -105,6 +105,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Intents live in an in-memory map (`lib/payment-store.ts`), so a restart forgets open intents. That is fine while nothing is charged; it becomes a Supabase table with P0 item 1.
 - Tests: `tests/payments.test.cjs` (Web Crypto is global in Node 22, so no Node-only crypto import).
 
+## Catalog search (`lib/products.ts`, `app/search/page.tsx`)
+- `normalizeSearchQuery` keeps `\p{L}`, `\p{M}`, `\p{N}`, spaces and `'&.+-`. The `\p{M}` matters: without it a Myanmar term loses its combining marks (`အင်္ကျီ` → `အင က`). Commas, brackets, `%` and `_` are stripped because they are PostgREST `or()` syntax.
+- `searchProducts` sends one request: `or=(name.ilike.%t%,sub_brand.ilike.%t%,product_type.ilike.%t%)`, and refuses a term shorter than two characters.
+- Three entry points must keep working: `[data-header-search="desktop"]` (lg+, React `router.push`), `"compact"` (md–lg dropdown, same handler), and `"mobile"` in `MobileNav` (a native GET form). The phone form must not carry an `onSubmit` that closes the dropdown — React unmounts the form mid-submit and the browser cancels the navigation, so Enter does nothing.
+- `/search` is `noindex, follow`; the empty state offers collection links and "Popular right now".
+- To see real results locally without credentials, point `NEXT_PUBLIC_SUPABASE_URL` at a stub PostgREST server and restart `next start`. Remember to restart without it afterwards: the guide tests read the same client, so a stub that only answers `products` makes three `guide-http` tests fail with "no posts".
+
 ## Storefront information pages (`lib/storefront-info.ts`, `components/InfoPage.tsx`)
 - All copy lives in `INFO_PAGES`; the eight routes (`/about`, `/faq`, `/shipping`, `/returns`, `/size-guide`, `/terms`, `/privacy`, `/cookie-policy`) are three-line wrappers around `InfoPage`. Edit the content module, not the pages.
 - `draft` on a page renders the amber "draft for legal review" banner. Terms, Privacy and Cookie Policy carry it until a lawyer signs them off; do not remove it without the owner's word.

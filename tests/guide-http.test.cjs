@@ -99,6 +99,7 @@ test("route manifest is served as JSON and matches implemented pages", async () 
     "/products",
     "/products/:slug",
     "/returns",
+    "/search",
     "/shipping",
     "/size-guide",
     "/terms",

@@ -145,6 +145,10 @@
       "title": "Returns"
     },
     {
+      "path": "/search",
+      "title": "Search"
+    },
+    {
       "path": "/shipping",
       "title": "Shipping"
     },

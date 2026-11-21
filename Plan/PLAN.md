@@ -1057,6 +1057,13 @@ proposal, not an approved order.
     new pages; `/best-sellers` redirects to the one ranked list at `/popular`.
     `tests/storefront-info.test.cjs` fails if a footer link has no route. Still open: a numeric size
     chart per product (the catalog has no measurements yet) and a real inbox behind `/contact`.
+    **Search built 2026-11-21:** `/search?q=` queries the catalog through `searchProducts` (name, line
+    and product type in one PostgREST `or()`), and the header reaches it from three places — the
+    desktop field, the tablet dropdown and the phone field in `MobileNav` (which used to submit to
+    `/mh-fashion`). The term is reduced to letters, marks, digits and a few safe symbols before it
+    reaches the query, so commas, brackets and `%` cannot rewrite the filter. A Myanmar term keeps its
+    combining marks. `tests/search.test.cjs` covers the normaliser, the real query against a stub
+    PostgREST server, and the three entry points.
 
 ### P2 — later
 

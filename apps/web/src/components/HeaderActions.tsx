@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Heart,
@@ -22,7 +23,17 @@ export default function HeaderActions() {
   const { currency, toggleCurrency } = useCurrency();
   const { itemCount } = useCart();
   const { locale, setLocale, t } = useI18n();
+  const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const term = searchTerm.trim();
+    if (!term) return;
+    setSearchOpen(false);
+    router.push(`/search?q=${encodeURIComponent(term)}`);
+  };
   const [cartOpen, setCartOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const cartRef = useRef<HTMLDivElement>(null);
@@ -42,15 +53,24 @@ export default function HeaderActions() {
 
   return (
     <div className="flex items-center gap-3">
-      {/* Inline search field (desktop, lg+) */}
-      <div className="hidden lg:flex items-center gap-2 bg-bg-surface border border-border rounded-full px-3 py-1.5 w-56 text-text-secondary">
+      {/* Inline search field (desktop, lg+): submitting goes to /search */}
+      <form
+        role="search"
+        onSubmit={submitSearch}
+        data-header-search="desktop"
+        className="hidden lg:flex items-center gap-2 bg-bg-surface border border-border rounded-full px-3 py-1.5 w-56 text-text-secondary"
+      >
         <Search size={15} />
         <input
-          type="text"
+          type="search"
+          name="q"
+          aria-label={t("actions.searchProducts")}
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
           placeholder={t("actions.searchProducts")}
           className="bg-transparent outline-none text-xs w-full placeholder:text-text-faint"
         />
-      </div>
+      </form>
 
       {/* Search icon + dropdown (md–lg, where the inline field is hidden) */}
       <div className="relative lg:hidden" ref={searchRef}>
@@ -62,15 +82,24 @@ export default function HeaderActions() {
           <Search size={18} />
         </button>
         {searchOpen && (
-          <div className="absolute right-0 top-full mt-3 w-64 bg-bg-surface border border-border rounded-full px-3 py-2 shadow-xl flex items-center gap-2 text-text-secondary z-50">
+          <form
+            role="search"
+            onSubmit={submitSearch}
+            data-header-search="compact"
+            className="absolute right-0 top-full mt-3 w-64 bg-bg-surface border border-border rounded-full px-3 py-2 shadow-xl flex items-center gap-2 text-text-secondary z-50"
+          >
             <Search size={15} />
             <input
               autoFocus
-              type="text"
+              type="search"
+              name="q"
+              aria-label={t("actions.searchProducts")}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
               placeholder={t("actions.searchProducts")}
               className="bg-transparent outline-none text-xs w-full placeholder:text-text-faint"
             />
-          </div>
+          </form>
         )}
       </div>
 

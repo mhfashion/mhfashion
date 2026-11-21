@@ -120,6 +120,40 @@ export async function getAllProducts(limit = 60): Promise<Product[]> {
   return rows.map((r) => toProduct(r, ranges));
 }
 
+/**
+ * PostgREST splits `or()` on commas and treats `%`, `_`, `*` and brackets as syntax, so a search
+ * term is reduced to letters, digits, spaces and a few safe marks before it reaches the query.
+ */
+export function normalizeSearchQuery(input: string | null | undefined): string {
+  return (input ?? "")
+    // \p{M} keeps Myanmar combining marks (င်, ျ, ီ); without it "အင်္ကျီ" loses its vowels.
+    .replace(/[^\p{L}\p{M}\p{N}\s'&.+-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60);
+}
+
+export async function searchProducts(query: string, limit = 40): Promise<Product[]> {
+  const term = normalizeSearchQuery(query);
+  const supabase = getServerSupabase();
+  if (!supabase || term.length < 2) return [];
+  const pattern = `%${term}%`;
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable")
+    .or(`name.ilike.${pattern},sub_brand.ilike.${pattern},product_type.ilike.${pattern}`)
+    .order("name", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("searchProducts failed:", error.message);
+    return [];
+  }
+  const rows = (data ?? []) as ProductRow[];
+  const ranges = await getPriceRanges(rows.map((r) => r.id));
+  return rows.map((r) => toProduct(r, ranges));
+}
+
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const supabase = getServerSupabase();
   if (!supabase) return null;
