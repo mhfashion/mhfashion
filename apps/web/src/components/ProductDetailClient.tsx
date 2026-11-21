@@ -8,6 +8,7 @@ import ProductMockupPreview from "@/components/ProductMockupPreview";
 import { useCart } from "@/lib/cart-context";
 import { useCurrency } from "@/lib/currency-context";
 import { readDesignDraft, resolveDesignOverlay, type DesignOverlay } from "@/lib/design-draft";
+import { isDesignEditable, READY_MADE_NOTE } from "@/lib/product-editing";
 import { useI18n } from "@/lib/i18n";
 import type { Product } from "@/lib/types";
 
@@ -74,11 +75,17 @@ export default function ProductDetailClient({ product, related }: Props) {
   const [added, setAdded] = useState(false);
   const [variantWarning, setVariantWarning] = useState(false);
 
+  const designEditable = isDesignEditable(product);
+
   // `?design=` carries a shared artwork; otherwise the design open in the editor is used.
+  // A ready-made product (Nyein) never paints an editor draft: its artwork is printed already.
   useEffect(() => {
     const shared = new URLSearchParams(window.location.search).get("design");
-    setDesign(resolveDesignOverlay({ svgUrl: shared ?? product.designSvgUrl, draft: readDesignDraft() }));
-  }, [product.designSvgUrl]);
+    setDesign(resolveDesignOverlay({
+      svgUrl: shared ?? product.designSvgUrl,
+      draft: designEditable ? readDesignDraft() : null,
+    }));
+  }, [product.designSvgUrl, designEditable]);
 
   const sizePrice = ({ S: 0, M: 1000, L: 2000, XL: 3000, XXL: 4000 } as Record<string, number>)[selectedSize ?? ""] ?? 0;
   const colorPrice = { Black: 0, White: 500, Green: 1000, Sand: 500, Red: 1000, Navy: 500 }[selectedColor ?? ""] ?? 0;
@@ -182,7 +189,8 @@ export default function ProductDetailClient({ product, related }: Props) {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xs font-black">Quantity</span><div className="flex items-center rounded-full border border-border bg-bg"><button type="button" aria-label="Decrease quantity" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-2.5"><Minus size={14} /></button><span className="min-w-8 text-center text-sm font-bold">{quantity}</span><button type="button" aria-label="Increase quantity" onClick={() => setQuantity((value) => value + 1)} className="p-2.5"><Plus size={14} /></button></div><span className="flex items-center gap-1 text-[11px] font-bold text-accent"><Check size={14} /> In Stock · Ready to ship</span></div>
-          <div className="mt-3 grid grid-cols-3 gap-1 sm:gap-1.5"><button type="button" onClick={buyNow} data-buy-now className="min-w-0 whitespace-nowrap rounded-lg bg-accent px-1 py-2.5 text-[9px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:px-2 sm:text-xs"><ShoppingCart size={12} className="mr-0.5 inline sm:mr-1 sm:h-[14px] sm:w-[14px]" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} data-add-to-cart className="min-w-0 whitespace-nowrap rounded-lg border-2 border-accent px-1 py-2.5 text-[9px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:px-2 sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button><a href={`/create?product=${encodeURIComponent(product.slug)}`} className="min-w-0 whitespace-nowrap rounded-lg border border-border px-1 py-2.5 text-center text-[9px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:px-2 sm:text-xs">Edit Design</a></div>
+          <div className={`mt-3 grid gap-1 sm:gap-1.5 ${designEditable ? "grid-cols-3" : "grid-cols-2"}`}><button type="button" onClick={buyNow} data-buy-now className="min-w-0 whitespace-nowrap rounded-lg bg-accent px-1 py-2.5 text-[9px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:px-2 sm:text-xs"><ShoppingCart size={12} className="mr-0.5 inline sm:mr-1 sm:h-[14px] sm:w-[14px]" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} data-add-to-cart className="min-w-0 whitespace-nowrap rounded-lg border-2 border-accent px-1 py-2.5 text-[9px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:px-2 sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button>{designEditable ? <a href={`/create?product=${encodeURIComponent(product.slug)}`} className="min-w-0 whitespace-nowrap rounded-lg border border-border px-1 py-2.5 text-center text-[9px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:px-2 sm:text-xs">Edit Design</a> : null}</div>
+          {designEditable ? null : <p data-ready-made className="mt-2 rounded-lg bg-accent/10 px-2.5 py-1.5 text-[10px] font-semibold text-accent">{READY_MADE_NOTE}</p>}
           {variantWarning ? <p data-variant-warning role="status" className="mt-2 rounded-lg bg-[#fff6e6] px-2.5 py-1.5 text-[10px] font-semibold text-[#9a6a12]">Choose a size and colour first — every combination is a separate order line.</p> : null}
         </div>
       </section>

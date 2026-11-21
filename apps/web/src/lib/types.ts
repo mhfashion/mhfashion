@@ -7,6 +7,8 @@ export type Product = {
   designSvgUrl?: string;
   isNew?: boolean;
   productType?: string;
+  /** Catalogue line: "MH Fashion", "Nyein", "Accessories", "Streetwear"... */
+  subBrand?: string;
   isCustomizable?: "full" | "partial" | "none";
   priceMinKs: number;
   priceMaxKs: number;

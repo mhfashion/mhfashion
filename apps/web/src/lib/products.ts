@@ -17,6 +17,7 @@ type ProductRow = {
   image_url: string | null;
   is_new: boolean;
   product_type?: string | null;
+  sub_brand?: string | null;
   is_customizable?: "full" | "partial" | "none" | null;
 };
 
@@ -55,6 +56,7 @@ function toProduct(row: ProductRow, ranges: Map<string, PriceRangeRow>): Product
     imageUrl: row.image_url ?? undefined,
     isNew: row.is_new,
     productType: row.product_type ?? undefined,
+    subBrand: row.sub_brand ?? undefined,
     isCustomizable: row.is_customizable ?? undefined,
     priceMinKs: range?.price_min_ks ?? 0,
     priceMaxKs: range?.price_max_ks ?? 0,
@@ -66,7 +68,7 @@ export async function getNewArrivals(limit = 6): Promise<Product[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, slug, image_url, is_new")
+    .select("id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable")
     .eq("is_new", true)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -86,7 +88,7 @@ export async function getBestSellers(limit = 6): Promise<Product[]> {
   // No sales-count metric yet — placeholder: non-"new" products, oldest first.
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, slug, image_url, is_new")
+    .select("id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable")
     .eq("is_new", false)
     .order("created_at", { ascending: true })
     .limit(limit);
@@ -105,7 +107,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, slug, image_url, is_new, product_type, is_customizable")
+    .select("id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable")
     .eq("slug", slug)
     .single();
 
@@ -116,4 +118,27 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   const row = data as ProductRow;
   const ranges = await getPriceRanges([row.id]);
   return toProduct(row, ranges);
+}
+
+/**
+ * Products of one catalogue line (the `sub_brand` column). Nyein is a ready-made line: it is
+ * sold as shown, so those products never offer the design editor.
+ */
+export async function getProductsBySubBrand(subBrand: string, limit = 24): Promise<Product[]> {
+  const supabase = getServerSupabase();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable")
+    .ilike("sub_brand", subBrand)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("getProductsBySubBrand failed:", error.message);
+    return [];
+  }
+  const rows = (data ?? []) as ProductRow[];
+  const ranges = await getPriceRanges(rows.map((r) => r.id));
+  return rows.map((r) => toProduct(r, ranges));
 }

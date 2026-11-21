@@ -102,7 +102,8 @@ test("the product page renders the mockup from the selection with the design on 
   assert.match(client, /<ProductMockupPreview/);
   assert.match(client, /selection=\{\{ color: selectedColor, fit: selectedFit, sleeve: selectedSleeve, size: selectedSize \}\}/);
   assert.match(client, /design=\{design\}/);
-  assert.match(client, /resolveDesignOverlay\(\{ svgUrl: shared \?\? product\.designSvgUrl, draft: readDesignDraft\(\) \}\)/);
+  // A ready-made product (is_customizable = "none") must not paint the editor draft.
+  assert.match(client, /resolveDesignOverlay\(\{\s*svgUrl: shared \?\? product\.designSvgUrl,\s*draft: designEditable \? readDesignDraft\(\) : null,\s*\}\)/);
   assert.match(client, /lg:grid-cols-\[minmax\(0,640px\)_minmax\(0,1fr\)\]/);
   assert.match(client, /colours=\{colors\}/);
   assert.match(client, /onSelectColour=\{setSelectedColor\}/);

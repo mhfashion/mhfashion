@@ -2765,3 +2765,8 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 
 ### Product page: static promises removed
 - Dropped the Free Delivery / Secure Payment / Easy Returns / 24/7 Support / Seol Support row from the product page and the icons it needed. Delivery will come from the MH Delivery API, so a hard-coded "orders over 50K" promise would contradict whatever the API returns.
+
+### Nyein brand and R2 storage
+- Nyein is a ready-made catalogue line: `is_customizable = 'none'` products stay buyable but lose the **Edit Design** action and never paint an editor draft on the mockup. `/nyein` now lists that line from `sub_brand` instead of the placeholder card.
+- `Doc/R2-STORAGE.md` is the storage contract: bucket `mh-fashion-assets`, `mockups/<slug>/<look>.<ext>` for photos, `designs/`, `posts/`, `orders/`, plus the upload commands and the photo spec.
+- Still open: the design → order link (the editor draft lives only in localStorage), R2 uploads from the app, checkout, and PNG/PDF export.

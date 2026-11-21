@@ -100,6 +100,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The Shipping & Returns tab still carries the written policy text; change it only when the MH Delivery terms replace it.
 - The admin **Free delivery from (Ks)** setting is gone as well: delivery pricing belongs to the MH Delivery API, so `AdminSettings` no longer has `freeDeliveryThresholdKs`.
 
+## Ready-made products and the Nyein brand
+- `is_customizable` is the switch: `none` means the piece is sold as shown. `isDesignEditable()` in `apps/web/src/lib/product-editing.ts` is the only reader, and `ProductDetailClient` uses it to (a) hide the **Edit Design** link so the row drops to two buttons, (b) skip the editor draft so no draft artwork is painted on a ready-made product, and (c) show the `data-ready-made` note.
+- A ready-made product is still fully buyable: size, colour, material, GSM, Buy Now and Add to Cart stay.
+- `/nyein` lists the `Nyein` catalogue line through `getProductsBySubBrand("Nyein")` (`sub_brand` column, case-insensitive). The page is no longer a placeholder; it shows the count, a card grid, and an empty state that points at `/new`.
+- `Product` gained `subBrand`; every product select must list `product_type, sub_brand, is_customizable` or the cards lose the flags.
+
+## R2 storage (`Doc/R2-STORAGE.md`)
+- Bucket `mh-fashion-assets`, public origin in `NEXT_PUBLIC_R2_PUBLIC_URL`.
+- Layout: `mockups/<product-slug>/<look>.<webp|png|jpg>`, `designs/<design-slug>.svg`, `posts/<post-slug>.svg`, `orders/<order-id>/...`.
+- `<look>` is `color[-fit][-sleeve]` with the size deliberately left out; the lookup walks most-specific → `default`, extensions in the order `webp, png, jpg`.
+- Mockup photos: 4:5 portrait, WebP ≤ 200 KB, print area at 30% left / 22% top / 40% wide / 46% tall.
+
 ## Cart lines (`lib/cart-items.ts`, `lib/cart-context.tsx`)
 - A cart line is keyed by `cartItemKey(productId, variant)` — product id **plus** size, colour, material, GSM, fit and sleeve. Two adds with any different value are separate lines; only an identical combination increments. Merging by product id alone collapsed different variants into one line and lost the variant entirely.
 - `CartItem` carries `key`, `variant` and an optional `unitPriceKs` (the variant price the product page computed). `cartLineTotal`/`cartSubtotal` prefer `unitPriceKs` and fall back to `priceMinKs`.
