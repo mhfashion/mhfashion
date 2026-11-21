@@ -2,19 +2,22 @@
 
 import { useMemo, useState } from "react";
 import {
-  Check, Download, Package, Search, Truck, X,
+  CalendarDays, Check, Download, Package, Search, Truck, X,
 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import {
-  AdminBadge, AdminButton, AdminCard, AdminDrawer, AdminEmpty,
-  AdminStat, AdminTextarea, type AdminTone,
+  AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminDrawer, AdminEmpty,
+  AdminField, AdminInput, AdminSelect, AdminStat, AdminTextarea, type AdminTone,
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { downloadCsv } from "@/lib/admin-csv";
 import {
-  ADMIN_ORDER_STAGES, formatAdminDateTime, formatKs, nextOrderStage, orderStageIndex,
-  orderTotalKs, orderUnits, setOrderNote, setOrderStage, summarizeOrders,
-  type AdminOrder, type AdminOrderStage,
+  ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
+  adminDayKey, adminDayLabel, adminTodayKey, formatAdminDateTime, formatKs, nextOrderStage,
+  orderDateRangeForPreset, orderDayGroups, orderStageIndex, orderTotalKs, orderUnits,
+  ordersInDateRange, setOrderNote, setOrderStage, sortOrders, summarizeOrders,
+  type AdminDateRange, type AdminOrder, type AdminOrderDatePreset, type AdminOrderSort,
+  type AdminOrderStage,
 } from "@/lib/admin-demo-data";
 
 const STAGE_TONES: Record<AdminOrderStage, AdminTone> = {
@@ -31,6 +34,10 @@ const STAGE_TONES: Record<AdminOrderStage, AdminTone> = {
 };
 
 const FILTERS: (AdminOrderStage | "All")[] = ["All", ...ADMIN_ORDER_STAGES, "Cancelled", "Refunded"];
+
+function count(value: number, word: string) {
+  return `${value} ${word}${value === 1 ? "" : "s"}`;
+}
 
 function orderSearchText(order: AdminOrder) {
   return `${order.id} ${order.customerName} ${order.customerEmail} ${order.stage} ${order.payment} ${order.items.map((item) => `${item.name} ${item.size} ${item.color}`).join(" ")}`.toLowerCase();
@@ -50,14 +57,35 @@ export default function AdminOrders() {
   const data = useAdminDemoData();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<AdminOrderStage | "All">("All");
+  const [preset, setPreset] = useState<AdminOrderDatePreset>("All");
+  const [range, setRange] = useState<AdminDateRange>(() => orderDateRangeForPreset("All"));
+  const [sort, setSort] = useState<AdminOrderSort>("Newest first");
   const [openId, setOpenId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
 
   const query = search.trim().toLowerCase();
   const summary = useMemo(() => summarizeOrders(data.orders), [data.orders]);
-  const filtered = useMemo(() => data.orders.filter((order) => (
+  const todayKey = adminTodayKey();
+  const today = useMemo(() => summarizeOrders(data.orders.filter((order) => adminDayKey(order.placedAt) === todayKey)), [data.orders, todayKey]);
+  const inRange = useMemo(() => ordersInDateRange(data.orders, range), [data.orders, range]);
+  const dayGroups = useMemo(() => orderDayGroups(inRange), [inRange]);
+  const filtered = useMemo(() => sortOrders(inRange.filter((order) => (
     (filter === "All" || order.stage === filter) && orderSearchText(order).includes(query)
-  )), [data.orders, filter, query]);
+  )), sort), [inRange, filter, query, sort]);
+  const filteredSummary = useMemo(() => summarizeOrders(filtered), [filtered]);
+  const rangeLabel = range.from || range.to
+    ? `${range.from ? adminDayLabel(range.from) : "Start"} → ${range.to ? adminDayLabel(range.to) : "Today"}`
+    : "All time";
+
+  function choosePreset(next: AdminOrderDatePreset) {
+    setPreset(next);
+    setRange(orderDateRangeForPreset(next));
+  }
+
+  function chooseDay(dayKey: string) {
+    setPreset("All");
+    setRange({ from: dayKey, to: dayKey });
+  }
   const selected = data.orders.find((order) => order.id === openId) ?? null;
   const nextStage = selected ? nextOrderStage(selected.stage) : null;
   const queueUnits = data.orders.filter((order) => !["Delivered", "Cancelled", "Refunded"].includes(order.stage)).reduce((total, order) => total + orderUnits(order), 0);
@@ -94,16 +122,59 @@ export default function AdminOrders() {
         </label>
       )}
     >
-      <section aria-label="Order metrics" className="grid grid-cols-1 gap-3 min-[440px]:grid-cols-2 xl:grid-cols-4">
-        <AdminStat label="Orders" value={String(summary.count)} hint={`${summary.units} units ordered`} icon={<Package size={21} />} />
+      <section aria-label="Order metrics" className="grid grid-cols-1 gap-3 min-[440px]:grid-cols-2 xl:grid-cols-5">
+        <AdminStat label="Today" value={String(today.count)} hint={`${formatKs(today.revenueKs)} · ${count(today.units, "unit")}`} icon={<CalendarDays size={21} />} />
+        <AdminStat label="All orders" value={String(summary.count)} hint={`${count(summary.units, "unit")} ordered`} icon={<Package size={21} />} />
         <AdminStat label="Revenue" value={formatKs(summary.revenueKs)} hint="Cancelled and refunded excluded" icon={<Truck size={21} />} />
         <AdminStat label="In production" value={String(summary.byStage.Processing + summary.byStage.Printing + summary.byStage.Confirmed)} hint={`${summary.byStage["Pending Payment"]} awaiting payment`} icon={<Package size={21} />} />
-        <AdminStat label="Waiting to ship" value={String(summary.byStage["Ready to Ship"] + summary.byStage["Handed to Delivery"] + summary.byStage["Out for Delivery"])} hint={`${queueUnits} units in the queue`} icon={<Truck size={21} />} />
+        <AdminStat label="Waiting to ship" value={String(summary.byStage["Ready to Ship"] + summary.byStage["Handed to Delivery"] + summary.byStage["Out for Delivery"])} hint={`${count(queueUnits, "unit")} in the queue`} icon={<Truck size={21} />} />
       </section>
+
+      <AdminCard className="mt-3 p-3 sm:p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-0">
+            <p className="mb-1 text-[9px] font-bold uppercase tracking-wide text-[#7b8492]">Date range</p>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter orders by date">
+              {ADMIN_ORDER_DATE_PRESETS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  data-order-date-preset={option}
+                  aria-pressed={preset === option}
+                  onClick={() => choosePreset(option)}
+                  className={`rounded-full border px-2.5 py-1 text-[9px] font-bold transition-colors ${preset === option ? "border-[#4cae22] bg-[#eef8e6] text-[#3f8c22]" : "border-[#e4e8ed] bg-white text-[#6c7683] hover:bg-[#f7f9fb]"}`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="w-[130px]">
+            <AdminField label="From">
+              <AdminInput type="date" aria-label="Orders from date" data-order-from value={range.from} onChange={(event) => { setPreset("All"); setRange((current) => ({ ...current, from: event.target.value })); }} />
+            </AdminField>
+          </div>
+          <div className="w-[130px]">
+            <AdminField label="To">
+              <AdminInput type="date" aria-label="Orders to date" data-order-to value={range.to} onChange={(event) => { setPreset("All"); setRange((current) => ({ ...current, to: event.target.value })); }} />
+            </AdminField>
+          </div>
+          <div className="w-[150px]">
+            <AdminField label="Sort">
+              <AdminSelect aria-label="Sort orders" data-order-sort value={sort} onChange={(event) => setSort(event.target.value as AdminOrderSort)}>
+                {ADMIN_ORDER_SORTS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </AdminSelect>
+            </AdminField>
+          </div>
+          <p data-order-range-label className="ml-auto text-[10px] font-semibold text-[#6c7683]">
+            {rangeLabel} · <span className="text-[#27303b]">{count(filtered.length, "order")}</span> · <span className="text-[#27303b]">{count(filteredSummary.units, "unit")}</span> · <span className="text-[#27303b]">{formatKs(filteredSummary.revenueKs)}</span>
+          </p>
+        </div>
+      </AdminCard>
 
       <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter orders by stage">
         {FILTERS.map((stage) => {
-          const count = stage === "All" ? data.orders.length : data.orders.filter((order) => order.stage === stage).length;
+          const count = stage === "All" ? inRange.length : inRange.filter((order) => order.stage === stage).length;
           return (
             <button
               key={stage}
@@ -117,6 +188,28 @@ export default function AdminOrders() {
           );
         })}
       </div>
+
+      {dayGroups.length > 0 && (
+        <AdminCard className="mt-3 overflow-hidden">
+          <AdminCardHeader title="Orders by day" description="Pick a day to jump straight to it." />
+          <div className="flex gap-1.5 overflow-x-auto px-3 pb-3" role="group" aria-label="Orders by day">
+            {dayGroups.map((group) => (
+              <button
+                key={group.key}
+                type="button"
+                data-order-day={group.key}
+                aria-pressed={range.from === group.key && range.to === group.key}
+                onClick={() => chooseDay(group.key)}
+                className={`shrink-0 rounded-xl border px-2.5 py-2 text-left transition-colors ${range.from === group.key && range.to === group.key ? "border-[#4cae22] bg-[#eef8e6]" : "border-[#e9edf1] bg-[#fbfcfd] hover:bg-[#f4f7f9]"}`}
+              >
+                <span className="block text-[9px] font-bold text-[#394250]">{group.label}</span>
+                <span className="mt-0.5 block text-[9px] text-[#87909b]">{count(group.count, "order")} · {count(group.units, "unit")}</span>
+                <span className="mt-0.5 block text-[9px] font-semibold text-[#4cae22]">{formatKs(group.revenueKs)}</span>
+              </button>
+            ))}
+          </div>
+        </AdminCard>
+      )}
 
       <AdminCard className="mt-3 overflow-hidden">
         <div className="overflow-x-auto">
@@ -156,7 +249,7 @@ export default function AdminOrders() {
                     </td>
                   </tr>
                 );
-              }) : <tr><td colSpan={8}><AdminEmpty title="No orders match this filter" description="Clear the search or pick another stage." /></td></tr>}
+              }) : <tr><td colSpan={8}><AdminEmpty title="No orders match this filter" description="Clear the search, widen the date range or pick another stage." /></td></tr>}
             </tbody>
           </table>
         </div>
@@ -188,25 +281,33 @@ export default function AdminOrders() {
                 <AdminBadge tone={STAGE_TONES[selected.stage]}>{selected.stage}</AdminBadge>
                 <AdminBadge tone="slate">{selected.payment}</AdminBadge>
               </div>
+              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-[#edf0f3] pt-2 text-[9px]">
+                <div><dt className="text-[#87909b]">Placed</dt><dd className="font-semibold text-[#394250]">{formatAdminDateTime(selected.placedAt)}</dd></div>
+                <div><dt className="text-[#87909b]">Day</dt><dd className="font-semibold text-[#394250]">{adminDayLabel(adminDayKey(selected.placedAt))}</dd></div>
+                <div><dt className="text-[#87909b]">Items</dt><dd className="font-semibold text-[#394250]">{count(selected.items.length, "line")} · {count(orderUnits(selected), "unit")}</dd></div>
+                <div><dt className="text-[#87909b]">Order total</dt><dd className="font-semibold text-[#394250]">{formatKs(orderTotalKs(selected))}</dd></div>
+              </dl>
             </div>
 
             <div>
               <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#7b8492]">Items</h3>
               <table className="w-full text-left text-[10px]">
-                <thead className="text-[9px] text-[#828c99]"><tr><th className="pb-1.5 font-semibold">Product</th><th className="pb-1.5 font-semibold">Variant</th><th className="pb-1.5 text-right font-semibold">Qty</th><th className="pb-1.5 text-right font-semibold">Total</th></tr></thead>
+                <thead className="text-[9px] text-[#828c99]"><tr><th className="pb-1.5 font-semibold">Product</th><th className="pb-1.5 font-semibold">Variant</th><th className="pb-1.5 text-right font-semibold">Qty</th><th className="pb-1.5 text-right font-semibold">Unit</th><th className="pb-1.5 text-right font-semibold">Total</th></tr></thead>
                 <tbody className="divide-y divide-[#f0f2f4]">
                   {selected.items.map((item) => (
                     <tr key={`${item.productId}-${item.size}-${item.color}`}>
                       <td className="py-2 font-semibold text-[#394250]">{item.name}</td>
                       <td className="py-2 text-[#727d8a]">{item.size} · {item.color}</td>
                       <td className="py-2 text-right tabular-nums text-[#394250]">{item.quantity}</td>
+                      <td className="py-2 text-right tabular-nums text-[#727d8a]">{formatKs(item.unitPriceKs)}</td>
                       <td className="py-2 text-right tabular-nums font-semibold text-[#394250]">{formatKs(item.quantity * item.unitPriceKs)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="mt-2 flex items-center justify-between border-t border-[#edf0f3] pt-2 text-[11px] font-bold text-[#27303b]">
-                <span>Total</span><span>{formatKs(orderTotalKs(selected))}</span>
+              <div className="mt-2 space-y-1 border-t border-[#edf0f3] pt-2 text-[10px] text-[#727d8a]">
+                <div className="flex items-center justify-between"><span>Units</span><span className="tabular-nums">{orderUnits(selected)}</span></div>
+                <div className="flex items-center justify-between text-[11px] font-bold text-[#27303b]"><span>Total</span><span className="tabular-nums">{formatKs(orderTotalKs(selected))}</span></div>
               </div>
             </div>
 

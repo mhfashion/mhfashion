@@ -49,6 +49,23 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Draft layers are rendered with the same `EditorArtworkLayers` as the editor, inside a `1000 x 1200` viewBox, so the preview matches the canvas without a second renderer.
 - Tests: `tests/product-mockup.test.cjs`.
 
+## Admin orders (`components/admin/AdminOrders.tsx`)
+- Every order is listed; the screen adds a **Today** card, date presets (`Today` / `Last 7 days` / `Last 30 days` / `All`), a hand-typed `From`/`To` range, a sort select, and an "Orders by day" strip where clicking a day narrows the range to that day.
+- Stage chips, the CSV export and the summary line all read the **date-filtered** list (`inRange`), not `data.orders`, so the counts always match the rows on screen.
+- Orders are filed by the admin's **local** day (`adminDayKey`), not the UTC day. `revenueByDay` used `toISOString().slice(0,10)`, which in UTC+6:30 keyed each local-midnight bucket to the previous day, so the dashboard chart showed every order one day late. Both sides now use `adminDayKey`.
+- `adminTodayKey()` wraps `Date.now()` so the screen can read "today" without calling an impure function during render (the `react-hooks/purity` lint rule rejects `Date.now()` in a component body).
+- A range bound may be empty: `""` means open-ended, so `{ from: "2026-11-01", to: "" }` means "from that day on".
+- Tests: `tests/admin-orders.test.cjs`.
+
+## T-shirt post prices from a Google Sheet
+- The post editor's **Google Sheet prices** panel takes a sheet link and fills the price rows from it. `lib/sheet-prices.ts` is server-safe (types only from the store); `app/api/admin/tshirt-prices/route.ts` does the fetch.
+- **The fetch must happen server-side.** Google's CSV endpoints send no CORS headers, so a browser `fetch` fails no matter how the sheet is shared.
+- The sheet must be shared as "anyone with the link can view". A private sheet needs a service account, which is a separate credentialed setup — the route deliberately uses no credentials and rejects non-`docs.google.com` hosts so it cannot be used to fetch arbitrary URLs.
+- Link handling: a normal `/spreadsheets/d/<id>/edit#gid=0` share link or a bare id becomes `.../gviz/tq?tqx=out:csv&gid=<gid>`; a URL that already returns CSV is passed through (https only).
+- Columns are matched by header name (`Size`, `Material`, `Fit Type`, `Colour`/`Color`, `Sleeve`, `GSM`, `Cutting`, `Print`, plus `Price`/`Price Ks`). Prices accept `24,000`, `Ks 24000` and `24000.40`.
+- `mergeSheetPriceRows` treats the sheet as the source of truth for combinations: its columns decide which attributes are enabled, its values become the attribute options, and an enabled attribute with no column is switched off (reported as an issue). Every problem is surfaced in the panel instead of silently dropping rows.
+- Tests: `tests/sheet-prices.test.cjs` (URL building, CSV quoting, header aliases, price parsing, duplicates, merge, and the route handler's 200/400/502 paths with an injected fetcher).
+
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.
 - The job's **first step** verifies the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets. If either is missing it exits 1 and every later step is skipped, so **the Cloudflare Worker is never deployed**.

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, FileUp, Newspaper, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowUpRight, FileUp, Newspaper, Pencil, Plus, Search, Sheet, Trash2, X } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import {
   AdminBadge, AdminButton, AdminCard, AdminDrawer, AdminEmpty, AdminField,
@@ -10,7 +10,7 @@ import {
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import {
-  emptyTshirtPriceRow, formatAdminDate, formatKs, reconcileTshirtPriceRows,
+  emptyTshirtPriceRow, formatAdminDate, formatKs, mergeSheetPriceRows, reconcileTshirtPriceRows,
   removeTshirtPost, tshirtCombinationLabel, tshirtDraftAttributes, tshirtPostDraftFrom,
   tshirtPostFromDraft, tshirtPostFromPriceKs, upsertTshirtPost, validateTshirtPostDraft,
   type AdminPostStatus, type AdminTshirtPost, type AdminTshirtPostAttributeKey,
@@ -44,6 +44,9 @@ export default function AdminPosts() {
   const [errors, setErrors] = useState<string[]>([]);
   const [svgError, setSvgError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [sheetBusy, setSheetBusy] = useState(false);
+  const [sheetMessage, setSheetMessage] = useState<{ tone: "ok" | "error"; text: string; issues?: string[] } | null>(null);
 
   const query = search.trim().toLowerCase();
   const editing = editingId ? data.tshirtPosts.find((post) => post.id === editingId) ?? null : null;
@@ -59,6 +62,7 @@ export default function AdminPosts() {
     setDraft(tshirtPostDraftFrom());
     setErrors([]);
     setSvgError(null);
+    setSheetMessage(null);
   }
 
   function startEdit(post: AdminTshirtPost) {
@@ -66,6 +70,7 @@ export default function AdminPosts() {
     setDraft(tshirtPostDraftFrom(post));
     setErrors([]);
     setSvgError(null);
+    setSheetMessage(null);
   }
 
   function closeEditor() {
@@ -153,6 +158,40 @@ export default function AdminPosts() {
   function removeRow(rowId: string) {
     if (!draft) return;
     setDraft({ ...draft, prices: draft.prices.filter((row) => row.id !== rowId) });
+  }
+
+  // Google Sheets cannot be read from the browser (no CORS), so the link goes through the
+  // route handler, which returns the priced combinations as rows.
+  async function importFromSheet() {
+    if (!draft || sheetBusy) return;
+    setSheetBusy(true);
+    setSheetMessage(null);
+    try {
+      const response = await fetch("/api/admin/tshirt-prices", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sheetUrl }),
+      });
+      const payload = await response.json() as { rows?: Parameters<typeof mergeSheetPriceRows>[1]; issues?: string[]; error?: string };
+      if (!response.ok || !payload.rows) {
+        setSheetMessage({ tone: "error", text: payload.error ?? "That sheet could not be read." });
+        return;
+      }
+      const merged = mergeSheetPriceRows(draft.attributes, payload.rows);
+      setDraft({ ...draft, attributes: merged.attributes, prices: merged.prices });
+      const issues = [...(payload.issues ?? []), ...merged.issues];
+      setSheetMessage({
+        tone: merged.prices.length ? "ok" : "error",
+        text: merged.prices.length
+          ? `Imported ${merged.prices.length} combination${merged.prices.length === 1 ? "" : "s"} from the sheet.`
+          : "The sheet had no usable price rows.",
+        issues,
+      });
+    } catch {
+      setSheetMessage({ tone: "error", text: "The import request failed." });
+    } finally {
+      setSheetBusy(false);
+    }
   }
 
   return (
@@ -392,8 +431,40 @@ export default function AdminPosts() {
             </AdminField>
 
             <AdminField
+              label="Google Sheet prices"
+              hint="Share the sheet as “anyone with the link can view”, then paste the link. One row per combination, one column per attribute, plus a Price column."
+            >
+              <div className="space-y-2" data-post-sheet-import>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <AdminInput
+                    value={sheetUrl}
+                    onChange={(event) => setSheetUrl(event.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    aria-label="Google Sheet link"
+                    data-post-sheet-url
+                    className="min-w-0 flex-1"
+                  />
+                  <AdminButton compact variant="secondary" onClick={() => void importFromSheet()} disabled={sheetBusy || !sheetUrl.trim()} aria-label="Import prices from Google Sheet">
+                    <Sheet size={12} /> {sheetBusy ? "Importing..." : "Import"}
+                  </AdminButton>
+                </div>
+                {sheetMessage ? (
+                  <div data-post-sheet-result={sheetMessage.tone} className={`rounded-lg px-2.5 py-1.5 text-[9px] font-semibold ${sheetMessage.tone === "ok" ? "bg-[#eef8e6] text-[#3f8c22]" : "bg-[#fff6f6] text-[#c9424a]"}`}>
+                    <p>{sheetMessage.text}</p>
+                    {sheetMessage.issues?.length ? (
+                      <ul className="mt-1 space-y-0.5 font-medium">
+                        {sheetMessage.issues.slice(0, 5).map((issue) => <li key={issue}>· {issue}</li>)}
+                        {sheetMessage.issues.length > 5 ? <li>· and {sheetMessage.issues.length - 5} more</li> : null}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </AdminField>
+
+            <AdminField
               label="Price combinations"
-              hint="Each row is one full combination with its own hand-typed price. Combinations without a row are not sold."
+              hint="Each row is one full combination with its own price. Combinations without a row are not sold."
             >
               <div className="space-y-1.5" data-post-prices>
                 {draft.prices.length ? draft.prices.map((row, index) => (

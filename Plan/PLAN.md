@@ -2707,3 +2707,21 @@ The product page at `/products/:slug` now previews the exact thing the customer 
 - **The mockup follows the selection.** Colour, fit and sleeve resolve to an R2 object (`mockups/<slug>/<look>.<ext>`), walking from the most specific look down to `default` and then to the catalog image. Size is left out of the key because the same garment photo serves M and XL; a bucket only needs the looks that visually differ.
 - **The design sits on top.** The artwork is placed in `PRODUCT_PRINT_AREA` (30% / 22% / 40% / 46% of the image box) and comes from `?design=`, the product's own `designSvgUrl`, or the design currently open in the editor (kept in `localStorage` by `KittlCanvas`). Draft layers are drawn with the editor's own renderer, so the preview and the canvas cannot drift.
 - **Config:** set `NEXT_PUBLIC_R2_PUBLIC_URL` to the bucket's public origin at build time; without it the page still works, showing the catalog image with the design overlaid.
+
+## 2026-11-21 Implementation Update — Orders detail + Google Sheet pricing
+
+**Orders** — the list already showed every order; it now also answers "what came in today" and "what came in on a given day":
+
+- A **Today** card (orders, revenue, units) beside the all-time figures.
+- Date presets (Today / 7 days / 30 days / All), a hand-typed From/To range and a sort select (newest, oldest, highest, lowest total).
+- An **Orders by day** strip: each day shows its order count, units and revenue, and clicking one narrows the list to that day.
+- Stage chips, the summary line and the CSV export all follow the chosen range, and the order drawer now lists the placed date, the day, item lines, units, unit prices and the total.
+
+Orders are filed by the admin's local day. The old dashboard buckets used UTC day keys, which in UTC+6:30 pushed every order one day later on the chart; that is fixed.
+
+**T-shirt post prices from Google Sheets** — yes, this works, with one requirement: the sheet must be shared as "anyone with the link can view".
+
+- The post editor takes the sheet link, and the server (not the browser — Google's CSV endpoints send no CORS headers) fetches it, parses it and fills the price rows.
+- One row per combination, one column per attribute, plus a `Price` column. Headers are matched by name, prices accept `24,000` / `Ks 24000`, and a bad row is reported instead of being dropped.
+- The sheet decides what is sold: its columns become the enabled attributes and its values become their options, so editing the sheet is enough to change the combinations.
+- A private sheet would need a service account (credentials), which is a separate setup and not required for the preview workflow.

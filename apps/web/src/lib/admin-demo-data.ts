@@ -1,5 +1,7 @@
 "use client";
 
+import type { SheetPriceRow } from "@/lib/sheet-prices";
+
 // Browser-local demo data for the Super Admin workspace. Nothing here is a security boundary
 // or live store data: the plan requires the admin UI to stay preview-only until Supabase Auth,
 // RLS and server-side role checks replace the demo session. Every module reads and writes this
@@ -250,6 +252,86 @@ export function summarizeOrders(orders: AdminOrder[]): AdminOrderSummary {
   };
 }
 
+// Orders are filed by the admin's local day, not the UTC day: an order placed at 00:30 in
+// Yangon belongs to that morning's sheet, and UTC keys put it on yesterday.
+export function adminDayKey(value: string | number | Date): string {
+  const date = new Date(value);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+// Wrapped so screens can read "today" without calling Date.now() during render.
+export function adminTodayKey() {
+  return adminDayKey(Date.now());
+}
+
+export function adminDayLabel(dayKey: string, now = Date.now()) {
+  if (!dayKey) return "";
+  const today = adminDayKey(now);
+  if (dayKey === today) return "Today";
+  const yesterday = adminDayKey(now - DAY_MS);
+  if (dayKey === yesterday) return "Yesterday";
+  const [year, month, day] = dayKey.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export const ADMIN_ORDER_DATE_PRESETS = ["Today", "Last 7 days", "Last 30 days", "All"] as const;
+export type AdminOrderDatePreset = (typeof ADMIN_ORDER_DATE_PRESETS)[number];
+export type AdminDateRange = { from: string; to: string };
+
+// An empty bound is open-ended, so a hand-typed range can be one-sided.
+export function orderDateRangeForPreset(preset: AdminOrderDatePreset, now = Date.now()): AdminDateRange {
+  if (preset === "All") return { from: "", to: "" };
+  const today = adminDayKey(now);
+  if (preset === "Today") return { from: today, to: today };
+  const span = preset === "Last 7 days" ? 7 : 30;
+  return { from: adminDayKey(now - (span - 1) * DAY_MS), to: today };
+}
+
+export function ordersInDateRange(orders: AdminOrder[], range: AdminDateRange): AdminOrder[] {
+  return orders.filter((order) => {
+    const key = adminDayKey(order.placedAt);
+    if (range.from && key < range.from) return false;
+    if (range.to && key > range.to) return false;
+    return true;
+  });
+}
+
+export type AdminOrderDayGroup = {
+  key: string;
+  label: string;
+  count: number;
+  units: number;
+  revenueKs: number;
+};
+
+export function orderDayGroups(orders: AdminOrder[], now = Date.now()): AdminOrderDayGroup[] {
+  const groups = new Map<string, AdminOrderDayGroup>();
+  for (const order of orders) {
+    const key = adminDayKey(order.placedAt);
+    const entry = groups.get(key) ?? { key, label: adminDayLabel(key, now), count: 0, units: 0, revenueKs: 0 };
+    entry.count += 1;
+    entry.units += orderUnits(order);
+    if (!isSettledOrder(order)) entry.revenueKs += orderTotalKs(order);
+    groups.set(key, entry);
+  }
+  return [...groups.values()].sort((a, b) => (a.key < b.key ? 1 : -1));
+}
+
+export const ADMIN_ORDER_SORTS = ["Newest first", "Oldest first", "Highest total", "Lowest total"] as const;
+export type AdminOrderSort = (typeof ADMIN_ORDER_SORTS)[number];
+
+export function sortOrders(orders: AdminOrder[], sort: AdminOrderSort): AdminOrder[] {
+  const placed = (order: AdminOrder) => new Date(order.placedAt).getTime();
+  const sorted = [...orders];
+  if (sort === "Newest first") sorted.sort((a, b) => placed(b) - placed(a));
+  if (sort === "Oldest first") sorted.sort((a, b) => placed(a) - placed(b));
+  if (sort === "Highest total") sorted.sort((a, b) => orderTotalKs(b) - orderTotalKs(a));
+  if (sort === "Lowest total") sorted.sort((a, b) => orderTotalKs(a) - orderTotalKs(b));
+  return sorted;
+}
+
 export function revenueByDay(orders: AdminOrder[], days: number, now = Date.now()) {
   const buckets: { date: string; label: string; revenueKs: number; orders: number }[] = [];
   const start = new Date(now);
@@ -257,7 +339,7 @@ export function revenueByDay(orders: AdminOrder[], days: number, now = Date.now(
   for (let offset = days - 1; offset >= 0; offset -= 1) {
     const date = new Date(start.getTime() - offset * DAY_MS);
     buckets.push({
-      date: date.toISOString().slice(0, 10),
+      date: adminDayKey(date),
       label: date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
       revenueKs: 0,
       orders: 0,
@@ -265,7 +347,7 @@ export function revenueByDay(orders: AdminOrder[], days: number, now = Date.now(
   }
   const index = new Map(buckets.map((bucket, position) => [bucket.date, position]));
   for (const order of orders) {
-    const key = new Date(order.placedAt).toISOString().slice(0, 10);
+    const key = adminDayKey(order.placedAt);
     const position = index.get(key);
     if (position === undefined) continue;
     buckets[position].orders += 1;
@@ -576,6 +658,42 @@ export function emptyTshirtPriceRow(attributes: AdminTshirtPostAttribute[]): Adm
     options: Object.fromEntries(attributes.map((attribute) => [attribute.key, attribute.options[0]])),
     priceKs: "",
   };
+}
+
+// A Google Sheet defines the sold combinations: the columns it carries become the enabled
+// attributes, the values become their options, and each priced line becomes one price row.
+// An enabled attribute with no column cannot be priced from the sheet, so it is switched off
+// rather than leaving rows that can never be complete.
+export function mergeSheetPriceRows(
+  attributes: AdminTshirtPostDraftAttribute[],
+  rows: SheetPriceRow[],
+): { attributes: AdminTshirtPostDraftAttribute[]; prices: AdminTshirtPostDraftPriceRow[]; issues: string[] } {
+  const issues: string[] = [];
+  const sheetColumns = new Set<AdminTshirtPostAttributeKey>();
+  for (const row of rows) {
+    for (const key of Object.keys(row.options) as AdminTshirtPostAttributeKey[]) {
+      if (row.options[key]) sheetColumns.add(key);
+    }
+  }
+
+  const nextAttributes = attributes.map((attribute) => {
+    if (!sheetColumns.has(attribute.key)) {
+      if (attribute.enabled) issues.push(`${attribute.label} has no column in the sheet, so it was switched off.`);
+      return { ...attribute, enabled: false };
+    }
+    const values = [...new Set(rows.map((row) => row.options[attribute.key]).filter((value): value is string => Boolean(value)))];
+    const options = [...attribute.options.filter((option) => values.includes(option)), ...values.filter((value) => !attribute.options.includes(value))];
+    return { ...attribute, enabled: true, options };
+  });
+
+  const enabled = nextAttributes.filter((attribute) => attribute.enabled && attribute.options.length > 0);
+  const prices = rows.map((row) => ({
+    id: makeAdminId("price"),
+    options: Object.fromEntries(enabled.map((attribute) => [attribute.key, row.options[attribute.key] ?? attribute.options[0]])),
+    priceKs: row.priceKs,
+  }));
+
+  return { attributes: nextAttributes, prices, issues };
 }
 
 // Keeping rows complete as the admin ticks options on and off: a value that is no longer
