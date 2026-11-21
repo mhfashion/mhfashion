@@ -41,6 +41,25 @@ export type AdminPromotionKind = "percent" | "amount";
 export type AdminPromotionStatus = "Active" | "Scheduled" | "Expired" | "Used up" | "Disabled";
 export type AdminTeamRole = "Super Admin" | "Post Admin" | "Print Admin" | "Support";
 
+export type AdminOrderDesign = {
+  id: string;
+  name: string;
+  fileName: string;
+  /** Inline artwork: the print desk can preview and download the file without a bucket. */
+  svg: string;
+  printWidthCm: number;
+  printHeightCm: number;
+  placement: "Front" | "Back" | "Left chest" | "Sleeve";
+};
+
+export type AdminOrderShipTo = {
+  name: string;
+  phone: string;
+  address: string;
+  township: string;
+  city: string;
+};
+
 export type AdminOrderItem = {
   productId: string;
   name: string;
@@ -48,6 +67,13 @@ export type AdminOrderItem = {
   color: string;
   quantity: number;
   unitPriceKs: number;
+  // Print spec. Optional so orders stored before the print sheet existed still load.
+  material?: string;
+  gsm?: number | null;
+  fit?: string;
+  sleeve?: string;
+  printMethod?: string;
+  design?: AdminOrderDesign | null;
 };
 
 export type AdminOrder = {
@@ -55,12 +81,76 @@ export type AdminOrder = {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  shipTo?: AdminOrderShipTo;
   items: AdminOrderItem[];
   stage: AdminOrderStage;
   payment: AdminPaymentMethod;
   placedAt: string;
   note: string;
 };
+
+const DESIGN_INKS = ["#2f7d32", "#c08a2e", "#203459", "#b83219", "#4b3f8f", "#1f7a6d", "#8a1f5c", "#33413a"];
+
+/** Stand-in artwork for a seeded design, in the shape the print desk would receive. */
+export function orderDesignArtwork(name: string, ink: string): string {
+  const label = name.replace(/[<>&"]/g, "").slice(0, 28);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300" width="240" height="300"><circle cx="120" cy="98" r="60" fill="${ink}" opacity="0.14"/><path d="M120 36 L184 98 L120 160 L56 98 Z" fill="${ink}" opacity="0.88"/><text x="120" y="232" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="800" fill="${ink}">${label}</text><text x="120" y="258" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="10" letter-spacing="3" fill="${ink}" opacity="0.7">MH FASHION</text></svg>`;
+}
+
+function designFileSlug(name: string, color: string): string {
+  const base = `${name}-${color}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return `${base || "design"}.svg`;
+}
+
+function hashString(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  return hash;
+}
+
+function seedOrderDesign(name: string, color: string, seed: number): AdminOrderDesign {
+  const placement = (["Front", "Back", "Left chest", "Sleeve"] as const)[seed % 4];
+  return {
+    id: `design-${(seed % SEED_DESIGN_NAMES.length) + 1}`,
+    name,
+    fileName: designFileSlug(name, color),
+    svg: orderDesignArtwork(name, DESIGN_INKS[seed % DESIGN_INKS.length]),
+    printWidthCm: placement === "Left chest" ? 9 : placement === "Sleeve" ? 7 : 28,
+    printHeightCm: placement === "Left chest" ? 9 : placement === "Sleeve" ? 7 : 35,
+    placement,
+  };
+}
+
+/**
+ * Orders saved before the print sheet existed have no spec or artwork. Fill the gaps from the
+ * product catalogue and the seed designs so opening any order still gives the press everything.
+ */
+export function backfillOrderPrintSpec(order: AdminOrder, products: AdminProduct[]): AdminOrder {
+  const shipTo: AdminOrderShipTo = order.shipTo ?? {
+    name: order.customerName,
+    phone: order.customerPhone,
+    address: "Address on file",
+    township: "—",
+    city: "Yangon",
+  };
+  const items = order.items.map((item, index) => {
+    if (item.design && item.material && item.fit && item.sleeve && item.printMethod) return item;
+    const product = products.find((candidate) => candidate.id === item.productId);
+    const apparel = product ? APPAREL_CATEGORIES.includes(product.category) : true;
+    const seed = hashString(`${order.id}-${index}`);
+    const designName = SEED_DESIGN_NAMES[seed % SEED_DESIGN_NAMES.length];
+    return {
+      ...item,
+      material: item.material ?? product?.fabric ?? "Cotton",
+      gsm: item.gsm === undefined ? (product?.gsm ?? null) : item.gsm,
+      fit: item.fit ?? (apparel ? "Oversized" : "Standard"),
+      sleeve: item.sleeve ?? (apparel ? "Short Sleeve" : "—"),
+      printMethod: item.printMethod ?? "DTF",
+      design: item.design ?? seedOrderDesign(designName, item.color, seed),
+    };
+  });
+  return { ...order, shipTo, items };
+}
 
 export type AdminProduct = {
   id: string;
@@ -1038,6 +1128,15 @@ const SEED_DESIGN_NAMES = [
 
 const SEED_COLORS = ["Black", "White", "Sand", "Forest", "Navy"];
 
+const SEED_TOWNSHIPS = ["Hlaing", "Mayangone", "Chan Aye Thar Zan", "Pyigyidagun", "Mingalar Taung Nyunt"];
+const SEED_ADDRESSES = [
+  "No. 24, 3rd floor, Baho Road",
+  "Room 7B, Inya Condo, Pyay Road",
+  "No. 118, 62nd Street",
+  "No. 9, Yadanar Lane, 78th Street",
+  "No. 45/A, Thiri Mingalar 4th Street",
+];
+
 function stageForAge(days: number, roll: number): AdminOrderStage {
   if (days <= 0) return roll < 0.45 ? "Pending Payment" : "Confirmed";
   if (days <= 2) return roll < 0.5 ? "Processing" : "Printing";
@@ -1130,18 +1229,34 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     const placedAt = new Date(now - daysAgo * DAY_MS - Math.floor(random() * DAY_MS)).toISOString();
     const payment = (["KBZPay", "WavePay", "AYAPay", "Cash on Delivery"] as AdminPaymentMethod[])[index % 4];
     const size = product.sizes[Math.floor(random() * product.sizes.length)];
+    const color = SEED_COLORS[Math.floor(random() * SEED_COLORS.length)];
+    const designName = SEED_DESIGN_NAMES[Math.floor(random() * SEED_DESIGN_NAMES.length)];
+    const apparel = APPAREL_CATEGORIES.includes(product.category);
     orders.push({
       id: `#MH${1100 - index}`,
       customerName: customer.name,
       customerEmail: customer.email,
       customerPhone: customer.phone,
+      shipTo: {
+        name: customer.name,
+        phone: customer.phone,
+        address: SEED_ADDRESSES[index % SEED_ADDRESSES.length],
+        township: SEED_TOWNSHIPS[index % SEED_TOWNSHIPS.length],
+        city: index % 3 === 0 ? "Mandalay" : "Yangon",
+      },
       items: [{
         productId: product.id,
         name: product.name,
         size,
-        color: SEED_COLORS[Math.floor(random() * SEED_COLORS.length)],
+        color,
         quantity,
         unitPriceKs: product.priceKs,
+        material: product.fabric,
+        gsm: product.gsm,
+        fit: apparel ? (index % 2 === 0 ? "Oversized" : "Regular") : "Standard",
+        sleeve: apparel ? (index % 3 === 0 ? "Long Sleeve" : "Short Sleeve") : "—",
+        printMethod: (["DTF", "Sublimation", "Screen print"] as const)[index % 3],
+        design: seedOrderDesign(designName, color, index + 1),
       }],
       stage: stageForAge(daysAgo, random()),
       payment,
@@ -1268,9 +1383,15 @@ export function readAdminDemoData(): AdminDemoData {
       const parsed = JSON.parse(raw) as AdminDemoData;
       if (parsed && parsed.version === 1 && Array.isArray(parsed.orders) && Array.isArray(parsed.products)) {
         // Entries saved before the Posts module existed have no tshirtPosts key.
-        cache = Array.isArray(parsed.tshirtPosts)
-          ? { ...parsed, tshirtPosts: parsed.tshirtPosts.map(normalizeTshirtPost) }
-          : { ...parsed, tshirtPosts: createSeedTshirtPosts(Date.now()) };
+        const products = Array.isArray(parsed.products) ? parsed.products : [];
+        const orders = parsed.orders.map((order) => backfillOrderPrintSpec(order, products));
+        cache = {
+          ...parsed,
+          orders,
+          tshirtPosts: Array.isArray(parsed.tshirtPosts)
+            ? parsed.tshirtPosts.map(normalizeTshirtPost)
+            : createSeedTshirtPosts(Date.now()),
+        };
         return cache;
       }
     }

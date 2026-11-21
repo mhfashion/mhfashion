@@ -259,5 +259,5 @@ test("saved demo data without posts is backfilled and legacy posts are normalise
   const source = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/admin-demo-data.ts"), "utf8");
   assert.match(source, /Array\.isArray\(parsed\.tshirtPosts\)/);
   assert.match(source, /parsed\.tshirtPosts\.map\(normalizeTshirtPost\)/);
-  assert.match(source, /tshirtPosts: createSeedTshirtPosts\(Date\.now\(\)\)/);
+  assert.match(source, /tshirtPosts: Array\.isArray\(parsed\.tshirtPosts\)\s*\?\s*parsed\.tshirtPosts\.map\(normalizeTshirtPost\)\s*:\s*createSeedTshirtPosts\(Date\.now\(\)\)/s);
 });

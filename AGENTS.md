@@ -82,6 +82,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The phone category row scrolls horizontally (`overflow-x-auto`, `[scrollbar-width:none]`, fixed `w-[74px]` items). With `flex-1` items the seven labels overlapped and were clipped by `overflow-hidden`.
 - Desktop cards use `sm:aspect-[1.9/1]` covers and `p-3`; the hero is `min-h-[124px]` on phones.
 
+## Order print sheet (`lib/order-print.ts`, `components/admin/AdminOrders.tsx`)
+- Opening an order shows a **Print sheet** block (`data-order-print-sheet`): per line the colour, size, material, GSM, fit, sleeve, print method, placement, print size in cm, design name, plus the artwork thumbnail (`data-order-design-preview`, a `data:image/svg+xml` URL) and an SVG download button.
+- `AdminOrderItem` carries the spec (`material`, `gsm`, `fit`, `sleeve`, `printMethod`, `design`); `AdminOrder.shipTo` carries the address. The fields are optional so orders stored before the sheet existed still load — `backfillOrderPrintSpec` fills them from the product catalogue and seed designs when the store is read, so no order opens with blanks.
+- `orderPrintRows` is the single column list for both the drawer's "Print spec CSV" and the sheet; do not re-add a second, thinner `productionRows`.
+- `buildOrderPrintSheetHtml(order)` returns a standalone A4 document (spec tables, ship-to, artwork, design-file list, totals) with `@page { size: A4 }`; `openOrderPrintSheet` writes it into a new window and calls `print()`. Headless Chromium blocks the popup, so verify the sheet by rendering the HTML string from Node (see `tests/admin-order-print.test.cjs`).
+- Design artwork is inline SVG (`orderDesignArtwork`), so preview and download work without a bucket. Escape every interpolated value with `escapeHtml` — a design or customer name must not be able to inject markup.
+
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.
 - The job's **first step** verifies the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets. If either is missing it exits 1 and every later step is skipped, so **the Cloudflare Worker is never deployed**.

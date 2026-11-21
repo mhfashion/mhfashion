@@ -2743,3 +2743,13 @@ The photo box is now landscape instead of square (200 px tall on phones, 4:3 on 
 
 - Guide: phone cards became a 90px thumbnail row (they were 368px tall with a full-width cover), the phone category row scrolls instead of squeezing seven labels into one line, and the hero/cards shrank on desktop too (370 → 319px).
 - Product: the photo box widened again to a 640px column with a 16:10 box (576×360 on desktop, 326×170 on phones) and the caption tightened to one small line.
+
+## 2026-11-21 — Order print sheet
+
+Opening an order in the admin now hands the print desk everything it needs to run the job:
+
+- Each line lists colour, size, material, GSM, fit, sleeve, print method, placement and print size in cm, next to the product name and quantity.
+- Each line carries its **design file**: an artwork thumbnail, the file name and a download button, plus a "Design files" list on the printable sheet.
+- The shipping address is shown with the customer details.
+- "Print sheet" opens a standalone A4 document (identity, ship-to, spec per line, artwork, file list, totals, note) and sends it to the print dialog; "Print spec CSV" exports the same columns for a spreadsheet.
+- Orders saved before this change are backfilled on read, so no order opens with an empty spec.

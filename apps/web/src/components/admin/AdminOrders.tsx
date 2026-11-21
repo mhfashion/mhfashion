@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  CalendarDays, Check, Download, Package, Search, Truck, X,
+  CalendarDays, Check, Download, FileDown, Package, Printer, Search, Truck, X,
 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import {
@@ -11,6 +11,9 @@ import {
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { downloadCsv } from "@/lib/admin-csv";
+import {
+  designPreviewSrc, downloadDesignFile, openOrderPrintSheet, orderPrintRows,
+} from "@/lib/order-print";
 import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
   adminDayKey, adminDayLabel, adminTodayKey, formatAdminDateTime, formatKs, nextOrderStage,
@@ -41,16 +44,6 @@ function count(value: number, word: string) {
 
 function orderSearchText(order: AdminOrder) {
   return `${order.id} ${order.customerName} ${order.customerEmail} ${order.stage} ${order.payment} ${order.items.map((item) => `${item.name} ${item.size} ${item.color}`).join(" ")}`.toLowerCase();
-}
-
-function productionRows(order: AdminOrder) {
-  return [
-    ["Order", "Product", "Size", "Color", "Quantity", "Unit price (Ks)", "Line total (Ks)", "Stage", "Payment"],
-    ...order.items.map((item) => [
-      order.id, item.name, item.size, item.color, item.quantity,
-      item.unitPriceKs, item.unitPriceKs * item.quantity, order.stage, order.payment,
-    ]),
-  ];
 }
 
 export default function AdminOrders() {
@@ -262,7 +255,10 @@ export default function AdminOrders() {
         onClose={() => setOpenId(null)}
         footer={selected ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <AdminButton variant="secondary" onClick={() => downloadCsv(`${selected.id.replace("#", "order-")}-production.csv`, productionRows(selected))}><Download size={14} /> Production CSV</AdminButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <AdminButton variant="secondary" onClick={() => downloadCsv(`${selected.id.replace("#", "order-")}-print-spec.csv`, orderPrintRows(selected))}><Download size={14} /> Print spec CSV</AdminButton>
+              <AdminButton onClick={() => openOrderPrintSheet(selected)}><Printer size={14} /> Print sheet</AdminButton>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               {selected.stage !== "Cancelled" && selected.stage !== "Refunded" ? <AdminButton variant="danger" onClick={() => moveTo(selected, "Cancelled")}><X size={14} /> Cancel</AdminButton> : null}
               {selected.stage === "Delivered" ? <AdminButton variant="secondary" onClick={() => moveTo(selected, "Refunded")}>Refund</AdminButton> : null}
@@ -277,6 +273,7 @@ export default function AdminOrders() {
               <p className="text-[10px] font-bold text-[#394250]">{selected.customerName}</p>
               <p className="mt-0.5 text-[9px] text-[#87909b]">{selected.customerEmail}</p>
               <p className="mt-0.5 text-[9px] text-[#87909b]">{selected.customerPhone}</p>
+              {selected.shipTo ? <p className="mt-1 text-[9px] leading-snug text-[#87909b]">{selected.shipTo.address}<br />{selected.shipTo.township}, {selected.shipTo.city}</p> : null}
               <div className="mt-2 flex items-center gap-2">
                 <AdminBadge tone={STAGE_TONES[selected.stage]}>{selected.stage}</AdminBadge>
                 <AdminBadge tone="slate">{selected.payment}</AdminBadge>
@@ -308,6 +305,56 @@ export default function AdminOrders() {
               <div className="mt-2 space-y-1 border-t border-[#edf0f3] pt-2 text-[10px] text-[#727d8a]">
                 <div className="flex items-center justify-between"><span>Units</span><span className="tabular-nums">{orderUnits(selected)}</span></div>
                 <div className="flex items-center justify-between text-[11px] font-bold text-[#27303b]"><span>Total</span><span className="tabular-nums">{formatKs(orderTotalKs(selected))}</span></div>
+              </div>
+            </div>
+
+            <div data-order-print-sheet>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-[10px] font-bold uppercase tracking-wide text-[#7b8492]">Print sheet</h3>
+                <AdminButton compact variant="secondary" onClick={() => openOrderPrintSheet(selected)}><Printer size={12} /> Print</AdminButton>
+              </div>
+              <div className="space-y-2">
+                {selected.items.map((item, index) => {
+                  const design = item.design;
+                  const spec: [string, string | number][] = [
+                    ["Colour", item.color],
+                    ["Size", item.size],
+                    ["Material", item.material ?? "—"],
+                    ["GSM", item.gsm ?? "—"],
+                    ["Fit", item.fit ?? "—"],
+                    ["Sleeve", item.sleeve ?? "—"],
+                    ["Print", item.printMethod ?? "—"],
+                    ["Placement", design?.placement ?? "—"],
+                    ["Print size", design ? `${design.printWidthCm} × ${design.printHeightCm} cm` : "—"],
+                    ["Design", design?.name ?? "No design"],
+                  ];
+                  return (
+                    <div key={`${item.productId}-${item.size}-${item.color}-${index}`} className="rounded-xl border border-[#edf0f3] p-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[10px] font-bold text-[#27303b]">Line {index + 1} · {item.name}</p>
+                        <span className="shrink-0 rounded-full bg-[#eef8e6] px-2 py-0.5 text-[9px] font-bold text-[#3f8c22]">×{item.quantity}</span>
+                      </div>
+                      <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[9px]">
+                        {spec.map(([label, value]) => (
+                          <div key={label} className="flex min-w-0 justify-between gap-2">
+                            <dt className="shrink-0 text-[#87909b]">{label}</dt>
+                            <dd className="truncate text-right font-semibold text-[#394250]">{value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                      {design ? (
+                        <div className="mt-2 flex items-center gap-2 rounded-lg bg-[#fafbfc] p-2">
+                          <img src={designPreviewSrc(design)} alt={`${design.name} artwork`} data-order-design-preview className="h-14 w-12 shrink-0 rounded border border-[#e6e9ed] bg-white object-contain" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[9px] font-bold text-[#394250]">{design.fileName}</p>
+                            <p className="text-[8px] text-[#87909b]">SVG · {design.printWidthCm} × {design.printHeightCm} cm</p>
+                          </div>
+                          <AdminButton compact variant="secondary" aria-label={`Download ${design.fileName}`} onClick={() => downloadDesignFile(design)}><FileDown size={12} /> SVG</AdminButton>
+                        </div>
+                      ) : <p className="mt-2 text-[9px] text-[#9aa2ae]">No design file attached.</p>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
