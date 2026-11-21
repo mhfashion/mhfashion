@@ -14,6 +14,7 @@ export type AdminModuleId =
   | "designs"
   | "posts"
   | "pricing"
+  | "attributes"
   | "customers"
   | "inventory"
   | "promotions"
@@ -403,6 +404,17 @@ export type AdminDesignTakedown = {
   at: string;
 };
 
+/**
+ * The canonical §4.1 attribute vocabulary. Posts may carry a narrower option list, but the chain
+ * decides the order, the labels and which options new posts and the pricing grid offer.
+ */
+export type AdminAttributeDefinition = {
+  key: AdminTshirtPostAttributeKey;
+  label: string;
+  options: string[];
+  enabled: boolean;
+};
+
 export type AdminDemoData = {
   version: 1;
   orders: AdminOrder[];
@@ -410,6 +422,7 @@ export type AdminDemoData = {
   stock: Record<string, Record<string, number>>;
   designs: AdminDesign[];
   designTakedowns: AdminDesignTakedown[];
+  attributeChain: AdminAttributeDefinition[];
   tshirtPosts: AdminTshirtPost[];
   productPrices: AdminProductPriceRow[];
   priceHistory: AdminPriceHistoryEntry[];
@@ -425,6 +438,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "designs", label: "Designs" },
   { id: "posts", label: "Posts" },
   { id: "pricing", label: "Pricing" },
+  { id: "attributes", label: "Attributes" },
   { id: "customers", label: "Customers" },
   { id: "inventory", label: "Inventory" },
   { id: "promotions", label: "Promotions" },
@@ -860,6 +874,16 @@ export const TSHIRT_POST_ATTRIBUTES: AdminTshirtPostAttribute[] = [
   { key: "print", label: "Print Method", options: ["DTF", "Sublimation"] },
 ];
 
+/** Built-in chain used for new demo data and as the reset target. */
+export function createSeedAttributeChain(): AdminAttributeDefinition[] {
+  return TSHIRT_POST_ATTRIBUTES.map((attribute) => ({
+    key: attribute.key,
+    label: attribute.label,
+    options: [...attribute.options],
+    enabled: DEFAULT_TSHIRT_DRAFT_ATTRIBUTES.includes(attribute.key),
+  }));
+}
+
 export function tshirtAttributeLabel(key: AdminTshirtPostAttributeKey) {
   return TSHIRT_POST_ATTRIBUTES.find((attribute) => attribute.key === key)?.label ?? key;
 }
@@ -951,12 +975,15 @@ export function normalizeTshirtPostOptions(post: AdminTshirtPost): AdminTshirtPo
   return changed ? { ...post, attributes, prices } : post;
 }
 
-export function tshirtPostDraftFrom(post?: AdminTshirtPost): AdminTshirtPostDraft {
+export function tshirtPostDraftFrom(
+  post?: AdminTshirtPost,
+  chain: AdminTshirtPostAttribute[] = TSHIRT_POST_ATTRIBUTES,
+): AdminTshirtPostDraft {
   return {
     title: post?.title ?? "",
     description: post?.description ?? "",
     svg: post?.svg ?? null,
-    attributes: TSHIRT_POST_ATTRIBUTES.map((attribute) => {
+    attributes: chain.map((attribute) => {
       const saved = post?.attributes.find((entry) => entry.key === attribute.key);
       return {
         key: attribute.key,
@@ -1594,6 +1621,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     stock,
     designs,
     designTakedowns: [],
+    attributeChain: createSeedAttributeChain(),
     tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
     productPrices,
     priceHistory: [],
@@ -1636,6 +1664,9 @@ export function readAdminDemoData(): AdminDemoData {
         cache = {
           ...parsed,
           designTakedowns: Array.isArray(parsed.designTakedowns) ? parsed.designTakedowns : [],
+          attributeChain: Array.isArray(parsed.attributeChain) && parsed.attributeChain.length
+            ? parsed.attributeChain
+            : createSeedAttributeChain(),
           productPrices: Array.isArray(parsed.productPrices) ? parsed.productPrices : [],
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
           orders,

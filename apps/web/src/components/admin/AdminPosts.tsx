@@ -16,6 +16,7 @@ import {
   type AdminPostStatus, type AdminTshirtPost, type AdminTshirtPostAttributeKey,
   type AdminTshirtPostDraft,
 } from "@/lib/admin-demo-data";
+import { chainAsPostAttributes } from "@/lib/admin-attributes";
 import { GUIDE_STARTER_CATALOG } from "@/lib/guide-starter";
 import { storePostSvg } from "@/lib/post-assets";
 
@@ -56,14 +57,14 @@ export default function AdminPosts() {
 
   function startCreate() {
     setEditingId("new");
-    setDraft(tshirtPostDraftFrom());
+    setDraft(tshirtPostDraftFrom(undefined, chainAsPostAttributes(data)));
     setErrors([]);
     setSvgError(null);
   }
 
   function startEdit(post: AdminTshirtPost) {
     setEditingId(post.id);
-    setDraft(tshirtPostDraftFrom(post));
+    setDraft(tshirtPostDraftFrom(post, chainAsPostAttributes(data)));
     setErrors([]);
     setSvgError(null);
   }

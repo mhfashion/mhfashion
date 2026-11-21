@@ -11,6 +11,7 @@ import {
   type AdminTshirtPost,
   type AdminTshirtPostAttributeKey,
 } from "@/lib/admin-demo-data";
+import { attributeChain } from "@/lib/admin-attributes";
 import {
   combinationsFor,
   rowKey,
@@ -80,11 +81,17 @@ export function scopeAttributes(data: AdminDemoData, scope: PricingScope): Prici
   }
   const post = findPost(data, scope.id);
   if (!post) return [];
+  const chain = attributeChain(data);
+  const order = chain.map((attribute) => attribute.key);
+  const rank = (key: AdminTshirtPostAttributeKey) => {
+    const index = order.indexOf(key);
+    return index === -1 ? order.length + postAttributeOrder(key) : index;
+  };
   return [...post.attributes]
-    .sort((a, b) => postAttributeOrder(a.key) - postAttributeOrder(b.key))
+    .sort((a, b) => rank(a.key) - rank(b.key))
     .map((attribute) => ({
       key: attribute.key,
-      label: TSHIRT_POST_ATTRIBUTES.find((known) => known.key === attribute.key)?.label ?? attribute.label,
+      label: chain.find((entry) => entry.key === attribute.key)?.label ?? attribute.label,
       options: attribute.options,
     }));
 }

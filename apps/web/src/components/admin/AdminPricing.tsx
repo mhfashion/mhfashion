@@ -411,7 +411,12 @@ export default function AdminPricing() {
         ) : null}
 
         {rows.length === 0 ? (
-          <AdminEmpty title="This scope has no valid combinations" description="Enable attributes on the post, or add sizes to the product." />
+          <div>
+            <AdminEmpty title="This scope has no valid combinations" description="Enable attributes on the post, or add sizes to the product." />
+            <p className="pb-4 text-center">
+              <Link href="/admin/attributes" className="text-[10px] font-bold text-[#3f8c22]">Open Attribute Management</Link>
+            </p>
+          </div>
         ) : (
           <>
             <div className="sm:hidden" data-pricing-phone>
@@ -744,7 +749,7 @@ export default function AdminPricing() {
       </BottomSheet>
 
       <p className="mt-3 text-[10px] text-[#98a1ac]">
-        Combinations come from the attributes enabled on the post. Attribute Management (Plan §16 P2) will let the Super Admin edit the chain itself — until then, edit the post to change its attributes.
+        Combinations come from the attributes enabled on the post; labels and the option vocabulary come from <Link href="/admin/attributes" className="font-bold text-[#3f8c22]">Attribute Management</Link>.
       </p>
       <Link href="/admin/posts" className="mt-1 inline-block text-[10px] font-bold text-[#3f8c22]">Open Posts</Link>
     </AdminShell>

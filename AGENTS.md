@@ -91,6 +91,12 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   intrinsic width forces ~370 px of page at a 320 px viewport.
 - Tests: `tests/admin-pricing.test.cjs`.
 
+## Attribute Management (`apps/web/src/lib/admin-attributes.ts`, `components/admin/AdminAttributes.tsx`)
+- `data.attributeChain` is the canonical §4.1 vocabulary (order, label, options, enabled). It is **not** the editor's chain: `lib/editor-attributes.ts` stays static until the editor is reopened (owner directive 1), and the screen says so.
+- The chain drives the pricing grid's labels and column order (`scopeAttributes` ranks by chain position), and `tshirtPostDraftFrom(post, chainAsPostAttributes(data))` seeds a new post from the enabled attributes. Stored posts keep their own options — do not "normalise" them against the chain, or an admin edit would silently rewrite published posts.
+- `applyChainPatch` refuses to remove an option that still prices rows, to switch off an attribute that prices rows, and to take an empty/duplicate label. It returns the untouched data plus `issues`; the UI renders those and writes nothing.
+- Tests: `tests/admin-attributes.test.cjs`.
+
 ## Design takedown (`recordDesignTakedown`)
 - Designs → Takedown records claimant + note, sets the design to `Hidden` and appends to `designTakedowns`; the row shows a `Claim` badge.
 - Owner rule (2026-11-21): a takedown never touches `orders` — a paid order is still produced and delivered. `recordDesignTakedown` returns `{ ...setDesignStatus(...), designTakedowns: [...] }` and nothing else; `tests/admin-takedown.test.cjs` asserts the orders are byte-identical afterwards.

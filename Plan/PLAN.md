@@ -209,8 +209,13 @@ horizontal page scroll (`scrollWidth === clientWidth`), every touch target ≥ 4
 flow (select → bulk set → save) writes the same rows as the web grid. The search field in the
 admin header needed `min-w-0` to stop it forcing 370 px of page width at 320 px.
 
-**Still open in 4.5.1:** the "no valid combinations → link to Attribute Management" state, which
-needs Attribute Management (16 P2).
+**Attribute Management (built 2026-11-21):** `/admin/attributes` edits the chain — order, labels,
+option lists and on/off state — in `data.attributeChain`. Guards refuse a change that would orphan
+prices ("Combed Cotton still prices 3 rows in Peacock Line Tee"), a duplicate or empty label, or
+switching off an attribute that prices rows. The chain supplies the pricing grid's column order and
+labels, the vocabulary a new post draft starts from, and the "no valid combinations → Open Attribute
+Management" link in the pricing empty state. Stored posts keep the options they were published with,
+and the design editor still uses the built-in list (owner directive 1), which the screen states.
 
 **Rules.** Price belongs to one full valid combination. Only combinations the cascading rules allow
 exist as rows, so pricing can never create an invalid combination (Sublimation with Combed Cotton,
@@ -883,7 +888,9 @@ browser-local demo data (section 16 P0).
   that records the claimant and hides the design without touching paid orders (8.1). The seeded
   Peacock post had a Sublimation + Combed Cotton row, which the cascade forbids; it is now DTF.
   Phone cards followed (grouped collapsible cards, bottom sheets, keypad fields, sticky save bar;
-  verified at 390 and 320 px). Attribute Management remains open (4.5.1, 16 P2).
+  verified at 390 and 320 px). Attribute Management followed: `/admin/attributes` edits the chain
+  order, labels, options and on/off state with guards that refuse to orphan a price row; the chain
+  drives the pricing grid's labels and column order and the vocabulary a new post starts from.
 
 
 
@@ -1028,10 +1035,9 @@ proposal, not an approved order.
 
 11. **Posts ↔ Product relationship** as a data model (how a T-shirt post relates to
     Product → Style → Color and to fixed-design products). The Nyein brief is still pending.
-12. **Admin modules not yet built:** Attribute Management, Brush Management, Delivery Settlement
-    Report, Loyalty rules, Jersey mapping setup. **Pricing Management is partly built** — the Web
-    grid shipped 2026-11-21 (4.5.1); the Phone cards and the admin-driven attribute chain
-    (Attribute Management) are still open.
+12. **Admin modules not yet built:** Brush Management, Delivery Settlement Report, Loyalty rules,
+    Jersey mapping setup. **Pricing Management (web grid + phone cards) and Attribute Management
+    shipped 2026-11-21** (4.5.1, §16); Brush Management stays blocked on the editor.
 13. **Order operations:** order QR/barcode on the print sheet, reprint flow, refund request flow
     (deferred).
 14. **Operations:** error monitoring, Supabase backups, timestamps stored in UTC and displayed in
