@@ -288,6 +288,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - To push without persisting the credential, pass a write-capable token inline and leave
   `origin` alone, so the read-only URL in `.git/config` is never overwritten:
   `git push "https://x-access-token:$TOKEN@github.com/mhfashion/mhfashion.git" HEAD:main`
+- The owner supplied a fine-grained PAT with `Contents: write`. It lives **outside the repo** at
+  `~/.mh_push_token` (mode 600) and is used through `~/push-mhfashion.sh`, which pushes
+  `HEAD:main` with the token inline. Never copy the token into a tracked file, and do not print it.
+  PATs expire: if the push returns `401 Bad credentials`, ask the owner for a fresh one.
 - `GET /repos/mhfashion/mhfashion` reports `permissions: {admin, maintain, push, ...}: true` for the
   ambient token, but every write still fails (`git push` → `403 denied to mhfashion`,
   `POST /git/refs` → `403 Resource not accessible by integration`). Do not trust that field; test a
