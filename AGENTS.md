@@ -111,7 +111,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Product uses `AggregateOffer` with `priceCurrency: "MMK"` and numeric `lowPrice`/`highPrice`: the catalog carries a range, and a reversed range is repaired rather than emitted.
 - The FAQ node is built from `INFO_PAGES.faq.sections` (heading = question), so the markup cannot drift from the copy; a section with no answer is dropped.
 - Pages: Organization + WebSite in `layout.tsx`, Product + BreadcrumbList on `/products/[slug]`, FAQPage on `/faq`, Article + BreadcrumbList on `/guide/[slug]`. `/search` stays `noindex`.
-- The deploy workflow passes `NEXT_PUBLIC_SITE_URL` from the repository **variable** `NEXT_PUBLIC_SITE_URL`; unset means canonical links and JSON-LD `url` stay off (correct behaviour, not a failure).
+- `NEXT_PUBLIC_SITE_URL` is inlined at build time. Until the deploy workflow passes it (a repository variable plus an `env:` on the "Build OpenNext Worker" step), canonical links and JSON-LD `url` stay off — that is correct behaviour, not a failure. A PAT without the `workflow` scope cannot push a change to `.github/workflows/`, so that edit needs the owner.
 
 ## Account orders (`lib/my-orders.ts`, `app/account/page.tsx`)
 - Orders live in the same browser store as the admin demo data (`mh-fashion-admin-demo-data-v1`), read through `useAdminDemoData()` (`useSyncExternalStore`).
