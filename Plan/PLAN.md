@@ -2759,3 +2759,6 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 
 - Every order line now records where the print area sits on the garment: the mockup name, the flat garment size in cm, and the print-area origin (cm from the top-left). The A4 sheet draws the garment with the print area and the layer boxes, so the press can align the job without guessing.
 - Adding to the cart with a different size, colour, material, GSM, fit or sleeve now creates a separate line instead of overwriting the previous one; identical combinations still just increase the quantity. Each line shows its own variant and price.
+
+### Print files ZIP
+- One button in the order drawer downloads everything for a job: the printable sheet (HTML), the spec CSV, `manifest.json` and each design as a print-sized SVG plus its mockup-position diagram. The archive is written by a small stored-ZIP writer in `lib/zip.ts`, so no new dependency ships to the admin bundle.

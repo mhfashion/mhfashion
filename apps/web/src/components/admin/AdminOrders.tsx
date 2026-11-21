@@ -12,7 +12,7 @@ import {
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { downloadCsv } from "@/lib/admin-csv";
 import {
-  designPreviewSrc, downloadDesignFile, openOrderPrintSheet, orderPrintRows,
+  designPreviewSrc, downloadDesignFile, downloadOrderArchive, openOrderPrintSheet, orderPrintRows,
 } from "@/lib/order-print";
 import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
@@ -258,6 +258,7 @@ export default function AdminOrders() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <AdminButton variant="secondary" onClick={() => downloadCsv(`${selected.id.replace("#", "order-")}-print-spec.csv`, orderPrintRows(selected))}><Download size={14} /> Print spec CSV</AdminButton>
+              <AdminButton variant="secondary" aria-label="Download all design files and the print data as a ZIP" onClick={() => downloadOrderArchive(selected)}><FileDown size={14} /> Print files ZIP</AdminButton>
               <AdminButton onClick={() => openOrderPrintSheet(selected)}><Printer size={14} /> Print sheet</AdminButton>
             </div>
             <div className="flex flex-wrap items-center gap-2">

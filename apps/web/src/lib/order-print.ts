@@ -3,6 +3,7 @@ import {
   DESIGN_UNITS_PER_CM, buildMockupDiagramSvg, designLayerSize, formatAdminDateTime, formatKs,
   orderTotalKs, orderUnits,
 } from "./admin-demo-data";
+import { createZip, type ZipEntry } from "./zip";
 
 /**
  * Everything the print desk needs, one row per order line. Kept next to the print sheet so the
@@ -247,4 +248,93 @@ export function downloadDesignFile(design: AdminOrderDesign): void {
 /** Inline preview URL for the drawer thumbnail (no object URL to clean up). */
 export function designPreviewSrc(design: AdminOrderDesign): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(design.svg)}`;
+}
+
+/** Folder-safe file name for an order, e.g. "MH1086". */
+export function orderFileStem(order: AdminOrder): string {
+  return order.id.replace(/[^A-Za-z0-9-]+/g, "").toLowerCase() || "order";
+}
+
+/**
+ * Everything the print desk receives for one order: each design as an SVG (plus its mockup
+ * diagram), the printable sheet, the spec CSV and a JSON manifest of the measurements.
+ */
+export function orderArchiveEntries(order: AdminOrder): ZipEntry[] {
+  const designs = orderDesignFiles(order);
+  const entries: ZipEntry[] = [
+    { name: `print-sheet-${orderFileStem(order)}.html`, data: buildOrderPrintSheetHtml(order) },
+    { name: `print-spec-${orderFileStem(order)}.csv`, data: orderPrintRows(order).map((row) => row.map(csvCell).join(",")).join("\r\n") },
+    { name: "manifest.json", data: JSON.stringify(orderManifest(order), null, 2) },
+  ];
+  for (const design of designs) {
+    entries.push({ name: `designs/${design.fileName}`, data: design.svg });
+    entries.push({ name: `designs/${design.fileName.replace(/\.svg$/i, "")}-mockup.svg`, data: buildMockupDiagramSvg(design) });
+  }
+  return entries;
+}
+
+function csvCell(value: string | number): string {
+  const text = String(value ?? "");
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** The order as data, with each design pointing at the file in the same archive. */
+export function orderManifest(order: AdminOrder) {
+  return {
+    order: {
+      id: order.id,
+      placedAt: order.placedAt,
+      stage: order.stage,
+      payment: order.payment,
+      note: order.note,
+      customer: { name: order.customerName, email: order.customerEmail, phone: order.customerPhone },
+      shipTo: order.shipTo ?? null,
+      totals: { units: orderUnits(order), amountKs: orderTotalKs(order) },
+    },
+    items: order.items.map((item) => ({
+      product: item.name,
+      productId: item.productId,
+      colour: item.color,
+      size: item.size,
+      quantity: item.quantity,
+      unitPriceKs: item.unitPriceKs,
+      material: item.material ?? null,
+      gsm: item.gsm ?? null,
+      fit: item.fit ?? null,
+      sleeve: item.sleeve ?? null,
+      printMethod: item.printMethod ?? null,
+      design: item.design
+        ? {
+            name: item.design.name,
+            ink: item.design.ink,
+            placement: item.design.placement,
+            printWidthCm: item.design.printWidthCm,
+            printHeightCm: item.design.printHeightCm,
+            unitsPerCm: item.design.unitsPerCm,
+            mockup: item.design.mockup,
+            file: `designs/${item.design.fileName}`,
+            mockupFile: `designs/${item.design.fileName.replace(/\.svg$/i, "")}-mockup.svg`,
+            layers: item.design.layers.map((layer) => ({ ...layer, ...designLayerSize(layer, item.design!.unitsPerCm) })),
+          }
+        : null,
+    })),
+  };
+}
+
+export function buildOrderArchive(order: AdminOrder): Uint8Array {
+  return createZip(orderArchiveEntries(order));
+}
+
+/** Saves the whole order — design SVGs, sheet, CSV and manifest — as one ZIP. */
+export function downloadOrderArchive(order: AdminOrder): void {
+  const bytes = buildOrderArchive(order);
+  const blob = new Blob([bytes as BlobPart], { type: "application/zip" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${orderFileStem(order)}-print-files.zip`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
