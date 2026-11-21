@@ -2762,3 +2762,6 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 
 ### Print files ZIP
 - One button in the order drawer downloads everything for a job: the printable sheet (HTML), the spec CSV, `manifest.json` and each design as a print-sized SVG plus its mockup-position diagram. The archive is written by a small stored-ZIP writer in `lib/zip.ts`, so no new dependency ships to the admin bundle.
+
+### Product page: static promises removed
+- Dropped the Free Delivery / Secure Payment / Easy Returns / 24/7 Support / Seol Support row from the product page and the icons it needed. Delivery will come from the MH Delivery API, so a hard-coded "orders over 50K" promise would contradict whatever the API returns.

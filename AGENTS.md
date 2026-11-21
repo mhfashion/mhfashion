@@ -95,6 +95,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `buildOrderPrintSheetHtml(order)` returns a standalone A4 document (spec tables, ship-to, artwork, design-file list, totals) with `@page { size: A4 }`; `openOrderPrintSheet` writes it into a new window and calls `print()`. Headless Chromium blocks the popup, so verify the sheet by rendering the HTML string from Node (see `tests/admin-order-print.test.cjs`).
 - Design artwork is inline SVG (`orderDesignArtwork`), so preview and download work without a bucket. Escape every interpolated value with `escapeHtml` — a design or customer name must not be able to inject markup.
 
+## Product page trust row (removed)
+- The product page used to carry five static promises (Free Delivery, Secure Payment, Easy Returns, 24/7 Support, Seol Support). They are gone: delivery is being handed to the **MH Delivery API**, so the site must not advertise a shipping rule it does not control. `tests/product-trust-row.test.cjs` fails if the copy or its icons come back.
+- The Shipping & Returns tab still carries the written policy text; change it only when the MH Delivery terms replace it.
+
 ## Cart lines (`lib/cart-items.ts`, `lib/cart-context.tsx`)
 - A cart line is keyed by `cartItemKey(productId, variant)` — product id **plus** size, colour, material, GSM, fit and sleeve. Two adds with any different value are separate lines; only an identical combination increments. Merging by product id alone collapsed different variants into one line and lost the variant entirely.
 - `CartItem` carries `key`, `variant` and an optional `unitPriceKs` (the variant price the product page computed). `cartLineTotal`/`cartSubtotal` prefer `unitPriceKs` and fall back to `priceMinKs`.

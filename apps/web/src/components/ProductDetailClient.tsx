@@ -1,19 +1,6 @@
 "use client";
 
-import {
-  Check,
-  Heart,
-  Minus,
-  Plus,
-  RotateCcw,
-  Ruler,
-  Share2,
-  ShieldCheck,
-  ShoppingCart,
-  Sparkles,
-  Truck,
-  UserRound,
-} from "lucide-react";
+import { Check, Heart, Minus, Plus, Ruler, Share2, ShoppingCart } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
@@ -198,10 +185,6 @@ export default function ProductDetailClient({ product, related }: Props) {
           <div className="mt-3 grid grid-cols-3 gap-1 sm:gap-1.5"><button type="button" onClick={buyNow} data-buy-now className="min-w-0 whitespace-nowrap rounded-lg bg-accent px-1 py-2.5 text-[9px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:px-2 sm:text-xs"><ShoppingCart size={12} className="mr-0.5 inline sm:mr-1 sm:h-[14px] sm:w-[14px]" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} data-add-to-cart className="min-w-0 whitespace-nowrap rounded-lg border-2 border-accent px-1 py-2.5 text-[9px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:px-2 sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button><a href={`/create?product=${encodeURIComponent(product.slug)}`} className="min-w-0 whitespace-nowrap rounded-lg border border-border px-1 py-2.5 text-center text-[9px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:px-2 sm:text-xs">Edit Design</a></div>
           {variantWarning ? <p data-variant-warning role="status" className="mt-2 rounded-lg bg-[#fff6e6] px-2.5 py-1.5 text-[10px] font-semibold text-[#9a6a12]">Choose a size and colour first — every combination is a separate order line.</p> : null}
         </div>
-      </section>
-
-      <section className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-accent/10 bg-accent/10 sm:grid-cols-5">
-        {[[Truck, "Free Delivery", "On orders over 50K"], [ShieldCheck, "Secure Payment", "100% secure"], [RotateCcw, "Easy Returns", "7 days return"], [UserRound, "24/7 Support", "Get help anytime"], [Sparkles, "Seol Support", "Get help anytime"]].map(([Icon, title, text]) => <div key={title as string} className="bg-bg-surface px-3 py-3 text-center"><Icon size={19} className="mx-auto mb-1 text-accent" /><p className="text-[10px] font-black">{title as string}</p><p className="text-[9px] text-text-muted">{text as string}</p></div>)}
       </section>
 
       <section className="mt-4 overflow-hidden rounded-2xl border border-border/70 bg-bg-surface">
