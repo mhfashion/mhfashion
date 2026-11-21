@@ -546,3 +546,24 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   transform. `Text styles` are effect stacks only (`EDITOR_TEXT_STYLES` + `textStyleEffects`), so the text
   stays editable. The photo `Frame` (corner radius + border) is drawn *inside* the image box on purpose —
   a centred stroke would paint outside the transform outline.
+
+## Tool Options boxes (`apps/web/src/components/EditorAdjustmentsPanel.tsx`)
+- Every tool has a box in the Adjustments panel (`Tool Options · <tool>`): brush/pencil settings, eraser
+  settings + nib presets, pen width/cap, Text tool defaults, Shape preset grid, Move nudge pad, Gradient
+  shape/preset/reverse. Hand and Remove BG still show a hint only.
+- `EditorToolOptions` carries `text` (`EditorTextToolSettings`); `addCanvasTextLayer` writes those defaults
+  into a new text layer (size, family, weight, alignment, letter spacing, colour, where `color: null` means
+  "follow the toolbar foreground"). Existing text layers keep their own font and colour.
+- `updateToolOptions` merges **each** tool group (`{ ...current.text, ...patch.text }`). The panel sends one
+  field per change, so omitting the group from the merge silently resets every other field to the default —
+  that is exactly how the Text box lost the size/colour that had just been picked.
+- `EDITOR_ERASER_PRESETS` (Soft/Hard/Block/Fine) are patches of eraser settings, and `EDITOR_TOOL_OPTIONS_DEFAULT`
+  is the reset target for the brush/pencil reset button.
+- `EditorGradientToolSettings.reverse` flips the preset stops (`100 - offset`) in `editorGradientFromToolSettings`;
+  the stops are re-sorted by `normalizeEditorGradient`, so the ramp is mirrored, not reordered by hand.
+- `OptionGroup` wraps (`flex-wrap`) and grows to `min-h-11` under `pointer:coarse`; the preset chips, nudge
+  step chips and the Toolbar colour button do the same. Verified at 390x844 touch: panel 256 px, no horizontal
+  overflow, no sub-44 px target except the shared 28 px colour swatches and the pre-existing "Clear erasures"
+  button.
+- The Move box's nudge writes `canvasLayerTransforms` only (`nudgeSelectedLayer`), so it moves the layer on the
+  canvas without touching the artwork inside its own transform; measured 50 units = 15 px on a 300 px canvas.

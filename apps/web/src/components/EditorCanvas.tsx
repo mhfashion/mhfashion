@@ -107,7 +107,6 @@ const CANVAS_LAYER_TRAVEL_LIMIT = 2400;
 // On a touch screen the pasteboard stops this far (in local px) outside the print area. A
 // viewport-wide drawing surface would swallow the scroll gesture that reaches the mockups.
 const PASTEBOARD_TOUCH_RING_PX = 96;
-const DEFAULT_TEXT_FONT_SIZE = 110;
 const TEXT_EDIT_BOX_WIDTH = 900;
 // New text wraps at the print area width so a long line flows downward instead of
 // running past the canvas edge. Typed lines stay inside the artwork they print on.
@@ -607,6 +606,15 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   // Arrange controls in the Adjustments panel: align to the artboard, flip, rotate, reset,
   // duplicate. Aligning adjusts the layer's canvas offset, so the artwork itself never moves
   // inside its own transform.
+  // Arrow-pad nudges from the Adjustments panel: offset only, so the artwork
+  // never moves inside its own transform.
+  const nudgeSelectedLayer = (dx: number, dy: number) => {
+    const layer = selectedLayer;
+    if (!layer || layer.locked) return;
+    const current = canvasLayerTransforms[layer.id] ?? { x: 0, y: 0 };
+    setCanvasLayerTransforms((all) => ({ ...all, [layer.id]: { x: current.x + dx, y: current.y + dy } }));
+  };
+
   const arrangeSelectedLayer = (action: EditorArrangeAction) => {
     const layer = selectedLayer;
     if (!layer) return;
@@ -2272,12 +2280,17 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   function addCanvasTextLayer(source?: DesignLibraryText | null, position?: Point) {
     const id = claimLayerId();
     const label = nextTextLayerLabelRef.current++;
+    const textDefaults = toolOptions.text;
     const content: EditorTextContent = {
       value: source?.value ?? "",
       x: position?.x ?? source?.x ?? CANVAS_ARTWORK_CENTER.x,
       y: position?.y ?? source?.y ?? CANVAS_ARTWORK_CENTER.y,
-      fontSize: source?.fontSize ?? DEFAULT_TEXT_FONT_SIZE,
-      color: source?.color ?? foregroundColor,
+      fontSize: source?.fontSize ?? textDefaults.fontSize,
+      color: source?.color ?? textDefaults.color ?? foregroundColor,
+      fontFamily: textDefaults.fontFamily,
+      fontWeight: textDefaults.fontWeight,
+      textAlign: textDefaults.textAlign,
+      ...(textDefaults.letterSpacing > 0 ? { letterSpacing: textDefaults.letterSpacing } : {}),
       wrapWidth: DEFAULT_TEXT_WRAP_WIDTH,
     };
     setLayers((current) => [
@@ -2491,6 +2504,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     eraser?: Partial<EditorToolOptions["eraser"]>;
     pen?: Partial<EditorToolOptions["pen"]>;
     gradient?: Partial<EditorToolOptions["gradient"]>;
+    text?: Partial<EditorToolOptions["text"]>;
   }) {
     setToolOptions((current) => normalizeEditorToolOptions({
       brush: { ...current.brush, ...patch.brush },
@@ -2498,6 +2512,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       eraser: { ...current.eraser, ...patch.eraser },
       pen: { ...current.pen, ...patch.pen },
       gradient: { ...current.gradient, ...patch.gradient },
+      text: { ...current.text, ...patch.text },
     }));
   }
 
@@ -2970,6 +2985,9 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
             rotation: canvasLayerRotations[selectedLayer.id] ?? 0,
           } : null}
           onArrange={arrangeSelectedLayer}
+          selectedShape={selectedShape}
+          onSelectShape={setSelectedShape}
+          onNudge={nudgeSelectedLayer}
         />}
         {!adjustmentsOpen && <EditorLayersPanel
           open={layersOpen}

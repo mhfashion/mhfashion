@@ -98,18 +98,41 @@ export type EditorToolOptions = {
   eraser: EditorEraserSettings;
   pen: EditorPenSettings;
   gradient: EditorGradientToolSettings;
+  text: EditorTextToolSettings;
 };
 export const EDITOR_BRUSH_SHAPES: EditorBrushShape[] = ["round", "square"];
 export const EDITOR_BRUSH_BLENDS: EditorBrushBlend[] = ["normal", "multiply", "screen"];
 
 export const EDITOR_ERASER_MODES: EditorEraserMode[] = ["brush", "stroke"];
+
+export const EDITOR_TEXT_FONT_FAMILY = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
+
+/** Defaults for the Text tool, so a new text layer starts in the chosen style. */
+export type EditorTextToolSettings = {
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: number;
+  textAlign: "left" | "center" | "right";
+  /** null follows the toolbar foreground colour. */
+  color: string | null;
+  letterSpacing: number;
+};
 export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
   brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0, spacing: 8, flow: 100, smoothing: 3, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   eraser: { mode: "brush", shape: "round", size: 120, hardness: 60, opacity: 100, flow: 100, spacing: 12, angle: 0, roundness: 100 },
   pen: { width: 5, cap: "round" },
-  gradient: { type: "linear", presetId: "black-white" },
+  gradient: { type: "linear", presetId: "black-white", reverse: false },
+  text: { fontSize: 110, fontFamily: EDITOR_TEXT_FONT_FAMILY, fontWeight: 700, textAlign: "center", color: null, letterSpacing: 0 },
 };
+
+/** Ready-made eraser nibs; each is a settings patch. */
+export const EDITOR_ERASER_PRESETS: { id: string; label: string; settings: Partial<EditorEraserSettings> }[] = [
+  { id: "soft", label: "Soft", settings: { shape: "round", size: 180, hardness: 10, opacity: 60, flow: 55, spacing: 8 } },
+  { id: "hard", label: "Hard", settings: { shape: "round", size: 90, hardness: 100, opacity: 100, flow: 100, spacing: 10 } },
+  { id: "block", label: "Block", settings: { shape: "square", size: 160, hardness: 100, opacity: 100, flow: 100, spacing: 12, roundness: 0 } },
+  { id: "fine", label: "Fine", settings: { shape: "round", size: 28, hardness: 80, opacity: 100, flow: 100, spacing: 6 } },
+];
 
 /** Ready-made brush presets; each is a full brush settings patch. */
 export const EDITOR_BRUSH_PRESETS: { id: string; label: string; settings: EditorBrushSettings }[] = [
@@ -169,6 +192,7 @@ export function normalizeEditorToolOptions(input: Partial<EditorToolOptions> | u
       cap: input?.pen?.cap === "butt" || input?.pen?.cap === "square" ? input.pen.cap : "round",
     },
     gradient: normalizeEditorGradientToolSettings(input?.gradient),
+    text: normalizeEditorTextToolSettings(input?.text),
   };
 }
 
@@ -176,12 +200,26 @@ export function normalizeEditorToolOptions(input: Partial<EditorToolOptions> | u
 export type EditorGradientToolSettings = {
   type: EditorGradientType;
   presetId: string;
+  /** Flip the ramp, so the last colour sits at the start of the axis. */
+  reverse: boolean;
 };
 
 export function normalizeEditorGradientToolSettings(input: Partial<EditorGradientToolSettings> | undefined): EditorGradientToolSettings {
   const type = EDITOR_GRADIENT_TYPES.includes(input?.type as EditorGradientType) ? input!.type as EditorGradientType : EDITOR_TOOL_OPTIONS_DEFAULT.gradient.type;
   const presetId = EDITOR_GRADIENT_PRESETS.some((preset) => preset.id === input?.presetId) ? input!.presetId! : EDITOR_TOOL_OPTIONS_DEFAULT.gradient.presetId;
-  return { type, presetId };
+  return { type, presetId, reverse: input?.reverse ?? EDITOR_TOOL_OPTIONS_DEFAULT.gradient.reverse };
+}
+
+export function normalizeEditorTextToolSettings(input: Partial<EditorTextToolSettings> | undefined): EditorTextToolSettings {
+  const align = input?.textAlign;
+  return {
+    fontSize: clamp(input?.fontSize ?? EDITOR_TOOL_OPTIONS_DEFAULT.text.fontSize, 20, 400),
+    fontFamily: typeof input?.fontFamily === "string" && input.fontFamily.trim() ? input.fontFamily : EDITOR_TOOL_OPTIONS_DEFAULT.text.fontFamily,
+    fontWeight: clamp(Math.round(input?.fontWeight ?? EDITOR_TOOL_OPTIONS_DEFAULT.text.fontWeight), 100, 900),
+    textAlign: align === "left" || align === "right" ? align : "center",
+    color: typeof input?.color === "string" && /^#[0-9a-f]{3,8}$/i.test(input.color) ? input.color : null,
+    letterSpacing: clamp(input?.letterSpacing ?? EDITOR_TOOL_OPTIONS_DEFAULT.text.letterSpacing, 0, 40),
+  };
 }
 export type MaskBrushMode = "hide" | "reveal";
 export type LayerEditTarget = "artwork" | "mask";
@@ -342,7 +380,6 @@ export function editorTextPaintPadding(text: EditorTextContent): { left: number;
 }
 
 export const EDITOR_TEXT_DEFAULT_LINE_HEIGHT = 1.2;
-export const EDITOR_TEXT_FONT_FAMILY = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
 
 /**
  * Lines actually painted, after soft-wrapping each hard line to `wrapWidth`.
@@ -1127,7 +1164,11 @@ export function editorGradientFromToolSettings(settings: EditorGradientToolSetti
   return normalizeEditorGradient({
     ...defaultEditorGradient(),
     type: normalized.type,
-    stops: preset.stops.map((stop) => ({ id: nextEditorGradientStopId(), ...stop })),
+    stops: preset.stops.map((stop) => ({
+      id: nextEditorGradientStopId(),
+      ...stop,
+      offset: normalized.reverse ? 100 - stop.offset : stop.offset,
+    })),
   });
 }
 

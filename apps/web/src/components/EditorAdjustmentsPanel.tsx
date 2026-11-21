@@ -2,8 +2,8 @@
 
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { EditorArrangeAction, EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorGradient, EditorGradientStop, EditorGradientToolSettings, EditorGradientType, EditorLayerPlacement, EditorPenSettings, EditorShapeBuilderMode, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
-import { EDITOR_ARRANGE_ALIGNMENTS, EDITOR_ARRANGE_LABELS, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_DESIGN_SWATCHES, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
+import type { EditorArrangeAction, EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorGradient, EditorGradientStop, EditorGradientToolSettings, EditorGradientType, EditorLayerPlacement, EditorPenSettings, EditorShapeBuilderMode, EditorShapePreset, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorTextToolSettings, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
+import { EDITOR_ARRANGE_ALIGNMENTS, EDITOR_ARRANGE_LABELS, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
 
@@ -21,6 +21,19 @@ const TOOL_LABELS: Record<EditorTool, string> = {
   gradient: "Gradient",
   "remove-bg": "Remove BG",
 };
+// Families offered by the Text tool box. The first entry is the app font stack,
+// the rest are plain family names so they match what the Font list writes.
+const TEXT_TOOL_FONTS = [
+  { label: "Inter", value: EDITOR_TEXT_FONT_FAMILY },
+  { label: "Arial", value: "Arial" },
+  { label: "Georgia", value: "Georgia" },
+  { label: "Impact", value: "Impact" },
+  { label: "Courier New", value: "Courier New" },
+  { label: "Trebuchet MS", value: "Trebuchet MS" },
+  { label: "Verdana", value: "Verdana" },
+  { label: "Times New Roman", value: "Times New Roman" },
+];
+
 const TOOL_OPTION_HINTS: Partial<Record<EditorTool, string>> = {
   move: "Drag the canvas to move the selected layer. Adjust a layer's own size, opacity, and blend under Appearance.",
   hand: "Drag to pan the workspace view. Zoom stays available from the canvas controls.",
@@ -35,6 +48,7 @@ type ToolOptionsPatch = {
   eraser?: Partial<EditorEraserSettings>;
   pen?: Partial<EditorPenSettings>;
   gradient?: Partial<EditorGradientToolSettings>;
+  text?: Partial<EditorTextToolSettings>;
 };
 type TextStyleUpdate = Partial<Pick<EditorTextContent, "fontSize" | "color" | "fontFamily" | "fontWeight" | "fontStyle" | "textAlign" | "underline" | "letterSpacing" | "lineHeight" | "textTransform" | "textEffect" | "effectColor" | "effectOffset" | "effectBlur" | "outlineWidth" | "textDecoration" | "decorationColor" | "decorationWidth" | "effects">>;
 const EFFECT_TYPES: { kind: EditorTextEffectKind; label: string; color: string }[] = [
@@ -75,12 +89,12 @@ function Swatches({ value, ariaLabel, onPick }: { value: string; ariaLabel: stri
   </div>;
 }
 
-function BrushOptions({ label, value, onChange }: { label: string; value: EditorBrushSettings; onChange: (patch: Partial<EditorBrushSettings>) => void }) {
+function BrushOptions({ label, value, onChange, onReset }: { label: string; value: EditorBrushSettings; onChange: (patch: Partial<EditorBrushSettings>) => void; onReset: () => void }) {
   const square = value.shape === "square";
   return <div className="space-y-3">
     <div className="space-y-1.5">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Presets</p>
-      <div role="group" aria-label={`${label} presets`} className="flex flex-wrap gap-1">{EDITOR_BRUSH_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`${label} preset ${preset.label}`} onClick={() => onChange(preset.settings)} className="rounded-lg border border-border px-2 py-1 text-[9px] text-text-secondary outline-none hover:border-accent hover:bg-accent/10">{preset.label}</button>)}</div>
+      <div role="group" aria-label={`${label} presets`} className="flex flex-wrap gap-1">{EDITOR_BRUSH_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`${label} preset ${preset.label}`} onClick={() => onChange(preset.settings)} className="rounded-lg border border-border px-2 py-1 text-[9px] text-text-secondary outline-none hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2.5">{preset.label}</button>)}</div>
     </div>
 
     <div className="space-y-1.5">
@@ -123,17 +137,23 @@ function BrushOptions({ label, value, onChange }: { label: string; value: Editor
       <OptionGroup label="Dab blend" ariaLabel={`${label} blend`} options={EDITOR_BRUSH_BLENDS.map((blend) => ({ value: blend, label: blend }))} value={value.blend} onChange={(blend) => onChange({ blend: blend as EditorBrushBlend })} />
     </div>
 
+    <button type="button" aria-label={`Reset ${label} to its default`} onClick={onReset} className="w-full rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-text-secondary outline-none hover:border-accent hover:bg-accent/10">Reset {label.toLowerCase()} to default</button>
+
     <p className="text-[9px] leading-relaxed text-text-muted">Flow, spacing, jitter, and smoothing build one {label.toLowerCase()} stroke from spaced nib dabs. These values apply to the next stroke you draw and stay until you change them.</p>
   </div>;
 }
 
 function OptionGroup({ label, ariaLabel, options, value, onChange }: { label: string; ariaLabel: string; options: { value: string; label: string }[]; value: string; onChange: (value: string) => void }) {
-  return <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>{label}</span><div role="group" aria-label={ariaLabel} className="flex gap-1">{options.map((option) => <button key={option.value} type="button" aria-label={`${ariaLabel} ${option.label}`} aria-pressed={value === option.value} onClick={() => onChange(option.value)} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{option.label}</button>)}</div></div>;
+  return <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span className="shrink-0">{label}</span><div role="group" aria-label={ariaLabel} className="flex flex-wrap justify-end gap-1">{options.map((option) => <button key={option.value} type="button" aria-label={`${ariaLabel} ${option.label}`} aria-pressed={value === option.value} onClick={() => onChange(option.value)} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2.5">{option.label}</button>)}</div></div>;
 }
 
 function EraserOptions({ value, onChange, onClear, canClear }: { value: EditorEraserSettings; onChange: (patch: Partial<EditorEraserSettings>) => void; onClear: () => void; canClear: boolean }) {
   const square = value.shape === "square";
   return <div className="space-y-2">
+    <div className="space-y-1.5">
+      <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Nib presets</p>
+      <div role="group" aria-label="Eraser presets" className="flex flex-wrap gap-1">{EDITOR_ERASER_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`Eraser preset ${preset.label}`} onClick={() => onChange(preset.settings)} className="rounded-lg border border-border px-2 py-1 text-[9px] text-text-secondary outline-none hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2.5">{preset.label}</button>)}</div>
+    </div>
     <OptionGroup label="Mode" ariaLabel="Eraser mode" options={[{ value: "brush", label: "Brush" }, { value: "stroke", label: "Stroke" }]} value={value.mode} onChange={(mode) => onChange({ mode: mode as EditorEraserSettings["mode"] })} />
     <OptionGroup label="Nib" ariaLabel="Eraser nib" options={[{ value: "round", label: "Round" }, { value: "square", label: "Square" }]} value={value.shape} onChange={(shape) => onChange({ shape: shape as EditorBrushShape })} />
     <RangeField label="Size" value={value.size} min={10} max={600} suffix="px" ariaLabel="Eraser size" onChange={(size) => onChange({ size })} />
@@ -147,6 +167,53 @@ function EraserOptions({ value, onChange, onClear, canClear }: { value: EditorEr
     </>}
     <p className="text-[9px] leading-relaxed text-text-muted">Brush mode paints a soft eraser nib that builds up as you drag. Stroke mode clears any whole stroke whose points fall under the nib. Hardness 0% is fully feathered; higher flow erases more per pass. Locked layers are never erased.</p>
     <button type="button" aria-label="Clear erasures on this layer" disabled={!canClear} onClick={onClear} className="w-full rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-text-primary outline-none hover:border-accent hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40">Clear erasures on this layer</button>
+  </div>;
+}
+
+/** Defaults for new text layers: size, family, weight, alignment, colour, tracking. */
+function TextToolOptions({ value, onChange }: { value: EditorTextToolSettings; onChange: (patch: Partial<EditorTextToolSettings>) => void }) {
+  return <div className="space-y-2.5">
+    <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">A new text layer starts with</p>
+    <RangeField label="Size" value={value.fontSize} min={20} max={400} suffix="px" ariaLabel="Text tool font size" onChange={(fontSize) => onChange({ fontSize })} />
+    <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">Font<select aria-label="Text tool font family" value={value.fontFamily} onChange={(event) => onChange({ fontFamily: event.target.value })} className="max-w-[150px] rounded-lg border border-border bg-bg px-1.5 py-1 text-[10px] text-text-primary outline-none">{TEXT_TOOL_FONTS.map((font) => <option key={font.label} value={font.value}>{font.label}</option>)}</select></label>
+    <OptionGroup label="Weight" ariaLabel="Text tool weight" options={[{ value: "300", label: "Light" }, { value: "400", label: "Regular" }, { value: "700", label: "Bold" }, { value: "900", label: "Black" }]} value={String(value.fontWeight)} onChange={(weight) => onChange({ fontWeight: Number(weight) })} />
+    <OptionGroup label="Align" ariaLabel="Text tool alignment" options={[{ value: "left", label: "Left" }, { value: "center", label: "Centre" }, { value: "right", label: "Right" }]} value={value.textAlign} onChange={(textAlign) => onChange({ textAlign: textAlign as EditorTextToolSettings["textAlign"] })} />
+    <RangeField label="Letter spacing" value={value.letterSpacing} min={0} max={40} suffix="px" ariaLabel="Text tool letter spacing" onChange={(letterSpacing) => onChange({ letterSpacing })} />
+    <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Colour</span><div className="flex items-center gap-1">
+      <button type="button" aria-label="Text tool follow the toolbar colour" aria-pressed={value.color === null} onClick={() => onChange({ color: null })} className="rounded-lg border border-border px-2 py-1 text-[9px] outline-none hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3">Toolbar</button>
+      <input aria-label="Text tool colour" type="color" value={value.color ?? "#111111"} onChange={(event) => onChange({ color: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" />
+    </div></div>
+    <Swatches value={value.color ?? "#111111"} ariaLabel="Text tool colour swatch" onPick={(color) => onChange({ color })} />
+    <p className="text-[9px] leading-relaxed text-text-muted">These values are written into every new text layer; existing text keeps its own font and colour. Pick Toolbar to follow the foreground colour again.</p>
+  </div>;
+}
+
+/** Which shape the Shape tool draws, plus a reminder of how the style is applied. */
+function ShapeToolOptions({ preset, onSelect }: { preset: EditorShapePreset; onSelect: (preset: EditorShapePreset) => void }) {
+  return <div className="space-y-2">
+    <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Shape to draw</p>
+    <div role="group" aria-label="Shape tool preset" className="grid grid-cols-3 gap-1">{EDITOR_SHAPE_PRESETS.map((option) => <button key={option} type="button" aria-label={`Shape tool ${EDITOR_SHAPE_LABELS[option]}`} aria-pressed={preset === option} onClick={() => onSelect(option)} className="min-h-8 rounded-lg border border-border px-1 py-1.5 text-[9px] leading-tight text-text-secondary outline-none transition hover:border-accent hover:bg-accent/10 aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11">{EDITOR_SHAPE_LABELS[option]}</button>)}</div>
+    <p className="text-[9px] leading-relaxed text-text-muted">The shape lands in the selected layer with the foreground colour. Adjust fill, stroke, corners, shadow and glow under Shape once it is drawn.</p>
+  </div>;
+}
+
+/** Arrow pad for the Move tool: nudge the selection without dragging it. */
+function MoveToolOptions({ placement, onNudge }: { placement: EditorLayerPlacement | null; onNudge: (dx: number, dy: number) => void }) {
+  const [step, setStep] = useState(10);
+  const pad = "flex min-h-8 items-center justify-center rounded-lg border border-border text-[11px] text-text-secondary outline-none transition hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11";
+  return <div className="space-y-2">
+    <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Nudge the selection</p>
+    <div role="group" aria-label="Nudge step" className="flex gap-1">{[1, 10, 50].map((option) => <button key={option} type="button" aria-label={`Nudge step ${option}`} aria-pressed={step === option} onClick={() => setStep(option)} className="flex-1 rounded-lg border border-border px-2 py-1 text-[9px] outline-none hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11">{option} u</button>)}</div>
+    <div role="group" aria-label="Nudge selected layer" className="mx-auto grid w-36 grid-cols-3 gap-1">
+      <span aria-hidden="true" />
+      <button type="button" aria-label="Nudge layer up" onClick={() => onNudge(0, -step)} className={pad}>↑</button>
+      <span aria-hidden="true" />
+      <button type="button" aria-label="Nudge layer left" onClick={() => onNudge(-step, 0)} className={pad}>←</button>
+      <button type="button" aria-label="Nudge layer down" onClick={() => onNudge(0, step)} className={pad}>↓</button>
+      <button type="button" aria-label="Nudge layer right" onClick={() => onNudge(step, 0)} className={pad}>→</button>
+    </div>
+    <p aria-label="Nudge readout" className="text-center text-[9px] text-text-muted">Offset {Math.round(placement?.offset.x ?? 0)} · {Math.round(placement?.offset.y ?? 0)} units</p>
+    <p className="text-[9px] leading-relaxed text-text-muted">The nudge moves the layer&apos;s canvas offset only, so the artwork stays put inside its own transform. Align and rotate live under Arrange.</p>
   </div>;
 }
 
@@ -171,6 +238,7 @@ function GradientOptions({ value, onChange }: { value: EditorGradientToolSetting
         </button>)}
       </div>
     </div>
+    <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Reverse the ramp</span><input aria-label="Gradient reverse" type="checkbox" checked={value.reverse} onChange={(event) => onChange({ reverse: event.target.checked })} className="h-3.5 w-3.5 accent-[var(--accent)]" /></label>
     <p className="text-[9px] leading-relaxed text-text-muted">Pick a shape and preset, then drag on the canvas to lay the gradient. Drag again on a selected gradient layer to re-aim it; edit its stops under Gradient below.</p>
   </div>;
 }
@@ -235,7 +303,7 @@ function GradientEditor({ gradient, onChange }: { gradient: EditorGradient; onCh
   </div>;
 }
 
-export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures, placement, onArrange }: {
+export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures, placement, onArrange, selectedShape, onSelectShape, onNudge }: {
   open: boolean;
   onToggle: () => void;
   selectedLayer: EditorArtworkLayer | null;
@@ -255,6 +323,9 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   onClearErasures: () => void;
   placement: EditorLayerPlacement | null;
   onArrange: (action: EditorArrangeAction) => void;
+  selectedShape: EditorShapePreset;
+  onSelectShape: (preset: EditorShapePreset) => void;
+  onNudge: (dx: number, dy: number) => void;
 }) {
   const text = selectedLayer?.text;
   const image = selectedLayer?.image;
@@ -319,6 +390,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
               label={activeTool === "brush" ? "Brush" : "Pencil"}
               value={activeTool === "brush" ? toolOptions.brush : toolOptions.pencil}
               onChange={(patch) => onUpdateToolOptions(activeTool === "brush" ? { brush: patch } : { pencil: patch })}
+              onReset={() => onUpdateToolOptions(activeTool === "brush" ? { brush: EDITOR_TOOL_OPTIONS_DEFAULT.brush } : { pencil: EDITOR_TOOL_OPTIONS_DEFAULT.pencil })}
             />}
             {activeTool === "eraser" && <EraserOptions
               value={toolOptions.eraser}
@@ -335,7 +407,10 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
               value={toolOptions.gradient}
               onChange={(patch) => onUpdateToolOptions({ gradient: patch })}
             />}
-            {(activeTool === "text" || activeTool === "move" || activeTool === "hand" || activeTool === "shape" || activeTool === "remove-bg") && <p className="text-[10px] leading-relaxed text-text-muted">{TOOL_OPTION_HINTS[activeTool]}</p>}
+            {activeTool === "text" && <TextToolOptions value={toolOptions.text} onChange={(patch) => onUpdateToolOptions({ text: patch })} />}
+            {activeTool === "shape" && <ShapeToolOptions preset={selectedShape} onSelect={onSelectShape} />}
+            {activeTool === "move" && <MoveToolOptions placement={placement} onNudge={onNudge} />}
+            {(activeTool === "hand" || activeTool === "remove-bg") && <p className="text-[10px] leading-relaxed text-text-muted">{TOOL_OPTION_HINTS[activeTool]}</p>}
           </Section>
           {!selectedLayer && <p className="p-2 text-[11px] text-[#666] dark:text-[#bdbdbd]">Select a layer to edit its properties.</p>}
           {selectedLayer && <>

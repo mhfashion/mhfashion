@@ -39,7 +39,7 @@ height, so the editor never sits under it.
 | Hand | drags the view |
 | Pencil | freehand line drawing at the pen width |
 | Pen | click to place anchors, drag to pull a Bézier handle, Enter finishes, Escape discards |
-| Text | click to place a text box and type in it |
+| Text | click to place a text box and type in it; new layers take the Text tool defaults |
 | Brush | freehand painting with the brush settings |
 | Eraser | erases with the brush nib, or deletes a whole stroke in stroke mode |
 | Shape | drags out a shape from the selected preset |
@@ -50,7 +50,22 @@ presets, and Undo / Redo. It collapses to a small bar, and on a phone it becomes
 bottom centre with ~44 px targets.
 
 Tool settings are kept in `EditorToolOptions` and normalised on load, so a partial or stale settings
-object cannot break a tool.
+object cannot break a tool. Each tool has its own box at the top of the Adjustments panel
+(`Tool Options · <tool>`):
+
+| Tool | Box contents |
+|---|---|
+| Brush / Pencil | presets, nib (tip, size, angle, roundness), paint (opacity, flow, spacing, smoothing), edge (softness, feather), shape dynamics (size/opacity/angle/roundness jitter, jitter floor, scatter, fade-out), dab blend, reset to default |
+| Eraser | nib presets (Soft, Hard, Block, Fine), mode, nib, size, hardness, opacity, flow, spacing, angle, roundness, clear erasures |
+| Pen | path width, cap |
+| Text | defaults for a new text layer: size, font, weight, alignment, letter spacing, colour (or follow the toolbar) |
+| Shape | the nine shape presets the tool draws |
+| Move | arrow pad with 1 / 10 / 50 unit steps, plus the layer's current offset |
+| Gradient | shape, preset, reverse the ramp |
+| Hand, Remove BG | a short hint only |
+
+Boxes write one field at a time; `updateToolOptions` merges each tool group into the stored settings
+instead of replacing it, so changing the font weight cannot reset the size that was just picked.
 
 ## 4. Layers
 
@@ -150,9 +165,10 @@ Nine presets: rectangle, rounded rectangle, ellipse, triangle, diamond, line, ar
 ## 9. Brush and eraser
 
 - Brush: size, hardness, flow, spacing, shape (round, square) and blend (normal, multiply, screen), with
-  presets in the tool options.
+  presets in the tool options, and a reset that restores the tool defaults.
 - Eraser: brush mode erases with the nib, stroke mode removes a whole stroke; both are stored as erasure
-  passes on the layer, so they can be cleared.
+  passes on the layer, so they can be cleared. Nib presets (Soft, Hard, Block, Fine) set size, hardness,
+  opacity, flow and spacing in one press.
 - Strokes are smoothed as they are drawn and stored as points on the layer.
 
 ## 10. Gradients
@@ -162,6 +178,8 @@ Nine presets: rectangle, rounded rectangle, ellipse, triangle, diamond, line, ar
 - The gradient axis is drawn on the canvas and can be re-dragged; the Adjustment box also exposes the
   start and end coordinates.
 - The gradient is stored on a gradient layer and previewed in its Layers thumbnail.
+- "Reverse the ramp" in the tool options flips the preset before it is laid down, so the last colour
+  starts the axis.
 
 ## 11. Images
 
