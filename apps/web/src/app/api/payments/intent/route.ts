@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { createIntent } from "@/lib/payment-store";
 import { findProvider, missingCredentials, paymentRef, type PaymentProviderId } from "@/lib/payments";
 import { isMockAllowed } from "@/lib/payment-webhook";
+import { RATE_LIMITS, enforceRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const limited = enforceRateLimit(request, "payments/intent", RATE_LIMITS.paymentIntent);
+  if (limited) return limited;
   let payload: { orderId?: string; amountKs?: number; provider?: string };
   try {
     payload = await request.json();

@@ -14,6 +14,17 @@ import {
 
 type AuthMode = "login" | "register";
 
+/**
+ * The URL to return to after sign-in, limited to the admin area: `?next=` comes from the query
+ * string, so it must not be able to send an admin anywhere else.
+ */
+function safeAdminNext(): string {
+  if (typeof window === "undefined") return "/admin";
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (!next || !next.startsWith("/admin") || next.startsWith("//") || next.startsWith("/admin/login")) return "/admin";
+  return next;
+}
+
 export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const isRegister = mode === "register";
@@ -29,7 +40,7 @@ export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
 
   useEffect(() => {
     if (getDemoAdminSession()) {
-      router.replace("/admin");
+      router.replace(safeAdminNext());
       return;
     }
     setHasAccount(hasDemoAdminAccount());
@@ -59,7 +70,7 @@ export default function AdminAuthPanel({ mode }: { mode: AuthMode }) {
         setPending(false);
         return;
       }
-      router.replace("/admin");
+      router.replace(safeAdminNext());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to complete the demo account action.");
       setPending(false);

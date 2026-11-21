@@ -3165,6 +3165,36 @@ Opening an order in the admin now hands the print desk everything it needs to ru
 ---
 
 <a id="print-delivery-storage-plan"></a>
+## 2026-11-21 — Rate limiting on the payment API
+
+The four payment routes were open to a script that could hammer them:
+
+- `lib/rate-limit.ts` is a fixed-window counter keyed by `bucket + client address`, with the address taken from `cf-connecting-ip` (Cloudflare), then `x-forwarded-for`, then `x-real-ip`.
+- `enforceRateLimit(request, bucket, rule)` returns a `429` with `Retry-After` and `{ "error": "rate_limited" }`, or `null` to let the request through. Each route calls it **before** reading the body.
+- Budgets: intent 10/min, simulate 20/min, status 120/min, webhook 60/min. Creating an intent is the expensive path, so it is the tightest; a provider retry must not be mistaken for abuse, so the webhook is the loosest.
+- The map sweeps expired buckets once it passes 5,000 keys, so a flood of addresses cannot grow it without bound.
+- Verified over HTTP: 120 allowed, then `429` with `Retry-After: 59`, while a second address still got through.
+
+**Limitation:** the counter lives in the worker instance's memory, so it is per-instance, not global. That is enough to stop a single client hammering one instance; a durable limit needs KV or a Durable Object.
+
+## 2026-11-21 — QR on the print sheet
+
+- `lib/order-qr.ts` encodes `orderQrPayload(order.id)` as a single-path SVG (`qrcode` library, error correction M, 4-module quiet zone). No canvas, no data URL, nothing to fetch, crisp at print resolution.
+- The sheet header carries the code on the right with the caption "Scan to open this order".
+- The code links to `/admin/orders?order=<id>`, so a phone on the shop floor opens the order itself. Without `NEXT_PUBLIC_SITE_URL` it falls back to `MH Fashion order <id>` as text, because a relative URL is useless to a scanner.
+- `AdminShell` now keeps the requested admin URL in `/admin/login?next=…`, and `AdminAuthPanel` returns there after sign-in (`safeAdminNext` only accepts `/admin…`, so the parameter cannot redirect off-site).
+- Verified by decoding the printed code with a real decoder (jsQR) straight from the generated sheet: it returns `https://mhfashion.mhfashionmm.workers.dev/admin/orders?order=%23MH1101`, and the sign-in flow lands on `/admin/orders?order=%23MH1101` with the drawer open.
+
+## 2026-11-21 — Storefront E2E at desktop and phone widths
+
+`tests/storefront-e2e.cjs` drives the production build over CDP and asserts the whole purchase path:
+
+- Desktop 1440x900: home, search (`noindex`), wishlist, FAQ (sections + `FAQPage` markup), guide index, checkout, and the account page with the order just placed (id, stage, item line, total) plus the layout JSON-LD nodes.
+- Phone 390x844 with touch: bottom navigation, no sideways scroll on home/checkout/order history, the same total, a placed order, and both orders listed with cards narrower than the viewport.
+- It clears the browser store first (order history, cart, checkout key) so the counts are exact and a second run behaves the same, and it fails on any page exception.
+
+Found and fixed while writing it: `useAdminDemoData` passed the browser snapshot as its own server snapshot, so the first client render (with saved orders) disagreed with the server HTML (seeded data). React threw the tree away and re-rendered it, which appended a second copy of the root layout's JSON-LD scripts on `/account`. The hook now has a separate cached `readSeedSnapshot` for the server and hydration render.
+
 ## 2026-11-21 — Forward plan: print, delivery and storage
 
 The work log above records what shipped. This section is the plan for what is left, in the order

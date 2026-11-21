@@ -391,3 +391,41 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   suite (135 tests, needs a server on port 3000 for `guide-http`). A browser pass means:
   first-run setup on `/admin/login`, advance an order, create a product, `+10` a stock row,
   create a promotion, save settings, add a team member, then reload to confirm persistence.
+
+## Rate limiting (`apps/web/src/lib/rate-limit.ts`)
+- `enforceRateLimit(request, bucket, rule)` returns a `429` (`Retry-After`, `{"error":"rate_limited"}`)
+  or `null`. Call it at the top of a route handler, **before** reading the body; `clientKey` reads
+  `cf-connecting-ip`, then `x-forwarded-for`'s first hop, then `x-real-ip`.
+- Budgets in `RATE_LIMITS`: intent 10/min, simulate 20/min, status 120/min, webhook 60/min. The
+  expensive create is tightest; the provider callback must tolerate retries, so it is loosest.
+- The counter is per worker instance (module memory, swept past 5,000 buckets). A durable limit
+  needs KV or a Durable Object; do not describe this one as global.
+- `tests/rate-limit.test.cjs` also greps each route to prove the guard sits before the body read.
+
+## Print-sheet QR and the admin deep link
+- `orderQrPayload(id)` is `<origin>/admin/orders?order=<encoded id>`, or `MH Fashion order <id>` when
+  `NEXT_PUBLIC_SITE_URL` is unset. `qrSvg` draws the modules as one `<path>` with
+  `shape-rendering="crispEdges"`; `order-print.ts` renders it as `figure.qr` in the sheet header.
+- The `qrcode` package is only reachable from the admin bundle (`order-print.ts` → `AdminOrders`).
+- `AdminOrders` opens the drawer from `?order=` in a mount effect (a `useState` initializer would
+  disagree with the server render). `AdminShell` forwards the requested URL to
+  `/admin/login?next=…`, and `AdminAuthPanel.safeAdminNext()` only accepts `/admin…` paths.
+- A drawer only opens for an id that exists in the store; an unknown id leaves the board closed.
+- Verified by decoding the generated sheet with jsQR in Chromium (not by eyeballing it).
+
+## Store snapshots and hydration
+- `useAdminDemoData` must pass a *separate* cached server snapshot (`readSeedSnapshot`), not
+  `readAdminDemoData`: the browser snapshot contains saved orders, so using it for hydration made
+  React discard the server HTML and re-render, which appended a second copy of the root layout's
+  JSON-LD scripts on `/account`. Symptom to watch for: `document.querySelectorAll('script[type="application/ld+json"]')`
+  returning double the server count.
+
+## Storefront E2E (`tests/storefront-e2e.cjs`)
+- Needs the production server on 3000 and Chromium with `--remote-debugging-port=9222`; run
+  `node tests/storefront-e2e.cjs` (or `node --test`). It clears the browser store first, so the
+  order counts are exact and reruns match.
+- Seed the cart from a page that is *not* `/checkout` (navigating to the URL already open does not
+  remount the cart provider), and clear `sessionStorage["mh-fashion-checkout-key"]` between orders
+  or the page shows the previous confirmation instead of the form.
+- Test module loaders for `order-print.ts` must resolve `@/…` and pass bare specifiers to `require`,
+  and compile with `esModuleInterop: true` (the `qrcode` default import needs it).

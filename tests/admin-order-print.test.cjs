@@ -10,15 +10,20 @@ function loadModule(relativePath, cache = new Map()) {
   const sourcePath = path.join(ROOT, relativePath);
   if (cache.has(sourcePath)) return cache.get(sourcePath);
   const compiled = ts.transpileModule(readFileSync(sourcePath, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    // esModuleInterop matches the app tsconfig: `import QRCode from "qrcode"` compiles to a default
+    // import helper, which is what the CommonJS package needs.
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
     fileName: sourcePath,
   }).outputText;
   const loaded = { exports: {} };
   cache.set(sourcePath, loaded.exports);
   const localRequire = (specifier) => {
-    if (!specifier.startsWith(".")) throw new Error(`unexpected import: ${specifier}`);
-    const target = path.join(path.dirname(sourcePath), `${specifier}.ts`);
-    return loadModule(path.relative(ROOT, target), cache);
+    if (specifier.startsWith("@/")) return loadModule(`apps/web/src/${specifier.slice(2)}.ts`, cache);
+    if (specifier.startsWith(".")) {
+      const target = path.join(path.dirname(sourcePath), `${specifier}.ts`);
+      return loadModule(path.relative(ROOT, target), cache);
+    }
+    return require(specifier);
   };
   new Function("module", "exports", "require", compiled)(loaded, loaded.exports, localRequire);
   return loaded.exports;

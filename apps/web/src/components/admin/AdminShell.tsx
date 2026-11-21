@@ -62,7 +62,9 @@ export default function AdminShell({
   useEffect(() => {
     const session = getDemoAdminSession();
     if (!session) {
-      router.replace("/admin/login");
+      // A printed sheet's QR links to `/admin?order=…`; keep that URL so the order opens after sign-in.
+      const next = `${window.location.pathname}${window.location.search}`;
+      router.replace(next === "/admin" ? "/admin/login" : `/admin/login?next=${encodeURIComponent(next)}`);
       return;
     }
     setAdmin(session);

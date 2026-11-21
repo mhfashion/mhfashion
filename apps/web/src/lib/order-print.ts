@@ -5,6 +5,7 @@ import {
 } from "./admin-demo-data";
 import { createZip, type ZipEntry } from "./zip";
 import { deliveryFileName, deliveryQuoteJson } from "./delivery";
+import { orderQrPayload, qrSvg } from "./order-qr";
 
 /**
  * Everything the print desk needs, one row per order line. Kept next to the print sheet so the
@@ -158,6 +159,9 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
     ? `<ul>${files.map((design) => `<li><b>${escapeHtml(design.fileName)}</b> — ${escapeHtml(design.name)} (${design.printWidthCm} × ${design.printHeightCm} cm, ${escapeHtml(design.placement)})</li>`).join("")}</ul>`
     : `<p class="empty">No design files on this order.</p>`;
 
+  const qrTarget = orderQrPayload(order.id);
+  const qr = `<figure class="qr">${qrSvg(qrTarget)}<figcaption>${escapeHtml(qrTarget.startsWith("http") ? "Scan to open this order" : qrTarget)}</figcaption></figure>`;
+
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <title>Print sheet ${escapeHtml(order.id)}</title>
@@ -165,7 +169,11 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
   @page { size: A4; margin: 12mm; }
   * { box-sizing: border-box; }
   body { margin: 0; font: 11px/1.45 "Inter", Arial, sans-serif; color: #1d232b; }
-  header { border-bottom: 2px solid #1d232b; padding-bottom: 8px; margin-bottom: 12px; }
+  header { border-bottom: 2px solid #1d232b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  header .headline { flex: 1; }
+  figure.qr { margin: 0; width: 78px; flex: none; text-align: center; }
+  figure.qr svg { width: 78px; height: 78px; display: block; }
+  figure.qr figcaption { font-size: 7px; color: #4a5461; width: 78px; margin: 2px auto 0; line-height: 1.2; overflow-wrap: anywhere; }
   .brand { font-size: 16px; font-weight: 800; letter-spacing: .12em; }
   h1 { font-size: 18px; margin: 4px 0 2px; }
   .meta { color: #5c6673; }
@@ -197,9 +205,12 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
 <body>
 <div class="printbar"><button type="button" onclick="window.print()">Print this sheet</button></div>
 <header>
-  <div class="brand">MH FASHION</div>
-  <h1>Print sheet · Order ${escapeHtml(order.id)}</h1>
-  <p class="meta">${escapeHtml(formatAdminDateTime(order.placedAt))} · ${escapeHtml(order.stage)} · ${escapeHtml(order.payment)}</p>
+  <div class="headline">
+    <div class="brand">MH FASHION</div>
+    <h1>Print sheet · Order ${escapeHtml(order.id)}</h1>
+    <p class="meta">${escapeHtml(formatAdminDateTime(order.placedAt))} · ${escapeHtml(order.stage)} · ${escapeHtml(order.payment)}</p>
+  </div>
+  ${qr}
 </header>
 <div class="grid">
   <div class="card">

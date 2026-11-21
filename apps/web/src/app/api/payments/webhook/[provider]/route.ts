@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { PAYMENT_WEBHOOK_HEADERS, handlePaymentWebhook } from "@/lib/payment-webhook";
+import { RATE_LIMITS, enforceRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, context: { params: Promise<{ provider: string }> }) {
+  const limited = enforceRateLimit(request, "payments/webhook", RATE_LIMITS.paymentWebhook);
+  if (limited) return limited;
   const { provider } = await context.params;
   const body = await request.text();
   const result = await handlePaymentWebhook({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays, Check, Download, FileDown, Package, Printer, ReceiptText, Search, Truck, X,
 } from "lucide-react";
@@ -57,6 +57,13 @@ export default function AdminOrders() {
   const [sort, setSort] = useState<AdminOrderSort>("Newest first");
   const [openId, setOpenId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+
+  // The QR on a printed sheet links to `/admin?order=…`. Read it after mount so the server render
+  // and the first client render agree; the panel opens on the next paint.
+  useEffect(() => {
+    const linked = new URLSearchParams(window.location.search).get("order");
+    if (linked) setOpenId(linked);
+  }, []);
 
   const query = search.trim().toLowerCase();
   const summary = useMemo(() => summarizeOrders(data.orders), [data.orders]);

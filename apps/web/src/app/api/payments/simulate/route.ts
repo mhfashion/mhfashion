@@ -5,10 +5,13 @@ import { NextResponse } from "next/server";
 import { getIntent } from "@/lib/payment-store";
 import { buildSignedCallback, handlePaymentWebhook, isMockAllowed } from "@/lib/payment-webhook";
 import type { PaymentStatus } from "@/lib/payments";
+import { RATE_LIMITS, enforceRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const limited = enforceRateLimit(request, "payments/simulate", RATE_LIMITS.paymentSimulate);
+  if (limited) return limited;
   if (!isMockAllowed(process.env)) {
     return NextResponse.json({ error: "mock_disabled" }, { status: 403 });
   }
