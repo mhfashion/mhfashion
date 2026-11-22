@@ -153,7 +153,7 @@ the owner approves an item before it starts.
 | E16 | Download my design — **done 2026-11-22** | the customer had no copy of the artwork; the press bundle was the only file | `lib/design-export.ts`, `EditorDesignExport`, `EditorToolsBar` | small |
 | E17 | Font library, including Burmese fonts — **approved 2026-11-22; steps 1–4 done 2026-11-22** (manifest picker, download embedding, upload check, list previews); the press bundle waits on E1 | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, R2, design export, print export | medium |
 | E18 | Text effects, round 2 | more looks and finer control for the effect stack | `editor-layers`, `EditorLayerPreview`, `EditorAdjustmentsPanel` | medium |
-| E19 | A real text bend | Arch and Wave only slant the text | `editor-layers`, renderer, bounds, print | medium |
+| E19 | A real text bend — **approach decided 2026-11-22** (outline warp with HarfBuzz) | Arch and Wave only slant the text | `editor-layers`, `editor-fonts`, renderer, bounds, print | medium |
 | E20 | Brushes, round 2 | brush packs, pressure, stabiliser and a size cursor | Brush box, `public/brushes`, `EditorCanvas` | medium |
 | E21 | Tool adjustments, polish | numeric entry, reset, shortcuts, eyedropper, richer Pen and Shape boxes, phone layout | `EditorAdjustmentsPanel`, `EditorToolsBar`, `EditorCanvas` | medium |
 
@@ -538,20 +538,56 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
   (frame differencing, ≤1.1 px), the effect survives save and reload (once E1 lands), Burmese text keeps its
   clusters intact under the effect, and it works at 1440 × 900 and 390 × 844.
 
-### E19 — A real text bend  *(proposed, 2026-11-22)*
+### E19 — A real text bend  *(approach decided 2026-11-22; the owner delegated D11; not yet approved to start)*
 
 - **Fact:** `editorTextPresetMatrix` returns one shear matrix (6° Arch, 4° Wave). The whole block leans; nothing
   curves. The Warp tiles therefore preview a slant.
-- **Proposal:** real bends — Arc up and down, Circle, Wave, Flag, Rise, Bulge and Pinch — each with a Bend
-  amount from −100 to +100. The Plain option stays.
-- **Method (decision D11):** lay the text along a curve in the renderer (an SVG text path for Arc, Circle and
-  Wave, per-cluster placement for Flag and Bulge). The transform box and the print export must follow the
-  bent ink (contract 1).
-- **Burmese:** complex-script text can break when it is split into single characters, so clusters must stay
-  whole; if bending Burmese cannot be made correct on the supported browsers, the bend stays off for text that
-  contains Myanmar until it is verified.
-- Acceptance: each bend paints on the canvas, the tile, the mockup and the print export identically; the box
-  contains the ink; Bend 0 equals Plain; Burmese and Latin text both checked on Web and Phone.
+- **Goal:** real bends — Arc up and down, Circle, Wave, Flag, Rise, Bulge and Pinch — each with a Bend amount
+  from −100 to +100; Plain stays, and Bend 0 equals Plain.
+- **Decided method: outline warp.** The text is shaped, turned into glyph outlines, and every outline point is
+  moved by the bend function. Nothing is left to the browser's text layout.
+  1. **Shape** the text with HarfBuzz (`harfbuzzjs`, MIT, WebAssembly). HarfBuzz documents a dedicated Myanmar
+     shaping model, so stacked consonants, medial signs and vowel order come out as the font intends.
+  2. **Outline:** `font.glyphToPath(glyphId)` gives each glyph's outline as SVG path data.
+  3. **Bend:** each outline point is mapped through the chosen bend; long segments are subdivided first so the
+     edges curve smoothly.
+  4. **Paint:** the result is one path per text layer. The canvas, the Warp tiles, the mockup mirror, the print
+     SVG and the PNG export all paint that same path, so the bend is identical everywhere and needs no font at
+     export time.
+  5. **Source of truth:** the text and the bend settings stay on the layer, and the outline is derived data,
+     cached by (text, font file, size, bend). Plain text keeps today's text renderer, wrapping and caret; the
+     inline editor edits the unbent text and the bend shows live on the canvas.
+- **Why this over the alternatives:**
+
+  | Method | Burmese | Same result on every surface | Effects | Verdict |
+  |---|---|---|---|---|
+  | SVG text path | the browser decides how clusters are placed on a curve; old engines dropped clusters on a path (Mozilla bug 621918) and the W3C gap notes for Indic scripts show vowel signs and conjuncts still behave differently between engines | no: depends on each browser, and the PNG export | stroke effects cut joined glyphs apart | not chosen |
+  | Per-character transforms | splitting a Burmese syllable into characters breaks it; grapheme segmentation does not reliably keep a syllable whole | partly | as above | not chosen |
+  | **Outline warp** | shaped by HarfBuzz, whose Myanmar model is documented | **yes: one path painted everywhere** | effects run on one path; contours can be merged first | **chosen** |
+
+- **Effects and seams:** glyph outlines overlap inside a Burmese syllable, so stroking each glyph separately
+  shows seams (the W3C gap analyses list "text stroke cuts joining glyphs apart" for Indic scripts; Myanmar is
+  not named there, so it is checked on real text). The outline is therefore merged into one shape with
+  `booleanPathData(paths, "merge")` from `lib/editor-path-boolean.ts` before outline, hollow, bevel and extrude
+  effects use it. The layer's transform box follows the bent ink (contract 1).
+- **Needs the font file, and the manifest only lists woff2:** HarfBuzz's documented formats are TrueType and
+  OpenType (`.ttf`, `.ttc`, `.otf`); woff2 is not among them, and `lib/editor-fonts.ts` refuses any file that is not a bucket-relative `.woff2`.
+  Decision D14: each manifest style gets an optional `outline` field naming a `.ttf` or `.otf` kept next to the
+  woff2; the editor keeps loading the woff2 for display, and a font without an `outline` file simply cannot be
+  bent. The same R2 CORS rule covers the second file.
+- **System fonts cannot be bent:** the eight system fonts have no file the editor can read, so the bend is
+  offered for hosted fonts only; the control says so on a system font.
+- **Weight:** the HarfBuzz module is loaded only when a layer first uses a bend; its download size is to be
+  measured before it ships. Shaping and bending a few hundred glyphs is quick, and the cache keeps it off the
+  drawing path.
+- **Burmese specifics:** the line breaker must never split a syllable (break only between clusters), the bend
+  is checked on real Burmese strings such as မြန်မာ, ကြောင်, ပြည်ထောင်စု and သင်္ကြန်, and the same strings are
+  checked with and without effects.
+- Acceptance: each bend paints identically on the canvas, the tile, the mockup, the downloaded PNG and SVG, and
+  the press SVG; the box contains the ink (frame differencing, ≤1.1 px); Bend 0 equals Plain; the Burmese
+  strings above keep every stacked consonant, medial sign and vowel in the right place at several bend amounts;
+  an outline effect on bent Burmese text shows no seams; removing a font's `outline` file turns the bend off for
+  that font instead of failing; checked on Web and Phone, EN and MM.
 
 ### E20 — Brushes, round 2  *(proposed, 2026-11-22)*
 
@@ -559,9 +595,14 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
   contract (`public/brushes/README.md`) exists but nothing reads it yet.
 - **Wire the brush pack:** the Brush box builds its gallery from `brushes.json` (a bad row is skipped, not
   fatal), shelved by `group`, with PNG stamp tips tinted to the brush colour and SVG vector tips.
+- **Where the tips live (owner, 2026-11-22):** the owner finds the tips and puts them in R2, as with the fonts.
+  The `brushes.json` contract in `public/brushes/README.md` then applies to a `brushes/` folder in R2 and its
+  manifest (`brushes/brushes.json`), read from the same public R2 address as the fonts and mockups; the repo
+  folder stays a template. The R2 CORS rule covers it. A `npm run` pre-upload check like the fonts one is
+  worth having.
 - **A starter set:** Ink (pen, marker), Dry media (chalk, charcoal, pencil), Airbrush, Splatter, Texture (grain,
-  sponge) and Shape (stars, leaves). The owner supplies them or chooses open-licence tips; each licence is
-  checked.
+  sponge) and Shape (stars, leaves), found and uploaded by the owner; each licence is checked before a tip is
+  switched on.
 - **Pressure:** the pointer's pressure drives size and opacity when a stylus or pressure-capable screen
   reports it, with an on/off switch per brush; no pressure is read today. Fingers report none, so the feature
   is optional.
@@ -614,10 +655,11 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | D7 | Do the pre-filled header defaults count as chosen for the Buy gate (E12)? | Yes: only Color is empty today, and the gate exists to stop an order missing a value, which a default never does |
 | D8 | Raise the 2000 px upload cap (E14)? | Raise it, or keep the original at order time. At the cap a photo is already about 139 to 167 ppi at the default size, so the warning would fire on nearly every photo; raising it needs the real-device check in E2 |
 | D9 | Fit Type is a priced post attribute but has no box in the editor header. Where does the customer choose it, and is it required before Buy? (Owner, 2026-11-21: Sleeve has not been decided to be added, so it is outside this question.) | Settle this before E1: the order must carry whatever the price depends on |
-| D10 | Zawgyi: **resolved 2026-11-22** — Unicode only, Zawgyi is not supported. Which Burmese fonts: still open (E17; the files live in R2, put there by the shop) | Offer a short list of open-licence Unicode fonts and check each licence |
-| D11 | How is the text bend built? (E19) | An SVG text path for Arc, Circle and Wave; per-cluster placement for Flag and Bulge; keep it off for Burmese until verified |
-| D12 | Who supplies the starter brush tips? (E20) | The owner supplies the ones they own; the rest come from open-licence packs, each licence checked |
+| D10 | Zawgyi: **resolved 2026-11-22** — Unicode only, Zawgyi is not supported. Burmese fonts: **confirmed 2026-11-22** — a short list of open-licence Unicode fonts, each licence checked, files put in R2 by the shop (E17) | — |
+| D11 | How is the text bend built? (E19) | **Resolved 2026-11-22 (owner delegated the choice):** outline warp — HarfBuzz shapes the text, the glyph outlines are bent and painted as one path everywhere; see E19 |
+| D12 | Who supplies the starter brush tips? (E20) | **Resolved 2026-11-22:** the owner finds them and puts them in R2; each licence is checked |
 | D13 | Until the database exists, where does the font list live? (E17) | **Resolved 2026-11-22:** `fonts/manifest.json` in R2 for now; it is expected to move into the database later |
+| D14 | How does the bend get a font file HarfBuzz can read? (E19) | Add an optional `outline` field per manifest style naming a `.ttf` or `.otf` next to the woff2; the loader still serves the woff2. The alternative, decoding woff2 in the browser, adds a decoder to the download |
 
 ### Owner decisions recorded (2026-11-21)
 
@@ -635,6 +677,9 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 9. More text effects, more brushes and better tool adjustments are wanted (owner request, 2026-11-22). E18 to E21 are proposals; none is approved to start.
 10. The font library (E17) is approved. The font files live in R2 and the shop puts them there (owner, 2026-11-22).
 11. Burmese text is Unicode only; Zawgyi is not supported. The font list stays in `fonts/manifest.json` in R2 for now and is expected to move into the database later (owner, 2026-11-22).
+12. The Burmese font approach is confirmed: a short list of open-licence Unicode fonts, licences checked, files put in R2 by the shop (owner, 2026-11-22).
+13. The text bend is built as an outline warp (E19); the owner left the choice to the plan author. Whether D14 (a `.ttf`/`.otf` file beside each woff2) is accepted is still to be confirmed.
+14. The brush tips are found and uploaded to R2 by the owner (E20, D12).
 
 ## 7. Verification and change policy
 
