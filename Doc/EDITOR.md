@@ -152,6 +152,10 @@ design; each one creates a text layer and opens the inline editor.
   fallback stack. A manifest entry without a licence, with a file outside the bucket, or with a shelf the
   editor does not show is skipped and named, never fatal. See `Doc/R2-STORAGE.md` §3.2b for the file
   layout and the manifest shape.
+- **The download carries the font.** "Download my design" inlines the `@font-face` rules of the fonts the
+  artwork uses as base64 into a `<defs><style>` block, because the PNG is rasterised through an `<img>`,
+  which fetches nothing. A font file that cannot be downloaded is left out and the file falls back, so a
+  broken bucket never blocks the export.
 - Effects are a stack, and the box lists them as pictures: each tile paints a sample "Aa" with that one
   effect, and each row of the stack shows its own thumbnail. The kinds are shadow, outline, glow, offset,
   echo, extrude, stripe, blur, gradient, pattern, hollow, bevel and gloss. Each can be added, enabled or

@@ -149,3 +149,16 @@ test("a stored family stack resolves to the family name the picker shows", () =>
   assert.equal(fonts.fontFamilyName("Georgia"), "Georgia");
   assert.equal(fonts.fontFamilyName(""), "");
 });
+
+test("a download inlines the font file, so the SVG needs no network", () => {
+  const [font] = fonts.parseEditorFontManifest({ fonts: [entry({ files: [
+    { weight: 400, style: "normal", file: "fonts/padauk/regular.woff2" },
+    { weight: 700, style: "normal", file: "fonts/padauk/bold.woff2" },
+  ] })] }).fonts;
+  const css = fonts.embeddedFontFaceCss(font, (file) => (file.endsWith("regular.woff2") ? "data:font/woff2;base64,AAAA" : null));
+  assert.match(css, /src:url\('data:font\/woff2;base64,AAAA'\) format\('woff2'\);/);
+  assert.match(css, /font-weight:400;/);
+  assert.ok(!css.includes("bold.woff2"), "a file that did not download is left out");
+  assert.ok(!/https?:/.test(css), "nothing in the download points back at the bucket");
+  assert.equal(fonts.embeddedFontFaceCss(font, () => null), "", "no file, no rule");
+});

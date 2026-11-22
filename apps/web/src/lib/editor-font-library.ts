@@ -6,7 +6,9 @@ import {
   EDITOR_SYSTEM_FONTS,
   FONT_MANIFEST_PATH,
   editorFontNames,
+  embeddedFontFaceCss,
   fontFaceCss,
+  fontFileUrl,
   fontShelfGroups,
   fontsInUse,
   parseEditorFontManifest,
@@ -60,6 +62,42 @@ export function applyEditorFontFaces(fonts: EditorFontEntry[], families: Iterabl
   const css = used.map((font) => fontFaceCss(font, fontLibraryBase())).join("\n");
   style.append(document.createTextNode(`${css}\n`));
   used.forEach((font) => appliedSlugs.add(font.slug));
+}
+
+async function fontFileDataUrl(file: string): Promise<string | null> {
+  try {
+    const response = await fetch(fontFileUrl(fontLibraryBase(), file));
+    if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    let binary = "";
+    for (let index = 0; index < bytes.length; index += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+    }
+    return `data:font/woff2;base64,${btoa(binary)}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The `@font-face` rules for a download, with each file inlined. A PNG is rasterised through an
+ * `<img>`, which fetches nothing, so the font has to travel inside the document or the customer's
+ * file would paint in a fallback. No manifest, no used fonts, or a failed download all return "".
+ */
+export async function designExportFontCss(families: string[]): Promise<string> {
+  const fonts = await loadEditorFontLibrary();
+  const used = fontsInUse(fonts, families);
+  if (!used.length) return "";
+  const files = new Map<string, string | null>();
+  for (const font of used) {
+    for (const file of font.files) {
+      if (!files.has(file.file)) files.set(file.file, await fontFileDataUrl(file.file));
+    }
+  }
+  return used
+    .map((font) => embeddedFontFaceCss(font, (file) => files.get(file) ?? null))
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** The picker's fonts, shelf by shelf, plus the faces the given artwork needs. */

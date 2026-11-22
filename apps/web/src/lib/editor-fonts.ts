@@ -172,20 +172,40 @@ function cssFamilyName(name: string): string {
   return `'${name.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 }
 
-/** `@font-face` rules for one font, split by script so a large Myanmar file downloads only when used. */
-export function fontFaceCss(font: EditorFontEntry, base: string): string {
-  const family = cssFamilyName(font.name);
+function fontFaceBlock(font: EditorFontEntry, src: string, file: EditorFontFile): string {
   const unicodeRange = font.scripts.map((script) => EDITOR_FONT_UNICODE_RANGES[script]).join(", ");
-  return font.files.map((file) => [
+  return [
     "@font-face{",
-    `font-family:${family};`,
+    `font-family:${cssFamilyName(font.name)};`,
     `font-weight:${file.weight};`,
     `font-style:${file.style};`,
     "font-display:swap;",
-    `src:url('${fontFileUrl(base, file.file)}') format('woff2');`,
+    `src:${src};`,
     `unicode-range:${unicodeRange};`,
     "}",
-  ].join("")).join("\n");
+  ].join("");
+}
+
+/** `@font-face` rules for one font, split by script so a large Myanmar file downloads only when used. */
+export function fontFaceCss(font: EditorFontEntry, base: string): string {
+  return font.files
+    .map((file) => fontFaceBlock(font, `url('${fontFileUrl(base, file.file)}') format('woff2')`, file))
+    .join("\n");
+}
+
+/**
+ * The same rules with the file inlined, for a document that cannot load a font of its own: an SVG
+ * painted through an `<img>` has no network and no installed fonts. A file with no data is left out,
+ * so a failed download keeps the rest of the document intact.
+ */
+export function embeddedFontFaceCss(font: EditorFontEntry, dataUrl: (file: string) => string | null): string {
+  return font.files
+    .map((file) => {
+      const url = dataUrl(file.file);
+      return url ? fontFaceBlock(font, `url('${url}') format('woff2')`, file) : "";
+    })
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** The first family of a CSS stack: `'Padauk', sans-serif` → `Padauk`. */

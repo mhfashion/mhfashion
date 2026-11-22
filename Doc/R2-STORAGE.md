@@ -187,8 +187,9 @@ Rules the editor enforces (a bad entry is skipped and named, never fatal — the
 - **CORS:** the font files are fetched by the page, so the bucket needs the site origin in its CORS
   rule (§7). Without it the browser refuses the font and the editor falls back to a system font.
 - **Licence:** confirm commercial print use for each font before `enabled: true`.
-- **Print:** the press SVG either embeds the font (base64 woff2) or converts the text to outlines;
-  a downloaded PNG/SVG must show the chosen font, not a fallback.
+- **Print:** the customer's download embeds the used fonts as base64 `@font-face` rules inside the SVG
+  (`designExportFontCss`), so the PNG and the SVG both paint the chosen font without a network. The press
+  bundle still has to do the same, or convert the text to outlines — open in `Plan/EDITOR_PLAN.md` E17.
 
 ### 3.3 Posts — `posts/<post-slug>.svg`
 

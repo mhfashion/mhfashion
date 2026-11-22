@@ -469,10 +469,17 @@ the owner approves an item before it starts.
   system fonts. Checked again against a manifest served from a local bucket: the picker listed the hosted
   font only (the bad entry was skipped), picking it injected both weights, and the browser downloaded only
   the weight the layer used; the missing font file fell back without an error.
+- **Step 2 done 2026-11-22: the download keeps the font.** "Download my design" now inlines the used fonts
+  as base64 `@font-face` rules in a `<defs><style>` block (`designExportFontCss` → `designExportDocument`),
+  because the 300 dpi PNG is rasterised through an `<img>`, which fetches nothing. A file that cannot be
+  downloaded is left out, so a broken bucket never blocks the export. Verified in Chromium against a local
+  manifest: the downloaded `mh-fashion-t-shirt.svg` held `<defs><style><![CDATA[@font-face{...data:font/woff2;base64,...`
+  with the chosen family; `tests/editor-fonts.test.cjs` and `tests/design-export.test.cjs` cover the rules
+  and the CDATA guard.
 - **Still open:** upload the manifest and the font files to R2 and add the site origin to the bucket's CORS
-  rule; check each licence for commercial print; embed the used fonts (or outline the text) in the design
-  download and the press SVG, which is the E16 dependency; move the font list into the admin dashboard as
-  E15 does; confirm Burmese shaping on a real device.
+  rule; check each licence for commercial print; embed (or outline) the used fonts in the **press bundle**
+  SVG, which is the remaining E16 dependency; move the font list into the admin dashboard as E15 does;
+  confirm Burmese shaping on a real device.
 - Acceptance: Burmese text shows correct shaping (stacked consonants, medial signs, vowel order) on the canvas,
   the mockup and the print sheet, with and without effects; a font switched off still renders on existing
   designs; the editor does not load fonts it does not use; the fonts load from R2 with the CORS rule in place;
@@ -632,8 +639,8 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | `tests/design-draft.test.cjs` | 7 |
 | `tests/editor-align.test.cjs` | 8 |
 | `tests/editor-snap.test.cjs` | 8 |
-| `tests/editor-fonts.test.cjs` | 10 |
+| `tests/editor-fonts.test.cjs` | 11 |
 | `tests/editor-touch.cjs` | browser flow (desktop and phone), including a reload that must restore the draft |
 
-The last full run (`node --test tests/*.test.cjs`) reported 493 passing, 0 failing, against a server on
+The last full run (`node --test tests/*.test.cjs`) reported 495 passing, 0 failing, against a server on
 port 3000.

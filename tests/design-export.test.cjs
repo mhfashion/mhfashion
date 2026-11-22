@@ -20,6 +20,23 @@ test("the downloaded PNG carries the press resolution", () => {
   assert.equal(designExport.pixelsToCentimetres(4500, 150), 76.2);
 });
 
+test("a hosted font travels inside the download", () => {
+  const withFonts = designExport.designExportDocument({
+    inner: '<g><text font-family="Padauk">Hi</text></g>',
+    title: "MH Fashion T-Shirt design",
+    fontCss: "@font-face{font-family:'Padauk';src:url('data:font/woff2;base64,AAAA') format('woff2');}",
+  });
+  assert.match(withFonts, /<title>MH Fashion T-Shirt design<\/title><defs><style type="text\/css"><!\[CDATA\[@font-face/);
+  assert.ok(withFonts.indexOf("<style") < withFonts.indexOf("<g>"), "the faces come before the artwork");
+  assert.ok(withFonts.includes("data:font/woff2;base64,AAAA"));
+  assert.ok(!designExport.designExportDocument({ inner: "", title: "x" }).includes("<style"), "no fonts, no style block");
+  assert.ok(!designExport.designExportDocument({ inner: "", title: "x", fontCss: "   " }).includes("<style"));
+
+  // A stray `]]>` inside the CSS cannot close the CDATA section early.
+  const hostile = designExport.designExportDocument({ inner: "", title: "x", fontCss: "a]]>b" });
+  assert.ok(hostile.includes("<![CDATA[a]]]]><![CDATA[>b]]>"));
+});
+
 test("the exported document is sized in centimetres and holds only the artwork", () => {
   const svg = designExport.designExportDocument({ inner: "<g><rect width=\"10\" height=\"10\" /></g>", title: "MH Fashion T-Shirt design" });
   assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" width="38\.1cm" height="45\.72cm" viewBox="0 0 1000 1200">/);

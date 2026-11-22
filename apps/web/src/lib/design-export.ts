@@ -45,13 +45,20 @@ export function designExportDocument({
   title,
   widthCm = PRINT_AREA_WIDTH_CM,
   heightCm = PRINT_AREA_HEIGHT_CM,
+  fontCss = "",
 }: {
   inner: string;
   title: string;
   widthCm?: number;
   heightCm?: number;
+  /** `@font-face` rules with the files inlined. The PNG is rasterised through an `<img>`, which
+   * cannot fetch a font, so without this a hosted font would fall back inside the download. */
+  fontCss?: string;
 }) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${widthCm}cm" height="${heightCm}cm" viewBox="0 0 ${ARTWORK_VIEWBOX.width} ${ARTWORK_VIEWBOX.height}"><title>${escapeXml(title)}</title>${inner}</svg>`;
+  const fonts = fontCss.trim()
+    ? `<defs><style type="text/css"><![CDATA[${fontCss.replaceAll("]]>", "]]]]><![CDATA[>")}]]></style></defs>`
+    : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${widthCm}cm" height="${heightCm}cm" viewBox="0 0 ${ARTWORK_VIEWBOX.width} ${ARTWORK_VIEWBOX.height}"><title>${escapeXml(title)}</title>${fonts}${inner}</svg>`;
 }
 
 export function svgDataUrl(svg: string) {

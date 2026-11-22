@@ -365,7 +365,8 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `parseEditorFontManifest` skips an entry (naming it in `skipped`) when the slug is not lowercase-dashed, the name is missing or duplicated, the shelf is unknown, no file is a bucket-relative `.woff2`, or there is no licence.
 - Only fonts used by a text layer are fetched: `fontsInUse()` matches the first family of the CSS stack, ignores disabled fonts (their layers fall back to the stack) and `applyEditorFontFaces` never injects the same slug twice.
 - `unicode-range` splits Latin and Myanmar, so a large Myanmar file downloads only for Myanmar text.
-- Still open: the R2 upload + CORS rule, licence checks, font embedding in the design download / press SVG, and the admin-driven list.
+- The download embeds the used fonts: `designExportFontCss()` fetches each used woff2 and `designExportDocument({ fontCss })` puts the rules in `<defs><style><![CDATA[...]]></style></defs>` before the artwork. The PNG is rasterised through an `<img>`, which cannot fetch a font, so without this the customer's file would paint a fallback. A file that fails to download is skipped, never fatal.
+- Still open: the R2 upload + CORS rule, licence checks, embedding (or outlining) in the press bundle SVG, and the admin-driven list.
 
 ## E4 / E6 helpers are groundwork only (plan decision)
 - `apps/web/src/lib/editor-align.ts` and `editor-snap.ts` are pure and unit-tested, but **nothing calls them yet**. The owner decided (2026-11-21) that align and snap target the per-mockup design areas, and both items wait for that discussion. Do not wire them to `ARTWORK_PRINT_AREA` or any panel control before that decision; it was wired once and reverted for exactly this reason.

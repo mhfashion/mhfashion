@@ -102,7 +102,7 @@ import {
 } from "@/lib/editor-upload";
 import type { EditorProduct } from "@/lib/editor-product";
 import { designLayersHaveArtwork, readDesignDraftSnapshot, saveDesignDraft } from "@/lib/design-draft";
-import { useEditorFontLibrary } from "@/lib/editor-font-library";
+import { designExportFontCss, useEditorFontLibrary } from "@/lib/editor-font-library";
 
 // The shared artwork space is 1000 x 1200 units; new text starts centred on it.
 const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
@@ -718,7 +718,8 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       setToolNotice("Add something to the canvas before downloading");
       return;
     }
-    const document = designExportDocument({ inner, title: `MH Fashion ${product} design` });
+    const fontCss = await designExportFontCss(textFontFamilies);
+    const document = designExportDocument({ inner, title: `MH Fashion ${product} design`, fontCss });
     const name = `mh-fashion-${product}`;
     const outcome: DesignExportOutcome = format === "png" ? await downloadDesignPng(document, name) : downloadDesignSvg(document, name);
     setToolNotice(outcome === "downloaded"
