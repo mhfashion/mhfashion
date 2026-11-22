@@ -6,6 +6,7 @@ const ts = require("typescript");
 
 const { loadModule } = require("./helpers/load-ts-module.cjs");
 
+
 const lib = loadModule("apps/web/src/lib/editor-layers.ts");
 const panel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
 const preview = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
@@ -144,4 +145,10 @@ test("a photo frame is painted inside the image box", () => {
   assert.match(preview, /<rect\s+x=\{image\.x \+ frameWidth \/ 2\}/);
   assert.match(preview, /data-editor-image-border="true"/);
   assert.match(preview, /data-editor-image-frame=/);
+});
+
+test("the text preset control offers only presets that paint", () => {
+  const tiles = panel.match(/\[\["none", "Plain"\], \["arch", "Arch"\], \["wave", "Wave"\]\]/);
+  assert.ok(tiles, "the control lists exactly Plain, Arch and Wave");
+  assert.doesNotMatch(panel, /\["circle",/, "a circle tile that paints nothing is not offered");
 });

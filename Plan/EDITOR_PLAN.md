@@ -126,7 +126,7 @@ the owner approves an item before it starts.
 |---|---|---|---|---|
 | E1 | Save the design, then hand it to the order | Save and Buy are dead buttons, the browser draft is never restored, and no order carries the artwork | `EditorHeaderBar2`, `EditorCanvas`, `lib/design-draft.ts`, the order payload | large |
 | E2 | Real-phone QA, and fix the `editor-touch.cjs` Edit-sidebar crash | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
-| E3 | Settle the `circle` preset | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
+| E3 | Settle the `circle` preset — **done 2026-11-22** | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
 | E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
 | E5 | Flip horizontal and vertical — **done 2026-11-22** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar` | medium |
 | E6 | Snap guides while dragging | free placement drifts off the print area | `EditorCanvas` drag paths | medium |
@@ -148,6 +148,16 @@ the owner approves an item before it starts.
 - Acceptance: reload keeps the artwork; a placed order shows the design in the admin order view with the
   print sheet and mockups; a browser with storage disabled shows a clear message instead of losing work.
 - Blocked on the decision in §6 D1 (where the design lives) and on the payment/order work.
+
+### Built: E3 the `circle` text preset (2026-11-22)
+
+- Settled by removal from the control: the Adjustment box offers Plain / Arch / Wave, the three presets
+  that paint. A circle baseline would need a per-glyph placement pass in every renderer (canvas, inline
+  editor, mockup, print sheet) for a look the catalogue does not ask for.
+- `textTransform: "circle"` stays in the type and in `editorTextPresetMatrix` as a **legacy stored value**:
+  artwork saved with it renders as plain text with the ink box unchanged, instead of breaking.
+- Verified: `tests/editor-layers.test.cjs` (a circle layer renders plain, its box equals the plain box) and
+  `tests/editor-arrange.test.cjs` (the tile list is exactly Plain / Arch / Wave).
 
 ### E2 — Phone QA
 

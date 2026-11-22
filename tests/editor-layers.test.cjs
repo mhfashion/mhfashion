@@ -742,6 +742,10 @@ test("text preset transforms pivot on the text anchor and the box follows the pr
   const wave = editorTextCanvasBounds({ ...single, textTransform: "wave" });
   assert.ok(wave.width > plain.width - 0.01 && wave.x <= plain.x + 0.01, "the wave shear widens the box without moving its left edge left");
   assert.match(editorTextPresetTransform({ ...single, textTransform: "wave" }), /^matrix\(/, "the renderer receives the same matrix");
+
+  // `circle` is a legacy stored value that never painted: it must render plain, not break the layer.
+  assert.equal(editorTextPresetTransform({ ...single, textTransform: "circle" }), undefined, "a legacy circle layer renders plain");
+  assert.deepEqual(editorTextCanvasBounds({ ...single, textTransform: "circle" }), plain, "and its box stays on the ink");
 });
 
 test("the transform box grows to hold every painted text effect and decoration", () => {
