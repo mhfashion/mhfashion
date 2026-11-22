@@ -1024,6 +1024,11 @@ proposal, not an approved order.
    event once; `POST /api/payments/intent` creates the intent and names the missing keys instead of
    pretending a provider ran; `GET /api/payments/status/<ref>` reports it. `confirmPayment` is gone —
    the checkout calls the intent, then reads the status the verified callback left behind.
+   **Checkout form fixed 2026-11-22:** an empty form now reports every missing field in one pass;
+   the terms gate used to short-circuit the validation, so the customer ticked the box only to learn
+   the name, phone and address were blank too. The whole path (seeded cart → order `#MH1101` with a
+   `checkoutKey` → Pending Payment → cart emptied → account history) is driven by
+   `tests/storefront-e2e.cjs` without a database.
    **Still open:** the provider accounts themselves (the keys above), the delivery fee quote, and
    moving intents from memory to Supabase. `PAYMENTS_ALLOW_MOCK=0` turns the demo provider off.
 

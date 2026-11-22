@@ -348,6 +348,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   switches to a Cloudflare KV counter that survives an isolate replacement; `enforceRateLimit` is
   async, so every route must `await` it before it reads the body.
 
+## Checkout form (`apps/web/src/components/CheckoutClient.tsx`)
+- `submit()` validates the whole draft (`validateCheckout`) **before** the terms gate, so an empty form
+  lists every missing field plus "Accept the terms to place the order." in one pass. Short-circuiting on
+  the terms checkbox made the customer tick it only to discover the name, phone and address were blank.
+- `tests/storefront-e2e.cjs` asserts the six issues on an empty form before it fills the form, then
+  keeps the full cart -> order -> account path.
+
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
   `tests/canvas-shell.test.cjs` fails if they come back.

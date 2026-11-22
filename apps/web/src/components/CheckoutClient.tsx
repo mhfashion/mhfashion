@@ -8,6 +8,7 @@ import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import type { AdminOrder } from "@/lib/admin-demo-data";
 import {
   CHECKOUT_CITIES, CHECKOUT_PAYMENTS, EMPTY_ADDRESS, applyPaymentStatus, checkoutSubtotalKs, placeOrder,
+  validateCheckout,
   providerIdFor, type CheckoutAddress, type CheckoutDraft, type CheckoutPayment,
 } from "@/lib/checkout";
 import { addressSummary, lastOrderAddress, readSavedAddress, saveDeliveryAddress } from "@/lib/delivery-address";
@@ -73,13 +74,6 @@ export default function CheckoutClient() {
 
   function submit() {
     if (submittingRef.current) return;
-    if (!accepted) {
-      setIssues(["Accept the terms to place the order."]);
-      return;
-    }
-    submittingRef.current = true;
-    setSubmitting(true);
-    setIssues([]);
     const draft: CheckoutDraft = {
       idempotencyKey,
       items,
@@ -88,6 +82,15 @@ export default function CheckoutClient() {
       note,
       placedAt: new Date().toISOString(),
     };
+    // The terms are checked last so an empty form still lists every missing field in one pass,
+    // instead of making the customer tick the box only to learn the address is blank too.
+    if (!accepted) {
+      setIssues([...validateCheckout(draft), "Accept the terms to place the order."]);
+      return;
+    }
+    submittingRef.current = true;
+    setSubmitting(true);
+    setIssues([]);
     const outcome: { order: AdminOrder | null; created: boolean; issues: string[] } = { order: null, created: false, issues: [] };
     updateAdminData((current) => {
       const result = placeOrder(current, draft);

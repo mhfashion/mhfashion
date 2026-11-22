@@ -894,6 +894,9 @@ on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise).
 | Layer rename to `""` or whitespace | keeps the old name (`updateEditorLayer` trims and falls back) |
 | Upload a renamed non-image (`.heic`, `.png` with text inside) | no crash; the notice now names the file and suggests JPG/PNG/WebP (it used to show only Chrome's "The source image could not be decoded.") |
 | Upload a real 8×8 PNG | image layer added, "Upload reduced to 762 B and added to the canvas." |
+| Checkout with a seeded cart (no Supabase needed) | line + total 42,000 Ks, order `#MH1101` written with a `checkoutKey`, stage Pending Payment, cart emptied, no console error |
+| Checkout submit on an empty form | used to report only the terms; now lists name, phone, address, township, city and terms together |
+| Pen / shape / eraser with a single click (no drag) | no junk layer, no console error |
 | Delivery fee on checkout | by design the fee is quoted later; "Total today" is the subtotal and the panel says so |
 
 The shop catalogue and the checkout cannot be exercised in this workspace: products come from

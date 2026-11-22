@@ -255,6 +255,16 @@ async function main() {
     await seedCart();
     await resetCheckout();
     await visit("/checkout", "[data-checkout-line]");
+    // An empty form must name every missing field in one pass, not just the first one it notices.
+    const emptyIssues = await evaluate(async () => {
+      document.querySelector("[data-checkout-submit]")?.click();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return [...document.querySelectorAll("[role=alert] p")].map((node) => node.innerText.trim());
+    });
+    assert.equal(emptyIssues.length, 6, `an empty form lists every problem at once: ${JSON.stringify(emptyIssues)}`);
+    for (const [label, pattern] of [["name", /recipient's name/], ["phone", /phone number/], ["address", /delivery address/], ["township", /township/i], ["city", /city or region/i], ["terms", /Accept the terms/]]) {
+      assert.ok(emptyIssues.some((issue) => pattern.test(issue)), `the empty form reports the missing ${label}: ${JSON.stringify(emptyIssues)}`);
+    }
     const filled = await fillCheckout();
     assert.ok(Object.values(filled).every(Boolean), `checkout fields: ${JSON.stringify(filled)}`);
     await pause(400);
