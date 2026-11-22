@@ -2,18 +2,10 @@ const assert = require("node:assert/strict");
 const { existsSync, readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { loadModule } = require("./helpers/load-ts-module.cjs");
 const ts = require("typescript");
 
-function loadModule(relativePath) {
-  const sourcePath = path.join(__dirname, "..", relativePath);
-  const compiled = ts.transpileModule(readFileSync(sourcePath, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-    fileName: sourcePath,
-  }).outputText;
-  const loaded = { exports: {} };
-  new Function("module", "exports", compiled)(loaded, loaded.exports);
-  return loaded.exports;
-}
+
 
 const admin = loadModule("apps/web/src/lib/admin-demo-data.ts");
 const assets = loadModule("apps/web/src/lib/post-assets.ts");

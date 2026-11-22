@@ -363,8 +363,8 @@ async function main() {
     assert.equal(colorMenu.background, `rgb(${colorMenu.accent})`, "Color dropdown uses the app's green accent");
     assert.deepEqual(
       colorMenu.options.map((option) => option.label),
-      ["Color White", "Color Black", "Color Navy", "Color Red", "Color Blue", "Color Green", "Color Yellow", "Color Grey"],
-      "Color dropdown lists real garment colours",
+      ["Color White", "Color Black", "Color Navy", "Color Red", "Color Blue", "Color Green", "Color Yellow", "Color Grey", "Color Sand"],
+      "Color dropdown lists real garment colours, including the Sand the price book sells",
     );
     assert.equal(colorMenu.options[0].selected, "true", "The current White choice is marked selected");
     assert.ok(colorMenu.options.every((option) => option.radius >= 8), "Color dropdown choices are also rounded");

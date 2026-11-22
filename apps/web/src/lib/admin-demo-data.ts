@@ -5,6 +5,16 @@
 // RLS and server-side role checks replace the demo session. Every module reads and writes this
 // one store so the dashboard, orders, stock and reports cannot disagree with each other.
 
+import {
+  COLOR_LABELS,
+  FABRIC_TYPE_OPTIONS,
+  GSM_OPTIONS,
+  KNIT_STRUCTURE_OPTIONS,
+  MH_CUTTINGS_OPTIONS,
+  PRINT_METHOD_OPTIONS,
+  SIZE_OPTIONS,
+} from "@/lib/editor-attributes";
+
 export const ADMIN_DEMO_DATA_KEY = "mh-fashion-admin-demo-data-v1";
 
 export type AdminModuleId =
@@ -991,16 +1001,19 @@ export type AdminTshirtPostAttribute = {
 
 // Labels follow Plan §4.1 (Print Method / Fabric Type / Knit Structure / MH Cuttings). The
 // stored keys are unchanged so existing posts keep their combinations.
+// The price book's vocabulary comes from `editor-attributes`, the module the editor header reads,
+// so a size or colour offered in one place is never missing in the other (plan E15, interim until
+// Attribute Management drives both from the database). Fit and Sleeve are price-book only.
 export const TSHIRT_POST_ATTRIBUTES: AdminTshirtPostAttribute[] = [
-  { key: "size", label: "Size", options: ["S", "M", "L", "XL", "2XL"] },
-  { key: "material", label: "Fabric Type", options: ["Combed Cotton", "Compact Combed Cotton", "Polyester"] },
-  { key: "knit", label: "Knit Structure", options: ["Single Jersey", "Interlock", "Air Layer"] },
+  { key: "size", label: "Size", options: [...SIZE_OPTIONS] },
+  { key: "material", label: "Fabric Type", options: [...FABRIC_TYPE_OPTIONS] },
+  { key: "knit", label: "Knit Structure", options: [...KNIT_STRUCTURE_OPTIONS] },
   { key: "fit", label: "Fit Type", options: ["Regular", "Oversized", "Slim"] },
-  { key: "color", label: "Color", options: ["Black", "White", "Green", "Sand", "Red", "Navy"] },
+  { key: "color", label: "Color", options: [...COLOR_LABELS] },
   { key: "sleeve", label: "Sleeve", options: ["Short Sleeve", "Long Sleeve"] },
-  { key: "gsm", label: "GSM", options: ["160 GSM", "180 GSM", "200 GSM", "240 GSM"] },
-  { key: "cutting", label: "MH Cuttings", options: ["Crew Neck", "V-Neck", "Polo Neck", "Round Neck"] },
-  { key: "print", label: "Print Method", options: ["DTF", "Sublimation"] },
+  { key: "gsm", label: "GSM", options: [...GSM_OPTIONS] },
+  { key: "cutting", label: "MH Cuttings", options: [...MH_CUTTINGS_OPTIONS] },
+  { key: "print", label: "Print Method", options: [...PRINT_METHOD_OPTIONS] },
 ];
 
 /** Built-in chain used for new demo data and as the reset target. */

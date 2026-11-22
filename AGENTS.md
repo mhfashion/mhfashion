@@ -278,6 +278,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Typing is verified end to end with CDP: `Input.insertText` for text and `Input.dispatchKeyEvent` with `text: "\r"` for Enter (a keyDown without `text` does not insert a newline).
 - Beware pixel probes that scan for "dark" or "lime" pixels: the docked sidebars (uniform `#0c0c0c`) and the t-shirt mockup both produce large false positives. Hide `[data-dock-side]` elements, or diff a frame with the layer hidden.
 
+## Header Bar 2 vocabulary (`apps/web/src/lib/editor-attributes.ts`)
+- That module is the single source for every list the editor header offers: print method, fabric, knit,
+  MH cuttings, GSM, size and colours (`{ value, label, hex }`, `COLOR_LABELS` for the price book).
+  `TSHIRT_POST_ATTRIBUTES` in `lib/admin-demo-data.ts` is built from it, so the header and the admin pricing
+  table cannot drift apart. Do not add a private `SIZE_OPTIONS` / `COLOR_OPTIONS` / `GSM_OPTIONS` copy in
+  `EditorHeaderBar2.tsx`; `tests/canvas-shell.test.cjs` fails on one.
+- The price tables (`EDITOR_SIZE_PRICE_KS`, `EDITOR_GSM_PRICE_KS`) must key exactly the offered options —
+  `tests/editor-attributes.test.cjs` asserts both directions.
+- `tests/helpers/load-ts-module.cjs` resolves `@/lib/...` imports and loads sibling TS files recursively, so
+  a lib that imports another lib (admin-demo-data → editor-attributes, editor-path-boolean → editor-layers)
+  loads in tests without extra wiring.
+
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
   `tests/canvas-shell.test.cjs` fails if they come back.

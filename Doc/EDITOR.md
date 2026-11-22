@@ -9,7 +9,9 @@ does not do is listed in `Plan/EDITOR_PLAN.md` §4, not here.
 `app/create/page.tsx` renders three stacked parts inside one screen-height column:
 
 1. the site `Header`,
-2. `EditorHeaderBar2` — product, GSM, colour, size, save, buy and the live price,
+2. `EditorHeaderBar2` — product, print method, fabric, knit, MH cuttings, GSM, colour, size, save, buy and
+   the live price. Every list it offers comes from `lib/editor-attributes.ts`, the same lists the admin price
+   book is built from,
 3. `EditorCanvas` (the file name in the code) — everything else: the canvas, the mockups, the tool bar,
    the Edit sidebar, the Layers box and the Adjustment box.
 

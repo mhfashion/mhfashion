@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
-import { DEFAULT_EDITOR_GSM, type EditorProduct } from "@/lib/editor-product";
+import type { EditorProduct } from "@/lib/editor-product";
 import { calculateEditorPriceKs } from "@/lib/editor-price";
 import {
+  COLOR_OPTIONS,
   DEFAULT_EDITOR_ATTRIBUTES,
+  GSM_OPTIONS,
   MH_CUTTINGS_OPTIONS,
   PRINT_METHOD_OPTIONS,
+  SIZE_OPTIONS,
   fabricTypeOptions,
   knitStructureOptions,
   narrowEditorAttributes,
@@ -17,20 +20,6 @@ import {
 
 const PRODUCT_OPTIONS = ["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"] as const;
 const FUTURE_PRODUCTS = ["Hoodie", "Cup", "Kids", "Bag"] as const;
-const GSM_OPTIONS = [DEFAULT_EDITOR_GSM, "180 GSM", "200 GSM", "240 GSM"] as const;
-const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "2XL", "3XL"] as const;
-// Real garment colours, so the swatch is the colour the customer actually
-// picks rather than a theme token.
-const COLOR_OPTIONS = [
-  { value: "white", label: "White", hex: "#ffffff" },
-  { value: "black", label: "Black", hex: "#111111" },
-  { value: "navy", label: "Navy", hex: "#1e3a5f" },
-  { value: "red", label: "Red", hex: "#dc2626" },
-  { value: "blue", label: "Blue", hex: "#2563eb" },
-  { value: "green", label: "Green", hex: "#16a34a" },
-  { value: "yellow", label: "Yellow", hex: "#facc15" },
-  { value: "grey", label: "Grey", hex: "#6b7280" },
-] as const;
 
 // One shared shape for every Header Bar 2 control so the Product, Print Method,
 // Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size, Save and Buy boxes

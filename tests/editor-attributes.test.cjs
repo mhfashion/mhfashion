@@ -2,21 +2,11 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-const ts = require("typescript");
-
-function loadModule(relativePath) {
-  const sourcePath = path.join(__dirname, "..", relativePath);
-  const compiled = ts.transpileModule(readFileSync(sourcePath, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-    fileName: sourcePath,
-  }).outputText;
-  const loaded = { exports: {} };
-  new Function("module", "exports", compiled)(loaded, loaded.exports);
-  return loaded.exports;
-}
+const { loadModule } = require("./helpers/load-ts-module.cjs");
 
 const chain = loadModule("apps/web/src/lib/editor-attributes.ts");
 const admin = loadModule("apps/web/src/lib/admin-demo-data.ts");
+const price = loadModule("apps/web/src/lib/editor-price.ts");
 
 test("the chain offers the §4.1 attribute names", () => {
   assert.deepEqual([...chain.PRINT_METHOD_OPTIONS], ["DTF", "Sublimation"]);
@@ -143,4 +133,39 @@ test("the Google Sheet price import is gone", () => {
   const data = readFileSync(path.join(root, "lib/admin-demo-data.ts"), "utf8");
   assert.doesNotMatch(data, /SheetPriceRow/);
   assert.doesNotMatch(data, /mergeSheetPriceRows/);
+});
+
+const seedOptions = (key) => admin.TSHIRT_POST_ATTRIBUTES.find((attribute) => attribute.key === key)?.options ?? [];
+
+test("the admin price book and the editor header read one vocabulary", () => {
+  assert.deepEqual(seedOptions("size"), [...chain.SIZE_OPTIONS]);
+  assert.deepEqual(seedOptions("gsm"), [...chain.GSM_OPTIONS]);
+  assert.deepEqual(seedOptions("color"), [...chain.COLOR_LABELS]);
+  assert.deepEqual(seedOptions("material"), [...chain.FABRIC_TYPE_OPTIONS]);
+  assert.deepEqual(seedOptions("knit"), [...chain.KNIT_STRUCTURE_OPTIONS]);
+  assert.deepEqual(seedOptions("cutting"), [...chain.MH_CUTTINGS_OPTIONS]);
+  assert.deepEqual(seedOptions("print"), [...chain.PRINT_METHOD_OPTIONS]);
+});
+
+test("every colour the header offers has a label and a real swatch", () => {
+  for (const color of chain.COLOR_OPTIONS) {
+    assert.match(color.value, /^[a-z]+$/, `${color.label} stores a lowercase value`);
+    assert.match(color.hex, /^#[0-9a-f]{6}$/, `${color.label} has a hex swatch`);
+  }
+  assert.equal(new Set(chain.COLOR_OPTIONS.map((color) => color.value)).size, chain.COLOR_OPTIONS.length);
+  assert.equal(chain.COLOR_OPTIONS[0].value, "white", "the editor opens on White");
+  assert.deepEqual(chain.COLOR_LABELS, chain.COLOR_OPTIONS.map((color) => color.label));
+});
+
+test("the price table prices exactly the sizes and GSM values on offer", () => {
+  assert.deepEqual(Object.keys(price.EDITOR_SIZE_PRICE_KS), [...chain.SIZE_OPTIONS], "no price for a size the header cannot choose, none missing");
+  assert.deepEqual(Object.keys(price.EDITOR_GSM_PRICE_KS), [...chain.GSM_OPTIONS]);
+});
+
+test("the default selection is valid under the cascade and priced", () => {
+  const defaults = chain.DEFAULT_EDITOR_ATTRIBUTES;
+  assert.deepEqual(chain.narrowEditorAttributes(defaults), defaults, "the defaults survive the cascade untouched");
+  const gsm = chain.GSM_OPTIONS[0];
+  const priceKs = price.calculateEditorPriceKs({ product: "T-Shirt", gsm, size: chain.SIZE_OPTIONS[0] });
+  assert.equal(priceKs, price.EDITOR_BASE_PRICE_KS["T-Shirt"], "the cheapest size and GSM cost the base price");
 });

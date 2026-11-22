@@ -3,6 +3,7 @@ const path = require("node:path");
 const ts = require("typescript");
 
 const ROOT = path.join(__dirname, "..", "..");
+const SRC = path.join(ROOT, "apps", "web", "src");
 const cache = new Map();
 
 function compile(filePath) {
@@ -25,6 +26,7 @@ function loadFile(filePath) {
   cache.set(resolved, module);
   const directory = path.dirname(resolved);
   const shimRequire = (id) => {
+    if (id.startsWith("@/")) return loadFile(path.join(SRC, `${id.slice(2)}.ts`));
     if (id.startsWith(".")) return loadFile(path.resolve(directory, id.endsWith(".ts") ? id : `${id}.ts`));
     return require(id);
   };

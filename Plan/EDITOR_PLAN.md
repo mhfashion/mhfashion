@@ -138,7 +138,7 @@ the owner approves an item before it starts.
 | E12 | Required selections before Buy | an order must carry every choice; Save stays open | `EditorHeaderBar2`, new gate helper, order payload | small |
 | E13 | Keyboard Undo / Redo — **done 2026-11-22** | desktop users expect Ctrl+Z; only the tool-bar buttons exist | `lib/editor-shortcuts.ts`, `EditorCanvas` | small |
 | E14 | Image resolution warning — **done 2026-11-22** | a photo enlarged past what the press can print sharply is only discovered after printing | `lib/editor-image-ppi.ts`, `editor-layers`, `EditorCanvas`, Layers box, Adjustment box | small |
-| E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium |
+| E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium — **step 1 done 2026-11-22** (one vocabulary); the admin-driven chain still waits for the database |
 
 ### E1 — Save and order hand-off
 
@@ -316,6 +316,24 @@ the owner approves an item before it starts.
   a reload; removing one hides it from new choices and leaves existing orders readable; a changed narrowing
   rule changes what the header offers; a unit test covers the fall-back to the first valid option when a
   choice stops being offered; checked on Web and Phone.
+
+### Built: E15 step 1 — one vocabulary for the header and the price book (2026-11-22)
+
+- `lib/editor-attributes.ts` now holds every list the header offers: print method, fabric, knit, MH
+  cuttings, GSM (`160/180/200/240`), size (`XS`–`3XL`) and the colours, each with its label and swatch.
+  `COLOR_LABELS` is the label list the price book keys on.
+- `TSHIRT_POST_ATTRIBUTES` in `lib/admin-demo-data.ts` is built from those lists instead of repeating them,
+  so the editor header and the admin pricing table cannot offer different sizes or colours again. This is
+  the interim step the plan asks for while the managed chain waits for the database; the admin still cannot
+  *change* the list, only read the same one.
+- What drifted and is now settled: the price book offered `S`–`2XL` and six colours while the header
+  offered `XS`–`3XL` and eight. The union is the shared list — sizes `XS`–`3XL`, colours White, Black, Navy,
+  Red, Blue, Green, Yellow, Grey, Sand (Sand is a real garment colour the price book already sold). The
+  header's price table already covered every size, so no price changed.
+- Verified: `tests/editor-attributes.test.cjs` pins the admin seed chain to the shared lists and checks the
+  size/GSM price tables cover exactly what is offered; `tests/canvas-shell.test.cjs` fails if the header
+  grows a private copy again; the phone and desktop header checks in `tests/editor-touch.cjs` pass with the
+  nine-colour menu.
 
 ### Built: E13 keyboard Undo / Redo (2026-11-22)
 

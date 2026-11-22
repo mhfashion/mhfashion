@@ -2,26 +2,7 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-const ts = require("typescript");
-
-const ROOT = path.join(__dirname, "..");
-
-function loadModule(relativePath, cache = new Map()) {
-  const sourcePath = path.join(ROOT, relativePath);
-  if (cache.has(sourcePath)) return cache.get(sourcePath);
-  const compiled = ts.transpileModule(readFileSync(sourcePath, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-    fileName: sourcePath,
-  }).outputText;
-  const loaded = { exports: {} };
-  cache.set(sourcePath, loaded.exports);
-  const localRequire = (specifier) => {
-    if (!specifier.startsWith(".")) throw new Error(`unexpected import: ${specifier}`);
-    return loadModule(path.relative(ROOT, path.join(path.dirname(sourcePath), `${specifier}.ts`)), cache);
-  };
-  new Function("module", "exports", "require", compiled)(loaded, loaded.exports, localRequire);
-  return loaded.exports;
-}
+const { loadModule } = require("./helpers/load-ts-module.cjs");
 
 const admin = loadModule("apps/web/src/lib/admin-demo-data.ts");
 const delivery = loadModule("apps/web/src/lib/delivery.ts");

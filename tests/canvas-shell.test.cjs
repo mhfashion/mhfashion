@@ -14,6 +14,7 @@ const createRoute = readFileSync(path.join(__dirname, "../apps/web/src/app/creat
 const mobileNav = readFileSync(path.join(__dirname, "../apps/web/src/components/MobileBottomNav.tsx"), "utf8");
 const header = readFileSync(path.join(__dirname, "../apps/web/src/components/Header.tsx"), "utf8");
 const headerBar2 = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorHeaderBar2.tsx"), "utf8");
+const attributesLib = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-attributes.ts"), "utf8");
 const productGsmSelect = headerBar2.split("function PendingSelect")[0] ?? "";
 const layersPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayersPanel.tsx"), "utf8");
 const adjustmentsPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
@@ -1022,10 +1023,19 @@ test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and 
   assert.match(headerBar2, /h-11 w-full/);
   assert.match(headerBar2, /const PRODUCT_OPTIONS = \["T-Shirt", "Phone", "Hoodie", "Cup", "Kids", "Bag"\]/);
   assert.match(headerBar2, /const FUTURE_PRODUCTS = \["Hoodie", "Cup", "Kids", "Bag"\]/);
-  assert.match(headerBar2, /const GSM_OPTIONS = \[DEFAULT_EDITOR_GSM, "180 GSM", "200 GSM", "240 GSM"\]/);
-  assert.match(headerBar2, /const SIZE_OPTIONS = \["XS", "S", "M", "L", "XL", "2XL", "3XL"\]/);
-  assert.match(headerBar2, /const COLOR_OPTIONS = \[[\s\S]*?"white"[\s\S]*?"black"[\s\S]*?"navy"[\s\S]*?"grey"/);
-  assert.match(headerBar2, /hex: "#ffffff"[\s\S]*?hex: "#111111"/, "Colour options carry real hex values");
+  // The GSM, Size and Color vocabulary lives in `editor-attributes`, so the admin price book and
+  // the header cannot offer different options.
+  const sharedImport = headerBar2.match(/import \{[\s\S]*?\} from "@\/lib\/editor-attributes";/)?.[0] ?? "";
+  for (const name of ["GSM_OPTIONS", "SIZE_OPTIONS", "COLOR_OPTIONS"]) {
+    assert.ok(sharedImport.includes(name), `${name} comes from the shared vocabulary`);
+  }
+  assert.doesNotMatch(headerBar2, /const (GSM|SIZE|COLOR)_OPTIONS =/, "no private copies of the shared lists");
+  assert.match(headerBar2, /<SelectBox label="GSM" value=\{gsm\} options=\{GSM_OPTIONS\}/);
+  assert.match(attributesLib, /export const GSM_OPTIONS = \["160 GSM", "180 GSM", "200 GSM", "240 GSM"\]/);
+  assert.match(attributesLib, /export const SIZE_OPTIONS = \["XS", "S", "M", "L", "XL", "2XL", "3XL"\]/);
+  assert.match(attributesLib, /value: "white", label: "White", hex: "#ffffff"/);
+  assert.match(attributesLib, /value: "black", label: "Black", hex: "#111111"/);
+  assert.match(attributesLib, /value: "sand", label: "Sand"/, "Sand is a real garment colour the price book sells");
   // Every box (fields and actions) shares one compact shape definition.
   assert.match(headerBar2, /const FIELD_BOX_SHAPE =[\s\S]*?w-\[7rem\][\s\S]*?rounded-full[\s\S]*?text-\[9px\]/);
   assert.match(headerBar2, /const FIELD_BOX = `\$\{FIELD_BOX_SHAPE\}[\s\S]*?border-accent bg-accent[\s\S]*?text-accent-foreground/);
@@ -1096,7 +1106,7 @@ test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and 
   assert.match(source, /border-border bg-bg px-2/);
   assert.match(headerBar2, /import \{ useEffect, useRef, useState \} from "react"/);
   assert.match(headerBar2, /import \{ createPortal \} from "react-dom"/);
-  assert.match(headerBar2, /import \{ DEFAULT_EDITOR_GSM, type EditorProduct \} from "@\/lib\/editor-product"/);
+  assert.match(headerBar2, /import type \{ EditorProduct \} from "@\/lib\/editor-product"/);
   assert.match(headerBar2, /import \{ calculateEditorPriceKs \} from "@\/lib\/editor-price"/);
 });
 
