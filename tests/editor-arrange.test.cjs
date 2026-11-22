@@ -87,12 +87,15 @@ test("aligning a layer puts it flush with the artboard edge or centre", () => {
 test("the text style presets are editable effect stacks", () => {
   const ids = lib.EDITOR_TEXT_STYLES.map((preset) => preset.id);
   assert.equal(new Set(ids).size, ids.length, "preset ids are unique");
-  assert.deepEqual(ids, ["neon", "sticker", "retro", "chrome", "outline", "shadow", "echo", "stripe"]);
-  const kinds = new Set(["shadow", "outline", "glow", "offset", "echo", "extrude", "stripe"]);
+  assert.deepEqual(ids, ["neon", "aurora", "sunset", "halo", "sticker", "retro", "chrome", "outline", "shadow", "echo", "stripe", "long-shadow", "comic", "isometric", "varsity", "poster"]);
+  const kinds = new Set(["shadow", "outline", "glow", "offset", "echo", "extrude", "stripe", "blur", "gradient"]);
   for (const preset of lib.EDITOR_TEXT_STYLES) {
     assert.ok(preset.label && preset.hint, `${preset.id} is labelled`);
     assert.ok(preset.effects.length > 0, `${preset.id} paints something`);
-    for (const effect of preset.effects) assert.ok(kinds.has(effect.kind), `${preset.id} uses a known effect`);
+    for (const effect of preset.effects) {
+      assert.ok(kinds.has(effect.kind), `${preset.id} uses a known effect`);
+      if (effect.kind === "gradient") assert.match(effect.color2 ?? "", /^#[0-9a-f]{6}$/i, `${preset.id} gradient has a second stop`);
+    }
   }
 
   const preset = lib.EDITOR_TEXT_STYLES.find((item) => item.id === "neon");

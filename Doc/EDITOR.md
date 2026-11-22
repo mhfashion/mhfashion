@@ -55,11 +55,11 @@ object cannot break a tool. Each tool has its own box at the top of the Adjustme
 
 | Tool | Box contents |
 |---|---|
-| Brush / Pencil | presets, nib (tip, size, angle, roundness), paint (opacity, flow, spacing, smoothing), edge (softness, feather), shape dynamics (size/opacity/angle/roundness jitter, jitter floor, scatter, fade-out), dab blend, reset to default |
-| Eraser | nib presets (Soft, Hard, Block, Fine), mode, nib, size, hardness, opacity, flow, spacing, angle, roundness, clear erasures |
-| Pen | path width, cap |
+| Brush / Pencil | preset chips that paint their own nib, a live stroke preview, nib (tip, size, angle, roundness), paint (opacity, flow, spacing, smoothing), edge (softness, feather), shape dynamics (size/opacity/angle/roundness jitter, jitter floor, scatter, fade-out), dab blend, reset to default |
+| Eraser | nib presets (Soft, Hard, Block, Fine) drawn as dabs, mode, nib, size, hardness, opacity, flow, spacing, angle, roundness, clear erasures |
+| Pen | path width, width presets (1, 3, 6, 12, 24), cap |
 | Text | defaults for a new text layer: size, font, weight, alignment, letter spacing, colour (or follow the toolbar) |
-| Shape | the nine shape presets the tool draws |
+| Shape | the nine shape presets, each drawn with the path builder the canvas uses |
 | Move | arrow pad with 1 / 10 / 50 unit steps, plus the layer's current offset |
 | Gradient | shape, preset, reverse the ramp |
 | Hand, Remove BG | a short hint only |
@@ -129,14 +129,18 @@ design; each one creates a text layer and opens the inline editor.
   text layer puts the caret at the end of the text.
 - Text wraps to the layer's `wrapWidth` (880 units for new text). Text saved before wrapping existed has
   no width and stays unwrapped.
-- **Text styles** apply a look in one click: Neon, Sticker, Retro, Chrome, Outline, Shadow, Echo, Striped.
-  A preset only writes an effect stack, so every part of it can still be tuned, reordered or removed.
+- **Text styles** apply a look in one click: Neon, Aurora, Sunset, Halo, Sticker, Retro, Chrome, Outline,
+  Shadow, Echo, Striped, Long shadow, Comic, Isometric, Varsity and Poster. Every tile paints the preset's
+  real effect stack on a sample "Aa", through the same renderer the canvas uses, so the tile is the result.
+  A preset only writes an effect stack, so every part of it can still be tuned, reordered or removed; the
+  tile stays highlighted only while the stack still matches it.
 - Colour fields for text, shape fill, shape stroke, decoration and the photo border carry a row of brand
   swatches beside the colour wheel.
 - The Adjustment box styles the whole layer: font family (with search and recent fonts), size, colour,
   weight, italic, underline, alignment, letter-spacing and line height.
-- Effects are a stack: shadow, outline, glow, offset, echo, extrude and stripe. Each can be added,
-  enabled or disabled, moved up or down, removed, and given its own colour, offset, blur or width.
+- Effects are a stack: shadow, outline, glow, offset, echo, extrude, stripe, blur and gradient. Each can be
+  added, enabled or disabled, moved up or down, removed, and given its own colour, offset, blur or width.
+  A gradient fill takes two colours and paints over the glyphs; a blur paints a soft copy behind them.
 - Decorations: a horizontal line, a colour cut or an oblique cut, each with its own colour and width.
 - Transform presets: plain, arch and wave are painted; circle is offered but paints nothing (see
   `Plan/EDITOR_PLAN.md` §4).
@@ -165,10 +169,12 @@ Nine presets: rectangle, rounded rectangle, ellipse, triangle, diamond, line, ar
 ## 9. Brush and eraser
 
 - Brush: size, hardness, flow, spacing, shape (round, square) and blend (normal, multiply, screen), with
-  presets in the tool options, and a reset that restores the tool defaults.
+  presets in the tool options, and a reset that restores the tool defaults. Each preset chip paints a row of
+  nib dabs at its own size, tip, roundness, softness, scatter and opacity, and a live strip under the presets
+  shows the current settings.
 - Eraser: brush mode erases with the nib, stroke mode removes a whole stroke; both are stored as erasure
   passes on the layer, so they can be cleared. Nib presets (Soft, Hard, Block, Fine) set size, hardness,
-  opacity, flow and spacing in one press.
+  opacity, flow and spacing in one press, and each chip shows its nib as a row of dabs.
 - Strokes are smoothed as they are drawn and stored as points on the layer.
 
 ## 10. Gradients

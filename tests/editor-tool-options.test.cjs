@@ -131,3 +131,37 @@ test("new text and nudges go through the tool options and the canvas offset", ()
   assert.match(canvas, /text: \{ \.\.\.current\.text, \.\.\.patch\.text \}/);
   assert.match(canvas, /selectedShape=\{selectedShape\}/);
 });
+
+test("text styles paint a preview from the same renderer as the canvas", () => {
+  const preview = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
+  const panelSource = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
+
+  // One renderer, two callers: the layer preview and the style tiles.
+  assert.match(preview, /export function EditorTextArtwork\(\{ text, idPrefix \}/);
+  assert.match(preview, /\{text && <EditorTextArtwork text=\{text\} idPrefix=\{effectPrefix\} \/>\}/);
+  assert.match(panelSource, /import \{ EditorTextArtwork \} from "@\/components\/EditorLayerPreview";/);
+  assert.match(panelSource, /<EditorTextArtwork text=\{sample\} idPrefix=\{`tile-\$\{id\}`\} \/>/);
+
+  // Every tile samples the preset's own effects, not a hand-drawn approximation.
+  assert.match(panelSource, /effects: textStyleEffects\(preset, `tile-\$\{id\}`\)/);
+  assert.match(panelSource, /<TextStyleTile key=\{preset\.id\} preset=\{preset\} active=\{appliedStyle === preset\.id\}/);
+
+  // A gradient fill must paint over the base glyphs, or it would be hidden behind them.
+  const baseIndex = preview.indexOf('drawText("base-text"');
+  const gradientIndex = preview.indexOf("effect.kind === \"gradient\").map((effect) => drawText(");
+  assert.ok(baseIndex > 0 && gradientIndex > baseIndex, "gradient copies paint after the base text");
+  assert.match(preview, /<linearGradient key=\{effect\.id\} id=\{`\$\{idPrefix\}-grad-/);
+});
+
+test("blur and gradient effects keep the transform box honest", () => {
+  const { editorTextPaintPadding } = lib.exports;
+  const text = { value: "Aa", x: 100, y: 200, fontSize: 100, color: "#ffffff" };
+
+  const plain = editorTextPaintPadding({ ...text, effects: [] });
+  const blurred = editorTextPaintPadding({ ...text, effects: [{ id: "b", kind: "blur", color: "#ffffff", blur: 8 }] });
+  assert.ok(blurred.right - plain.right >= 20, "a blur bleeds past the ink");
+  assert.ok(blurred.left - plain.left >= 20, "a blur bleeds on the left too");
+
+  const gradient = editorTextPaintPadding({ ...text, effects: [{ id: "g", kind: "gradient", color: "#37d7ff", color2: "#d4ff3f" }] });
+  assert.deepEqual(gradient, plain, "a gradient fill paints inside the ink");
+});

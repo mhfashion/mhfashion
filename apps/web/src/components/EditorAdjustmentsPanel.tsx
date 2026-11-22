@@ -1,11 +1,12 @@
 "use client";
 
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { EditorArrangeAction, EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorGradient, EditorGradientStop, EditorGradientToolSettings, EditorGradientType, EditorLayerPlacement, EditorPenSettings, EditorShapeBuilderMode, EditorShapePreset, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorTextToolSettings, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
-import { EDITOR_ARRANGE_ALIGNMENTS, EDITOR_ARRANGE_LABELS, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
+import { createEditorShapePaths, EDITOR_ARRANGE_ALIGNMENTS, EDITOR_ARRANGE_LABELS, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
+import { EditorTextArtwork } from "@/components/EditorLayerPreview";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
 const EDITOR_FONTS = ["Inter", "Arial", "Georgia", "Impact", "Courier New", "Trebuchet MS", "Verdana", "Times New Roman"];
@@ -59,6 +60,8 @@ const EFFECT_TYPES: { kind: EditorTextEffectKind; label: string; color: string }
   { kind: "echo", label: "Echo", color: "#37d7ff" },
   { kind: "extrude", label: "Extrude", color: "#7c3aed" },
   { kind: "stripe", label: "Stripe", color: "#f97316" },
+  { kind: "blur", label: "Blur", color: "#ffffff" },
+  { kind: "gradient", label: "Gradient", color: "#37d7ff" },
 ];
 
 function Section({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
@@ -94,7 +97,14 @@ function BrushOptions({ label, value, onChange, onReset }: { label: string; valu
   return <div className="space-y-3">
     <div className="space-y-1.5">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Presets</p>
-      <div role="group" aria-label={`${label} presets`} className="flex flex-wrap gap-1">{EDITOR_BRUSH_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`${label} preset ${preset.label}`} onClick={() => onChange(preset.settings)} className="rounded-lg border border-border px-2 py-1 text-[9px] text-text-secondary outline-none hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2.5">{preset.label}</button>)}</div>
+      <div role="group" aria-label={`${label} presets`} className="grid grid-cols-3 gap-1">{EDITOR_BRUSH_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`${label} preset ${preset.label}`} onClick={() => onChange(preset.settings)} className="flex flex-col items-center gap-0.5 rounded-lg border border-border px-1 py-1 text-[8px] leading-tight text-text-secondary outline-none hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11">
+        <NibPreview size={preset.settings.size} shape={preset.settings.shape} angle={preset.settings.angle} roundness={preset.settings.roundness} softness={preset.settings.softness} opacity={Math.max(0.5, preset.settings.opacity)} scatter={preset.settings.scatter} className="h-5 w-full text-text-primary" />
+        {preset.label}
+      </button>)}</div>
+      <div aria-label={`${label} stroke preview`} className="flex items-center gap-2 rounded-lg border border-border bg-[#151c20] px-2 py-1">
+        <NibPreview size={value.size} shape={value.shape} angle={value.angle} roundness={value.roundness} softness={value.softness} opacity={value.opacity} scatter={value.scatter} className="h-6 flex-1 text-white" />
+        <span className="shrink-0 text-[8px] uppercase tracking-wider text-text-muted">{Math.round(value.opacity * 100)}% · {value.flow}% flow</span>
+      </div>
     </div>
 
     <div className="space-y-1.5">
@@ -143,6 +153,55 @@ function BrushOptions({ label, value, onChange, onReset }: { label: string; valu
   </div>;
 }
 
+
+/** A row of nib dabs at the current settings, so a preset shows what it paints. */
+function NibPreview({ size, shape, angle = 0, roundness = 100, softness = 0, opacity = 1, scatter = 0, className }: {
+  size: number; shape: EditorBrushShape; angle?: number; roundness?: number; softness?: number; opacity?: number; scatter?: number; className?: string;
+}) {
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const filterId = `nib-soft-${id}`;
+  const radius = Math.max(1.4, Math.min(6.5, size / 16));
+  const soft = Math.max(0, Math.min(100, softness));
+  const dabs = [0, 1, 2, 3, 4, 5];
+  return <svg viewBox="0 0 64 24" className={className} aria-hidden="true">
+    <defs>
+      {soft > 0 && <filter id={filterId} x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation={soft / 30} /></filter>}
+    </defs>
+    {dabs.map((index) => {
+      const t = index / (dabs.length - 1);
+      const cx = 8 + t * 48;
+      const cy = 12 - Math.sin(t * Math.PI) * 2.5 + ((index % 2) - 0.5) * (scatter / 100) * 5;
+      return shape === "square"
+        ? <rect key={index} x={cx - radius} y={cy - radius} width={radius * 2} height={radius * 2} rx={(radius * roundness) / 100} fill="currentColor" opacity={opacity} transform={`rotate(${angle} ${cx} ${cy})`} filter={soft > 0 ? `url(#${filterId})` : undefined} />
+        : <circle key={index} cx={cx} cy={cy} r={radius} fill="currentColor" opacity={opacity} filter={soft > 0 ? `url(#${filterId})` : undefined} />;
+    })}
+  </svg>;
+}
+
+/** A preset tile that paints the real effect stack, the way Kittl and Canva show their styles. */
+function TextStyleTile({ preset, active, onApply }: { preset: (typeof EDITOR_TEXT_STYLES)[number]; active: boolean; onApply: () => void }) {
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const sample: EditorTextContent = {
+    value: "Aa",
+    x: 50,
+    y: 58,
+    fontSize: 44,
+    color: "#ffffff",
+    textAlign: "center",
+    effects: textStyleEffects(preset, `tile-${id}`),
+  };
+  return <button type="button" aria-label={`Apply ${preset.label} text style`} aria-pressed={active} title={preset.hint} onClick={onApply} className="rounded-lg border border-border p-1 text-left outline-none transition hover:border-accent hover:bg-accent/10 aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11">
+    <span className="flex h-12 items-center justify-center overflow-hidden rounded-md bg-[#151c20] text-white"><svg viewBox="0 0 100 76" className="h-12 w-full"><EditorTextArtwork text={sample} idPrefix={`tile-${id}`} /></svg></span>
+    <span className="mt-1 block text-[9px] font-semibold text-text-primary">{preset.label}</span>
+  </button>;
+}
+
+/** The nine shapes the tool draws, drawn with the same path builder the canvas uses. */
+function ShapePresetIcon({ preset }: { preset: EditorShapePreset }) {
+  const paths = createEditorShapePaths(preset, { x: 24, y: 22 }, { x: 76, y: 78 }, "currentColor");
+  return <svg viewBox="0 0 100 100" className="mx-auto h-6 w-6" aria-hidden="true">{paths.map((path, index) => <path key={index} d={path.d} fill={path.fill} stroke={path.stroke} strokeWidth={Math.min(10, path.strokeWidth ?? 10)} strokeLinecap="round" strokeLinejoin="round" />)}</svg>;
+}
+
 function OptionGroup({ label, ariaLabel, options, value, onChange }: { label: string; ariaLabel: string; options: { value: string; label: string }[]; value: string; onChange: (value: string) => void }) {
   return <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span className="shrink-0">{label}</span><div role="group" aria-label={ariaLabel} className="flex flex-wrap justify-end gap-1">{options.map((option) => <button key={option.value} type="button" aria-label={`${ariaLabel} ${option.label}`} aria-pressed={value === option.value} onClick={() => onChange(option.value)} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2.5">{option.label}</button>)}</div></div>;
 }
@@ -152,7 +211,10 @@ function EraserOptions({ value, onChange, onClear, canClear }: { value: EditorEr
   return <div className="space-y-2">
     <div className="space-y-1.5">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Nib presets</p>
-      <div role="group" aria-label="Eraser presets" className="flex flex-wrap gap-1">{EDITOR_ERASER_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`Eraser preset ${preset.label}`} onClick={() => onChange(preset.settings)} className="rounded-lg border border-border px-2 py-1 text-[9px] text-text-secondary outline-none hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2.5">{preset.label}</button>)}</div>
+      <div role="group" aria-label="Eraser presets" className="grid grid-cols-4 gap-1">{EDITOR_ERASER_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`Eraser preset ${preset.label}`} onClick={() => onChange(preset.settings)} className="flex flex-col items-center gap-0.5 rounded-lg border border-border px-1 py-1 text-[8px] leading-tight text-text-secondary outline-none hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11">
+        <NibPreview size={preset.settings.size ?? 120} shape={(preset.settings.shape ?? "round") as EditorBrushShape} angle={preset.settings.angle ?? 0} roundness={preset.settings.roundness ?? 100} softness={100 - (preset.settings.hardness ?? 60)} opacity={Math.max(0.5, (preset.settings.opacity ?? 100) / 100)} className="h-4 w-full text-text-primary" />
+        {preset.label}
+      </button>)}</div>
     </div>
     <OptionGroup label="Mode" ariaLabel="Eraser mode" options={[{ value: "brush", label: "Brush" }, { value: "stroke", label: "Stroke" }]} value={value.mode} onChange={(mode) => onChange({ mode: mode as EditorEraserSettings["mode"] })} />
     <OptionGroup label="Nib" ariaLabel="Eraser nib" options={[{ value: "round", label: "Round" }, { value: "square", label: "Square" }]} value={value.shape} onChange={(shape) => onChange({ shape: shape as EditorBrushShape })} />
@@ -192,7 +254,7 @@ function TextToolOptions({ value, onChange }: { value: EditorTextToolSettings; o
 function ShapeToolOptions({ preset, onSelect }: { preset: EditorShapePreset; onSelect: (preset: EditorShapePreset) => void }) {
   return <div className="space-y-2">
     <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Shape to draw</p>
-    <div role="group" aria-label="Shape tool preset" className="grid grid-cols-3 gap-1">{EDITOR_SHAPE_PRESETS.map((option) => <button key={option} type="button" aria-label={`Shape tool ${EDITOR_SHAPE_LABELS[option]}`} aria-pressed={preset === option} onClick={() => onSelect(option)} className="min-h-8 rounded-lg border border-border px-1 py-1.5 text-[9px] leading-tight text-text-secondary outline-none transition hover:border-accent hover:bg-accent/10 aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11">{EDITOR_SHAPE_LABELS[option]}</button>)}</div>
+    <div role="group" aria-label="Shape tool preset" className="grid grid-cols-3 gap-1">{EDITOR_SHAPE_PRESETS.map((option) => <button key={option} type="button" aria-label={`Shape tool ${EDITOR_SHAPE_LABELS[option]}`} aria-pressed={preset === option} onClick={() => onSelect(option)} className="flex min-h-8 flex-col items-center gap-0.5 rounded-lg border border-border px-1 py-1 text-[8px] leading-tight text-text-secondary outline-none transition hover:border-accent hover:bg-accent/10 aria-pressed:border-accent aria-pressed:bg-accent/15 aria-pressed:text-accent [@media(pointer:coarse)]:min-h-11"><ShapePresetIcon preset={option} />{EDITOR_SHAPE_LABELS[option]}</button>)}</div>
     <p className="text-[9px] leading-relaxed text-text-muted">The shape lands in the selected layer with the foreground colour. Adjust fill, stroke, corners, shadow and glow under Shape once it is drawn.</p>
   </div>;
 }
@@ -333,6 +395,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   const [fontQuery, setFontQuery] = useState("");
   const [recentFonts, setRecentFonts] = useState<string[]>([]);
   const [nextEffectId, setNextEffectId] = useState(1);
+  const [appliedStyle, setAppliedStyle] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState("Tool Options");
   const effectStack: EditorTextEffect[] = text ? text.effects ?? (text.textEffect === "shadow"
     ? [{ id: "legacy-shadow", kind: "shadow", color: text.effectColor ?? "#000000", offsetX: text.effectOffset ?? 12, offsetY: text.effectOffset ?? 12, blur: text.effectBlur ?? 0 }]
@@ -348,12 +411,16 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
     onUpdateTextStyle({ fontFamily });
     setRecentFonts((current) => [fontFamily, ...current.filter((font) => font !== fontFamily)].slice(0, 4));
   }
-  function replaceEffectStack(effects: EditorTextEffect[]) { onUpdateTextStyle({ effects, textEffect: "none" }); }
+  function replaceEffectStack(effects: EditorTextEffect[], keepStyle = false) {
+    onUpdateTextStyle({ effects, textEffect: "none" });
+    if (!keepStyle) setAppliedStyle(null);
+  }
   // A style preset is only an effect stack, so the layer stays live text.
   function applyTextStyle(id: string) {
     const preset = EDITOR_TEXT_STYLES.find((item) => item.id === id);
     if (!preset) return;
-    replaceEffectStack(textStyleEffects(preset, `${nextEffectId}-${id}`));
+    setAppliedStyle(id);
+    replaceEffectStack(textStyleEffects(preset, `${nextEffectId}-${id}`), true);
     setNextEffectId((current) => current + 1);
   }
   function addTextEffect(kind: EditorTextEffectKind) {
@@ -400,6 +467,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
             />}
             {activeTool === "pen" && <div className="space-y-2">
               <label className="block text-[10px] text-text-secondary">Path width<span className="float-right font-semibold text-text-primary">{toolOptions.pen.width}px</span><input aria-label="Pen path width" type="range" min="1" max="60" value={toolOptions.pen.width} onChange={(event) => onUpdateToolOptions({ pen: { width: Number(event.target.value) } })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>
+              <div role="group" aria-label="Pen width presets" className="flex flex-wrap gap-1">{[1, 3, 6, 12, 24].map((width) => <button key={width} type="button" aria-label={`Pen width ${width} pixels`} aria-pressed={toolOptions.pen.width === width} onClick={() => onUpdateToolOptions({ pen: { width } })} className="flex-1 rounded-lg border border-border px-1 py-1 text-[9px] outline-none hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11">{width}</button>)}</div>
               <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Cap</span><div role="group" aria-label="Pen cap" className="flex gap-1">{(["round", "butt", "square"] as const).map((cap) => <button key={cap} type="button" aria-label={`Pen cap ${cap}`} aria-pressed={toolOptions.pen.cap === cap} onClick={() => onUpdateToolOptions({ pen: { cap } })} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{cap}</button>)}</div></div>
               <p className="text-[9px] leading-relaxed text-text-muted">These values are saved as this tool&apos;s defaults for the next path you draw.</p>
             </div>}
@@ -502,9 +570,9 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
             <Section title="Text styles" open={openSection === "Text styles"} onToggle={() => toggleSection("Text styles")}>
               <div className="space-y-2">
                 <div role="group" aria-label="Text style presets" className="grid grid-cols-2 gap-1">
-                  {EDITOR_TEXT_STYLES.map((preset) => <button key={preset.id} type="button" aria-label={`Apply ${preset.label} text style`} title={preset.hint} onClick={() => applyTextStyle(preset.id)} className="rounded-lg border border-border px-2 py-1.5 text-left outline-none transition hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11"><span className="block text-[10px] font-semibold text-text-primary">{preset.label}</span><span className="block text-[8px] uppercase tracking-wider text-text-muted">{preset.hint}</span></button>)}
+                  {EDITOR_TEXT_STYLES.map((preset) => <TextStyleTile key={preset.id} preset={preset} active={appliedStyle === preset.id} onApply={() => applyTextStyle(preset.id)} />)}
                 </div>
-                <p className="text-[9px] leading-relaxed text-text-muted">A preset writes an editable effect stack, so you can still tune, reorder, or remove each layer of it below.</p>
+                <p className="text-[9px] leading-relaxed text-text-muted">Each tile paints its real effect stack on the sample, so what you see is what lands on the canvas. A preset writes an editable stack — tune, reorder or remove each layer below.</p>
               </div>
             </Section>
             <Section title="Effects" open={openSection === "Effects"} onToggle={() => toggleSection("Effects")}>
@@ -529,7 +597,8 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
                         <NumberField label="Offset X" value={effect.offsetX ?? 10} min={-80} max={80} ariaLabel={`${effect.kind} offset X ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { offsetX: value })} />
                         <NumberField label="Offset Y" value={effect.offsetY ?? 10} min={-80} max={80} ariaLabel={`${effect.kind} offset Y ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { offsetY: value })} />
                       </>}
-                      {(effect.kind === "shadow" || effect.kind === "glow") && <NumberField label={effect.kind === "shadow" ? "Softness" : "Glow softness"} value={effect.blur ?? 4} min={0} max={30} ariaLabel={effect.kind === "shadow" ? "Text shadow softness" : `Glow softness ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { blur: value })} />}
+                      {effect.kind === "gradient" && <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">End color<input aria-label={`Gradient end color ${index + 1}`} type="color" value={effect.color2 ?? "#d4ff3f"} onChange={(event) => updateTextEffect(effect.id, { color2: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></label>}
+                      {(effect.kind === "shadow" || effect.kind === "glow" || effect.kind === "blur") && <NumberField label={effect.kind === "shadow" ? "Softness" : effect.kind === "glow" ? "Glow softness" : "Blur"} value={effect.blur ?? 4} min={0} max={30} ariaLabel={effect.kind === "shadow" ? "Text shadow softness" : `${effect.kind} softness ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { blur: value })} />}
                       {(effect.kind === "outline" || effect.kind === "glow") && <NumberField label={effect.kind === "outline" ? "Outline width" : "Glow width"} value={effect.width ?? (effect.kind === "outline" ? 6 : 12)} min={1} max={40} ariaLabel={`${effect.kind} width ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { width: value })} />}
                       {(effect.kind === "echo" || effect.kind === "extrude") && <NumberField label={effect.kind === "echo" ? "Echo count" : "Extrude steps"} value={effect.count ?? (effect.kind === "echo" ? 3 : 8)} min={1} max={16} ariaLabel={`${effect.kind} count ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { count: value })} />}
                       {(effect.kind === "extrude" || effect.kind === "stripe") && <NumberField label={effect.kind === "extrude" ? "Depth" : "Stripe spacing"} value={effect.distance ?? 18} min={1} max={80} ariaLabel={`${effect.kind} distance ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { distance: value })} />}

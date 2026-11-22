@@ -226,11 +226,13 @@ export type LayerEditTarget = "artwork" | "mask";
 export type EditorLayerBlendMode = "normal" | "multiply" | "screen" | "overlay";
 export type LayerMaskStroke = ArtworkStroke & { mode: MaskBrushMode };
 export type EditorLayerKind = "artwork" | "text" | "shape" | "image" | "gradient";
-export type EditorTextEffectKind = "shadow" | "outline" | "glow" | "offset" | "echo" | "extrude" | "stripe";
+export type EditorTextEffectKind = "shadow" | "outline" | "glow" | "offset" | "echo" | "extrude" | "stripe" | "blur" | "gradient";
 export type EditorTextEffect = {
   id: string;
   kind: EditorTextEffectKind;
   color: string;
+  /** Second stop for the "gradient" fill; ignored by the other kinds. */
+  color2?: string;
   enabled?: boolean;
   offsetX?: number;
   offsetY?: number;
@@ -354,8 +356,9 @@ export function editorTextPaintPadding(text: EditorTextContent): { left: number;
     const stroke = (effect.kind === "outline" ? effect.width ?? 6 : effect.kind === "glow" ? (effect.width ?? 12) * 1.5 : 0) / 2;
     // Blurred effects bleed roughly three standard deviations past the shape they blur.
     const blur = effect.blur ?? (effect.kind === "glow" ? 4 : 1);
-    const spread = stroke + (effect.kind === "shadow" || effect.kind === "glow" ? blur * 3 : 0);
-    if (effect.kind === "shadow" || effect.kind === "offset") grow(offsetX, offsetY, spread);
+    const spread = stroke + (effect.kind === "shadow" || effect.kind === "glow" || effect.kind === "blur" ? blur * 3 : 0);
+    if (effect.kind === "blur") grow(0, 0, spread);
+    else if (effect.kind === "shadow" || effect.kind === "offset") grow(offsetX, offsetY, spread);
     else if (effect.kind === "outline" || effect.kind === "glow") grow(0, 0, spread);
     else if (effect.kind === "extrude") {
       const reach = effect.distance ?? 18;
@@ -1973,6 +1976,9 @@ export type EditorTextStylePreset = {
 
 export const EDITOR_TEXT_STYLES: EditorTextStylePreset[] = [
   { id: "neon", label: "Neon", hint: "Glowing tube", effects: [{ kind: "glow", color: "#37d7ff", width: 20, blur: 14, opacity: 0.9 }, { kind: "glow", color: "#d4ff3f", width: 9, blur: 6, opacity: 0.8 }] },
+  { id: "aurora", label: "Aurora", hint: "Gradient + halo", effects: [{ kind: "glow", color: "#37d7ff", width: 16, blur: 12, opacity: 0.75 }, { kind: "gradient", color: "#37d7ff", color2: "#d4ff3f" }] },
+  { id: "sunset", label: "Sunset", hint: "Warm gradient", effects: [{ kind: "gradient", color: "#ff9a3c", color2: "#ff2d95" }, { kind: "shadow", color: "#3b0764", offsetX: 5, offsetY: 6, blur: 4 }] },
+  { id: "halo", label: "Halo", hint: "Soft bloom", effects: [{ kind: "blur", color: "#ffffff", blur: 10, opacity: 0.65 }, { kind: "glow", color: "#ffffff", width: 6, blur: 3, opacity: 0.5 }] },
   { id: "sticker", label: "Sticker", hint: "White cut edge", effects: [{ kind: "outline", color: "#ffffff", width: 12 }, { kind: "shadow", color: "#111827", offsetX: 6, offsetY: 8, blur: 3 }] },
   { id: "retro", label: "Retro", hint: "Deep 3D block", effects: [{ kind: "extrude", color: "#ff5b8a", distance: 9, count: 7 }, { kind: "outline", color: "#111827", width: 4 }] },
   { id: "chrome", label: "Chrome", hint: "Layered metal", effects: [{ kind: "offset", color: "#c7d2fe", offsetX: 4, offsetY: 5 }, { kind: "outline", color: "#0f172a", width: 5 }, { kind: "glow", color: "#ffffff", width: 7, blur: 5, opacity: 0.7 }] },
@@ -1980,6 +1986,11 @@ export const EDITOR_TEXT_STYLES: EditorTextStylePreset[] = [
   { id: "shadow", label: "Shadow", hint: "Soft drop", effects: [{ kind: "shadow", color: "#111827", offsetX: 8, offsetY: 10, blur: 6 }] },
   { id: "echo", label: "Echo", hint: "Rhythm trails", effects: [{ kind: "echo", color: "#37d7ff", count: 4, offsetX: 12, offsetY: 12 }] },
   { id: "stripe", label: "Striped", hint: "Barber bars", effects: [{ kind: "stripe", color: "#f97316", width: 6, distance: 14, angle: -30 }] },
+  { id: "long-shadow", label: "Long shadow", hint: "Flat trail", effects: [{ kind: "echo", color: "#0ea5e9", count: 8, offsetX: 26, offsetY: 26 }, { kind: "outline", color: "#0f172a", width: 3 }] },
+  { id: "comic", label: "Comic", hint: "Ink and drop", effects: [{ kind: "outline", color: "#111827", width: 9 }, { kind: "offset", color: "#facc15", offsetX: 10, offsetY: 12 }] },
+  { id: "isometric", label: "Isometric", hint: "Deep block", effects: [{ kind: "extrude", color: "#7c3aed", distance: 14, count: 12, angle: 30 }, { kind: "outline", color: "#111827", width: 4 }] },
+  { id: "varsity", label: "Varsity", hint: "Stacked drop", effects: [{ kind: "extrude", color: "#d4ff3f", distance: 8, count: 6, angle: 90 }, { kind: "outline", color: "#111827", width: 5 }] },
+  { id: "poster", label: "Poster", hint: "Hard offset", effects: [{ kind: "offset", color: "#ff2d95", offsetX: 12, offsetY: 12 }, { kind: "outline", color: "#111827", width: 6 }] },
 ];
 
 /** Turns a preset into effects with unique ids, so the stack editor can reorder and tune them. */

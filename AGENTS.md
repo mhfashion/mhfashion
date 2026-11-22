@@ -567,3 +567,23 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   button.
 - The Move box's nudge writes `canvasLayerTransforms` only (`nudgeSelectedLayer`), so it moves the layer on the
   canvas without touching the artwork inside its own transform; measured 50 units = 15 px on a 300 px canvas.
+
+## Text effects and style previews (`EditorLayerPreview.tsx`, `EditorAdjustmentsPanel.tsx`)
+- `EditorTextArtwork({ text, idPrefix })` is the single text renderer: `EditorLayerPreview` and the
+  Adjustments style tiles both call it. A tile that re-draws an effect by hand (CSS `text-shadow` and the
+  like) drifts from the canvas — that is why the old "Aa" swatch showed a shadow the canvas never painted.
+- `EditorTextEffectKind` now includes `blur` (a soft copy behind the glyphs) and `gradient` (a two-colour
+  fill, `color` → `color2`, painted **after** the base text so it is visible). The gradient copies are
+  emitted next to the stripe copies, after `drawText("base-text")`; move them before it and the fill hides.
+- `editorTextPaintPadding` must mirror that: a `blur` grows the box by `blur * 3` on all sides, a `gradient`
+  grows it by nothing (it paints the ink, not past it). Forgetting the blur crops the transform box through
+  the halo; adding spread for the gradient leaves a gap around the glyphs.
+- `EDITOR_TEXT_STYLES` is 16 presets. `tests/editor-arrange.test.cjs` pins the exact id list and the known
+  kinds, so adding a preset means updating that assertion (and a gradient preset needs a `color2`).
+- The panel tracks `appliedStyle` for the pressed tile; `replaceEffectStack(effects, keepStyle)` clears it
+  unless the caller is `applyTextStyle`, so editing any field un-highlights the preset.
+- `NibPreview` draws a row of six dabs from size/tip/angle/roundness/softness/opacity/scatter. Preset chips
+  floor the opacity at 0.5, or the airbrush (30%) chip reads as empty. Shape presets use
+  `createEditorShapePaths` in a 100-unit viewBox, so the icon is the path the tool draws.
+- Only one Adjustments section is open at a time (`openSection`), so a scripted check has to click the
+  "Tool Options · <tool>" header before looking for the box's groups.
