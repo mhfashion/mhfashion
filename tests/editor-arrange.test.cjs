@@ -87,14 +87,18 @@ test("aligning a layer puts it flush with the artboard edge or centre", () => {
 test("the text style presets are editable effect stacks", () => {
   const ids = lib.EDITOR_TEXT_STYLES.map((preset) => preset.id);
   assert.equal(new Set(ids).size, ids.length, "preset ids are unique");
-  assert.deepEqual(ids, ["neon", "aurora", "sunset", "halo", "sticker", "retro", "chrome", "outline", "shadow", "echo", "stripe", "long-shadow", "comic", "isometric", "varsity", "poster"]);
-  const kinds = new Set(["shadow", "outline", "glow", "offset", "echo", "extrude", "stripe", "blur", "gradient"]);
+  assert.deepEqual(ids, ["neon", "aurora", "sunset", "halo", "sticker", "retro", "chrome", "outline", "shadow", "echo", "stripe", "long-shadow", "comic", "isometric", "varsity", "poster", "hollow", "dots", "checker", "grid"]);
+  const kinds = new Set(["shadow", "outline", "glow", "offset", "echo", "extrude", "stripe", "blur", "gradient", "pattern", "hollow"]);
   for (const preset of lib.EDITOR_TEXT_STYLES) {
     assert.ok(preset.label && preset.hint, `${preset.id} is labelled`);
     assert.ok(preset.effects.length > 0, `${preset.id} paints something`);
     for (const effect of preset.effects) {
       assert.ok(kinds.has(effect.kind), `${preset.id} uses a known effect`);
       if (effect.kind === "gradient") assert.match(effect.color2 ?? "", /^#[0-9a-f]{6}$/i, `${preset.id} gradient has a second stop`);
+      if (effect.kind === "pattern") {
+        assert.match(effect.color2 ?? "", /^#[0-9a-f]{6}$/i, `${preset.id} pattern has a backdrop`);
+        assert.ok(["dots", "grid", "checker"].includes(effect.pattern ?? ""), `${preset.id} pattern names a motif`);
+      }
     }
   }
 
@@ -121,11 +125,10 @@ test("the design swatches are valid, named colours", () => {
   }
 });
 
-test("the Adjustments panel offers Arrange, Text styles, Frame and swatches", () => {
-  assert.match(panel, /<Section title="Arrange"/);
-  assert.match(panel, /aria-label="Align layer to canvas"/);
-  assert.match(panel, /EDITOR_ARRANGE_ALIGNMENTS\.map/);
-  assert.match(panel, /aria-label="Layer placement"/);
+test("the Adjustments panel offers Text styles, Frame and swatches", () => {
+  // The Arrange box was removed on request: Kittl keeps placement on the canvas handles.
+  assert.doesNotMatch(panel, /<Section title="Arrange"/);
+  assert.doesNotMatch(panel, /Align layer to canvas/);
   assert.match(panel, /<Section title="Text styles"/);
   assert.match(panel, /aria-label="Text style presets"/);
   assert.match(panel, /textStyleEffects\(preset, /);
@@ -138,11 +141,10 @@ test("the Adjustments panel offers Arrange, Text styles, Frame and swatches", ()
   assert.match(panel, /ariaLabel="Image border swatch"/);
 });
 
-test("the canvas aligns through the layer offset and keeps rotation/scale separate", () => {
-  assert.match(canvas, /const arrangeSelectedLayer = \(action: EditorArrangeAction\)/);
-  assert.match(canvas, /arrangeLayerOffset\(bounds, placement, action\)/);
-  assert.match(canvas, /setCanvasLayerScales\(\(current\) => \(\{ \.\.\.current, \[layer\.id\]: \{ \.\.\.placement\.scale, \[axis\]: -placement\.scale\[axis\] \} \}\)/);
-  assert.match(canvas, /action === "duplicate"[\s\S]{0,80}duplicateLayer\(layer\.id\)/);
+test("the canvas no longer carries an arrange action list", () => {
+  assert.doesNotMatch(canvas, /arrangeSelectedLayer/);
+  assert.doesNotMatch(canvas, /arrangeLayerOffset\(bounds, placement, action\)/);
+  // Placement is still reported so the Move box can show the layer offset.
   assert.match(canvas, /placement=\{selectedLayer \? \{/);
 });
 

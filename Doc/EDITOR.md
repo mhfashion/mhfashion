@@ -101,11 +101,10 @@ and in the thumbnail, and a button clears them.
 
 ## 5. Selection and transform
 
-- The Adjustments panel has an **Arrange** section for the selected layer: align to the canvas edge or
-  centre, centre on the canvas, flip across or down, rotate 90°/180°, reset rotation, reset size, and
-  duplicate. Alignment moves the layer's canvas offset only, so the artwork never shifts inside its own
-  transform, and the buttons are idempotent.
-- Rotation and size are shown as a read-out under the buttons.
+- Placement is done on the canvas, the way Kittl does it: drag to move, the eight handles to resize, the
+  round handle to rotate. The Adjustments panel has no Arrange box.
+- Duplicate, flip, rotate and reset live on the canvas toolbar and in the Edit sidebar, so the panel does
+  not repeat them.
 
 - The selection box is computed from the content: the union of a group's children, the painted text plus
   its effects and decorations, a shape's paths, or an image's box.
@@ -130,7 +129,7 @@ design; each one creates a text layer and opens the inline editor.
 - Text wraps to the layer's `wrapWidth` (880 units for new text). Text saved before wrapping existed has
   no width and stays unwrapped.
 - **Text styles** apply a look in one click: Neon, Aurora, Sunset, Halo, Sticker, Retro, Chrome, Outline,
-  Shadow, Echo, Striped, Long shadow, Comic, Isometric, Varsity and Poster. Every tile paints the preset's
+  Shadow, Echo, Striped, Long shadow, Comic, Isometric, Varsity, Poster, Hollow, Dots, Checker and Grid. Every tile paints the preset's
   real effect stack on a sample "Aa", through the same renderer the canvas uses, so the tile is the result.
   A preset only writes an effect stack, so every part of it can still be tuned, reordered or removed; the
   tile stays highlighted only while the stack still matches it.
@@ -138,9 +137,14 @@ design; each one creates a text layer and opens the inline editor.
   swatches beside the colour wheel.
 - The Adjustment box styles the whole layer: font family (with search and recent fonts), size, colour,
   weight, italic, underline, alignment, letter-spacing and line height.
-- Effects are a stack: shadow, outline, glow, offset, echo, extrude, stripe, blur and gradient. Each can be
-  added, enabled or disabled, moved up or down, removed, and given its own colour, offset, blur or width.
-  A gradient fill takes two colours and paints over the glyphs; a blur paints a soft copy behind them.
+- Effects are a stack, and the box lists them as pictures: each tile paints a sample "Aa" with that one
+  effect, and each row of the stack shows its own thumbnail. The kinds are shadow, outline, glow, offset,
+  echo, extrude, stripe, blur, gradient, pattern and hollow. Each can be added, enabled or disabled, moved
+  up or down, removed, and given its own colour, offset, blur or width.
+  A gradient fill takes two colours and paints over the glyphs; a pattern fills them with dots, a grid or a
+  checker; a blur paints a soft copy behind them; a hollow turns the glyphs into an outline.
+- **Transform** (warp) tiles paint Plain, Arch and Wave through the same renderer, so the bend on the tile is
+  the bend on the canvas.
 - Decorations: a horizontal line, a colour cut or an oblique cut, each with its own colour and width.
 - Transform presets: plain, arch and wave are painted; circle is offered but paints nothing (see
   `Plan/EDITOR_PLAN.md` §4).

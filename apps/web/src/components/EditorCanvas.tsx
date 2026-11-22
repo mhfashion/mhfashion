@@ -60,9 +60,8 @@ import {
   updateEditorLayer,
   updateLayerLastErasure,
   updateLayerLastStroke,
-  arrangeLayerOffset,
 } from "@/lib/editor-layers";
-import type { ArtworkStroke, EditorArrangeAction, EditorBrushShape, EditorErasure, EditorGradient, EditorLayerPlacement, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
+import type { ArtworkStroke, EditorBrushShape, EditorErasure, EditorGradient, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
 import {
   cornerEditorPenAnchor,
   draggedEditorPenAnchor,
@@ -615,38 +614,6 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     setCanvasLayerTransforms((all) => ({ ...all, [layer.id]: { x: current.x + dx, y: current.y + dy } }));
   };
 
-  const arrangeSelectedLayer = (action: EditorArrangeAction) => {
-    const layer = selectedLayer;
-    if (!layer) return;
-    if (action === "duplicate") {
-      duplicateLayer(layer.id);
-      return;
-    }
-    const placement: EditorLayerPlacement = {
-      offset: canvasLayerTransforms[layer.id] ?? { x: 0, y: 0 },
-      scale: canvasLayerScales[layer.id] ?? { x: 1, y: 1 },
-      origin: canvasLayerOrigins[layer.id] ?? { x: 500, y: 600 },
-      rotation: canvasLayerRotations[layer.id] ?? 0,
-    };
-    if (action === "flip-h" || action === "flip-v") {
-      const axis = action === "flip-h" ? "x" : "y";
-      setCanvasLayerScales((current) => ({ ...current, [layer.id]: { ...placement.scale, [axis]: -placement.scale[axis] } }));
-      return;
-    }
-    if (action === "reset-scale") {
-      setCanvasLayerScales((current) => ({ ...current, [layer.id]: { x: 1, y: 1 } }));
-      return;
-    }
-    if (action === "rotate-90" || action === "rotate-180" || action === "reset-rotation") {
-      const step = action === "rotate-90" ? 90 : action === "rotate-180" ? 180 : 0;
-      setCanvasLayerRotations((current) => ({ ...current, [layer.id]: action === "reset-rotation" ? 0 : placement.rotation + step }));
-      return;
-    }
-    const bounds = layerCanvasBounds(layer);
-    if (!bounds) return;
-    const offset = arrangeLayerOffset(bounds, placement, action);
-    setCanvasLayerTransforms((current) => ({ ...current, [layer.id]: offset }));
-  };
   // The workspace can show layers outside the print artboard, but mockups only
   // receive layers that still intersect the artboard. This keeps off-artboard
   // workspace items editable without letting them leak into product previews.
@@ -2984,7 +2951,6 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
             origin: canvasLayerOrigins[selectedLayer.id] ?? { x: 500, y: 600 },
             rotation: canvasLayerRotations[selectedLayer.id] ?? 0,
           } : null}
-          onArrange={arrangeSelectedLayer}
           selectedShape={selectedShape}
           onSelectShape={setSelectedShape}
           onNudge={nudgeSelectedLayer}

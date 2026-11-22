@@ -587,3 +587,23 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `createEditorShapePaths` in a 100-unit viewBox, so the icon is the path the tool draws.
 - Only one Adjustments section is open at a time (`openSection`), so a scripted check has to click the
   "Tool Options · <tool>" header before looking for the box's groups.
+
+## Effects gallery and the removed Arrange box (`EditorAdjustmentsPanel.tsx`)
+- The Adjustments panel has **no Arrange section** (removed at the owner's request; Kittl places layers with
+  the canvas handles). `arrangeSelectedLayer`, `onArrange` and `arrangeLayerOffset` are gone from
+  `EditorCanvas.tsx`; `arrangeLayerOffset`/`EDITOR_ARRANGE_*` still exist in `editor-layers.ts` for the
+  library tests. `tests/editor-arrange.test.cjs` asserts the panel has no Arrange box, so re-adding one
+  fails a test on purpose.
+- Effects are listed as pictures: `EffectTile` paints `EditorTextArtwork` with a one-effect sample, and each
+  stack row carries its own thumbnail. A new kind needs a default in `effectSample`/`EffectTile` or its tile
+  renders as plain text.
+- Two more kinds exist: `pattern` (dots/grid/checker, motif in `color`, backdrop in `color2`, `distance` is
+  the tile size, `width` the grid line) and `hollow` (the base glyphs paint as an outline instead of a fill,
+  so `EditorTextArtwork` swaps the base text's `fill`/`stroke` when a hollow effect is enabled).
+- `editorTextPaintPadding` follows them: a `pattern` paints the ink and adds nothing; a `hollow` strokes
+  `width / 2` outside the ink, so the box grows or the outline is cropped.
+- The stack row is 198 px wide: a 24 px thumbnail, a name and three 24 px buttons only just fit. Growing the
+  buttons back to 32 px truncates the name to "Patt…". The coarse-pointer rule still restores 40 px targets.
+- Warp tiles (`TextTransformTile`) render `EditorTextArtwork` with `textTransform`, so Plain/Arch/Wave show
+  the real matrix. `circle` was dropped from the UI because `editorTextPresetMatrix` returns identity for it
+  — the old tile drew a CSS ring around text the canvas never bent.

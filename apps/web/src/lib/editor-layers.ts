@@ -226,13 +226,17 @@ export type LayerEditTarget = "artwork" | "mask";
 export type EditorLayerBlendMode = "normal" | "multiply" | "screen" | "overlay";
 export type LayerMaskStroke = ArtworkStroke & { mode: MaskBrushMode };
 export type EditorLayerKind = "artwork" | "text" | "shape" | "image" | "gradient";
-export type EditorTextEffectKind = "shadow" | "outline" | "glow" | "offset" | "echo" | "extrude" | "stripe" | "blur" | "gradient";
+export type EditorTextEffectKind = "shadow" | "outline" | "glow" | "offset" | "echo" | "extrude" | "stripe" | "blur" | "gradient" | "pattern" | "hollow";
+/** Tiling painted by a `pattern` fill: a motif in `color` over a `color2` backdrop. */
+export type EditorTextPattern = "dots" | "grid" | "checker";
 export type EditorTextEffect = {
   id: string;
   kind: EditorTextEffectKind;
   color: string;
-  /** Second stop for the "gradient" fill; ignored by the other kinds. */
+  /** Second stop for the "gradient" fill and the backdrop of a "pattern"; ignored by the other kinds. */
   color2?: string;
+  /** Tiling of a "pattern" fill. */
+  pattern?: EditorTextPattern;
   enabled?: boolean;
   offsetX?: number;
   offsetY?: number;
@@ -350,16 +354,16 @@ export function editorTextPaintPadding(text: EditorTextContent): { left: number;
     pad.bottom = Math.max(pad.bottom, y + spread);
   };
   for (const effect of editorTextEffects(text)) {
-    if (effect.enabled === false || effect.kind === "stripe") continue;
+    if (effect.enabled === false || effect.kind === "stripe" || effect.kind === "pattern") continue;
     const offsetX = effect.offsetX ?? 10;
     const offsetY = effect.offsetY ?? 10;
-    const stroke = (effect.kind === "outline" ? effect.width ?? 6 : effect.kind === "glow" ? (effect.width ?? 12) * 1.5 : 0) / 2;
+    const stroke = (effect.kind === "outline" ? effect.width ?? 6 : effect.kind === "hollow" ? effect.width ?? 6 : effect.kind === "glow" ? (effect.width ?? 12) * 1.5 : 0) / 2;
     // Blurred effects bleed roughly three standard deviations past the shape they blur.
     const blur = effect.blur ?? (effect.kind === "glow" ? 4 : 1);
     const spread = stroke + (effect.kind === "shadow" || effect.kind === "glow" || effect.kind === "blur" ? blur * 3 : 0);
     if (effect.kind === "blur") grow(0, 0, spread);
     else if (effect.kind === "shadow" || effect.kind === "offset") grow(offsetX, offsetY, spread);
-    else if (effect.kind === "outline" || effect.kind === "glow") grow(0, 0, spread);
+    else if (effect.kind === "outline" || effect.kind === "glow" || effect.kind === "hollow") grow(0, 0, spread);
     else if (effect.kind === "extrude") {
       const reach = effect.distance ?? 18;
       const angle = (effect.angle ?? 45) * Math.PI / 180;
@@ -1991,6 +1995,10 @@ export const EDITOR_TEXT_STYLES: EditorTextStylePreset[] = [
   { id: "isometric", label: "Isometric", hint: "Deep block", effects: [{ kind: "extrude", color: "#7c3aed", distance: 14, count: 12, angle: 30 }, { kind: "outline", color: "#111827", width: 4 }] },
   { id: "varsity", label: "Varsity", hint: "Stacked drop", effects: [{ kind: "extrude", color: "#d4ff3f", distance: 8, count: 6, angle: 90 }, { kind: "outline", color: "#111827", width: 5 }] },
   { id: "poster", label: "Poster", hint: "Hard offset", effects: [{ kind: "offset", color: "#ff2d95", offsetX: 12, offsetY: 12 }, { kind: "outline", color: "#111827", width: 6 }] },
+  { id: "hollow", label: "Hollow", hint: "Open letters", effects: [{ kind: "hollow", color: "#ffffff", width: 5 }, { kind: "shadow", color: "#0f172a", offsetX: 7, offsetY: 9, blur: 2 }] },
+  { id: "dots", label: "Dots", hint: "Polka fill", effects: [{ kind: "pattern", color: "#d4ff3f", color2: "#111827", pattern: "dots", distance: 13 }, { kind: "outline", color: "#111827", width: 4 }] },
+  { id: "checker", label: "Checker", hint: "Two-tone blocks", effects: [{ kind: "pattern", color: "#ff2d95", color2: "#ffffff", pattern: "checker", distance: 16 }, { kind: "outline", color: "#111827", width: 4 }] },
+  { id: "grid", label: "Grid", hint: "Graph fill", effects: [{ kind: "pattern", color: "#37d7ff", color2: "#0b1220", pattern: "grid", distance: 12, width: 2 }, { kind: "glow", color: "#37d7ff", width: 8, blur: 6, opacity: 0.6 }] },
 ];
 
 /** Turns a preset into effects with unique ids, so the stack editor can reorder and tune them. */

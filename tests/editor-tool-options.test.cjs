@@ -165,3 +165,38 @@ test("blur and gradient effects keep the transform box honest", () => {
   const gradient = editorTextPaintPadding({ ...text, effects: [{ id: "g", kind: "gradient", color: "#37d7ff", color2: "#d4ff3f" }] });
   assert.deepEqual(gradient, plain, "a gradient fill paints inside the ink");
 });
+
+test("the effects box lists effects as pictures, and the warp box paints the real bend", () => {
+  const panelSource = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
+  const previewSource = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
+
+  // One tile per kind, painted through the shared renderer, plus a thumbnail on each stack row.
+  assert.match(panelSource, /\{EFFECT_TYPES\.map\(\(\{ kind, label, color \}\) => <EffectTile/);
+  assert.match(panelSource, /<EditorTextArtwork text=\{effectSample\(effect\)\}/);
+  assert.match(panelSource, /<EditorTextArtwork text=\{effectSample\(effect\)\} idPrefix=\{`row-/);
+  assert.match(panelSource, /\{ kind: "pattern", label: "Pattern"/);
+  assert.match(panelSource, /\{ kind: "hollow", label: "Hollow"/);
+
+  // Warp tiles are painted, not faked with CSS transforms, and the no-op circle option is gone.
+  assert.match(panelSource, /<TextTransformTile key=\{shape\} shape=\{shape\}/);
+  assert.doesNotMatch(panelSource, /"circle"\] as const/);
+  assert.doesNotMatch(panelSource, /skew-x-6/);
+
+  // A hollow effect turns the base glyphs into an outline instead of painting a copy behind them.
+  assert.match(previewSource, /hollow\s*\n?\s*\? drawText\("base-text", \{ fill: "none", stroke: hollow\.color/);
+  assert.match(previewSource, /effect\.kind === "pattern"\).map\(\(effect\) => drawText\(`pattern-/);
+  assert.match(previewSource, /motif === "checker"/);
+});
+
+test("pattern and hollow keep the transform box honest", () => {
+  const { editorTextPaintPadding } = lib.exports;
+  const text = { value: "Aa", x: 100, y: 200, fontSize: 100, color: "#ffffff" };
+  const plain = editorTextPaintPadding({ ...text, effects: [] });
+
+  const pattern = editorTextPaintPadding({ ...text, effects: [{ id: "p", kind: "pattern", color: "#d4ff3f", color2: "#111827", pattern: "dots", distance: 13 }] });
+  assert.deepEqual(pattern, plain, "a pattern fill paints inside the ink");
+
+  const hollow = editorTextPaintPadding({ ...text, effects: [{ id: "h", kind: "hollow", color: "#ffffff", width: 10 }] });
+  assert.ok(hollow.left - plain.left >= 5, "a hollow outline strokes half its width outside the ink");
+  assert.ok(hollow.bottom - plain.bottom >= 5, "and does so below the glyphs too");
+});

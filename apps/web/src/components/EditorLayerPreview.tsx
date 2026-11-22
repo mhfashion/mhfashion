@@ -84,6 +84,7 @@ export function EditorTextArtwork({ text, idPrefix }: { text: EditorTextContent;
   const lines = editorTextLines(text);
   const lineHeight = text.fontSize * (text.lineHeight ?? 1.2);
   const effectKey = (effect: EditorTextEffect) => effect.id.replace(/[^a-zA-Z0-9_-]/g, "-");
+  const hollow = effects.find((effect) => effect.enabled !== false && effect.kind === "hollow");
   type TextEffectProps = SVGProps<SVGTextElement> & { "data-editor-text-effect"?: string; "data-editor-text-content"?: string };
   const drawText = (key: string, props: TextEffectProps = {}) => (
     <text key={key} x={text.x} y={text.y} fontSize={text.fontSize} textAnchor={textAnchor} style={textStyle} data-editor-text-content="true" {...props}>
@@ -105,6 +106,16 @@ export function EditorTextArtwork({ text, idPrefix }: { text: EditorTextContent;
             <path d={`M 0 0 H ${Math.max(6, effect.distance ?? 14)}`} fill="none" stroke={effect.color} strokeWidth={Math.max(1, effect.width ?? 4)} />
           </pattern>
         ))}
+        {effects.filter((effect) => effect.enabled !== false && effect.kind === "pattern").map((effect) => {
+          const tile = Math.max(6, effect.distance ?? 16);
+          const motif = effect.pattern ?? "dots";
+          return <pattern key={effect.id} id={`${idPrefix}-pattern-${effectKey(effect)}`} width={tile} height={tile} patternUnits="userSpaceOnUse" patternTransform={effect.angle ? `rotate(${effect.angle})` : undefined}>
+            <rect width={tile} height={tile} fill={effect.color2 ?? "transparent"} />
+            {motif === "dots" && <circle cx={tile / 2} cy={tile / 2} r={Math.max(1.2, tile * 0.22)} fill={effect.color} />}
+            {motif === "grid" && <><path d={`M 0 0 V ${tile} M 0 0 H ${tile}`} fill="none" stroke={effect.color} strokeWidth={Math.max(1, effect.width ?? 2)} /></>}
+            {motif === "checker" && <><rect width={tile / 2} height={tile / 2} fill={effect.color} /><rect x={tile / 2} y={tile / 2} width={tile / 2} height={tile / 2} fill={effect.color} /></>}
+          </pattern>;
+        })}
         {effects.filter((effect) => effect.enabled !== false && effect.kind === "gradient").map((effect) => (
           <linearGradient key={effect.id} id={`${idPrefix}-grad-${effectKey(effect)}`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor={effect.color} />
@@ -141,9 +152,12 @@ export function EditorTextArtwork({ text, idPrefix }: { text: EditorTextContent;
         }
         return null;
       })}
-      {drawText("base-text", { fill: text.color, stroke: "none", "data-editor-text-content": "true" })}
+      {hollow
+        ? drawText("base-text", { fill: "none", stroke: hollow.color, strokeWidth: hollow.width ?? 6, paintOrder: "stroke", "data-editor-text-effect": "hollow" })
+        : drawText("base-text", { fill: text.color, stroke: "none" })}
       {effects.filter((effect) => effect.enabled !== false && effect.kind === "gradient").map((effect) => drawText(`gradient-${effectKey(effect)}`, { fill: `url(#${idPrefix}-grad-${effectKey(effect)})`, opacity: Math.max(0.05, Math.min(1, effect.opacity ?? 1)), "data-editor-text-effect": effect.kind }))}
       {effects.filter((effect) => effect.enabled !== false && effect.kind === "stripe").map((effect) => drawText(`stripe-${effectKey(effect)}`, { fill: `url(#${idPrefix}-stripe-${effectKey(effect)})`, opacity: Math.max(0.05, Math.min(1, effect.opacity ?? 0.72)), "data-editor-text-effect": effect.kind }))}
+      {effects.filter((effect) => effect.enabled !== false && effect.kind === "pattern").map((effect) => drawText(`pattern-${effectKey(effect)}`, { fill: `url(#${idPrefix}-pattern-${effectKey(effect)})`, opacity: Math.max(0.05, Math.min(1, effect.opacity ?? 1)), "data-editor-text-effect": effect.kind }))}
       {decoration?.kind === "line" && <line x1={decoration.x1} y1={decoration.y1} x2={decoration.x2} y2={decoration.y2} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={decoration.width} strokeLinecap="round" data-editor-text-decoration="line" />}
       {decoration?.kind === "cut" && <rect x={decoration.x} y={decoration.y} width={decoration.width} height={decoration.height} fill={text.decorationColor ?? "#d4ff3f"} opacity="0.8" data-editor-text-decoration="cut" />}
       {decoration?.kind === "oblique" && <line x1={decoration.x1} y1={decoration.y1} x2={decoration.x2} y2={decoration.y2} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={decoration.width} data-editor-text-decoration="oblique" />}
