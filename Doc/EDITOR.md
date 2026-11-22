@@ -282,9 +282,15 @@ The design library is a local placeholder until the storage endpoint exists
 
 ## 15. Undo, state and the draft
 
-- Undo and Redo keep the last 30 layer-array snapshots and cover layer changes: add, delete, move,
-  resize, style, reorder, group and mask.
+- Undo and Redo keep the last 30 layer-array snapshots. Every discrete layer change takes one: add,
+  delete, duplicate, rename, reorder, group and ungroup, mask add and remove, visibility and lock, and the
+  paint, pen, shape and gradient edits. A move, resize or rotate takes its snapshot when the gesture
+  starts, not per pixel.
+- The appearance fields take no snapshot of their own: the opacity and fill numbers and the blend-mode
+  select (`updateLayer`) change the layer in place, so the next undo jumps back past that edit as well.
 - Viewport zoom, pan and mockup positions are not in the history.
+- Deleting every layer leaves an empty list. The panel still offers Add layer, but until one is added the
+  drawing tools do nothing; `Plan/EDITOR_PLAN.md` §4 records this as a gap for an owner decision.
 - The layer array and each layer's move/scale/rotate are written to the browser's `localStorage` under
   `mh-fashion-design-draft-v1`, 400 ms after the last change (`lib/design-draft.ts`, called from
   `EditorCanvas`).

@@ -110,6 +110,7 @@ What the code does not do, with the evidence.
 | No Save, and no design outside the browser | Save and Buy are `disabled` in `EditorHeaderBar2`. The browser draft is restored on load (`readDesignDraftSnapshot` in `lib/design-draft.ts`), but nothing reaches a database, `clearDesignDraft` is never called, and `/create` ignores the `?product=` it is given. Waiting on decision D1 |
 | No design hand-off to an order | the editor never writes a design; the admin order record is built from the demo store, not from `/create` |
 | Undo is layer-only | `undoStack`/`redoStack` hold `EditorArtworkLayer[][]`; viewport zoom/pan, the mockup overlay transforms and the opacity/fill sliders are outside it, so those changes cannot be undone |
+| Every layer can be deleted | `deleteEditorLayer` filters the list without a floor, so deleting the last layer leaves an empty design; Add layer recovers it, but until then every drawing tool returns silently. Owner decision needed: keep one layer, or say why the tools do nothing |
 | Arch and Wave do not bend text | `editorTextPresetMatrix` returns one shear matrix for the whole text block (6° for Arch, 4° for Wave); no glyph follows a curve. The `circle` option is no longer offered and survives only as a legacy stored value |
 | No Myanmar font until the bucket is filled | the picker reads `fonts/manifest.json` from R2 and falls back to the eight system fonts, but the shop has not uploaded a manifest yet, so today's list is still Inter, Arial, Georgia, Impact, Courier New, Trebuchet MS, Verdana and Times New Roman |
 | Brush packs are a contract only | `public/brushes/README.md` defines `brushes.json` and tip files, `brushes.json` is empty, and no code reads it |
@@ -203,6 +204,11 @@ the owner approves an item before it starts.
   because every pointer handler already rejects a non-primary pointer); and a rotation to 844x390 keeps the
   canvas width, adds no horizontal scroll at page or viewport level, and leaves the canvas reachable through the
   viewport's own scroll.
+- **Every one of those paths was then checked in Chromium (1440 x 900) with the console guard on:** add
+  (1 to 2 rows, undo back to 1), rename (label becomes `Renamed Layer`, undo restores `Layer 1`), hide and
+  show, lock and unlock, mask add and remove, reorder, group, and delete (2 to 1, undo back to 2) each
+  return to the previous state with no console error. Deleting both layers leaves an empty list, which is
+  recorded in §4.
 - **Layer housekeeping is now undoable.** `deleteLayer`, `addLayer`, `duplicateLayer`, `renameLayer`,
   `moveLayer`, `moveLayerToIndex`, `groupSelectedLayers`, `ungroupSelectedLayers`, `createLayerMask`,
   `deleteLayerMask`, `toggleLayerVisibility` and `toggleLayerLock` all call `rememberLayerSnapshot()`. Before
