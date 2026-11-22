@@ -882,3 +882,18 @@ wrapping between grapheme clusters, and a console guard that fails the run on an
 The last full run (`node --test tests/*.test.cjs`) reported 505 passing, 0 failing, against a server
 on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise).
 
+
+### Checks run 2026-11-22 (shop side, admin, routing)
+
+| Check | Result |
+|---|---|
+| Unknown slug on `/products`, `/guide`, `/collections`, `/admin/orders` | 404, no stack trace |
+| Reflected input: `/search?q=<script>`, `/guide?q=<img onerror>`, `/products?design=javascript:` | rendered escaped, no payload in the HTML |
+| Demo admin: register → `/admin` ("Good morning, Owner") → `/admin/pricing` | 24 combination rows, prices shown in Ks, no console error |
+| Admin pages without a session | redirect to `/admin/login`, so the guard holds |
+| Layer rename to `""` or whitespace | keeps the old name (`updateEditorLayer` trims and falls back) |
+| Delivery fee on checkout | by design the fee is quoted later; "Total today" is the subtotal and the panel says so |
+
+The shop catalogue and the checkout cannot be exercised in this workspace: products come from
+Supabase and `NEXT_PUBLIC_SUPABASE_URL` is unset, so every product list is empty and there is nothing
+to add to a cart. Those flows need the database (E15) before they can be tested end to end.
