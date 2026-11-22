@@ -31,7 +31,7 @@ These two files (`Plan/EDITOR_PLAN.md` and `Doc/EDITOR.md`) are the whole editor
 | Layers box | `components/EditorLayersPanel.tsx` | 327 |
 | Adjustment box | `components/EditorAdjustmentsPanel.tsx` | 438 |
 | Tool bar | `components/EditorToolsBar.tsx` | 256 |
-| Product / GSM / colour / size bar with price | `components/EditorHeaderBar2.tsx` | 397 |
+| Header bar: Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size, price, Save, Buy | `components/EditorHeaderBar2.tsx` | 397 |
 | Edit sidebar | `components/EditorEditSidebar.tsx` | 338 |
 | Layer painting | `components/EditorArtworkLayers.tsx` | 332 |
 | Layer thumbnails | `components/EditorLayerPreview.tsx` | 274 |
@@ -70,7 +70,7 @@ Checked item by item in the source.
 | Gradients | five types, up to eight stops, presets, on-canvas axis, thumbnails |
 | Images | client-side compression (2 MB, 2000 px), nine photo-adjustment groups, non-destructive values, masks |
 | Mockups | Front and Back boxes with connectors, artwork mirror clipped to the print area, independent overlay transforms, shared 3500 px tier |
-| Header Bar 2 | product, GSM, colour, size, live price; Save and Buy disabled |
+| Header Bar 2 | eight selection boxes (Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size), live price; Save and Buy disabled |
 | Edit sidebar | Designs, Elements, Text, Upload, Image Create; rail stays visible; additions land in the Layers box |
 | Browser draft | the layers are written to `localStorage` (`mh-fashion-design-draft-v1`) 400 ms after a change; a design-editable product page renders that draft and links back to `/create` |
 | Undo / redo | 30 layer snapshots, layer changes only |
@@ -115,6 +115,7 @@ What the code does not do, with the evidence.
 | Image Create has no pipeline | the prompt field exists; nothing generates or inserts an image |
 | No artboards | one print canvas plus mockups |
 | Phone verified by emulation only | `tests/editor-touch.cjs` runs Chromium with touch emulation |
+| Header choices are fixed in code | `lib/editor-attributes.ts` holds the option lists (Print Method, Fabric Type, Knit Structure, MH Cuttings) and the narrowing rules as constants, as its own header comment says; the admin attribute chain (`lib/admin-attributes.ts`, `AdminAttributes.tsx`) is edited separately and the editor does not read it |
 
 ## 5. Plan — next steps
 
@@ -134,6 +135,10 @@ the owner approves an item before it starts.
 | E9 | Enable the remaining products | Hoodie, Cup, Kids and Bag are visible but dead | `EditorHeaderBar2`, mockups, `editor-price` | medium |
 | E10 | Connect the sidebar library and image generation | Designs, Elements and Image Create are placeholders | `editor-design-library`, R2 endpoint, image service | large |
 | E11 | Per-character styling, glyphs, artboards | only if the catalogue needs them | text model migration, renderers, export | large |
+| E12 | Required selections before Buy | an order must carry every choice; Save stays open | `EditorHeaderBar2`, new gate helper, order payload | small |
+| E13 | Keyboard Undo / Redo | desktop users expect Ctrl+Z; only the tool-bar buttons exist | `EditorCanvas`, new shortcut helper | small |
+| E14 | Image resolution warning | a photo enlarged past what the press can print sharply is only discovered after printing | `editor-upload`, `editor-layers`, Layers box, Adjustment box | small |
+| E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium |
 
 ### E1 — Save and order hand-off
 
@@ -150,6 +155,8 @@ the owner approves an item before it starts.
   run the flow on at least one physical Android and one iPhone.
 - Acceptance: `tests/editor-touch.cjs` passes end to end, and a written note records the devices, OS
   versions and what was checked.
+- Owner decision (2026-11-21): this item is done by testing on real devices and fixing what is found, not by emulation alone.
+- Checklist for the real-device pass: (1) iPhone Safari opens `/create`, draws and holds many layers on the 4500 × 5400 canvas without the page reloading (browser canvas limits are not verified in the source); (2) Burmese text typed with the Text tool, in several fonts and with effects, renders correctly on the canvas, the mockup and the print sheet; (3) the on-screen keyboard never hides the text box or caret; (4) uploads from the gallery and camera, including photos over 10 MB; (5) every tool with one finger, a second finger never taking over, Pan view, `+` / `−` / Reset view; (6) the Layers box and Edit sidebar never overlap, and the bottom navigation and safe areas never cover the editor; (7) portrait to landscape, dark and light, 20 to 30 layers, and the 30-step undo limit; (8) a reload loses the working canvas today (E1) and is recorded as such.
 
 ### E3 — `circle` preset
 
@@ -162,6 +169,7 @@ the owner approves an item before it starts.
 - Align the selection to the print canvas (left, centre, right, top, middle, bottom) and tidy the spacing
   of three or more layers.
 - Constraint: moves layer origins, never scales, treats a linked set as one unit.
+- Owner decision (2026-11-21): the alignment targets are the design areas the shop defines for each mockup, not always the canvas centre. This item starts after the mockup design-area discussion.
 - Acceptance: unit tests on the helper against `PRINT_CANVAS_SPEC`; a canvas test that the artwork lands
   inside the print area.
 
@@ -175,6 +183,7 @@ the owner approves an item before it starts.
 
 - While dragging, snap to the canvas edges and centre, and to other layers' edges and centres, with a
   visible guide line; a modifier key suspends snapping.
+- Owner decision (2026-11-21): the snap targets include the design areas defined per mockup. This item starts after the mockup design-area discussion.
 - Acceptance: a drag within the snap distance lands exactly on the guide, the guide disappears on release,
   and touch dragging keeps working.
 
@@ -205,6 +214,99 @@ the owner approves an item before it starts.
 - Acceptance: a design added from the sidebar survives a reload (once E1 lands) and appears in the print
   bundle.
 
+### E12 — Required selections before Buy  *(owner decision, 2026-11-21)*
+
+- **Rule:** Buy is allowed only when all eight header selections hold a value: Product, Print Method,
+  Fabric Type, Knit Structure, MH Cuttings, GSM, Color and Size. **Save is always allowed**, whatever is or
+  is not chosen.
+- **Today:** the header opens with a value in every box except Color (owner, 2026-11-21). A box counts as
+  chosen when it holds a value, a pre-filled default included (decision D7).
+- **Buy with something missing:** the Buy button stays clickable, because a disabled button cannot say why.
+  Clicking it shows a small notice that names every missing selection (for example "Choose Color before
+  buying"), outlines each missing box, and scrolls or focuses the first one. The notice is non-blocking, is
+  announced to screen readers (`role="status"`), and clears as soon as the last missing box is filled.
+- **Wording:** the notice reads in English and Myanmar with the active UI language, and names fields with
+  their header labels. The owner reviews the Myanmar wording.
+- **Web and Phone:** on Web the notice sits under the Buy button and does not cover the canvas; on Phone it
+  sits under the header row, above the bottom navigation, the header row scrolls the first missing box into
+  view, targets stay about 44 px, and the notice never overlaps the Layers box or Edit sidebar.
+- **Server check:** the order endpoint repeats the rule and rejects a payload that lacks a required
+  selection, and it also rejects a combination that has no price or is hidden in Availability. The button is
+  never the only guard.
+- **Scope:** T-Shirt. The Phone product's required set is decided when Phone ordering is built.
+- **Order of work:** the gate ships with Buy (E1, after payment). Until then Buy stays disabled.
+- Acceptance: with Color empty, Buy shows a notice naming Color, the Color box is outlined and in view; Save
+  works with Color empty; choosing Color clears the notice and outline at once; with everything chosen Buy
+  proceeds; Enter and Space on Buy behave like a click and move focus to the first missing box; the notice is
+  announced and shows in English and Myanmar, dark and light, at 1440 × 900 and 390 × 844; a unit test covers
+  the pure "which selections are missing" function; a server test rejects a payload with a missing selection,
+  an unpriced combination and a hidden one.
+
+### E13 — Keyboard Undo / Redo  *(owner decision, 2026-11-21)*
+
+- `Ctrl+Z` (`Cmd+Z` on Mac) undoes; `Ctrl+Shift+Z`, `Cmd+Shift+Z` and `Ctrl+Y` redo. `Cmd+Y` is left alone.
+- It runs the same undo and redo functions as the tool-bar buttons and keeps the same scope: layer changes
+  only, 30 snapshots; zoom, pan and mockup positions stay outside the history.
+- **Fields keep the browser's own Undo:** while the focus is in an input, textarea, select, a contenteditable
+  element or a `role="textbox"` element (the inline text editor, the Edit-sidebar search, number fields), the
+  shortcut does nothing, so typing is never rolled back by layer history.
+- **Burmese and other non-Latin layouts:** when the pressed key is not a Latin letter, the physical key is
+  used, so the shortcut works on a Myanmar keyboard. On a Latin layout that moves the letters (AZERTY), the
+  letter wins.
+- Ignored: any Alt combination (AltGr types characters on some layouts) and keystrokes made while an input
+  method is composing text.
+- The shortcut works whether the tool bar is expanded or collapsed and while the Layers or Adjustment box is
+  open.
+- Phone: no keyboard, so the buttons stay the way to undo.
+- Acceptance: a unit test covers the key matrix and the field check; a browser test undoes and redoes a layer
+  change with the tool bar collapsed and with the Layers box open; typing in the text editor and pressing the
+  shortcut changes the text only; `Doc/EDITOR.md` §17 gains the new rows.
+
+### E14 — Image resolution warning  *(owner decision, 2026-11-21: add it)*
+
+- **Facts checked in the source:** layers live in a 1000 × 1200 artwork space that maps to the 4500 × 5400 px
+  canvas at 4.5 px per unit; an uploaded photo is reduced to at most 2000 px on its long edge (`UPLOAD_MAX_EDGE`)
+  and inserted centred, fitted inside 80 % of the artwork width and height (`imageLayerBox`); an image layer
+  stores its box and byte size but not the photo's own pixel size.
+- **Measure:** effective ppi = 300 × (photo pixels along an axis) ÷ (pixels that axis covers on the print
+  canvas). Rotation and masks do not change it. A photo stretched on one axis only takes the lower value. By
+  this formula a 2000 px photo at the default size lands between about 139 ppi (a portrait photo) and 167
+  ppi (a landscape or square one), and a 1000 px photo between about 69 and 83 ppi.
+- **Needs:** the photo's source pixel size stored on the layer at upload, or measured by loading the image for
+  layers saved without it.
+- **Applies to** image layers only; text, shapes and strokes are vector.
+- **Levels:** good, low, very low. The thresholds come from the print desk's minimum acceptable ppi; 150 and
+  100 are placeholders to test with.
+- **Where:** a small badge on the image row in the Layers box, a "Print quality: N ppi" line with its level in
+  the Adjustment box, and a quiet on-canvas notice when resizing drops a layer to a lower level. Phone shows an
+  icon (about 44 px) that opens the detail. English and Myanmar, dark and light.
+- **Never blocks:** Save and Buy stay available. Whether "very low" needs a confirmation at Buy is decided in
+  E1. Optionally the ppi of each image layer is stored on the order item so the print sheet shows it
+  (`lib/print-quality.ts` already carries the other print checks).
+- Open decision D8: the 2000 px upload cap decides whether the warning is useful (see §6).
+- Acceptance: unit tests for the formula (a 2000 px photo shown 2000 px wide gives 300; shown 3500 px wide gives
+  about 171; rotation and masks leave it unchanged; a one-axis stretch takes the lower value); the badge and
+  line update live while resizing; undo history is untouched; checked at 1440 × 900 and 390 × 844.
+
+### E15 — Header choices managed from the admin dashboard  *(owner decision, 2026-11-21)*
+
+- **Rule:** the shop can change the choices behind the header boxes from the admin dashboard — rename, add,
+  remove and reorder the options of Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Size and
+  Color — and the narrowing rules between them (today Sublimation allows Polyester only, Polyester allows
+  Interlock and Air Layer, cotton allows Single Jersey and Interlock). Nothing the shop is expected to change
+  stays fixed in code.
+- **Same source everywhere:** the editor header, the admin pricing table and the T-shirt post form read the
+  same managed chain. Today the editor reads constants and the admin edits its own copy, so the two can
+  disagree.
+- **Removing an option:** an option already used by a priced combination, a post or an order is hidden from
+  new choices, not deleted, so existing records keep their meaning.
+- **Order of work:** the managed chain must live where the editor and the server can both read it (the
+  database, after the Supabase work); until then the admin copy and the constants stay in step by hand.
+- Acceptance: adding an option in the admin makes it appear in the editor header and the pricing table after
+  a reload; removing one hides it from new choices and leaves existing orders readable; a changed narrowing
+  rule changes what the header offers; a unit test covers the fall-back to the first valid option when a
+  choice stops being offered; checked on Web and Phone.
+
 ## 6. Decisions for the owner
 
 | # | Question | Recommendation |
@@ -215,6 +317,23 @@ the owner approves an item before it starts.
 | D4 | Which product comes after T-Shirt and Phone? | Hoodie — it is the closest print geometry to the T-shirt |
 | D5 | Alignment and snapping, or keep free placement? | Both: snapping while dragging, alignment as an explicit action |
 | D6 | Per-character text styling? | Not now; per-layer styling covers the catalogue, and the change touches every renderer, the print sheet and saved designs |
+| D7 | Do the pre-filled header defaults count as chosen for the Buy gate (E12)? | Yes: only Color is empty today, and the gate exists to stop an order missing a value, which a default never does |
+| D8 | Raise the 2000 px upload cap (E14)? | Raise it, or keep the original at order time. At the cap a photo is already about 139 to 167 ppi at the default size, so the warning would fire on nearly every photo; raising it needs the real-device check in E2 |
+| D9 | Fit Type is a priced post attribute but has no box in the editor header. Where does the customer choose it, and is it required before Buy? (Owner, 2026-11-21: Sleeve has not been decided to be added, so it is outside this question.) | Settle this before E1: the order must carry whatever the price depends on |
+
+### Owner decisions recorded (2026-11-21)
+
+1. Keyboard Undo / Redo is approved (E13).
+2. Save and the order hand-off (E1) is the most important item. Save comes first, once accounts exist; Buy
+   follows the payment work.
+3. Align and snap guides (E4, E6) work inside design areas that the shop defines for each mockup, not always
+   the centre. The mockup details are discussed later and E4 and E6 wait for that.
+4. The image resolution warning is approved (E14); the upload-cap question is open (D8).
+5. Phone QA (E2) is real-device testing followed by fixes.
+6. Required selections before Buy (E12): all eight header selections; Save always allowed; Buy shows what is
+   missing.
+7. The header holds eight selection boxes, as listed in §2.
+8. The choices behind the header boxes, and the rules between them, must be changeable from the admin dashboard, not fixed in code (E15).
 
 ## 7. Verification and change policy
 
