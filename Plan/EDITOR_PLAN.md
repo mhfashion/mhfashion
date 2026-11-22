@@ -476,6 +476,12 @@ the owner approves an item before it starts.
   manifest: the downloaded `mh-fashion-t-shirt.svg` held `<defs><style><![CDATA[@font-face{...data:font/woff2;base64,...`
   with the chosen family; `tests/editor-fonts.test.cjs` and `tests/design-export.test.cjs` cover the rules
   and the CDATA guard.
+- **Step 3 done 2026-11-22: a pre-upload check.** `npm run fonts:check -- path/to/fonts`
+  (`lib/editor-font-audit.ts` + `scripts/check-font-manifest.cjs`) reads a local copy of the folder with the
+  editor's own parser and prints the picker order, every entry the editor would drop and why, any listed file
+  that is not in the folder, and any file over 1 MB; it exits 1 while something is wrong, so the owner can
+  gate the upload on it. Verified on a good folder, a missing weight, a folder passed as either the bucket
+  root or `fonts/`, and an entry without a licence.
 - **Still open:** upload the manifest and the font files to R2 and add the site origin to the bucket's CORS
   rule; check each licence for commercial print; embed (or outline) the used fonts in the **press bundle**
   SVG, which is the remaining E16 dependency; move the font list into the admin dashboard as E15 does;
@@ -640,7 +646,8 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | `tests/editor-align.test.cjs` | 8 |
 | `tests/editor-snap.test.cjs` | 8 |
 | `tests/editor-fonts.test.cjs` | 11 |
+| `tests/editor-font-audit.test.cjs` | 5 |
 | `tests/editor-touch.cjs` | browser flow (desktop and phone), including a reload that must restore the draft |
 
-The last full run (`node --test tests/*.test.cjs`) reported 495 passing, 0 failing, against a server on
+The last full run (`node --test tests/*.test.cjs`) reported 500 passing, 0 failing, against a server on
 port 3000.

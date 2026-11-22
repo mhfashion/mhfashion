@@ -175,6 +175,10 @@ Rules the editor enforces (a bad entry is skipped and named, never fatal — the
 | `licence` | required: `name` plus a `url`. A font without a licence is not shipped |
 | `enabled` | `false` hides the font from the picker; designs already using it fall back |
 
+- **Check before you upload:** `npm run fonts:check -- path/to/fonts` reads a local copy of the folder
+  with the editor's own parser and prints the picker order, every entry the editor would drop and its
+  reason, any listed file that is not in the folder, and any file over 1 MB. It exits 1 while something
+  is wrong, so it can gate the upload.
 - **woff2 only.** It is the smallest and every current browser reads it; convert a `.ttf`/`.otf`
   before uploading (`fonttools`: `pyftsubset Font.ttf --flavor=woff2 --output-file=regular.woff2`).
 - **Replacing a font:** add the version to the file name (`regular-2.woff2`) and update the

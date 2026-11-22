@@ -19,6 +19,7 @@
     "test:photo-adjustments": "node --test tests/photo-adjustments.test.cjs",
     "test:guide:http": "node --test tests/guide-http.test.cjs",
     "test:admin-data": "node --test tests/admin-demo-data.test.cjs",
-    "test:admin-posts": "node --test tests/admin-posts.test.cjs"
+    "test:admin-posts": "node --test tests/admin-posts.test.cjs",
+    "fonts:check": "node scripts/check-font-manifest.cjs"
   }
 }
