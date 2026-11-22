@@ -143,6 +143,12 @@ export type AdminOrderItem = {
   design?: AdminOrderDesign | null;
 };
 
+/** One run of the press sheet. The press needs to know a sheet has already been printed. */
+export type AdminOrderReprint = {
+  at: string;
+  by: string;
+};
+
 export type AdminOrder = {
   id: string;
   /** Set when the order came through checkout; a repeat submit with the same key returns this order. */
@@ -156,6 +162,8 @@ export type AdminOrder = {
   payment: AdminPaymentMethod;
   placedAt: string;
   note: string;
+  /** Every run of the press sheet, oldest first; the last `MAX_ORDER_REPRINTS` are kept. */
+  reprints?: AdminOrderReprint[];
 };
 
 const DESIGN_INKS = ["#2f7d32", "#c08a2e", "#203459", "#b83219", "#4b3f8f", "#1f7a6d", "#8a1f5c", "#33413a"];
@@ -595,16 +603,27 @@ export function formatKs(value: number) {
   return `Ks ${Math.round(value).toLocaleString("en-US")}`;
 }
 
+/**
+ * The shop keeps one clock. Timestamps are stored as UTC ISO strings and every admin screen shows
+ * them in Myanmar time (UTC+6:30, no daylight saving), so a laptop in Yangon, a phone abroad and the
+ * server render all print the same hour and file an order under the same day.
+ */
+export const YANGON_TIME_ZONE = "Asia/Yangon";
+
+const yangonDayKeyFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: YANGON_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit",
+});
+
 export function formatAdminDate(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return date.toLocaleDateString("en-GB", { timeZone: YANGON_TIME_ZONE, day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function formatAdminDateTime(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleString("en-GB", { timeZone: YANGON_TIME_ZONE, day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 export function makeAdminId(prefix: string) {
@@ -642,6 +661,31 @@ export function setOrderStage(data: AdminDemoData, orderId: string, stage: Admin
   };
 }
 
+export const MAX_ORDER_REPRINTS = 20;
+
+/**
+ * Records one run of the press sheet. A second run is a reprint: the shop needs to see who sent it
+ * to the printer and when, so a wrong file cannot be blamed on the press without a record.
+ */
+export function recordOrderReprint(order: AdminOrder, by: string, at: Date = new Date()): AdminOrder {
+  const entry: AdminOrderReprint = { at: at.toISOString(), by: by.trim() || "Admin" };
+  return { ...order, reprints: [...(order.reprints ?? []), entry].slice(-MAX_ORDER_REPRINTS) };
+}
+
+/** How many times the press sheet has been sent to a printer; 0 means it has not been printed yet. */
+export function orderPrintRuns(order: AdminOrder) {
+  return order.reprints?.length ?? 0;
+}
+
+export function lastOrderReprint(order: AdminOrder): AdminOrderReprint | null {
+  const list = order.reprints ?? [];
+  return list.length ? list[list.length - 1] : null;
+}
+
+export function replaceOrder(data: AdminDemoData, order: AdminOrder): AdminDemoData {
+  return { ...data, orders: data.orders.map((entry) => (entry.id === order.id ? order : entry)) };
+}
+
 export function setOrderNote(data: AdminDemoData, orderId: string, note: string): AdminDemoData {
   return {
     ...data,
@@ -677,13 +721,13 @@ export function summarizeOrders(orders: AdminOrder[]): AdminOrderSummary {
   };
 }
 
-// Orders are filed by the admin's local day, not the UTC day: an order placed at 00:30 in
-// Yangon belongs to that morning's sheet, and UTC keys put it on yesterday.
+// Orders are filed by the Yangon day, not the UTC day: an order placed at 00:30 in Yangon belongs to
+// that morning's sheet, and UTC keys put it on yesterday. Reading the day from the device clock filed
+// the same order differently on a phone that had travelled or a server rendering in UTC.
 export function adminDayKey(value: string | number | Date): string {
   const date = new Date(value);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
+  if (Number.isNaN(date.getTime())) return "";
+  return yangonDayKeyFormat.format(date);
 }
 
 // Wrapped so screens can read "today" without calling Date.now() during render.
@@ -698,7 +742,7 @@ export function adminDayLabel(dayKey: string, now = Date.now()) {
   const yesterday = adminDayKey(now - DAY_MS);
   if (dayKey === yesterday) return "Yesterday";
   const [year, month, day] = dayKey.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
 }
 
 export const ADMIN_ORDER_DATE_PRESETS = ["Today", "Last 7 days", "Last 30 days", "All"] as const;
@@ -759,13 +803,11 @@ export function sortOrders(orders: AdminOrder[], sort: AdminOrderSort): AdminOrd
 
 export function revenueByDay(orders: AdminOrder[], days: number, now = Date.now()) {
   const buckets: { date: string; label: string; revenueKs: number; orders: number }[] = [];
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
   for (let offset = days - 1; offset >= 0; offset -= 1) {
-    const date = new Date(start.getTime() - offset * DAY_MS);
+    const stamp = now - offset * DAY_MS;
     buckets.push({
-      date: adminDayKey(date),
-      label: date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
+      date: adminDayKey(stamp),
+      label: new Date(stamp).toLocaleDateString("en-GB", { timeZone: YANGON_TIME_ZONE, day: "2-digit", month: "short" }),
       revenueKs: 0,
       orders: 0,
     });
@@ -1386,8 +1428,9 @@ export function promotionDraftFrom(promotion?: AdminPromotion, now = Date.now())
     value: promotion ? String(promotion.value) : "",
     minSpendKs: promotion ? String(promotion.minSpendKs) : "0",
     usageLimit: promotion ? String(promotion.usageLimit) : "100",
-    startsAt: (promotion?.startsAt ?? new Date(now).toISOString()).slice(0, 10),
-    endsAt: (promotion?.endsAt ?? new Date(now + 30 * DAY_MS).toISOString()).slice(0, 10),
+    // The date input works in Yangon days, whatever zone the device is set to.
+    startsAt: promotion ? adminDayKey(promotion.startsAt) : adminDayKey(now),
+    endsAt: promotion ? adminDayKey(promotion.endsAt) : adminDayKey(now + 30 * DAY_MS),
   };
 }
 
@@ -1403,8 +1446,8 @@ export function validatePromotionDraft(draft: AdminPromotionDraft): string[] {
   if (!Number.isFinite(minSpend) || minSpend < 0) errors.push("Minimum spend cannot be negative.");
   const limit = Number(draft.usageLimit);
   if (!Number.isFinite(limit) || limit < 1) errors.push("Usage limit must be at least 1.");
-  const start = new Date(`${draft.startsAt}T00:00:00`).getTime();
-  const end = new Date(`${draft.endsAt}T23:59:59`).getTime();
+  const start = new Date(`${draft.startsAt}T00:00:00+06:30`).getTime();
+  const end = new Date(`${draft.endsAt}T23:59:59+06:30`).getTime();
   if (Number.isNaN(start) || Number.isNaN(end)) errors.push("Start and end dates are required.");
   else if (end <= start) errors.push("End date must be after the start date.");
   return errors;
@@ -1419,8 +1462,9 @@ export function promotionFromDraft(draft: AdminPromotionDraft, existing?: AdminP
     minSpendKs: Math.round(Number(draft.minSpendKs) || 0),
     usageLimit: Math.round(Number(draft.usageLimit) || 1),
     used: existing?.used ?? 0,
-    startsAt: new Date(`${draft.startsAt}T00:00:00`).toISOString(),
-    endsAt: new Date(`${draft.endsAt}T23:59:59`).toISOString(),
+    // A promotion runs from midnight to midnight in Yangon, not in the device's zone.
+    startsAt: new Date(`${draft.startsAt}T00:00:00+06:30`).toISOString(),
+    endsAt: new Date(`${draft.endsAt}T23:59:59+06:30`).toISOString(),
     enabled: existing?.enabled ?? true,
   };
 }

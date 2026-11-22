@@ -7,7 +7,7 @@ import { RATE_LIMITS, enforceRateLimit } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request, "payments/intent", RATE_LIMITS.paymentIntent);
+  const limited = await enforceRateLimit(request, "payments/intent", RATE_LIMITS.paymentIntent);
   if (limited) return limited;
   let payload: { orderId?: string; amountKs?: number; provider?: string };
   try {

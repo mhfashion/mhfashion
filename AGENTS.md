@@ -25,7 +25,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
 
 ## Testing notes
-- `node --test tests/*.test.cjs` reports 108 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
+- `node --test tests/*.test.cjs` reports 454 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
 - `tests/editor-touch.cjs` has a known pre-existing failure in its phone **Edit sidebar** section (a `null` `getBoundingClientRect`); it is unrelated to the Editor Header Bar 2 work. Assertions that run earlier in the file still execute.
 - Production-UI checks can be driven headlessly with Chromium + CDP:
   `chromium --headless=new --no-sandbox --remote-debugging-port=9222 about:blank`,
@@ -289,6 +289,41 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `tests/helpers/load-ts-module.cjs` resolves `@/lib/...` imports and loads sibling TS files recursively, so
   a lib that imports another lib (admin-demo-data → editor-attributes, editor-path-boolean → editor-layers)
   loads in tests without extra wiring.
+
+## One shop clock: `Asia/Yangon`
+- Timestamps are stored as UTC ISO strings and **displayed in Myanmar time**. `adminDayKey`,
+  `formatAdminDate`, `formatAdminDateTime`, `adminDayLabel` and `revenueByDay` in
+  `lib/admin-demo-data.ts` all pin `YANGON_TIME_ZONE`; never re-derive a day from
+  `getFullYear()/getMonth()/getDate()` or a bare `toLocaleDateString` — that files an order by the
+  device's day, which differs from the server render and from a phone that travelled.
+- Date **inputs** work in Yangon days too: `adDraftFrom`/`adFromDraft` (`lib/admin-ads.ts`) and
+  `promotionDraftFrom`/`promotionFromDraft` (`lib/admin-demo-data.ts`) write `${day}T00:00:00+06:30`
+  and read back with `adminDayKey`. A stored instant shown through `.slice(0, 10)` reads the UTC day
+  and is wrong for anything after 18:00 UTC.
+- `tests/admin-orders.test.cjs` re-runs the formatters with `process.env.TZ` set to UTC, Los Angeles
+  and Tokyo; keep that guard when touching the date helpers.
+
+## Reprint record (`lib/order-print.ts`, `AdminOrders.tsx`)
+- `AdminOrder.reprints` holds one entry per run of the press sheet (`{ at, by }`, last
+  `MAX_ORDER_REPRINTS` = 20). `recordOrderReprint` is pure; the drawer records the run **before**
+  opening the sheet, so the sheet prints the run it belongs to ("First print" / "Reprint 2 · … by X").
+- The drawer's print button switches to "Reprint sheet" once a run exists and shows
+  `Press sheet: 2× · 21 Nov, 14:30`.
+
+## Printable documents on a phone
+- `buildOrderPrintSheetHtml` / `buildOrderInvoiceHtml` carry `<meta name="viewport" ...>` plus a
+  `@media (max-width: 640px)` block that stacks `.grid`, `.line` and the receipt header; without the
+  meta a phone lays the sheet out at 980 px and the tables are unreadable. Keep `@media print` hiding
+  `.printbar`.
+- `openOrderPrintSheet` / `openOrderInvoice` return `"opened" | "downloaded"`: when `window.open`
+  returns null (iOS blocks a popup that is not the first thing a tap does) the HTML is saved as a
+  file instead of the click doing nothing. Verified at 390 × 844 touch with CDP
+  (`scrollWidth === innerWidth`) and with `window.open = () => null` to force the download.
+
+## Rate limiting (`lib/rate-limit.ts`)
+- Module memory is the default store and is per isolate. `useRateLimitStore(kvRateLimitStore(kv))`
+  switches to a Cloudflare KV counter that survives an isolate replacement; `enforceRateLimit` is
+  async, so every route must `await` it before it reads the body.
 
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and

@@ -84,7 +84,7 @@ test("the guard answers 429 with a Retry-After and lets the rest through", async
   });
   const responses = [];
   for (let index = 0; index < limiter.RATE_LIMITS.paymentIntent.limit + 1; index += 1) {
-    responses.push(limiter.enforceRateLimit(request, "payments/intent", limiter.RATE_LIMITS.paymentIntent));
+    responses.push(await limiter.enforceRateLimit(request, "payments/intent", limiter.RATE_LIMITS.paymentIntent));
   }
   const allowed = responses.filter((response) => response === null);
   const refused = responses.filter((response) => response !== null);
@@ -123,4 +123,65 @@ test("every public payment route is guarded before it does any work", () => {
     const firstWork = source.search(/await request\.(json|text)\(\)/);
     if (firstWork > 0) assert.ok(guard < firstWork, `${file} must refuse before reading the body`);
   }
+});
+
+test("a durable store keeps the allowance when the isolate is replaced", async () => {
+  // A tiny stand-in for Cloudflare KV: values survive, and the TTL is recorded.
+  const kv = {
+    values: new Map(),
+    ttl: new Map(),
+    async get(key, type) {
+      assert.equal(type, "json");
+      return this.values.has(key) ? JSON.parse(this.values.get(key)) : null;
+    },
+    async put(key, value, options) {
+      this.values.set(key, value);
+      this.ttl.set(key, options?.expirationTtl);
+    },
+  };
+  const store = limiter.kvRateLimitStore(kv, "test:");
+  limiter.useRateLimitStore(store);
+  const start = 5_000_000;
+  try {
+    const first = await limiter.checkRateLimitAsync("ip:kv", rule, start);
+    assert.equal(first.allowed, true);
+    assert.equal(first.remaining, 2);
+    assert.ok(kv.values.has("test:ip:kv"), "the counter is written outside module memory");
+    assert.ok(kv.ttl.get("test:ip:kv") >= 60, "the key expires on its own");
+
+    // A new isolate starts with empty memory; the durable counter is what holds the line.
+    limiter.resetRateLimits();
+    await limiter.checkRateLimitAsync("ip:kv", rule, start + 1);
+    const third = await limiter.checkRateLimitAsync("ip:kv", rule, start + 2);
+    assert.equal(third.allowed, true);
+    assert.equal(third.remaining, 0);
+    const blocked = await limiter.checkRateLimitAsync("ip:kv", rule, start + 30_000);
+    assert.equal(blocked.allowed, false, "the fourth call in the window is refused across isolates");
+    assert.equal(blocked.retryAfterSeconds, 30);
+
+    // The window still opens on time.
+    assert.equal((await limiter.checkRateLimitAsync("ip:kv", rule, start + rule.windowMs)).allowed, true);
+
+    // The guard uses the same store.
+    limiter.resetRateLimits();
+    kv.values.clear();
+    const request = new Request("https://mhfashion.example/api/payments/intent", { headers: { "cf-connecting-ip": "203.0.113.77" } });
+    const refusals = [];
+    for (let index = 0; index < limiter.RATE_LIMITS.paymentIntent.limit + 1; index += 1) {
+      refusals.push(await limiter.enforceRateLimit(request, "payments/intent", limiter.RATE_LIMITS.paymentIntent));
+    }
+    assert.equal(refusals.filter((response) => response === null).length, limiter.RATE_LIMITS.paymentIntent.limit);
+    assert.equal(refusals.filter(Boolean).length, 1);
+  } finally {
+    limiter.useRateLimitStore(null);
+  }
+
+  // Back on module memory, and a corrupt stored value is ignored rather than trusted.
+  limiter.resetRateLimits();
+  assert.deepEqual(await limiter.checkRateLimitAsync("ip:after", rule, start), {
+    allowed: true, remaining: rule.limit - 1, retryAfterSeconds: 0, limit: rule.limit,
+  });
+  kv.values.set("test:broken", JSON.stringify({ count: "many" }));
+  assert.equal(await store.read("broken"), null);
+  assert.equal(await store.read("missing"), null);
 });

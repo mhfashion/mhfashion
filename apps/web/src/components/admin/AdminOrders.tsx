@@ -14,16 +14,24 @@ import { downloadCsv } from "@/lib/admin-csv";
 import {
   designPreviewSrc, downloadDesignFile, downloadOrderArchive, openOrderInvoice, openOrderPrintSheet, orderPrintRows,
 } from "@/lib/order-print";
+import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { downloadDeliveryJson } from "@/lib/delivery";
 import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
   adminDayKey, adminDayLabel, adminTodayKey, buildMockupDiagramSvg, designLayerSize,
   formatAdminDateTime, formatKs, nextOrderStage,
-  orderDateRangeForPreset, orderDayGroups, orderStageIndex, orderTotalKs, orderUnits,
-  ordersInDateRange, setOrderNote, setOrderStage, sortOrders, summarizeOrders,
+  lastOrderReprint, orderDateRangeForPreset, orderDayGroups, orderPrintRuns, orderStageIndex, orderTotalKs, orderUnits,
+  ordersInDateRange, recordOrderReprint, replaceOrder, setOrderNote, setOrderStage, sortOrders, summarizeOrders,
   type AdminDateRange, type AdminOrder, type AdminOrderDatePreset, type AdminOrderSort,
   type AdminOrderStage,
 } from "@/lib/admin-demo-data";
+
+/** "3× · 21 Nov, 14:30" — how many times the press sheet ran, and when it last did. */
+function pressSheetLabel(order: AdminOrder) {
+  const last = lastOrderReprint(order);
+  if (!last) return "Not printed yet";
+  return `${orderPrintRuns(order)}× · ${formatAdminDateTime(last.at)}`;
+}
 
 const STAGE_TONES: Record<AdminOrderStage, AdminTone> = {
   "Pending Payment": "amber",
@@ -109,6 +117,13 @@ export default function AdminOrders() {
 
   function saveNote(order: AdminOrder) {
     updateAdminData((current) => setOrderNote(current, order.id, noteDraft.trim()));
+  }
+
+  /** Every run of the press sheet is recorded, so a second print is visible as a reprint. */
+  function printSheet(order: AdminOrder) {
+    const printed = recordOrderReprint(order, getDemoAdminSession()?.name ?? "Admin");
+    updateAdminData((current) => replaceOrder(current, printed));
+    openOrderPrintSheet(printed);
   }
 
   return (
@@ -269,7 +284,7 @@ export default function AdminOrders() {
               <AdminButton variant="secondary" aria-label="Download all design files and the print data as a ZIP" onClick={() => downloadOrderArchive(selected)}><FileDown size={14} /> Print files ZIP</AdminButton>
               <AdminButton variant="secondary" aria-label="Download the MH Delivery quote request" onClick={() => downloadDeliveryJson(selected)}><Truck size={14} /> Delivery JSON</AdminButton>
               <AdminButton variant="secondary" aria-label="Open the customer receipt" onClick={() => openOrderInvoice(selected)}><ReceiptText size={14} /> Receipt</AdminButton>
-              <AdminButton onClick={() => openOrderPrintSheet(selected)}><Printer size={14} /> Print sheet</AdminButton>
+              <AdminButton aria-label={orderPrintRuns(selected) > 0 ? "Reprint the press sheet" : "Print the press sheet"} onClick={() => printSheet(selected)}><Printer size={14} /> {orderPrintRuns(selected) > 0 ? "Reprint sheet" : "Print sheet"}</AdminButton>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {selected.stage !== "Cancelled" && selected.stage !== "Refunded" ? <AdminButton variant="danger" onClick={() => moveTo(selected, "Cancelled")}><X size={14} /> Cancel</AdminButton> : null}
@@ -295,6 +310,7 @@ export default function AdminOrders() {
                 <div><dt className="text-[#87909b]">Day</dt><dd className="font-semibold text-[#394250]">{adminDayLabel(adminDayKey(selected.placedAt))}</dd></div>
                 <div><dt className="text-[#87909b]">Items</dt><dd className="font-semibold text-[#394250]">{count(selected.items.length, "line")} · {count(orderUnits(selected), "unit")}</dd></div>
                 <div><dt className="text-[#87909b]">Order total</dt><dd className="font-semibold text-[#394250]">{formatKs(orderTotalKs(selected))}</dd></div>
+                <div><dt className="text-[#87909b]">Press sheet</dt><dd className="font-semibold text-[#394250]">{pressSheetLabel(selected)}</dd></div>
               </dl>
             </div>
 
@@ -323,7 +339,7 @@ export default function AdminOrders() {
             <div data-order-print-sheet>
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h3 className="text-[10px] font-bold uppercase tracking-wide text-[#7b8492]">Print sheet</h3>
-                <AdminButton compact variant="secondary" onClick={() => openOrderPrintSheet(selected)}><Printer size={12} /> Print</AdminButton>
+                <AdminButton compact variant="secondary" aria-label={orderPrintRuns(selected) > 0 ? "Reprint the press sheet" : "Print the press sheet"} onClick={() => printSheet(selected)}><Printer size={12} /> Print</AdminButton>
               </div>
               <div className="space-y-2">
                 {selected.items.map((item, index) => {

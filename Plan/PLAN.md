@@ -1114,10 +1114,14 @@ proposal, not an approved order.
     batch that never overwrites an existing stamp, "Reopen", and a CSV sheet with a total block.
     Returns keep their cost, so a returned parcel shows a negative margin instead of hiding it.
 13. **Order operations:** **order QR shipped** — `lib/order-qr.ts` prints a vector QR of the order link
-    on the press sheet (`tests/order-qr.test.cjs`). Still open: a reprint flow, a customer refund request
-    flow (today `/returns` and `/contact` are the only channel), and any barcode a specific scanner needs.
-14. **Operations:** error monitoring, Supabase backups, timestamps stored in UTC and displayed in
-    UTC+6:30.
+    on the press sheet (`tests/order-qr.test.cjs`). **Reprint flow shipped:** every run of the press
+    sheet is recorded on the order (`AdminOrder.reprints`, `recordOrderReprint`), the sheet prints
+    "First print" or "Reprint N" with who ran it, and the order drawer shows the count and switches its
+    button to "Reprint sheet". Still open: a customer refund request flow (today `/returns` and
+    `/contact` are the only channel), and any barcode a specific scanner needs.
+14. **Operations:** error monitoring, Supabase backups. **Timestamps are done:** everything is stored
+    as UTC ISO strings and every admin screen and printable document shows them in `Asia/Yangon`
+    (`YANGON_TIME_ZONE`), so the device clock cannot change an hour or move an order to another day.
 15. **Mobile app decision:** PWA first vs React Native. The editor cannot be ported to React
     Native directly.
 16. **Customer notification channel** (13, owner decision 5).

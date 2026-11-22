@@ -197,7 +197,9 @@ test("the order drawer shows the print sheet and can open and save the files", (
   const drawer = readFileSync(path.join(ROOT, "apps/web/src/components/admin/AdminOrders.tsx"), "utf8");
   assert.match(drawer, /data-order-print-sheet/);
   assert.match(drawer, /Print sheet/);
-  assert.match(drawer, /openOrderPrintSheet\(selected\)/);
+  assert.match(drawer, /printSheet\(selected\)/, "the print button records the run before it opens the sheet");
+  assert.match(drawer, /recordOrderReprint\(order, getDemoAdminSession\(\)\?\.name \?\? "Admin"\)/);
+  assert.match(drawer, /pressSheetLabel\(selected\)/, "the drawer shows how many times the sheet ran");
   assert.match(drawer, /downloadDesignFile\(design\)/);
   assert.match(drawer, /data-order-design-preview/);
   assert.match(drawer, /orderPrintRows\(selected\)/);
@@ -234,4 +236,92 @@ test("orders saved before the print sheet existed are backfilled on read", () =>
   const untouched = admin.backfillOrderPrintSpec(complete, data.products);
   assert.equal(untouched.items[0], complete.items[0]);
   assert.equal(untouched.items[0].design.name, "Street Vibes");
+});
+
+test("the press sheet and the receipt render at phone width", () => {
+  for (const html of [print.buildOrderPrintSheetHtml(data.orders[0]), print.buildOrderInvoiceHtml(data.orders[0])]) {
+    assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1" \/>/, "a phone would otherwise lay the page out at 980 px");
+    assert.match(html, /@media \(max-width: 640px\)/, "the sheet stacks its columns on a phone");
+    assert.match(html, /@media print \{[^}]*\.printbar \{ display: none; \}/, "the print button stays off the paper");
+  }
+  const sheet = print.buildOrderPrintSheetHtml(data.orders[0]);
+  assert.match(sheet, /@media \(max-width: 640px\) \{[^@]*\.line \{ flex-direction: column; \}/, "spec table and artwork stack instead of squeezing");
+});
+
+test("a blocked popup saves the sheet as a file instead of doing nothing", () => {
+  const order = data.orders[0];
+  const clicks = [];
+  const stub = (openResult) => {
+    const document = {
+      body: { append: (element) => clicks.push({ appended: element.download, href: element.href }) },
+      createElement: () => ({ click() { this.clicked = true; }, remove() {} }),
+    };
+    globalThis.window = { open: () => openResult };
+    globalThis.document = document;
+  };
+
+  stub(null);
+  try {
+    assert.equal(print.openOrderPrintSheet(order), "downloaded");
+  } finally {
+    delete globalThis.window;
+    delete globalThis.document;
+  }
+  assert.equal(clicks.length, 1, "one file is handed to the browser");
+  assert.equal(clicks[0].appended, `print-sheet-${order.id.replace(/[^A-Za-z0-9-]+/g, "").toLowerCase()}.html`);
+  assert.match(clicks[0].href, /^blob:/);
+
+  const written = [];
+  const fakeWindow = {
+    document: { write: (html) => written.push(html), close() {} },
+    focus() {},
+    setTimeout: (fn) => fn(),
+    print() {},
+  };
+  stub(fakeWindow);
+  try {
+    assert.equal(print.openOrderPrintSheet(order), "opened");
+  } finally {
+    delete globalThis.window;
+    delete globalThis.document;
+  }
+  assert.equal(written.length, 1);
+  assert.match(written[0], /Print sheet · Order /, "the popup receives the sheet itself");
+});
+
+test("a reprint is recorded on the order and shown on the sheet", () => {
+  const order = orderWith({ reprints: undefined });
+  assert.equal(admin.orderPrintRuns(order), 0);
+  assert.equal(print.printRunNote(order), "", "an unprinted order carries no run line");
+
+  const first = admin.recordOrderReprint(order, "  QA Admin  ", new Date(Date.UTC(2026, 10, 21, 9, 0, 0)));
+  assert.equal(order.reprints, undefined, "the order is not mutated in place");
+  assert.deepEqual(first.reprints, [{ at: "2026-11-21T09:00:00.000Z", by: "QA Admin" }]);
+  assert.match(print.buildOrderPrintSheetHtml(first), /First print · .* by QA Admin/);
+
+  const second = admin.recordOrderReprint(first, "Press 2", new Date(Date.UTC(2026, 10, 22, 3, 30, 0)));
+  assert.equal(admin.orderPrintRuns(second), 2);
+  assert.deepEqual(admin.lastOrderReprint(second), { at: "2026-11-22T03:30:00.000Z", by: "Press 2" });
+  const sheet = print.buildOrderPrintSheetHtml(second);
+  assert.match(sheet, /Reprint 2 · .* by Press 2/, "the press sees which run this is");
+  assert.equal(/First print/.test(sheet), false);
+
+  // The record cannot grow without bound in localStorage.
+  let many = order;
+  for (let index = 0; index < admin.MAX_ORDER_REPRINTS + 5; index += 1) {
+    many = admin.recordOrderReprint(many, "Admin", new Date(Date.UTC(2026, 10, 21, 9, index, 0)));
+  }
+  assert.equal(admin.orderPrintRuns(many), admin.MAX_ORDER_REPRINTS);
+  assert.equal(admin.lastOrderReprint(many).at, "2026-11-21T09:24:00.000Z", "the newest run is kept");
+
+  // A blank name still records who pressed the button.
+  assert.equal(admin.recordOrderReprint(order, "   ").reprints[0].by, "Admin");
+
+  // replaceOrder swaps exactly one order.
+  const data = admin.createAdminDemoData(NOW);
+  const target = data.orders[0];
+  const replaced = admin.replaceOrder(data, admin.recordOrderReprint(target, "Admin"));
+  assert.equal(replaced.orders.length, data.orders.length);
+  assert.equal(admin.orderPrintRuns(replaced.orders.find((entry) => entry.id === target.id)), 1);
+  assert.equal(replaced.orders.find((entry) => entry.id !== target.id).reprints, undefined);
 });

@@ -1182,6 +1182,34 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-22 — One shop clock, a reprint record, a phone-sized sheet, a durable limiter
+
+Four register items closed, each with tests.
+
+- **One clock (`Asia/Yangon`).** `adminDayKey`, `formatAdminDate`, `formatAdminDateTime`,
+  `adminDayLabel` and `revenueByDay` in `lib/admin-demo-data.ts` now read and print in Myanmar time
+  instead of the device's zone, so a phone that travelled, a laptop in Yangon and the server render
+  agree. Ad windows (`lib/admin-ads.ts`) and promotion windows parse their date inputs at
+  `00:00 +06:30` and store UTC, so "21 Nov" means the same day everywhere. `tests/admin-orders.test.cjs`
+  proves the answer does not change with `process.env.TZ`.
+- **Reprint record.** `AdminOrder.reprints` keeps one entry per run of the press sheet (time, admin
+  name, last 20). The sheet prints "First print · 21 Nov, 14:30 by QA Admin" or "Reprint 2 · …", and the
+  order drawer shows "Press sheet: 2× · …" with the button reading "Reprint sheet". `recordOrderReprint`,
+  `orderPrintRuns`, `lastOrderReprint` and `replaceOrder` are pure; `tests/admin-order-print.test.cjs`
+  covers the record and the sheet line.
+- **A sheet that fits a phone.** Both printable documents carry a viewport meta and a
+  `max-width: 640px` block that stacks the spec table, the artwork and the receipt header instead of
+  laying the page out at 980 px. If the browser refuses the popup (iOS does when the tap is not the
+  first thing that happens) the file is saved as `.html` instead of nothing happening;
+  `openOrderPrintSheet`/`openOrderInvoice` return `"opened" | "downloaded"`. Verified in real Chromium
+  at 390 × 844 touch: `scrollWidth === innerWidth === 390`, the spec line stacks, and the blocked case
+  writes `print-sheet-mh1086.html`.
+- **Durable limiter.** `lib/rate-limit.ts` keeps the module-memory limiter as the default and adds a
+  `RateLimitStore` seam with `kvRateLimitStore(kv)`, so a Cloudflare KV namespace can hold the counters
+  across isolates. `enforceRateLimit` is now async and the four payment routes await it;
+  `tests/rate-limit.test.cjs` shows a counter that survives a memory reset and still refuses the fourth
+  call. Connecting a real KV namespace is a deployment step, not a code change.
+
 ### 2026-11-21 — Register audit: what the code already does
 
 Checked the remaining-work register against the source and corrected the entries that had drifted.
@@ -1189,8 +1217,8 @@ Checked the remaining-work register against the source and corrected the entries
 - Rate limiting is done, not open: `lib/rate-limit.ts` is a fixed-window limiter and `enforceRateLimit`
   guards `intent`, `status`, `simulate` and `webhook`. The caveat is that it is per isolate, not a global
   quota.
-- The order QR is shipped on the press sheet (`lib/order-qr.ts`), so only the reprint and refund-request
-  flows remain in that item.
+- The order QR is shipped on the press sheet (`lib/order-qr.ts`); the reprint flow followed on
+  2026-11-22, so only the refund-request flow remains in that item.
 - Uploaded SVG never renders inline: every path is an `<img src="data:image/svg+xml, ...">`, where a
   script cannot run. The rule for any future inline render is written into the register.
 - The forward plan's open question "is there a checkout today?" was stale: `/checkout`, `placeOrder`, the

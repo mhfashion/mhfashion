@@ -114,7 +114,12 @@ test("saving, pausing and deleting an ad go through the one demo store", () => {
   assert.equal(created.alt, "Copy");
   assert.equal(created.enabled, true);
   assert.equal(created.posterUrl, "", "a photo keeps no poster");
-  assert.match(created.startsAt, /T00:00:00\.000Z$/);
+  // The window is a Yangon day, not the device's day.
+  const yangonClock = (iso) => new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Yangon", hour12: false });
+  assert.match(yangonClock(created.startsAt), /00:00:00$/, "an ad starts at midnight in Yangon");
+  assert.match(yangonClock(created.endsAt), /23:59:59$/, "and ends at the last second of the Yangon day");
+  assert.equal(ads.adDraftFrom(created, NOW).startsAt, draft.startsAt, "the input shows the same Yangon day again");
+  assert.equal(ads.adDraftFrom(created, NOW).endsAt, draft.endsAt);
 
   const video = ads.adFromDraft({ ...draft, mediaType: "video", mediaUrl: "/ads/hero.mp4", posterUrl: "/ads/poster.jpg" }, undefined, NOW);
   assert.equal(video.posterUrl, "/ads/poster.jpg");

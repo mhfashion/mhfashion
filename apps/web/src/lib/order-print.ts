@@ -1,7 +1,7 @@
 import type { AdminOrder, AdminOrderDesign, AdminOrderItem } from "./admin-demo-data";
 import {
   DESIGN_UNITS_PER_CM, buildMockupDiagramSvg, designLayerSize, formatAdminDateTime, formatKs,
-  orderTotalKs, orderUnits,
+  orderPrintRuns, orderTotalKs, orderUnits,
 } from "./admin-demo-data";
 import { createZip, type ZipEntry } from "./zip";
 import { deliveryFileName, deliveryQuoteJson } from "./delivery";
@@ -116,6 +116,18 @@ function specRows(item: AdminOrderItem): [string, string][] {
  * A standalone, printable A4 sheet: identity, shipping, the full spec of every line and the
  * design artwork itself, so the file can be checked before it reaches the press.
  */
+/**
+ * Which run of the sheet this is. The press sees a reprint on the paper itself, so a second print
+ * of an order cannot be mistaken for the first one.
+ */
+export function printRunNote(order: AdminOrder): string {
+  const runs = orderPrintRuns(order);
+  if (runs === 0) return "";
+  const last = order.reprints?.[order.reprints.length - 1];
+  const label = runs === 1 ? "First print" : `Reprint ${runs}`;
+  return `<p class="run">${escapeHtml(label)}${last ? ` · ${escapeHtml(formatAdminDateTime(last.at))} by ${escapeHtml(last.by)}` : ""}</p>`;
+}
+
 export function buildOrderPrintSheetHtml(order: AdminOrder): string {
   const shipTo = order.shipTo;
   const items = order.items.map((item, index) => {
@@ -166,6 +178,7 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Print sheet ${escapeHtml(order.id)}</title>
 <style>
   @page { size: A4; margin: 12mm; }
@@ -204,8 +217,20 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
   section.quality ul { margin: 4px 0 0; padding-left: 18px; }
   section.quality li { margin-bottom: 2px; }
   section.quality li.error { color: #9c2b1b; font-weight: 600; }
+  p.run { margin: 2px 0 0; font-size: 10px; font-weight: 700; color: #9c2b1b; }
   .printbar { margin-bottom: 10px; }
   .printbar button { font: inherit; padding: 6px 12px; border-radius: 999px; border: 1px solid #4cae22; background: #eef8e6; color: #3f8c22; font-weight: 700; cursor: pointer; }
+  /* The sheet is opened on the shop floor from a phone as well as from a desk; stack it rather than
+     shrinking the tables to an unreadable width. Print is unaffected (A4 is wider than this). */
+  @media (max-width: 640px) {
+    body { padding: 10px 12px 24px; font-size: 12px; }
+    header { flex-wrap: wrap; }
+    .grid { grid-template-columns: 1fr; }
+    .line { flex-direction: column; }
+    figure.design, figure.design .art, figure.design .mockup { width: 100%; }
+    table.layout { font-size: 9px; }
+    table.layout th, table.layout td { padding: 2px 3px; }
+  }
   @media print { .printbar { display: none; } }
 </style></head>
 <body>
@@ -215,6 +240,7 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
     <div class="brand">MH FASHION</div>
     <h1>Print sheet · Order ${escapeHtml(order.id)}</h1>
     <p class="meta">${escapeHtml(formatAdminDateTime(order.placedAt))} · ${escapeHtml(order.stage)} · ${escapeHtml(order.payment)}</p>
+    ${printRunNote(order)}
   </div>
   ${qr}
 </header>
@@ -253,6 +279,7 @@ export function buildOrderInvoiceHtml(order: AdminOrder): string {
   const total = orderTotalKs(order);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Receipt ${escapeHtml(order.id)}</title>
 <style>
   @page { size: A5; margin: 10mm; }
@@ -273,6 +300,11 @@ export function buildOrderInvoiceHtml(order: AdminOrder): string {
   .note { color: #5c6673; margin-top: 10px; }
   .printbar { margin-bottom: 8px; }
   .printbar button { font: inherit; padding: 5px 12px; border-radius: 999px; border: 1px solid #4cae22; background: #eef8e6; color: #3f8c22; font-weight: 700; cursor: pointer; }
+  @media (max-width: 640px) {
+    body { padding: 10px 12px 24px; font-size: 12px; }
+    header { flex-wrap: wrap; gap: 6px; }
+    .meta { text-align: left; }
+  }
   @media print { .printbar { display: none; } }
 </style></head>
 <body>
@@ -304,37 +336,55 @@ export function buildOrderInvoiceHtml(order: AdminOrder): string {
 </body></html>`;
 }
 
-/** Opens the receipt in a new window; the browser's print dialog saves it as a PDF. */
-export function openOrderInvoice(order: AdminOrder): void {
-  const win = window.open("", "_blank", "width=760,height=900");
-  if (!win) return;
-  win.document.write(buildOrderInvoiceHtml(order));
-  win.document.close();
-  win.focus();
-  win.setTimeout(() => win.print(), 300);
-}
+/** What happened when a printable document was asked for, so the caller can tell the user. */
+export type PrintableOutcome = "opened" | "downloaded";
 
-/** Opens the sheet in a new window and sends it straight to the printer dialog. */
-export function openOrderPrintSheet(order: AdminOrder): void {
-  const win = window.open("", "_blank", "width=900,height=1000");
-  if (!win) return;
-  win.document.write(buildOrderPrintSheetHtml(order));
-  win.document.close();
-  win.focus();
-  win.setTimeout(() => win.print(), 300);
-}
-
-/** Saves one design file so the press can open it in Illustrator or a RIP. */
-export function downloadDesignFile(design: AdminOrderDesign): void {
-  const blob = new Blob([design.svg], { type: "image/svg+xml;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+function downloadBlob(data: BlobPart, fileName: string, type: string) {
+  const url = URL.createObjectURL(new Blob([data], { type }));
   const link = document.createElement("a");
   link.href = url;
-  link.download = design.fileName;
+  link.download = fileName;
   document.body.append(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function downloadTextFile(html: string, fileName: string) {
+  downloadBlob(html, fileName, "text/html;charset=utf-8");
+}
+
+/**
+ * Writes a printable document into a new window. A phone can refuse the popup (iOS blocks it when
+ * the tap is not the first thing that happens), and the old code then did nothing at all, so the
+ * sheet is saved as a file instead of being lost.
+ */
+function openPrintableDocument(html: string, fileName: string): PrintableOutcome {
+  const win = window.open("", "_blank");
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.setTimeout(() => win.print(), 300);
+    return "opened";
+  }
+  downloadTextFile(html, fileName);
+  return "downloaded";
+}
+
+/** Opens the receipt in a new window; the browser's print dialog saves it as a PDF. */
+export function openOrderInvoice(order: AdminOrder): PrintableOutcome {
+  return openPrintableDocument(buildOrderInvoiceHtml(order), `receipt-${orderFileStem(order)}.html`);
+}
+
+/** Opens the sheet in a new window and sends it straight to the printer dialog. */
+export function openOrderPrintSheet(order: AdminOrder): PrintableOutcome {
+  return openPrintableDocument(buildOrderPrintSheetHtml(order), `print-sheet-${orderFileStem(order)}.html`);
+}
+
+/** Saves one design file so the press can open it in Illustrator or a RIP. */
+export function downloadDesignFile(design: AdminOrderDesign): void {
+  downloadBlob(design.svg, design.fileName, "image/svg+xml;charset=utf-8");
 }
 
 /** Inline preview URL for the drawer thumbnail (no object URL to clean up). */

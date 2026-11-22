@@ -2,7 +2,7 @@
 // An ad shows only while it is enabled and inside its window — nothing else decides visibility.
 
 import {
-  AD_SLOTS, DEFAULT_ADS_ROTATION_SECONDS,
+  AD_SLOTS, DEFAULT_ADS_ROTATION_SECONDS, adminDayKey,
   type AdminAd, type AdFit, type AdMediaType, type AdSlotId,
 } from "@/lib/admin-demo-data";
 
@@ -129,8 +129,9 @@ export function adDraftFrom(ad?: AdminAd, now = Date.now(), slot: AdSlotId = "ho
     fit: ad?.fit ?? "cover",
     alt: ad?.alt ?? "",
     href: ad?.href ?? "",
-    startsAt: (ad?.startsAt ?? new Date(now).toISOString()).slice(0, 10),
-    endsAt: (ad?.endsAt ?? new Date(now + 30 * DAY_MS).toISOString()).slice(0, 10),
+    // The date inputs work in Yangon days: a saved ad stores an instant, the input shows its day.
+    startsAt: ad ? adminDayKey(ad.startsAt) : adminDayKey(now),
+    endsAt: ad ? adminDayKey(ad.endsAt) : adminDayKey(now + 30 * DAY_MS),
   };
 }
 
@@ -179,8 +180,9 @@ export function adFromDraft(draft: AdminAdDraft, existing?: AdminAd, now = Date.
     alt: draft.alt.trim(),
     href: draft.href.trim(),
     enabled: existing?.enabled ?? true,
-    startsAt: new Date(`${draft.startsAt}T00:00:00.000Z`).toISOString(),
-    endsAt: new Date(`${draft.endsAt}T23:59:59.999Z`).toISOString(),
+    // An ad runs from midnight to midnight in Yangon, so the window means the same on every device.
+    startsAt: new Date(`${draft.startsAt}T00:00:00+06:30`).toISOString(),
+    endsAt: new Date(`${draft.endsAt}T23:59:59.999+06:30`).toISOString(),
   };
 }
 

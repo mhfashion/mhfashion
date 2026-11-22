@@ -27,10 +27,23 @@ function order(overrides) {
 
 const at = (dayOffset, hour = 10) => new Date(2026, 10, 21 - dayOffset, hour, 0, 0).toISOString();
 
-test("orders are filed by the local day, not the UTC day", () => {
-  const lateEvening = new Date(2026, 10, 21, 23, 30, 0);
-  assert.equal(admin.adminDayKey(lateEvening), "2026-11-21");
-  assert.equal(admin.adminDayKey(at(1)), "2026-11-20");
+test("orders are filed by the Yangon day, not the UTC day", () => {
+  // 17:29 UTC is 23:59 the same evening in Yangon; 18:30 UTC is 01:00 the next morning.
+  assert.equal(admin.adminDayKey("2026-11-20T17:29:00.000Z"), "2026-11-20");
+  assert.equal(admin.adminDayKey("2026-11-20T18:30:00.000Z"), "2026-11-21");
+
+  // The device clock cannot change the answer, and the hour is always shown in Yangon time.
+  const savedZone = process.env.TZ;
+  for (const zone of ["UTC", "America/Los_Angeles", "Asia/Tokyo"]) {
+    process.env.TZ = zone;
+    assert.equal(admin.adminDayKey("2026-11-20T18:30:00.000Z"), "2026-11-21", `filed the same with the device in ${zone}`);
+    assert.equal(admin.formatAdminDateTime("2026-11-20T18:30:00.000Z"), "21 Nov, 01:00", `shown in Yangon time with the device in ${zone}`);
+    assert.equal(admin.formatAdminDate("2026-11-20T18:30:00.000Z"), "21 Nov 2026");
+  }
+  process.env.TZ = savedZone;
+
+  assert.equal(admin.adminDayKey("not a date"), "");
+  assert.equal(admin.formatAdminDateTime("not a date"), "—");
 });
 
 test("day labels name today and yesterday instead of a date", () => {

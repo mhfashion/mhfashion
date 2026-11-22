@@ -8,9 +8,9 @@ import { NextResponse } from "next/server";
  */
 export type RateLimitRule = { limit: number; windowMs: number };
 
-type Window = { count: number; resetAt: number };
+export type RateLimitWindow = { count: number; resetAt: number };
 
-const windows = new Map<string, Window>();
+const windows = new Map<string, RateLimitWindow>();
 const MAX_KEYS = 5000;
 
 export type RateLimitResult = {
@@ -20,23 +20,86 @@ export type RateLimitResult = {
   limit: number;
 };
 
-export function checkRateLimit(key: string, rule: RateLimitRule, now: number = Date.now()): RateLimitResult {
-  const existing = windows.get(key);
+/** The counter for one window: how many calls it has seen and when it starts over. */
+function nextWindow(existing: RateLimitWindow | null, rule: RateLimitRule, now: number): { window: RateLimitWindow; result: RateLimitResult } {
   if (!existing || existing.resetAt <= now) {
-    if (windows.size >= MAX_KEYS) sweep(now);
-    windows.set(key, { count: 1, resetAt: now + rule.windowMs });
-    return { allowed: true, remaining: rule.limit - 1, retryAfterSeconds: 0, limit: rule.limit };
+    return {
+      window: { count: 1, resetAt: now + rule.windowMs },
+      result: { allowed: true, remaining: rule.limit - 1, retryAfterSeconds: 0, limit: rule.limit },
+    };
   }
   if (existing.count >= rule.limit) {
     return {
-      allowed: false,
-      remaining: 0,
-      retryAfterSeconds: Math.max(1, Math.ceil((existing.resetAt - now) / 1000)),
-      limit: rule.limit,
+      window: existing,
+      result: {
+        allowed: false,
+        remaining: 0,
+        retryAfterSeconds: Math.max(1, Math.ceil((existing.resetAt - now) / 1000)),
+        limit: rule.limit,
+      },
     };
   }
-  existing.count += 1;
-  return { allowed: true, remaining: rule.limit - existing.count, retryAfterSeconds: 0, limit: rule.limit };
+  const window = { count: existing.count + 1, resetAt: existing.resetAt };
+  return {
+    window,
+    result: { allowed: true, remaining: rule.limit - window.count, retryAfterSeconds: 0, limit: rule.limit },
+  };
+}
+
+export function checkRateLimit(key: string, rule: RateLimitRule, now: number = Date.now()): RateLimitResult {
+  const existing = windows.get(key);
+  if (!existing && windows.size >= MAX_KEYS) sweep(now);
+  const { window, result } = nextWindow(existing ?? null, rule, now);
+  windows.set(key, window);
+  return result;
+}
+
+/**
+ * Where the counters live. Module memory is per isolate; a KV-backed store
+ * (`kvRateLimitStore`) makes the allowance hold across isolates. A read-then-write store is
+ * best effort under concurrency — KV has no compare-and-set — but it is still far tighter than one
+ * allowance per isolate.
+ */
+export type RateLimitStore = {
+  read(key: string): Promise<RateLimitWindow | null>;
+  write(key: string, window: RateLimitWindow): Promise<void>;
+};
+
+export type RateLimitKv = {
+  get(key: string, type: "json"): Promise<unknown>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+};
+
+export function kvRateLimitStore(kv: RateLimitKv, prefix = "ratelimit:"): RateLimitStore {
+  return {
+    async read(key) {
+      const value = await kv.get(`${prefix}${key}`, "json");
+      if (!value || typeof value !== "object") return null;
+      const { count, resetAt } = value as Partial<RateLimitWindow>;
+      if (typeof count !== "number" || typeof resetAt !== "number") return null;
+      return { count, resetAt };
+    },
+    async write(key, window) {
+      // The key outlives its own window by a minute, so a stale count is never read as current.
+      const expirationTtl = Math.max(60, Math.ceil((window.resetAt - Date.now()) / 1000) + 60);
+      await kv.put(`${prefix}${key}`, JSON.stringify(window), { expirationTtl });
+    },
+  };
+}
+
+let activeStore: RateLimitStore | null = null;
+
+/** Point the limiter at a durable store; `null` puts it back on module memory. */
+export function useRateLimitStore(store: RateLimitStore | null) {
+  activeStore = store;
+}
+
+/** The same rule, counted in the configured store. Falls back to module memory when none is set. */
+export async function checkRateLimitAsync(key: string, rule: RateLimitRule, now: number = Date.now()): Promise<RateLimitResult> {
+  if (!activeStore) return checkRateLimit(key, rule, now);
+  const { window, result } = nextWindow(await activeStore.read(key), rule, now);
+  await activeStore.write(key, window);
+  return result;
 }
 
 function sweep(now: number) {
@@ -64,8 +127,8 @@ export function clientKey(request: Request): string {
 }
 
 /** Returns a 429 response when the client is over the rule, or null when the request may proceed. */
-export function enforceRateLimit(request: Request, bucket: string, rule: RateLimitRule): NextResponse | null {
-  const result = checkRateLimit(`${bucket}:${clientKey(request)}`, rule);
+export async function enforceRateLimit(request: Request, bucket: string, rule: RateLimitRule): Promise<NextResponse | null> {
+  const result = await checkRateLimitAsync(`${bucket}:${clientKey(request)}`, rule);
   if (result.allowed) return null;
   return NextResponse.json(
     { error: "rate_limited", retryAfterSeconds: result.retryAfterSeconds },
