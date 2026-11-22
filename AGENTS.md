@@ -422,6 +422,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `CANVAS_LAYER_TRAVEL_LIMIT` (2400 artwork units) bounds how far a layer can be dragged, so it stays reachable; the pasteboard is clamped to the same limit.
 - `MockupArtwork` now receives `layerOffsets`/`layerScales`/`layerOrigins`/`layerRotations` and mirrors the canvas, then clips the artwork to the print area with a `clipPath` in overlay coordinates (`printScale = BASE_ARTWORK_SCALE * safeTransform.scale`). A layer dragged off-canvas therefore disappears from the mockup exactly as it would print.
 
+## Phone and touch checks (`tests/editor-touch.cjs`, 13 sections)
+- `EDITOR_CDP_URL` (default `http://127.0.0.1:9222`) must point at the Chromium started with `--remote-debugging-port`; the suite needs a server on port 3000.
+- `denseDesign()` covers 25 layers, the 30-step undo floor, a second finger placed mid-stroke, and a portrait→landscape rotation.
+- Every pointer handler guards `!event.isPrimary`, so a second touch cannot take over; the check asserts one stroke and ink no taller than the pencil width.
+- In landscape the canvas is legitimately **below** the fold: the editor viewport scrolls internally, so assert reachability with `canvasRect.bottom - viewRect.top <= view.scrollHeight`, not against `innerHeight`.
+- Tool button labels are `Move`, `Hand tool`, `Pencil tool`, `Pen tool`, `Text tool`, `Brush`, `Eraser tool`, `Shape tools`, `Gradient tool` — `Brush` has no "tool" suffix.
+
 ## Testing pitfalls
 - `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.
 - `next dev` blocks cross-origin `/_next/*` resources requested from `127.0.0.1` (it logs `Blocked cross-origin request to Next.js dev resource /_next/hmr`). The page then renders the server HTML but never hydrates, so clicks, effects, and `useState` do nothing — which looks exactly like a broken feature. Drive CDP probes at `http://localhost:3000` (or add `allowedDevOrigins`).
@@ -432,6 +439,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Hide `[data-editor-transform-controls]` in **both** shots of a frame difference, and toggle only the glyph `<text>` elements. Toggling the whole layer group also repaints the Layers-panel thumbnail, and rotating a layer promotes a compositing layer whose anti-aliasing shifts across the entire canvas, either of which swamps the glyph diff.
 - Resize handle names are `top-left` / `top-center` / `top-right` / `middle-left` / `middle-right` / `bottom-left` / `bottom-center` / `bottom-right` on `[data-resize-handle]`; there is no `right-center`.
 - On a phone the Layers dock is closed, so there are no `aria-pressed` rows to read. Identify the selection from the `[aria-label="Move selected layer"]` box geometry instead.
+
+## Undo snapshots
+- `rememberLayerSnapshot()` must be called by every **discrete** layer mutation, or a mis-tap cannot be undone and `Ctrl+Z` silently reverts an older paint instead. The layer-housekeeping paths (add, delete, duplicate, rename, reorder, group, mask add/remove, visibility/lock) each call it; continuous controls (opacity/fill/blend sliders, move/resize/rotate) deliberately do not.
+- The stack keeps 30 snapshots (`slice(-29)` plus the new one). Verified in `tests/editor-touch.cjs`: 35 pencil strokes then 40 `Ctrl+Z` presses leave exactly 5 strokes.
+- A pencil stroke paints **two** `[data-editor-artwork-stroke="true"]` elements, so count strokes as `elements / 2` when asserting.
 
 ## Layer picking (canvas and pasteboard)
 - A press picks the layer under the pointer, then drags it: `hitTestLayerAt` maps the point back through each layer's own move/scale/rotate (top-first, visible only), and `pickLayerAt` selects then calls `beginLayerDrag`.

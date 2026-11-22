@@ -2533,6 +2533,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   }
 
   function addLayer() {
+    rememberLayerSnapshot();
     const id = `layer-${nextLayerIdRef.current++}`;
     const number = nextLayerIdRef.current - 1;
     setLayers((current) => [createEditorArtworkLayer(id, `Layer ${number}`), ...current]);
@@ -2543,15 +2544,18 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
 
   function toggleLayerVisibility(id: string) {
     const layer = layers.find((item) => item.id === id);
+    if (layer) rememberLayerSnapshot();
     if (layer) setLayers((current) => updateEditorLayer(current, id, { visible: !layer.visible }));
   }
 
   function toggleLayerLock(id: string) {
     const layer = layers.find((item) => item.id === id);
+    if (layer) rememberLayerSnapshot();
     if (layer) setLayers((current) => updateEditorLayer(current, id, { locked: !layer.locked }));
   }
 
   function createLayerMask(id: string) {
+    rememberLayerSnapshot();
     setLayers((current) => addLayerMask(current, id));
     setSelectedLayerId(id);
     setSelectedLayerIds([id]);
@@ -2561,11 +2565,13 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   }
 
   function deleteLayerMask(id: string) {
+    rememberLayerSnapshot();
     setLayers((current) => removeLayerMask(current, id));
     if (selectedLayerId === id && selectedTarget === "mask") setSelectedTarget("artwork");
   }
 
   function duplicateLayer(id: string) {
+    rememberLayerSnapshot();
     const newId = `layer-${nextLayerIdRef.current++}`;
     setLayers((current) => duplicateEditorLayer(current, id, newId));
     setSelectedLayerId(newId);
@@ -2574,6 +2580,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   }
 
   function deleteLayer(id: string) {
+    rememberLayerSnapshot();
     const index = layers.findIndex((layer) => layer.id === id);
     const next = deleteEditorLayer(layers, id);
     setLayers(next);
@@ -2587,24 +2594,29 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   }
 
   function renameLayer(id: string, name: string) {
+    rememberLayerSnapshot();
     setLayers((current) => updateEditorLayer(current, id, { name }));
   }
 
   function moveLayer(id: string, direction: -1 | 1) {
+    rememberLayerSnapshot();
     setLayers((current) => reorderEditorLayer(current, id, direction));
   }
   function moveLayerToIndex(id: string, targetIndex: number) {
+    rememberLayerSnapshot();
     setLayers((current) => moveEditorLayerToIndex(current, id, targetIndex));
   }
 
   function groupSelectedLayers() {
     if (selectedLayerIds.length < 2) return;
+    rememberLayerSnapshot();
     const groupId = `group-${nextGroupId}`;
     setNextGroupId((value) => value + 1);
     setLayers((current) => groupEditorLayers(current, selectedLayerIds, groupId));
   }
 
   function ungroupSelectedLayers() {
+    rememberLayerSnapshot();
     setLayers((current) => ungroupEditorLayers(current, selectedLayerIds));
   }
   function selectGroup(groupId: string) {

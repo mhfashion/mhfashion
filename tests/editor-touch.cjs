@@ -780,12 +780,88 @@ async function main() {
     assert.equal(dimensions, "12px");
     console.log("PASS phone tiny artwork: repeated selected moves, distinct resize target and readable dimensions");
   }
+  /** E2 checklist 7: a busy design, the 30-step undo floor, a second finger and a rotation. */
+  async function denseDesign() {
+    await load(390, 844, true);
+    await tap('button[aria-label="Expand Layers panel"]');
+    const started = Date.now();
+    for (let n = 0; n < 25; n++) {
+      await evaluate(() => document.querySelector('button[aria-label="Add layer"]')?.click());
+    }
+    await pause(500);
+    assert.equal(await evaluate(() => document.querySelectorAll('[data-layer-id]').length), 26, "25 added layers sit beside the blank one");
+    assert.ok(Date.now() - started < 15000, "25 layers land without the page stalling");
+    await tap('button[aria-label="Delete selected layer"]');
+    assert.equal(await evaluate(() => document.querySelectorAll('[data-layer-id]').length), 25, "a delete removes one layer");
+    await keyStroke("z", { modifiers: 2 });
+    assert.equal(await evaluate(() => document.querySelectorAll('[data-layer-id]').length), 26, "Ctrl+Z brings a deleted layer back");
+
+    await load(390, 844, true);
+    await tap('button[aria-label="Pencil tool"]');
+    const canvas = await rect('canvas[aria-label="Blank print canvas"]', false);
+    const painted = () => evaluate(() => document.querySelectorAll('[data-editor-artwork-stroke="true"]').length);
+    for (let n = 0; n < 35; n++) {
+      const y = canvas.y + 20 + (n % 10) * 30;
+      await drag({ x: canvas.x + 30, y }, { x: canvas.x + 120, y });
+    }
+    const drawn = await painted();
+    assert.ok(drawn > 0, "the 35 strokes are painted");
+    for (let n = 0; n < 40; n++) await keyStroke("z", { modifiers: 2 });
+    // The stack keeps 30 snapshots, so the five oldest strokes of 35 cannot be undone.
+    assert.equal(await painted(), (drawn * 5) / 35, "the undo floor is exactly 30 steps");
+
+    await load(390, 844, true);
+    await tap('button[aria-label="Pencil tool"]');
+    const box = await rect('canvas[aria-label="Blank print canvas"]', false);
+    const y = box.y + box.h / 2;
+    await touch("touchStart", [{ x: box.x + 40, y, id: 1 }]);
+    for (let n = 1; n <= 4; n++) {
+      await touch("touchMove", [{ x: box.x + 40 + n * 20, y, id: 1 }]);
+      await pause(15);
+    }
+    await touch("touchStart", [{ x: box.x + 120, y, id: 1 }, { x: box.x + 230, y: y + 120, id: 2 }]);
+    for (let n = 1; n <= 5; n++) {
+      await touch("touchMove", [{ x: box.x + 120, y, id: 1 }, { x: box.x + 230 + n * 12, y: y + 120 + n * 18, id: 2 }]);
+      await pause(15);
+    }
+    await touch("touchEnd", []);
+    await pause(500);
+    const ink = await evaluate(() => [...document.querySelectorAll('[data-editor-artwork-stroke="true"]')]
+      .map((element) => element.getBoundingClientRect())
+      .filter((rect) => rect.width > 1 && rect.height > 1)
+      .map((rect) => Math.round(rect.height)));
+    assert.equal(await painted(), 2, "the second finger does not start a second stroke");
+    assert.ok(Math.max(...ink) < 40, `the line stays on the first finger (tallest ${Math.max(...ink)} px)`);
+
+    await load(390, 844, true);
+    await send("Emulation.setDeviceMetricsOverride", { width: 844, height: 390, mobile: true, deviceScaleFactor: 2 });
+    await pause(1400);
+    const rotated = await evaluate(() => {
+      const canvasRect = document.querySelector('canvas[aria-label="Blank print canvas"]').getBoundingClientRect();
+      const view = document.querySelector('[aria-label="Editor viewport"]');
+      const viewRect = view.getBoundingClientRect();
+      return {
+        width: Math.round(canvasRect.width),
+        // A short landscape viewport scrolls, so "reachable" means the canvas bottom is
+        // inside the viewport's own scroll range, not inside its visible height.
+        reachable: canvasRect.bottom - viewRect.top <= view.scrollHeight,
+        pageOverflowX: document.documentElement.scrollWidth - window.innerWidth,
+        viewOverflowX: view.scrollWidth - view.clientWidth,
+      };
+    });
+    assert.equal(rotated.width, 292, "the canvas keeps its width across the rotation");
+    assert.ok(rotated.reachable, "the whole canvas can be scrolled into view in landscape");
+    assert.ok(rotated.pageOverflowX <= 0 && rotated.viewOverflowX <= 0, "a rotation adds no horizontal scroll");
+    console.log("PASS phone 390×844: 25 layers, the 30-step undo floor, one-finger strokes and a rotation");
+  }
+
   try {
     await send("Page.enable");
     await phone(390, 844);
     await phone(320, 740);
     await tinyArtwork();
     await draftRestore();
+    await denseDesign();
     await load(740, 390, true);
     const landscape = await evaluate(() => {
       const v = document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect();

@@ -77,13 +77,13 @@ Checked item by item in the source.
 | Header Bar 2 | eight selection boxes (Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size), live price; Save and Buy disabled |
 | Edit sidebar | Designs, Elements, Text, Upload, Image Create; rail stays visible; additions land in the Layers box |
 | Browser draft | the layers are written to `localStorage` (`mh-fashion-design-draft-v1`) 400 ms after a change; `/create` restores them on load and says "Restored the design from your last visit"; a design-editable product page renders that draft too |
-| Undo / redo | 30 layer snapshots, layer changes only; Ctrl+Z / Ctrl+Shift+Z (⌘ on macOS) through `lib/editor-shortcuts.ts` |
+| Undo / redo | 30 snapshots of the layer list, covering paint, pen, shape and gradient edits plus add, delete, duplicate, rename, reorder, group, mask and visibility/lock toggles; Ctrl+Z / Ctrl+Shift+Z (⌘ on macOS) through `lib/editor-shortcuts.ts`; viewport, mockup overlay and the opacity/fill sliders stay outside it |
 | Download | "Download my design" saves a 38.1 × 45.72 cm SVG (300 dpi PNG too) with the used fonts inlined as base64 `@font-face` rules |
 | Fonts | the picker reads `fonts/manifest.json` from R2 (`lib/editor-fonts.ts`, `lib/editor-font-library.ts`); bad entries are skipped by name; the eight system fonts stay the fallback |
 | Flip | horizontal and vertical, about the selection's own centre (`flipLayerPlacement`); the buttons sit in the Tools bar today and move to the Adjustments panel (E22) |
 | Hover | the canvas outlines the layer under the pointer and the Layers row highlights with it |
 | Image resolution | a photo that would print below the press resolution is flagged in the Photo panel (`lib/editor-image-ppi.ts`) |
-| Phone | 44 px targets, Pan view mode, view-only zoom, second finger cannot hijack a gesture, no panel overlap |
+| Phone | 44 px targets, Pan view mode, view-only zoom, second finger cannot hijack a gesture, no panel overlap; 25 layers, the 30-step undo floor and a portrait→landscape rotation are covered by `denseDesign()` in `tests/editor-touch.cjs` |
 
 ## 3. Contracts that must not drift
 
@@ -109,7 +109,7 @@ What the code does not do, with the evidence.
 |---|---|
 | No Save, and no design outside the browser | Save and Buy are `disabled` in `EditorHeaderBar2`. The browser draft is restored on load (`readDesignDraftSnapshot` in `lib/design-draft.ts`), but nothing reaches a database, `clearDesignDraft` is never called, and `/create` ignores the `?product=` it is given. Waiting on decision D1 |
 | No design hand-off to an order | the editor never writes a design; the admin order record is built from the demo store, not from `/create` |
-| Undo is layer-only | `undoStack`/`redoStack` hold `EditorArtworkLayer[][]`; viewport and mockup positions are outside it |
+| Undo is layer-only | `undoStack`/`redoStack` hold `EditorArtworkLayer[][]`; viewport zoom/pan, the mockup overlay transforms and the opacity/fill sliders are outside it, so those changes cannot be undone |
 | Arch and Wave do not bend text | `editorTextPresetMatrix` returns one shear matrix for the whole text block (6° for Arch, 4° for Wave); no glyph follows a curve. The `circle` option is no longer offered and survives only as a legacy stored value |
 | No Myanmar font until the bucket is filled | the picker reads `fonts/manifest.json` from R2 and falls back to the eight system fonts, but the shop has not uploaded a manifest yet, so today's list is still Inter, Arial, Georgia, Impact, Courier New, Trebuchet MS, Verdana and Times New Roman |
 | Brush packs are a contract only | `public/brushes/README.md` defines `brushes.json` and tip files, `brushes.json` is empty, and no code reads it |
@@ -136,7 +136,7 @@ the owner approves an item before it starts.
 | # | Item | Why | Files | Size |
 |---|---|---|---|---|
 | E1 | Save the design, then hand it to the order | Save and Buy are dead buttons, the browser draft is never restored, and no order carries the artwork | `EditorHeaderBar2`, `EditorCanvas`, `lib/design-draft.ts`, the order payload | large |
-| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 12/12; the canvas is bounded to 972k px) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
+| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 13/13; the canvas is bounded to 972k px; items 5–7 verified in emulation) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
 | E3 | Settle the `circle` preset — **done 2026-11-22** | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
 | E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
 | E5 | Flip horizontal and vertical — **done 2026-11-22; moves out of the Tools bar into the Adjustments panel (owner, 2026-11-22, see E22)** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar`, Adjustments panel | medium |
@@ -195,6 +195,18 @@ the owner approves an item before it starts.
   the print size in `PRINT_CANVAS_SPEC` and the `data-canvas-*` attributes. Verified in Chromium at 1440x900 and
   390x844: backing store 900x1080, `data-canvas-width/height/dpi` still 4500/5400/300, the on-screen box
   unchanged at 292x350 (ratio 0.834). The physical-device pass still has to confirm it on hardware.
+- **Emulation pass 2026-11-22: checklist items 5, 6 and 7 are verified in Chromium, and the checks are now
+  part of the suite.** A new `denseDesign()` section in `tests/editor-touch.cjs` (13 sections, all pass) proves:
+  25 added layers sit beside the blank one and each add lands in well under a second; 35 pencil strokes then 40
+  `Ctrl+Z` presses leave exactly 5 strokes, so the undo floor is the documented 30 snapshots; a second finger
+  placed mid-stroke does not start a second stroke or extend the line (the tallest ink stays at the pencil width,
+  because every pointer handler already rejects a non-primary pointer); and a rotation to 844x390 keeps the
+  canvas width, adds no horizontal scroll at page or viewport level, and leaves the canvas reachable through the
+  viewport's own scroll.
+- **Layer housekeeping is now undoable.** `deleteLayer`, `addLayer`, `duplicateLayer`, `renameLayer`,
+  `moveLayer`, `moveLayerToIndex`, `groupSelectedLayers`, `ungroupSelectedLayers`, `createLayerMask`,
+  `deleteLayerMask`, `toggleLayerVisibility` and `toggleLayerLock` all call `rememberLayerSnapshot()`. Before
+  this, a mis-tapped delete could not be undone, and `Ctrl+Z` silently reverted an older paint operation instead.
 - Checklist for the real-device pass: (1) iPhone Safari opens `/create`, draws and holds many layers on the 4500 × 5400 canvas without the page reloading (browser canvas limits are not verified in the source); (2) Burmese text typed with the Text tool, in several fonts and with effects, renders correctly on the canvas, the mockup and the print sheet; (3) the on-screen keyboard never hides the text box or caret; (4) uploads from the gallery and camera, including photos over 10 MB; (5) every tool with one finger, a second finger never taking over, Pan view, `+` / `−` / Reset view; (6) the Layers box and Edit sidebar never overlap, and the bottom navigation and safe areas never cover the editor; (7) portrait to landscape, dark and light, 20 to 30 layers, and the 30-step undo limit; (8) a reload loses the working canvas today (E1) and is recorded as such.
 
 ### E3 — `circle` preset
