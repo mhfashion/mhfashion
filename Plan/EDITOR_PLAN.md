@@ -429,8 +429,8 @@ the owner approves an item before it starts.
     the file name when a font is replaced so a cached copy is never served stale.
   - `fonts/manifest.json` lists each font: slug, display name, shelf, its files by weight and style, the scripts
     it covers (Latin, Myanmar), the licence name and link, and whether it is on. A bad entry is skipped, not
-    fatal (the same rule as `brushes.json`). Until the database exists the manifest is the source of truth
-    (decision D13); `Doc/R2-STORAGE.md` gains a "Fonts" section when this is built.
+    fatal (the same rule as `brushes.json`). For now the manifest is the source of truth and the font list stays in R2
+    (owner decision, 2026-11-22, D13); it is expected to move into the database later; `Doc/R2-STORAGE.md` gains a "Fonts" section when this is built.
   - The base address comes from the same public R2 address the mockups use, never hard-coded, so a later move
     to AWS S3 changes one setting.
   - A browser only uses a font served from another address if R2 allows that site with an
@@ -446,7 +446,8 @@ the owner approves an item before it starts.
   use is allowed before a font is switched on.
 - **Burmese:** a few open-licence Myanmar families offered as a shelf; the licence of each font is checked
   before it ships (open-licence fonts such as Padauk and the Noto Myanmar families are the usual candidates).
-  Unicode is the supported encoding; Zawgyi text is not converted (decision D10).
+  Unicode is the only supported encoding; Zawgyi text is not supported or converted (owner decision,
+  2026-11-22, D10).
 - **Print:** at export time the text is converted to outlines, or the font file is embedded, so the press
   never lacks a font.
 - Acceptance: Burmese text shows correct shaping (stacked consonants, medial signs, vowel order) on the canvas,
@@ -559,10 +560,10 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | D7 | Do the pre-filled header defaults count as chosen for the Buy gate (E12)? | Yes: only Color is empty today, and the gate exists to stop an order missing a value, which a default never does |
 | D8 | Raise the 2000 px upload cap (E14)? | Raise it, or keep the original at order time. At the cap a photo is already about 139 to 167 ppi at the default size, so the warning would fire on nearly every photo; raising it needs the real-device check in E2 |
 | D9 | Fit Type is a priced post attribute but has no box in the editor header. Where does the customer choose it, and is it required before Buy? (Owner, 2026-11-21: Sleeve has not been decided to be added, so it is outside this question.) | Settle this before E1: the order must carry whatever the price depends on |
-| D10 | Which Burmese fonts, and is Zawgyi text supported? (E17; the files live in R2, put there by the shop) | Offer a short list of open-licence Unicode fonts, check each licence, and treat Zawgyi as out of scope |
+| D10 | Zawgyi: **resolved 2026-11-22** — Unicode only, Zawgyi is not supported. Which Burmese fonts: still open (E17; the files live in R2, put there by the shop) | Offer a short list of open-licence Unicode fonts and check each licence |
 | D11 | How is the text bend built? (E19) | An SVG text path for Arc, Circle and Wave; per-cluster placement for Flag and Bulge; keep it off for Burmese until verified |
 | D12 | Who supplies the starter brush tips? (E20) | The owner supplies the ones they own; the rest come from open-licence packs, each licence checked |
-| D13 | Until the database exists, where does the font list live? (E17) | `fonts/manifest.json` in R2, edited by the shop; it moves into the database with the rest of the admin data |
+| D13 | Until the database exists, where does the font list live? (E17) | **Resolved 2026-11-22:** `fonts/manifest.json` in R2 for now; it is expected to move into the database later |
 
 ### Owner decisions recorded (2026-11-21)
 
@@ -579,6 +580,7 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 8. The choices behind the header boxes, and the rules between them, must be changeable from the admin dashboard, not fixed in code (E15).
 9. More text effects, more brushes and better tool adjustments are wanted (owner request, 2026-11-22). E18 to E21 are proposals; none is approved to start.
 10. The font library (E17) is approved. The font files live in R2 and the shop puts them there (owner, 2026-11-22).
+11. Burmese text is Unicode only; Zawgyi is not supported. The font list stays in `fonts/manifest.json` in R2 for now and is expected to move into the database later (owner, 2026-11-22).
 
 ## 7. Verification and change policy
 
