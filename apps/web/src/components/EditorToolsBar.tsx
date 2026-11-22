@@ -8,6 +8,7 @@ import {
   ChevronUp,
   Circle,
   Diamond,
+  Download,
   Eraser,
   FlipHorizontal2,
   FlipVertical2,
@@ -25,7 +26,7 @@ import {
   Type,
   Undo2,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, type EditorShapePreset } from "@/lib/editor-layers";
 
 export type EditorTool = "move" | "hand" | "pencil" | "pen" | "text" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
@@ -41,6 +42,7 @@ type Props = {
   selectedShape: EditorShapePreset;
   drawingToolsDisabled?: boolean;
   canFlip?: boolean;
+  canDownload?: boolean;
   onSelect: (tool: EditorTool) => void;
   onSelectShape: (shape: EditorShapePreset) => void;
   onForegroundColorChange: (color: string) => void;
@@ -48,6 +50,7 @@ type Props = {
   onUndo: () => void;
   onRedo: () => void;
   onFlip?: (axis: "horizontal" | "vertical") => void;
+  onDownload?: (format: "png" | "svg") => void;
   onSwapColors: () => void;
   onToggleCollapsed: () => void;
   hideOnMobile?: boolean;
@@ -88,6 +91,7 @@ export default function EditorToolsBar({
   selectedShape,
   drawingToolsDisabled = false,
   canFlip = false,
+  canDownload = false,
   onSelect,
   onSelectShape,
   onForegroundColorChange,
@@ -95,6 +99,7 @@ export default function EditorToolsBar({
   onUndo,
   onRedo,
   onFlip,
+  onDownload,
   onSwapColors,
   onToggleCollapsed,
   hideOnMobile = false,
@@ -102,6 +107,13 @@ export default function EditorToolsBar({
   const foregroundInputRef = useRef<HTMLInputElement>(null);
   const backgroundInputRef = useRef<HTMLInputElement>(null);
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!downloadMenuOpen) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setDownloadMenuOpen(false); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [downloadMenuOpen]);
   const SelectedShapeIcon = shapeIcons[selectedShape];
 
   return (
@@ -264,6 +276,41 @@ export default function EditorToolsBar({
             >
               <Redo2 size={14} strokeWidth={1.9} aria-hidden="true" />
             </button>
+            <span className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                aria-label="Download design"
+                title="Download my design"
+                aria-haspopup="menu"
+                aria-expanded={downloadMenuOpen}
+                disabled={!canDownload}
+                onClick={() => setDownloadMenuOpen((open) => !open)}
+                className="flex h-7 w-7 items-center justify-center rounded-xl text-text-secondary outline-none transition-colors hover:bg-bg hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <Download size={14} strokeWidth={1.9} aria-hidden="true" />
+              </button>
+              {downloadMenuOpen && (
+                <div role="menu" aria-label="Download design options" className="absolute bottom-full right-0 z-40 mb-2 w-44 rounded-xl border border-border bg-bg-surface/95 p-1 text-left text-[11px] text-text-primary shadow-xl backdrop-blur">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex min-h-8 w-full items-center rounded-lg px-2 text-left hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:min-h-11"
+                    onClick={() => { setDownloadMenuOpen(false); onDownload?.("png"); }}
+                  >
+                    PNG · 300 dpi (print)
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex min-h-8 w-full items-center rounded-lg px-2 text-left hover:bg-bg focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:min-h-11"
+                    onClick={() => { setDownloadMenuOpen(false); onDownload?.("svg"); }}
+                  >
+                    SVG · vector
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
         <button

@@ -25,8 +25,8 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
 
 ## Testing notes
-- `node --test tests/*.test.cjs` reports 454 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
-- `tests/editor-touch.cjs` has a known pre-existing failure in its phone **Edit sidebar** section (a `null` `getBoundingClientRect`); it is unrelated to the Editor Header Bar 2 work. Assertions that run earlier in the file still execute.
+- `node --test tests/*.test.cjs` reports 460 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
+- `tests/editor-touch.cjs` runs to the end and passes on a server built from current `main`; the phone **Edit sidebar** section used to throw on a `null` `getBoundingClientRect` and no longer does.
 - Production-UI checks can be driven headlessly with Chromium + CDP:
   `chromium --headless=new --no-sandbox --remote-debugging-port=9222 about:blank`,
   then connect to `http://127.0.0.1:9222/json` over the Node 22 `WebSocket`.
@@ -289,6 +289,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `tests/helpers/load-ts-module.cjs` resolves `@/lib/...` imports and loads sibling TS files recursively, so
   a lib that imports another lib (admin-demo-data → editor-attributes, editor-path-boolean → editor-layers)
   loads in tests without extra wiring.
+
+## Download my design (`lib/design-export.ts`, `EditorDesignExport.tsx`)
+- The export is cut from the editor's own renderer: `EditorDesignExport` mounts a hidden `<svg>` with
+  `EditorArtworkLayers` inside `[data-editor-export-artwork]`, and `serializeArtworkSvg` copies that group.
+  Do not build a second string renderer — the transform box, guides and handles must never reach the file.
+- Sizes come from `PRINT_CANVAS_SPEC` (4500 × 5400 px at 300 dpi), so the SVG is `38.1cm × 45.72cm` with
+  `viewBox="0 0 1000 1200"` and the PNG is rasterised at `exportPixelSize()` = 4500 × 5400.
+  `pixelsToCentimetres()` is the reverse the press sheet relies on; keep them in one module.
+- PNG text rasterises with **system** fonts (an SVG inside `<img>` cannot use the page's webfonts). The app
+  loads no webfont today, so this is exact; if one is added, inline it into the export or the PNG text falls
+  back to Arial/DejaVu.
+- Verified with CDP + `Browser.setDownloadBehavior`: parse the PNG IHDR for 4500 × 5400, and scan the alpha
+  channel to confirm the ink bbox matches where the layer sits on the canvas (a blank PNG would pass a
+  size-only check).
 
 ## One shop clock: `Asia/Yangon`
 - Timestamps are stored as UTC ISO strings and **displayed in Myanmar time**. `adminDayKey`,

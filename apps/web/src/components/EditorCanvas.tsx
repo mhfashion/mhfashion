@@ -6,6 +6,8 @@ import MockupArtwork from "@/components/MockupArtwork";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
 import { GradientPreview } from "@/components/EditorLayerPreview";
 import EditorToolsBar, { type EditorTool } from "@/components/EditorToolsBar";
+import EditorDesignExport from "@/components/EditorDesignExport";
+import { downloadDesignPng, downloadDesignSvg, designExportDocument, serializeArtworkSvg, type DesignExportOutcome } from "@/lib/design-export";
 import EditorEditSidebar from "@/components/EditorEditSidebar";
 import EditorAdjustmentsPanel from "@/components/EditorAdjustmentsPanel";
 import EditorLayersPanel from "@/components/EditorLayersPanel";
@@ -567,6 +569,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   // the moment the pointer goes down and stays hidden until the stroke ends.
   const [isDrawingStroke, setIsDrawingStroke] = useState(false);
   const [toolNotice, setToolNotice] = useState("");
+  const exportSvgRef = useRef<SVGSVGElement>(null);
   const [selectedShape, setSelectedShape] = useState<EditorShapePreset>("rectangle");
   const [shapeDrawing, setShapeDrawing] = useState<ActiveShapeDrag | null>(null);
   const [gradientDrawing, setGradientDrawing] = useState<ActiveGradientDrag | null>(null);
@@ -656,6 +659,25 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     setCanvasLayerScales((current) => ({ ...current, ...Object.fromEntries(placements.map(([id, next]) => [id, next.scale])) }));
     setCanvasLayerRotations((current) => ({ ...current, ...Object.fromEntries(placements.map(([id, next]) => [id, next.rotation])) }));
     setToolNotice(axis === "horizontal" ? "Flipped horizontally" : "Flipped vertically");
+  };
+
+  /**
+   * "Download my design" writes the artwork without the editor's chrome: the SVG opens at the
+   * print size in centimetres, and the PNG is rasterised at the press resolution (300 dpi), so
+   * both match the measurements on the press sheet.
+   */
+  const downloadDesign = async (format: "png" | "svg") => {
+    const inner = serializeArtworkSvg(exportSvgRef.current);
+    if (!inner) {
+      setToolNotice("Add something to the canvas before downloading");
+      return;
+    }
+    const document = designExportDocument({ inner, title: `MH Fashion ${product} design` });
+    const name = `mh-fashion-${product}`;
+    const outcome: DesignExportOutcome = format === "png" ? await downloadDesignPng(document, name) : downloadDesignSvg(document, name);
+    setToolNotice(outcome === "downloaded"
+      ? format === "png" ? "Design downloaded as a 300 dpi PNG" : "Design downloaded as an SVG"
+      : "The design could not be downloaded. Try again.");
   };
 
   // Arrow-pad nudges from the Adjustments panel: offset only, so the artwork
@@ -3092,6 +3114,16 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           onOpenAdjustments={openAdjustments}
         />}
       </div>
+      <EditorDesignExport
+        svgRef={exportSvgRef}
+        layers={layers}
+        layerOffsets={canvasLayerTransforms}
+        layerScales={canvasLayerScales}
+        layerOrigins={canvasLayerOrigins}
+        layerRotations={canvasLayerRotations}
+        selectedMaskLayerId={selectedTarget === "mask" ? selectedLayerId : null}
+        maskBrushMode={maskBrushMode}
+      />
       <EditorToolsBar
         activeTool={activeTool}
         collapsed={toolsCollapsed}
@@ -3110,6 +3142,8 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
         onRedo={redoCanvasAction}
         canFlip={selectedLayerIds.length > 0}
         onFlip={flipSelectedLayers}
+        canDownload={layers.some((layer) => layer.visible)}
+        onDownload={(format: "png" | "svg") => void downloadDesign(format)}
         onSwapColors={() => {
           const nextForeground = backgroundColor;
           setBackgroundColor(foregroundColor);

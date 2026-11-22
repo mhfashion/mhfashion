@@ -2012,14 +2012,25 @@ chest in the same place as the flat mockup, and a missing model silently falls b
 **Open:** renderer choice (`three` + `model-viewer` vs a WebGL-lite path) and whether 3D ships per
 product or per garment type.
 
-### P5 — Customer export (PNG/PDF)
+### P5 — Customer export (PNG/PDF) — **shipped 2026-11-22**
 
-| Task | File |
-|---|---|
-| "Download my design" as PNG at print resolution and as SVG | `lib/design-export.ts` (new) |
-| Same file set the press gets, minus the internal sheet | `lib/order-print.ts` reuse |
+| Task | File | State |
+|---|---|---|
+| "Download my design" as PNG at print resolution and as SVG | `lib/design-export.ts` (new) | done |
+| Same file set the press gets, minus the internal sheet | `lib/order-print.ts` reuse | done: the export reuses the editor's own renderer (`EditorArtworkLayers`) instead of a second drawing path |
 
-**Acceptance:** the downloaded PNG measures the same centimetres at 300 dpi as the measurements CSV.
+- **Where:** a Download chip at the end of the editor tools bar with a menu of "PNG · 300 dpi (print)" and
+  "SVG · vector"; disabled when every layer is hidden. `EditorDesignExport` holds the artwork-only `<svg>`
+  the files are cut from.
+- **Sizes:** the SVG is `38.1cm × 45.72cm` (`viewBox 0 0 1000 1200`); the PNG is 4500 × 5400 px, which
+  `pixelsToCentimetres()` reads back as 38.1 × 45.72 cm — the same numbers the press sheet and the
+  layer-measurement CSV quote.
+- **Acceptance met:** measured in Chromium — a brush stroke and a text layer both land in the exported PNG at
+  the same place they sit on the canvas, the file is 4500 × 5400 px at 300 dpi, and the SVG contains no
+  editor chrome (`foreignObject`, handles, outlines). `tests/design-export.test.cjs` covers the size maths,
+  the document, the file name and the data URL.
+- **Not done, deliberately:** a PDF. The plan already keeps a PDF library out of scope; the browser prints
+  the SVG/PNG, and a print-quality raster already exists.
 
 ### P6 — Bundle to R2
 

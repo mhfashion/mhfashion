@@ -139,6 +139,7 @@ the owner approves an item before it starts.
 | E13 | Keyboard Undo / Redo — **done 2026-11-22** | desktop users expect Ctrl+Z; only the tool-bar buttons exist | `lib/editor-shortcuts.ts`, `EditorCanvas` | small |
 | E14 | Image resolution warning — **done 2026-11-22** | a photo enlarged past what the press can print sharply is only discovered after printing | `lib/editor-image-ppi.ts`, `editor-layers`, `EditorCanvas`, Layers box, Adjustment box | small |
 | E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium — **step 1 done 2026-11-22** (one vocabulary); the admin-driven chain still waits for the database |
+| E16 | Download my design — **done 2026-11-22** | the customer had no copy of the artwork; the press bundle was the only file | `lib/design-export.ts`, `EditorDesignExport`, `EditorToolsBar` | small |
 
 ### E1 — Save and order hand-off
 
@@ -316,6 +317,27 @@ the owner approves an item before it starts.
   a reload; removing one hides it from new choices and leaves existing orders readable; a changed narrowing
   rule changes what the header offers; a unit test covers the fall-back to the first valid option when a
   choice stops being offered; checked on Web and Phone.
+
+### E16 — Download my design (done 2026-11-22)
+
+- **Where:** a Download chip at the end of the editor tools bar, beside Undo and Redo, with a two-item menu:
+  "PNG · 300 dpi (print)" and "SVG · vector". It is disabled while every layer is hidden.
+- **What it writes:** only the artwork. `EditorDesignExport` renders the same `EditorArtworkLayers` into a
+  hidden `<svg>` with no transform box, guides, handles or inline text editor, and
+  `serializeArtworkSvg` copies that group into a standalone document. A file the press opens therefore looks
+  like the canvas and not like the editor.
+- **Size:** the document is `width="38.1cm" height="45.72cm"` with `viewBox="0 0 1000 1200"`, i.e. the print
+  area of `PRINT_CANVAS_SPEC` (4500 × 5400 px at 300 dpi). The PNG is rasterised through an `<img>` and a
+  canvas at `exportPixelSize()` — 4500 × 5400 px — so `pixelsToCentimetres()` recovers the same 38.1 × 45.72 cm
+  the press sheet and the layer-measurement CSV quote.
+- **No webfont risk:** the project loads no webfont (`EDITOR_TEXT_FONT_FAMILY` is `'Inter', system-ui, …`), so
+  the rasterised SVG resolves the same system fonts as the page. If a webfont is ever added, it must be inlined
+  into the export or the PNG text will fall back.
+- **Failure:** an empty canvas reports "Add something to the canvas before downloading"; a rasterise error
+  reports "The design could not be downloaded. Try again." rather than saving a broken file.
+- Verified in Chromium at 1440 × 900 and 390 × 844 touch: the menu items are 44 px tall on a phone, both files
+  download, the PNG is 4500 × 5400 px with the artwork in the same place as on the canvas, and the SVG holds
+  no `foreignObject`, handle or outline node.
 
 ### Built: E15 step 1 — one vocabulary for the header and the price book (2026-11-22)
 

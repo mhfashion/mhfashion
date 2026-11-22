@@ -1182,6 +1182,25 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-22 — Download my design (PNG at 300 dpi, and SVG)
+
+The customer had no copy of the artwork: the press bundle was the only file, and it is an admin document.
+The editor now has a Download chip at the end of the tools bar, next to Undo and Redo, with two choices.
+
+- **PNG · 300 dpi (print)** — 4500 × 5400 px, which is 38.1 × 45.72 cm at 300 dpi: exactly the print area of
+  `PRINT_CANVAS_SPEC`, so the numbers match the press sheet and the layer-measurement CSV.
+- **SVG · vector** — the same artwork as `<svg width="38.1cm" height="45.72cm" viewBox="0 0 1000 1200">`, so
+  it opens at the physical print size in any vector tool.
+- **Only the artwork.** `EditorDesignExport` renders the same `EditorArtworkLayers` into a hidden `<svg>`
+  without the transform box, guides, resize handles or inline text editor, and `serializeArtworkSvg` copies
+  that group. There is no second drawing path to drift from the canvas.
+- **Honest failures.** An empty canvas says "Add something to the canvas before downloading"; a rasterise
+  error says the download failed instead of saving a broken file.
+- Verified in Chromium at 1440 × 900 and 390 × 844 touch: the menu items are 44 px tall on a phone and stay
+  inside the viewport, the brush stroke and a text layer land in the PNG where they sit on the canvas, and the
+  SVG holds no `foreignObject`, handle or outline node. `tests/design-export.test.cjs` covers the size maths
+  (`exportPixelSize`, `pixelsToCentimetres`), the document, the file name and the data URL.
+
 ### 2026-11-22 — One shop clock, a reprint record, a phone-sized sheet, a durable limiter
 
 Four register items closed, each with tests.
