@@ -80,7 +80,7 @@ Checked item by item in the source.
 | Undo / redo | 30 layer snapshots, layer changes only; Ctrl+Z / Ctrl+Shift+Z (⌘ on macOS) through `lib/editor-shortcuts.ts` |
 | Download | "Download my design" saves a 38.1 × 45.72 cm SVG (300 dpi PNG too) with the used fonts inlined as base64 `@font-face` rules |
 | Fonts | the picker reads `fonts/manifest.json` from R2 (`lib/editor-fonts.ts`, `lib/editor-font-library.ts`); bad entries are skipped by name; the eight system fonts stay the fallback |
-| Flip | horizontal and vertical, about the selection's own centre (`flipLayerPlacement`) |
+| Flip | horizontal and vertical, about the selection's own centre (`flipLayerPlacement`); the buttons sit in the Tools bar today and move to the Adjustments panel (E22) |
 | Hover | the canvas outlines the layer under the pointer and the Layers row highlights with it |
 | Image resolution | a photo that would print below the press resolution is flagged in the Photo panel (`lib/editor-image-ppi.ts`) |
 | Phone | 44 px targets, Pan view mode, view-only zoom, second finger cannot hijack a gesture, no panel overlap |
@@ -139,7 +139,7 @@ the owner approves an item before it starts.
 | E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 12/12; the canvas is bounded to 972k px) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
 | E3 | Settle the `circle` preset — **done 2026-11-22** | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
 | E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
-| E5 | Flip horizontal and vertical — **done 2026-11-22** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar` | medium |
+| E5 | Flip horizontal and vertical — **done 2026-11-22; moves out of the Tools bar into the Adjustments panel (owner, 2026-11-22, see E22)** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar`, Adjustments panel | medium |
 | E6 | Snap guides while dragging | free placement drifts off the print area | `EditorCanvas` drag paths | medium |
 | E7 | Hover highlight between canvas and Layers — **done 2026-11-22** | finding the row for a shape on a busy canvas is slow | `EditorCanvas`, `EditorLayersPanel` | small |
 | E8 | Shape Builder for `exclude` and arbitrary paths — **done 2026-11-22** | the builder only merges rectangles today | `lib/editor-path-boolean.ts`, `applyEditorShapeBuilderOperation` | medium |
@@ -156,6 +156,7 @@ the owner approves an item before it starts.
 | E19 | A real text bend — **approach decided 2026-11-22** (outline warp with HarfBuzz) | Arch and Wave only slant the text | `editor-layers`, `editor-fonts`, renderer, bounds, print | medium |
 | E20 | Brushes, round 2 | brush packs, pressure, stabiliser and a size cursor | Brush box, `public/brushes`, `EditorCanvas` | medium |
 | E21 | Tool adjustments, polish | numeric entry, reset, shortcuts, eyedropper, richer Pen and Shape boxes, phone layout | `EditorAdjustmentsPanel`, `EditorToolsBar`, `EditorCanvas` | medium |
+| E22 | Adjustments panel: complete, compact and beautiful | the panel has no numeric position or size, no align, flip or rotate, no colour system, and every label is 9 to 10 px | `EditorAdjustmentsPanel`, `EditorPhotoAdjustments`, `EditorToolsBar`, shared controls | large |
 
 ### E1 — Save and order hand-off
 
@@ -218,6 +219,9 @@ the owner approves an item before it starts.
 - Horizontal and vertical flip on the selection, mirrored in the mockup and the print export.
 - Acceptance: the printed PNG is the mirror of the unflipped one and the transform box still hugs the
   ink (a flipped italic moves its ink).
+- **Owner decision (2026-11-22): Flip does not belong in the Tools bar.** The two buttons live in the
+  Adjustments panel's Arrange section (E22). `flipLayerPlacement` and `flipSelectedLayers` stay as they are; only
+  the buttons move, and the Tools bar loses its `canFlip` and `onFlip` props.
 
 ### E6 — Snap guides
 
@@ -642,6 +646,74 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
   are never lost when another field changes (`updateToolOptions` merges per field); Web at 1440 × 900 and Phone
   at 390 × 844; the Tool Options tests grow with each box.
 
+### E22 — Adjustments panel: complete, compact and beautiful  *(proposed, 2026-11-22; owner request)*
+
+The owner wants the Adjustments panel to be more complete, tighter, and good to look at, and wants Flip in it
+rather than in the Tools bar.
+
+- **Facts checked in the source (`EditorAdjustmentsPanel.tsx`, 682 lines):**
+  - The panel is 16 rem wide (`PANEL_WIDTH = "min(16rem, 86vw)"`) and is a one-open-at-a-time accordion.
+  - Text is 9 px in 41 places and 10 px in 41 places; nothing is 12 px or larger. Myanmar script, which has tall
+    stacked marks, is hard to read at those sizes.
+  - Controls: 11 native colour inputs, 4 native selects, 4 range sliders and 5 number inputs, so colour, choice
+    and number controls look and behave differently from each other and from the header's own dropdown.
+  - **Appearance** holds only blend mode, opacity and fill.
+  - There is **no numeric X, Y, width, height or rotation**, no align, no rotate and no reset; the only
+    placement controls are the nudge pad in the Move tool options and the on-canvas handles.
+  - Flip and Download sit in the Tools bar, not in the panel.
+  - Text has bold, italic and underline toggles but no letter-case control.
+  - The existing `aria-label` strings are what the tests find controls by.
+
+**What the panel still needs**
+
+1. **Arrange section** (every layer kind): X and Y, width and height shown in centimetres (the press unit,
+   `unitsPerCm`) with the pixel size beside them, rotation in degrees, a lock-proportions toggle,
+   align to the design area (E4, E6) or to the print canvas, rotate 90°, reset transform, and for a multi-selection
+   distribute. **Flip horizontal and flip vertical are here** (owner decision, 2026-11-22), enabled whenever a
+   layer is selected, with the same `flipSelectedLayers` behaviour.
+2. **One colour control** for all eleven places: a swatch that opens a small popover with the shop's palette,
+   the last six colours, a hex field and an eyedropper (E21). The shop palette comes from the admin like the
+   header choices (E15).
+3. **Text:** letter case (as typed, UPPER, lower, Capitalised), and the text controls already listed in E21;
+   the hosted font's weights as a choice, not only a bold toggle.
+4. **Photo:** a reset per group, a before/after toggle, a Basic view (exposure, contrast, saturation,
+   temperature) and an Advanced view (the rest), crop, replace image, and a couple of one-tap looks with live
+   previews. Background removal stays "not connected" until the image service exists (E10).
+5. **Whole panel:** a reset on every section header, copy and paste of a layer's style, and remembering which
+   sections the shop keeps open for each kind of layer.
+
+**Design direction**
+
+1. **Structure:** a sticky header with the selected layer's thumbnail, name and kind, then a row of icon tabs
+   that depends on the kind (Arrange, Style, Effects, Photo, Layer). Several sections may be open at once.
+2. **One control family:** a 32 px row with the label on the left and the control on the right; a slider always
+   comes with a number field; two related values (X/Y, W/H) share a row; two to four choices are a segmented
+   control; on/off choices are icon toggles with a tooltip; native selects are replaced by the same dropdown the
+   header already uses.
+3. **Type and space:** body text 12 px and captions 11 px at least, section titles 14 px, line height 1.5 so
+   Myanmar marks are not clipped, a 4 / 8 px spacing scale, and the site's existing colour tokens, radius and
+   focus ring, so the panel looks like the rest of the editor in dark and light.
+4. **Width:** 18 to 20 rem on desktop, scrolling only inside the panel; labels may wrap in Myanmar instead of
+   being cut.
+5. **Feel:** previews inside presets (the text styles already paint live tiles; photo looks and shadows follow),
+   clear hover, pressed and disabled states, short transitions that respect reduced-motion.
+6. **Phone:** the panel opens as a bottom sheet with a drag handle and three heights, one section group at a
+   time, 44 px targets, and it never covers the object being edited.
+
+- **Order of work:** the owner reviews a visual mock-up (desktop and phone, dark and light, English and Myanmar)
+  before any code. Then the shared controls (row, slider with number, colour field, dropdown, segmented) are
+  built once and the sections move onto them one at a time. E21 reuses these controls, so E22 comes first or
+  together with it.
+- **Tools bar after the change:** Flip leaves it. Download also sits there today; whether Download moves to the
+  header next to Save and Buy is the owner's call (decision D15).
+- **Contracts:** the panel keeps the existing `aria-label` strings the tests rely on, keeps the Undo and Redo
+  behaviour unchanged, and keeps the Layers and Adjustments boxes from overlapping.
+- Acceptance: a selected layer of each kind shows its Arrange section; typing a width in centimetres resizes the
+  layer and matches the on-canvas box; Flip works from the panel and the Tools bar no longer has it; every
+  colour field in the panel is the same control; no text in the panel is smaller than 11 px; Myanmar labels do
+  not clip; the panel reads well at 1440 × 900 and 390 × 844, in dark and light; the existing editor tests
+  pass; a screenshot per layer kind is attached to the change.
+
 ## 6. Decisions for the owner
 
 | # | Question | Recommendation |
@@ -660,6 +732,7 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | D12 | Who supplies the starter brush tips? (E20) | **Resolved 2026-11-22:** the owner finds them and puts them in R2; each licence is checked |
 | D13 | Until the database exists, where does the font list live? (E17) | **Resolved 2026-11-22:** `fonts/manifest.json` in R2 for now; it is expected to move into the database later |
 | D14 | How does the bend get a font file HarfBuzz can read? (E19) | Add an optional `outline` field per manifest style naming a `.ttf` or `.otf` next to the woff2; the loader still serves the woff2. The alternative, decoding woff2 in the browser, adds a decoder to the download |
+| D15 | Does Download leave the Tools bar too and sit in the header next to Save and Buy? (E22) | Yes: the header already holds the actions that finish a design, and the Tools bar then holds tools only |
 
 ### Owner decisions recorded (2026-11-21)
 
@@ -680,6 +753,7 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 12. The Burmese font approach is confirmed: a short list of open-licence Unicode fonts, licences checked, files put in R2 by the shop (owner, 2026-11-22).
 13. The text bend is built as an outline warp (E19); the owner left the choice to the plan author. Whether D14 (a `.ttf`/`.otf` file beside each woff2) is accepted is still to be confirmed.
 14. The brush tips are found and uploaded to R2 by the owner (E20, D12).
+15. Flip does not belong in the Tools bar; it moves into the Adjustments panel. The Adjustments panel should be more complete, tighter and good to look at (E22, owner request, 2026-11-22). E22 is a proposal; the owner reviews a visual mock-up first.
 
 ## 7. Verification and change policy
 
