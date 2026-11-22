@@ -172,6 +172,15 @@ test("the print sheet contains the whole spec, the shipping address and the artw
   assert.match(html, /@page \{ size: A4/);
 });
 
+test("the print sheet can be opened and printed on a phone", () => {
+  const html = print.buildOrderPrintSheetHtml(orderWith());
+  // Measured in Chromium at 390x844: scrollWidth === clientWidth, so nothing scrolls sideways.
+  assert.ok(html.includes('<meta name="viewport" content="width=device-width, initial-scale=1"'), "the sheet has a viewport meta");
+  assert.match(html, /@media \(max-width: 640px\) \{/, "the sheet stacks its columns on a narrow screen");
+  assert.match(html, /class="printbar"><button type="button" onclick="window\.print\(\)">Print this sheet<\/button>/, "the sheet prints itself without a desktop menu");
+  assert.match(html, /@media print \{ \.printbar \{ display: none; \} \}/, "the print button stays off the paper");
+});
+
 test("the print sheet escapes text instead of injecting it", () => {
   const order = orderWith({ customerName: '<script>alert("x")</script>', note: "<b>bold</b>" });
   const html = print.buildOrderPrintSheetHtml(order);

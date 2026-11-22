@@ -897,6 +897,8 @@ on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise).
 | Checkout with a seeded cart (no Supabase needed) | line + total 42,000 Ks, order `#MH1101` written with a `checkoutKey`, stage Pending Payment, cart emptied, no console error |
 | Checkout submit on an empty form | used to report only the terms; now lists name, phone, address, township, city and terms together |
 | Pen / shape / eraser with a single click (no drag) | no junk layer, no console error |
+| Press sheet from `/admin/orders` at 390x844 | opens its own tab (real click keeps the popup), 390/390 scroll, print button present |
+| Admin orders at 390x844 | 390/390 scroll, orders open, no console error |
 | Delivery fee on checkout | by design the fee is quoted later; "Total today" is the subtotal and the panel says so |
 
 The shop catalogue and the checkout cannot be exercised in this workspace: products come from

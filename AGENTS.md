@@ -355,6 +355,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `tests/storefront-e2e.cjs` asserts the six issues on an empty form before it fills the form, then
   keeps the full cart -> order -> account path.
 
+## Press sheet on a phone (`apps/web/src/lib/order-print.ts`)
+- `openPrintableDocument` uses `window.open("", "_blank")` + `document.write`; a blocked popup falls back
+  to downloading the HTML. Measured in Chromium at 390x844: a real click opens the tab and the sheet has
+  no sideways scroll (390/390, widest element 378 px) thanks to the viewport meta, the
+  `@media (max-width: 640px)` stack and the in-page "Print this sheet" button (hidden under `@media print`).
+- A `Runtime.evaluate` click has no user activation, so `window.open` returns null there and you get the
+  download fallback. Drive the button with `Input.dispatchMouseEvent` when testing the popup path.
+
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
   `tests/canvas-shell.test.cjs` fails if they come back.

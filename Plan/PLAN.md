@@ -1044,7 +1044,12 @@ proposal, not an approved order.
    `quality` in `manifest.json`, and a banner on the press sheet; `tests/print-quality.test.cjs` covers
    the geometry, the thresholds and all three outputs. **Still open:** a low-resolution photo warning
    (the order layer model stores no pixel size, so the editor's save path must carry it — owner
-   approval), DTF vs Sublimation colour/bleed rules, and opening the print-size export on a phone.
+   approval), DTF vs Sublimation colour/bleed rules, and ~~opening the print-size export on a phone~~ —
+   **checked 2026-11-22:** the press sheet opens in its own tab on a phone (`window.open` returns a
+   window, a real click keeps the popup allowed), carries a viewport meta, a `@media (max-width: 640px)`
+   stack and a "Print this sheet" button, and at 390x844 `scrollWidth === clientWidth` (390) with the
+   widest element at 378 px, so nothing scrolls sideways. `tests/admin-order-print.test.cjs` now fails
+   if any of that disappears.
 7. **SVG handling.** Checked 2026-11-21: every uploaded or generated SVG reaches the page through
    `<img src="data:image/svg+xml, ...">` (`post-assets.ts`, `order-print.ts`, `designPreviewSrc`), and a
    script inside an `<img>` cannot run, so nothing needs stripping today. Keep the rule: if an SVG is
