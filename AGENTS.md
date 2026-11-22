@@ -654,3 +654,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   (`touch-pan-y` on `[aria-label="Editor viewport"]`), which cancels the stroke: the same drag with mouse
   events paints fine. Tests stroke mostly horizontally (`strokeCanvas()`).
 - Current price table: T-Shirt + 160 GSM + XL = 28,000 Ks; GSM 240 = 31,500; GSM 240 + 3XL = 33,500.
+
+## Keyboard undo/redo and image print quality
+- `lib/editor-shortcuts.ts` owns the key matrix: `Ctrl/Cmd+Z` undo, `Ctrl+Shift+Z`, `Cmd+Shift+Z` and
+  `Ctrl+Y` redo, `Cmd+Y` untouched. A focused text field (input, textarea, select, contenteditable,
+  `role="textbox"`) returns `null`, so typing keeps the browser's own undo. A key that is not a Latin
+  letter falls back to `event.code` (`KeyZ`), which is what makes a Myanmar layout work.
+- `EditorCanvas` binds it through `historyKeyHandlerRef`, rebuilt every render, so the handler always sees
+  the current undo/redo stacks without re-adding a listener on every layer change.
+- `lib/editor-image-ppi.ts`: ppi = 300 × the photo's own pixels ÷ (box units × 4.5), lower axis wins.
+  `EditorImageContent.sourceWidth/sourceHeight` are written by the upload path; a layer without them
+  reports `null` and shows no badge rather than a guess.
+- CDP resize probes must click `button[aria-label="Move"]` first: with a drawing tool active the transform
+  handles carry `pointerEvents="none"`, so a press at a handle paints instead of resizing. The tool button
+  label is "Move", not "Move tool".

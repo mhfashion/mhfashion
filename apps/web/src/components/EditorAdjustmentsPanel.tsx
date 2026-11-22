@@ -6,6 +6,7 @@ import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrus
 import { createEditorShapePaths, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
+import { IMAGE_PRINT_LEVEL_LABEL, type ImagePrintQuality } from "@/lib/editor-image-ppi";
 import { EditorTextArtwork } from "@/components/EditorLayerPreview";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
@@ -398,7 +399,13 @@ function GradientEditor({ gradient, onChange }: { gradient: EditorGradient; onCh
   </div>;
 }
 
-export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures, placement, selectedShape, onSelectShape, onNudge }: {
+const PRINT_LEVEL_CLASS: Record<ImagePrintQuality["level"], string> = {
+  good: "bg-[#dff0d8] text-[#2f5c25] dark:bg-[#2c3b26] dark:text-[#bfe0ae]",
+  low: "bg-[#fdf0c8] text-[#7a5a10] dark:bg-[#403522] dark:text-[#f0d99a]",
+  "very-low": "bg-[#f8d7d7] text-[#8a2020] dark:bg-[#432323] dark:text-[#f0b4b4]",
+};
+
+export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, imagePrintQuality = null, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures, placement, selectedShape, onSelectShape, onNudge }: {
   open: boolean;
   onToggle: () => void;
   selectedLayer: EditorArtworkLayer | null;
@@ -411,6 +418,8 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   onUpdateShapeBuilder: (mode: EditorShapeBuilderMode) => void;
   onUpdateShapeStyle: (update: Partial<EditorShapeStyle>) => void;
   onUpdateImage: (update: PhotoAdjustmentUpdate) => void;
+  /** Print resolution of the selected photo, or null when its pixel size is unknown. */
+  imagePrintQuality?: ImagePrintQuality | null;
   onUpdateGradient: (gradient: EditorGradient) => void;
   onAddMask: (id: string) => void;
   onRemoveMask: (id: string) => void;
@@ -548,6 +557,11 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
             <div className="grid grid-cols-2 gap-1.5">{(["select", "merge", "subtract", "intersect"] as const).map((mode) => <button key={mode} type="button" aria-label={`Shape builder ${mode}`} aria-pressed={(selectedLayer.shape?.builderMode ?? "select") === mode} onClick={() => onUpdateShapeBuilder(mode)} className="rounded-lg border border-border px-2 py-2 text-[10px] capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{mode === "select" ? "Select" : mode}</button>)}</div>
             <p className="mt-2 text-[9px] leading-relaxed text-text-muted">Choose a builder mode before combining or editing vector shapes on the Canvas.</p>
           </Section>}
+          {image && imagePrintQuality && (
+            <p data-print-quality={imagePrintQuality.level} aria-label={`Print quality ${imagePrintQuality.ppi} ppi, ${IMAGE_PRINT_LEVEL_LABEL[imagePrintQuality.level]}`} className={`rounded-xl px-3 py-2 text-[11px] font-semibold ${PRINT_LEVEL_CLASS[imagePrintQuality.level]}`}>
+              Print quality: {imagePrintQuality.ppi} ppi · {IMAGE_PRINT_LEVEL_LABEL[imagePrintQuality.level]}
+            </p>
+          )}
           {image && <Section title="Photo" open={openSection === "Photo"} onToggle={() => toggleSection("Photo")}>
             <EditorPhotoAdjustments image={image} selectedLayer={selectedLayer} onUpdateImage={onUpdateImage} onAddMask={onAddMask} onRemoveMask={onRemoveMask} onSelectMask={onSelectMask} />
           </Section>}

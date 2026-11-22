@@ -128,16 +128,16 @@ the owner approves an item before it starts.
 | E2 | Real-phone QA, and fix the `editor-touch.cjs` Edit-sidebar crash | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
 | E3 | Settle the `circle` preset | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
 | E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
-| E5 | Flip horizontal and vertical | mirrored artwork is a normal request for a print shop | layer fields, renderer, mockup, print | medium |
+| E5 | Flip horizontal and vertical — **done 2026-11-22** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar` | medium |
 | E6 | Snap guides while dragging | free placement drifts off the print area | `EditorCanvas` drag paths | medium |
-| E7 | Hover highlight between canvas and Layers | finding the row for a shape on a busy canvas is slow | `EditorCanvas`, `EditorLayersPanel` | small |
+| E7 | Hover highlight between canvas and Layers — **done 2026-11-22** | finding the row for a shape on a busy canvas is slow | `EditorCanvas`, `EditorLayersPanel` | small |
 | E8 | Shape Builder for `exclude` and arbitrary paths | the builder only merges rectangles today | `applyEditorShapeBuilderOperation` | medium |
 | E9 | Enable the remaining products | Hoodie, Cup, Kids and Bag are visible but dead | `EditorHeaderBar2`, mockups, `editor-price` | medium |
 | E10 | Connect the sidebar library and image generation | Designs, Elements and Image Create are placeholders | `editor-design-library`, R2 endpoint, image service | large |
 | E11 | Per-character styling, glyphs, artboards | only if the catalogue needs them | text model migration, renderers, export | large |
 | E12 | Required selections before Buy | an order must carry every choice; Save stays open | `EditorHeaderBar2`, new gate helper, order payload | small |
-| E13 | Keyboard Undo / Redo | desktop users expect Ctrl+Z; only the tool-bar buttons exist | `EditorCanvas`, new shortcut helper | small |
-| E14 | Image resolution warning | a photo enlarged past what the press can print sharply is only discovered after printing | `editor-upload`, `editor-layers`, Layers box, Adjustment box | small |
+| E13 | Keyboard Undo / Redo — **done 2026-11-22** | desktop users expect Ctrl+Z; only the tool-bar buttons exist | `lib/editor-shortcuts.ts`, `EditorCanvas` | small |
+| E14 | Image resolution warning — **done 2026-11-22** | a photo enlarged past what the press can print sharply is only discovered after printing | `lib/editor-image-ppi.ts`, `editor-layers`, `EditorCanvas`, Layers box, Adjustment box | small |
 | E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium |
 
 ### E1 — Save and order hand-off
@@ -306,6 +306,36 @@ the owner approves an item before it starts.
   a reload; removing one hides it from new choices and leaves existing orders readable; a changed narrowing
   rule changes what the header offers; a unit test covers the fall-back to the first valid option when a
   choice stops being offered; checked on Web and Phone.
+
+### Built: E13 keyboard Undo / Redo (2026-11-22)
+
+- `lib/editor-shortcuts.ts` resolves the key: `Ctrl+Z` / `Cmd+Z` undo, `Ctrl+Shift+Z`, `Cmd+Shift+Z` and
+  `Ctrl+Y` redo, `Cmd+Y` left to the browser, Alt combinations and composing keystrokes ignored.
+- A focused text field (input, textarea, select, contenteditable, `role="textbox"`) keeps the browser's own
+  undo, so typing is never rolled back by the layer history.
+- A non-Latin layout falls back to the physical key (`KeyZ`), so a Myanmar keyboard works; a Latin letter
+  wins over the position, so AZERTY keeps its letter.
+- `EditorCanvas` binds it to the same `undoCanvasAction` / `redoCanvasAction` as the tool bar, through a
+  ref rebuilt every render, so it works with the tool bar collapsed and either box open.
+- Verified: `tests/editor-shortcuts.test.cjs` (6 cases) and a browser check in `tests/editor-touch.cjs`
+  that undoes and redoes a stroke with the tools collapsed and the Layers box open, then confirms a
+  focused rename field leaves the layers alone.
+
+### Built: E14 image resolution warning (2026-11-22)
+
+- `lib/editor-image-ppi.ts`: effective ppi = 300 × the photo's own pixels ÷ the print pixels its box
+  covers (4.5 print px per artwork unit), taking the lower axis so a one-axis stretch counts. Levels step
+  at 150 and 100 ppi (placeholders from the print desk). Rotation and masks do not change the value, and a
+  layer without a stored pixel size reports nothing instead of a guess.
+- `EditorImageContent` gained `sourceWidth` / `sourceHeight`, written by the upload path from the retained
+  pixel size, so the number is measured, not estimated.
+- Where it shows: a badge on the image row in the Layers box (which also opens the Adjustment box, and is
+  a 44 px target on touch), and a "Print quality: N ppi · level" line at the top of the Adjustment box.
+  When a resize drops a photo a level, the editor says it once in the tool-bar notice. Save and Buy are
+  never blocked.
+- Verified: `tests/editor-image-ppi.test.cjs` (the 300 / 171 / 139 / 167 / 69 / 83 ppi cases, the level
+  steps, the null cases) and a Chromium check: a 1200 px upload shows "100 ppi · low", and resizing it up
+  1.5× turns the badge to "67 ppi" and the notice to "upload-1200.png: print quality dropped to 67 ppi".
 
 ## 6. Decisions for the owner
 

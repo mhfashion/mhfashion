@@ -24,9 +24,15 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import EditorLayerPreview, { EDITOR_ARTWORK_VIEWBOX } from "@/components/EditorLayerPreview";
+import { IMAGE_PRINT_LEVEL_LABEL, type ImagePrintQuality } from "@/lib/editor-image-ppi";
 import { eraserDabPoints, resolveEditorShapeStyle, type ArtworkStroke, type EditorArtworkLayer, type EditorLayerBlendMode, type LayerEditTarget } from "@/lib/editor-layers";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
+const PRINT_LEVEL_CLASS: Record<ImagePrintQuality["level"], string> = {
+  good: "bg-[#dff0d8] text-[#2f5c25] dark:bg-[#2c3b26] dark:text-[#bfe0ae]",
+  low: "bg-[#fdf0c8] text-[#7a5a10] dark:bg-[#403522] dark:text-[#f0d99a]",
+  "very-low": "bg-[#f8d7d7] text-[#8a2020] dark:bg-[#432323] dark:text-[#f0b4b4]",
+};
 const TINY_ICON = "flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-text-secondary outline-none hover:bg-[#d1d1d1] hover:text-[#111] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-1 focus-visible:ring-[#438bc4] dark:hover:bg-[#494949] dark:hover:text-white [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-8";
 const BLEND_MODES: { value: EditorLayerBlendMode; label: string }[] = [
   { value: "normal", label: "Normal" },
@@ -114,6 +120,7 @@ export default function EditorLayersPanel({
   onOpenAdjustments,
   hoveredLayerId = null,
   onHoverLayer,
+  printQualityById = {},
 }: {
   open: boolean;
   onToggle: () => void;
@@ -141,6 +148,8 @@ export default function EditorLayersPanel({
   /** The layer highlighted on the canvas, so the row can show it without changing the selection. */
   hoveredLayerId?: string | null;
   onHoverLayer?: (id: string | null) => void;
+  /** How sharp each photo will print; only image layers get a badge. */
+  printQualityById?: Record<string, ImagePrintQuality | null>;
 }) {
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -247,6 +256,7 @@ export default function EditorLayersPanel({
               ) : null;
               const isSelected = selectedLayerIds.includes(layer.id);
               const isMaskSelected = isSelected && selectedTarget === "mask";
+              const quality = layer.kind === "image" ? printQualityById[layer.id] ?? null : null;
                 const rowClass = `relative flex min-h-9 items-center gap-1 border-b border-[#c9c9c9] px-1 dark:border-[#292929] ${isSelected ? "bg-[#d2e5f8] dark:bg-[#4b5661]" : "bg-[#f1f1f1] hover:bg-[#e5e5e5] dark:bg-[#353535] dark:hover:bg-[#404040]"} ${hoveredLayerId === layer.id && !isSelected ? "ring-1 ring-inset ring-[#4c9dff]" : ""} [@media(pointer:coarse)]:min-h-11`;
               return (
                 <div key={layer.id} className="relative">
@@ -277,6 +287,19 @@ export default function EditorLayersPanel({
                     <button type="button" aria-label={`Select ${layer.name} artwork`} aria-pressed={isSelected && selectedTarget === "artwork"} onClick={(event) => onSelectLayer(layer.id, "artwork", event.shiftKey || event.ctrlKey || event.metaKey)} onDoubleClick={() => beginRename(layer)} className="min-w-0 flex-1 truncate px-0.5 text-left text-[11px] text-[#202020] dark:text-[#eeeeee]">
                       {layer.groupId && <span className="mr-1 text-[9px] text-[#438bc4]">Group</span>}
                       {layer.name}
+                    </button>
+                  )}
+                  {quality && (
+                    <button
+                      type="button"
+                      data-print-ppi={quality.level}
+                      data-print-ppi-value={quality.ppi}
+                      aria-label={`${layer.name} print quality ${quality.ppi} ppi, ${IMAGE_PRINT_LEVEL_LABEL[quality.level]}. Open the Adjustment box`}
+                      title={`Print quality: ${quality.ppi} ppi (${IMAGE_PRINT_LEVEL_LABEL[quality.level]})`}
+                      onClick={onOpenAdjustments}
+                      className={`shrink-0 rounded-sm px-1 text-[9px] font-semibold tabular-nums [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 [@media(pointer:coarse)]:text-[10px] ${PRINT_LEVEL_CLASS[quality.level]}`}
+                    >
+                      {quality.ppi} ppi
                     </button>
                   )}
                   {layer.locked && <LockKeyhole size={12} aria-label={`${layer.name} locked`} className="shrink-0 text-[#d1d1d1]" />}

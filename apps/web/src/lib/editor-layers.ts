@@ -921,6 +921,9 @@ export type EditorImageContent = {
   width: number;
   height: number;
   byteSize: number;
+  /** The photo's own pixel size, kept so the editor can report its print resolution. */
+  sourceWidth?: number;
+  sourceHeight?: number;
   brightness?: number;
   contrast?: number;
   saturation?: number;

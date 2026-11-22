@@ -209,6 +209,14 @@ Nine presets: rectangle, rounded rectangle, ellipse, triangle, diamond, line, ar
 - An image layer can carry a mask like any other layer.
 - **Frame** rounds the corners and draws a border. Both are painted inside the image box (the border is
   inset by half its own width), so the transform outline still hugs the photo.
+- **Print quality** is the effective ppi of the photo on the print canvas: 300 dpi × the photo's own
+  pixels ÷ the print pixels its box covers (one artwork unit is 4.5 print px), taking the lower axis, so a
+  photo stretched on one side only is limited by that side. Rotation and masks do not change it.
+- The number shows as a badge on the image row in the Layers box (tap it on a phone to open the Adjustment
+  box) and as a line at the top of the Adjustment box. The steps are good at 150 ppi and above, low from
+  100 to 149, and very low below 100; those thresholds are placeholders from the print desk.
+- Shrinking a photo past a step makes the tool bar say it once ("print quality dropped to N ppi"). It
+  never blocks Save or Buy, and a layer stored without its pixel size shows no number at all.
 
 ## 12. Mockups
 
@@ -289,8 +297,20 @@ The design library is a local placeholder until the storage endpoint exists
 | Enter (text) | new line |
 | Escape (text) | stop editing |
 | Escape (menus) | close the menu |
+| Ctrl+Z / Cmd+Z | undo a layer change |
+| Ctrl+Shift+Z / Cmd+Shift+Z / Ctrl+Y | redo a layer change |
 
-There are no global undo/redo shortcuts; use the buttons in the tool bar.
+- Undo and Redo are the tool-bar actions, with the same 30-snapshot layer history. `Cmd+Y` is left to
+  the browser, and Alt combinations are ignored because AltGr types characters.
+- A focused text field keeps the browser's own undo: while the caret is in an input, a textarea, a
+  select, a contenteditable element or a `role="textbox"` element (the inline text editor, the layer
+  rename field, number fields) the shortcut does nothing, so typing is never rolled back by the layer
+  history.
+- On a keyboard layout that does not produce a Latin letter (a Myanmar layout, for example) the physical
+  key is used, so the shortcut still works. On a layout that moves the letters (AZERTY) the letter printed
+  on the key wins.
+- The shortcut works whether the tool bar is expanded or collapsed and while the Layers or Adjustment box
+  is open. A phone has no keyboard, so the buttons stay the way to undo.
 
 ## 18. Tests
 
@@ -308,6 +328,8 @@ EDITOR_TEST_ORIGIN=http://127.0.0.1:3000 node tests/editor-touch.cjs
 | `tests/editor-attributes.test.cjs` | print method, fabric, knit and cuttings option sets |
 | `tests/editor-pen-path.test.cjs` | path data, snapping, anchor insert and remove |
 | `tests/editor-price.test.cjs` | product, GSM and size price table |
+| `tests/editor-shortcuts.test.cjs` | the undo/redo key matrix, the text-field rule, non-Latin layouts |
+| `tests/editor-image-ppi.test.cjs` | the print ppi formula, its levels, and the layers it cannot measure |
 | `tests/canvas-spec.test.cjs` | the frozen canvas spec |
 | `tests/editor-touch.cjs` | phone and desktop interaction driven through the browser: tiny artwork, landscape, dark/light, dock arrows, tier resize, drawing |
 

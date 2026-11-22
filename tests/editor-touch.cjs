@@ -176,6 +176,15 @@ async function main() {
     await pause(120);
   }
   const mouse = (type, p, buttons = 0) => send("Input.dispatchMouseEvent", { type, ...p, button: "left", buttons, clickCount: 1 });
+  // Modifier bits: Alt 1, Ctrl 2, Meta 4, Shift 8.
+  async function keyStroke(key, { modifiers = 0 } = {}) {
+    const code = `Key${key.toUpperCase()}`;
+    const virtualKeyCode = key.toUpperCase().charCodeAt(0);
+    const press = { key, code, modifiers, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode };
+    await send("Input.dispatchKeyEvent", { type: "keyDown", ...press });
+    await send("Input.dispatchKeyEvent", { type: "keyUp", ...press });
+    await pause(160);
+  }
   async function clickPoint(point) {
     await mouse("mouseMoved", point);
     await mouse("mousePressed", point, 1);
@@ -980,6 +989,27 @@ async function main() {
     assert.equal(desktopResult.overlays[1].cap, 3500);
     assert.ok(desktopResult.overlays[1].edge > 1500);
     console.log("PASS desktop mouse: source drawing and Back large-tier resize remain operational");
+
+    // Keyboard undo/redo runs the tool-bar actions, with the tools collapsed and Layers open.
+    await clickMouse('button[aria-label="Collapse editor tools"]');
+    await clickMouse('button[aria-label="Expand Layers panel"]');
+    const strokeCount = () => evaluate(() => document.querySelectorAll('section[aria-label="Print canvas"] [data-editor-artwork-stroke="true"]').length);
+    const beforeUndo = await strokeCount();
+    assert.ok(beforeUndo > 0, "the desktop stroke is on the canvas");
+    await keyStroke("z", { modifiers: 2 });
+    assert.equal(await strokeCount(), 0, "Ctrl+Z undoes the stroke with the tools collapsed and the Layers box open");
+    await keyStroke("z", { modifiers: 10 });
+    assert.equal(await strokeCount(), beforeUndo, "Ctrl+Shift+Z redoes it");
+    // A focused text field keeps the browser's own undo, so the layer history must not move.
+    await evaluate(() => document.querySelector('[aria-label="Layer list"] [role="listitem"] [aria-label^="Select "]').dispatchEvent(new MouseEvent("dblclick", { bubbles: true })));
+    await pause(200);
+    assert.equal(await evaluate(() => document.activeElement?.getAttribute("aria-label")?.startsWith("Rename ") ?? false), true, "the rename field takes the focus");
+    await keyStroke("z", { modifiers: 2 });
+    assert.equal(await strokeCount(), beforeUndo, "Ctrl+Z inside a text field leaves the layers alone");
+    await evaluate(() => document.activeElement?.blur());
+    await pause(120);
+    await clickMouse('button[aria-label="Expand editor tools"]');
+    console.log("PASS desktop keyboard: Ctrl+Z and Ctrl+Shift+Z undo and redo, text fields keep their own undo");
   } finally {
     ws.close();
   }

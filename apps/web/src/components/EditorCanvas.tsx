@@ -16,6 +16,9 @@ import {
   releaseLargeArtworkTier,
 } from "@/lib/editor-artwork-tiers";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
+import { editorHistoryShortcut } from "@/lib/editor-shortcuts";
+import { imagePrintQuality, imagePrintLevelRank } from "@/lib/editor-image-ppi";
+import type { ImagePrintQuality } from "@/lib/editor-image-ppi";
 import { flipLayerPlacement, getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } from "@/lib/editor-transform";
 import type { TransformHandle } from "@/lib/editor-transform";
 import {
@@ -611,6 +614,16 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     () => layers.filter((layer) => layer.kind === "image"),
     [layers],
   );
+  /**
+   * How sharp each photo will print, from its own pixels and the box it now covers. Recomputed
+   * on every scale change so a resize can say what it did to the print.
+   */
+  const imagePrintQualityById = useMemo(() => Object.fromEntries(
+    layers
+      .filter((layer) => layer.kind === "image" && layer.image)
+      .map((layer) => [layer.id, imagePrintQuality(layer.image, canvasLayerScales[layer.id] ?? { x: 1, y: 1 })]),
+  ) as Record<string, ImagePrintQuality | null>,
+  [layers, canvasLayerScales]);
   const visibleMockups = useMemo(
     () => product === "Phone" ? mockups.filter((side) => side === "Front Mockup") : mockups,
     [mockups, product],
@@ -833,6 +846,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const penEditDragRef = useRef<PenEditDrag | null>(null);
   const penEditWindowHandlersRef = useRef<{ move: (event: PointerEvent) => void; end: (event: PointerEvent) => void } | null>(null);
   const penKeyHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  const historyKeyHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
   const finishPenPathRef = useRef<(close?: boolean) => void>(() => {});
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget; points: Point[] } | null>(null);
   const [eraserCursor, setEraserCursor] = useState<Point | null>(null);
@@ -953,6 +967,23 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => penKeyHandlerRef.current(event);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // The same undo/redo as the tool-bar buttons, reachable from the keyboard whatever panel or
+  // tool is open. The handler is rebuilt every render so it always sees the current stacks.
+  useEffect(() => {
+    historyKeyHandlerRef.current = (event) => {
+      const action = editorHistoryShortcut(event);
+      if (!action) return;
+      event.preventDefault();
+      if (action === "undo") undoCanvasAction();
+      else redoCanvasAction();
+    };
+  });
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => historyKeyHandlerRef.current(event);
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
@@ -1541,7 +1572,21 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   }
 
   function endCanvasLayerResize(event: React.PointerEvent<SVGSVGElement>) {
-    if (canvasLayerResizeRef.current?.pointerId === event.pointerId) canvasLayerResizeRef.current = null;
+    const drag = canvasLayerResizeRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    canvasLayerResizeRef.current = null;
+    // Say it once, quietly: a photo shrunk past a print-quality step is a print decision, and
+    // Save and Buy stay available either way.
+    const dropped = layers
+      .filter((layer) => layer.kind === "image" && layer.image)
+      .map((layer) => {
+        const before = imagePrintQuality(layer.image, drag.origin[layer.id]?.scale ?? { x: 1, y: 1 });
+        const after = imagePrintQuality(layer.image, canvasLayerScales[layer.id] ?? { x: 1, y: 1 });
+        if (!before || !after || imagePrintLevelRank(after.level) <= imagePrintLevelRank(before.level)) return null;
+        return `${layer.name}: print quality dropped to ${after.ppi} ppi`;
+      })
+      .filter(Boolean);
+    if (dropped.length) setToolNotice(dropped[0] as string);
   }
 
   function startCanvasLayerRotate(event: React.PointerEvent<SVGCircleElement>) {
@@ -2359,6 +2404,8 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
         createEditorImageLayer(id, compressed.fileName || "Upload", {
           src: compressed.src,
           byteSize: compressed.byteSize,
+          sourceWidth: compressed.width,
+          sourceHeight: compressed.height,
           ...box,
         }),
         ...current,
@@ -3000,6 +3047,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           onUpdateShapeBuilder={updateSelectedShapeBuilder}
           onUpdateShapeStyle={updateSelectedShapeStyle}
           onUpdateImage={updateSelectedImage}
+          imagePrintQuality={selectedLayer ? imagePrintQualityById[selectedLayer.id] ?? null : null}
           onUpdateGradient={updateSelectedGradient}
           onAddMask={createLayerMask}
           onRemoveMask={deleteLayerMask}
@@ -3036,6 +3084,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           onUpdateLayer={updateLayer}
           hoveredLayerId={hoveredLayerId}
           onHoverLayer={setHoveredLayerId}
+          printQualityById={imagePrintQualityById}
           onGroupSelected={groupSelectedLayers}
           onUngroupSelected={ungroupSelectedLayers}
           onLinkSelected={linkSelectedLayers}
