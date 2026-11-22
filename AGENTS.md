@@ -26,6 +26,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 
 ## Testing notes
 - `node --test tests/*.test.cjs` reports 460 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
+- The upload section feeds a `DataTransfer` file straight into the hidden
+  `input[aria-label="Upload an image to the canvas"]`: a renamed non-image must name itself in the
+  notice (`compressImageUpload` catches the decode `DOMException`, which otherwise only reads "The
+  source image could not be decoded."), and a real PNG must add an image layer.
 - The last section types a 130-code-point Burmese word and reads the painted `tspan`s (one `<text>` per
   renderer, one `tspan` per painted line), so it fails if a line ever starts with a combining mark.
 - `tests/editor-touch.cjs` runs to the end and passes on a server built from current `main`; the phone **Edit sidebar** section used to throw on a `null` `getBoundingClientRect` and no longer does.
@@ -424,7 +428,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `CANVAS_LAYER_TRAVEL_LIMIT` (2400 artwork units) bounds how far a layer can be dragged, so it stays reachable; the pasteboard is clamped to the same limit.
 - `MockupArtwork` now receives `layerOffsets`/`layerScales`/`layerOrigins`/`layerRotations` and mirrors the canvas, then clips the artwork to the print area with a `clipPath` in overlay coordinates (`printScale = BASE_ARTWORK_SCALE * safeTransform.scale`). A layer dragged off-canvas therefore disappears from the mockup exactly as it would print.
 
-## Phone and touch checks (`tests/editor-touch.cjs`, 15 sections)
+## Phone and touch checks (`tests/editor-touch.cjs`, 16 sections)
 - `EDITOR_CDP_URL` (default `http://127.0.0.1:9222`) must point at the Chromium started with `--remote-debugging-port`; the suite needs a server on port 3000.
 - `denseDesign()` covers 25 layers, the 30-step undo floor, a second finger placed mid-stroke, and a portrait→landscape rotation.
 - Every pointer handler guards `!event.isPrimary`, so a second touch cannot take over; the check asserts one stroke and ink no taller than the pencil width.

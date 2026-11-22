@@ -792,6 +792,43 @@ async function main() {
     console.log("PASS phone tiny artwork: repeated selected moves, distinct resize target and readable dimensions");
   }
   /**
+   * A photo that Chrome cannot decode (a HEIC straight off a phone, or a renamed file) must say
+   * which file failed, and a real image must land on the canvas.
+   */
+  async function uploadErrors() {
+    await load(1440, 900, false);
+    await clickMouse('button[aria-label="Expand Edit sidebar"]');
+    await pause(300);
+    await clickMouse('button[aria-label="Open Upload in Edit sidebar"]');
+    await pause(400);
+    const feed = (name, base64) => evaluate(async (fileName, data) => {
+      const input = document.querySelector('input[aria-label="Upload an image to the canvas"]');
+      if (!input) throw new Error("Missing the upload input");
+      const bytes = Uint8Array.from(atob(data), (character) => character.charCodeAt(0));
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([bytes], fileName, { type: "image/png" }));
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }, name, base64);
+    const notice = () => evaluate(() => {
+      const live = [...document.querySelectorAll('[role="status"], [aria-live]')].map((el) => el.textContent.trim()).filter(Boolean);
+      return live[live.length - 1] ?? "";
+    });
+    await feed("holiday.heic", btoa("definitely not an image"));
+    await pause(900);
+    const broken = await notice();
+    assert.match(broken, /holiday\.heic/, `the failed upload names its file, got "${broken}"`);
+    assert.match(broken, /not an image/i, `the failed upload explains itself, got "${broken}"`);
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGM4ISeHFTEMLQkAkL9BAbKfPiIAAAAASUVORK5CYII=";
+    await feed("photo.png", png);
+    await pause(1200);
+    const good = await notice();
+    assert.match(good, /added to the canvas/, `a real image lands on the canvas, got "${good}"`);
+    const images = await evaluate(() => document.querySelectorAll('[data-editor-image-layer="true"], svg image').length);
+    assert.ok(images > 0, "the uploaded image is painted");
+    console.log("PASS upload errors: a file that cannot be decoded names itself, a real PNG lands on the canvas");
+  }
+  /**
    * A word wider than the wrap limit must break between grapheme clusters: in Myanmar script the
    * vowel signs and the asat attach to the character before them, so a code-point split painted a
    * line that began with a mark hanging off nothing.
@@ -921,6 +958,7 @@ async function main() {
     await draftRestore();
     await denseDesign();
     await burmeseWrapping();
+    await uploadErrors();
     await load(740, 390, true);
     const landscape = await evaluate(() => {
       const v = document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect();

@@ -65,7 +65,14 @@ export async function compressImageUpload(
   const maxEdge = options?.maxEdge ?? UPLOAD_MAX_EDGE;
   const type = "image/jpeg";
 
-  const bitmap = await createImageBitmap(file);
+  // Chrome cannot decode HEIC or a renamed non-image; the raw DOMException reads
+  // "The source image could not be decoded." and never says which file, so name it here.
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error(`${file.name || "That file"} is not an image this browser can read. Try a JPG, PNG or WebP.`);
+  }
   const edgeScale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
   let width = Math.max(1, Math.round(bitmap.width * edgeScale));
   let height = Math.max(1, Math.round(bitmap.height * edgeScale));

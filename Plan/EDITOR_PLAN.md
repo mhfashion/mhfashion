@@ -137,7 +137,7 @@ the owner approves an item before it starts.
 | # | Item | Why | Files | Size |
 |---|---|---|---|---|
 | E1 | Save the design, then hand it to the order | Save and Buy are dead buttons, the browser draft is never restored, and no order carries the artwork | `EditorHeaderBar2`, `EditorCanvas`, `lib/design-draft.ts`, the order payload | large |
-| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 15/15; the canvas is bounded to 972k px; items 5–7 verified in emulation) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
+| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 16/16; the canvas is bounded to 972k px; items 5–7 verified in emulation) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
 | E3 | Settle the `circle` preset — **done 2026-11-22** | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
 | E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
 | E5 | Flip horizontal and vertical — **done 2026-11-22; moves out of the Tools bar into the Adjustments panel (owner, 2026-11-22, see E22)** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar`, Adjustments panel | medium |
@@ -874,9 +874,9 @@ rather than in the Tools bar.
 | `tests/wishlist.test.cjs` | 7 |
 | **All suites** | **505** |
 
-`tests/editor-touch.cjs` is the browser suite (15 sections, run against a live server): the draft
+`tests/editor-touch.cjs` is the browser suite (16 sections, run against a live server): the draft
 reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, a long Burmese word
-wrapping between grapheme clusters, and a console guard that fails the run on any uncaught exception or
+wrapping between grapheme clusters, an upload that cannot be decoded, and a console guard that fails the run on any uncaught exception or
 `console.error`.
 
 The last full run (`node --test tests/*.test.cjs`) reported 505 passing, 0 failing, against a server
@@ -892,6 +892,8 @@ on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise).
 | Demo admin: register → `/admin` ("Good morning, Owner") → `/admin/pricing` | 24 combination rows, prices shown in Ks, no console error |
 | Admin pages without a session | redirect to `/admin/login`, so the guard holds |
 | Layer rename to `""` or whitespace | keeps the old name (`updateEditorLayer` trims and falls back) |
+| Upload a renamed non-image (`.heic`, `.png` with text inside) | no crash; the notice now names the file and suggests JPG/PNG/WebP (it used to show only Chrome's "The source image could not be decoded.") |
+| Upload a real 8×8 PNG | image layer added, "Upload reduced to 762 B and added to the canvas." |
 | Delivery fee on checkout | by design the fee is quoted later; "Total today" is the subtotal and the panel says so |
 
 The shop catalogue and the checkout cannot be exercised in this workspace: products come from
