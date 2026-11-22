@@ -225,6 +225,13 @@ the owner approves an item before it starts.
   `moveLayer`, `moveLayerToIndex`, `groupSelectedLayers`, `ungroupSelectedLayers`, `createLayerMask`,
   `deleteLayerMask`, `toggleLayerVisibility` and `toggleLayerLock` all call `rememberLayerSnapshot()`. Before
   this, a mis-tapped delete could not be undone, and `Ctrl+Z` silently reverted an older paint operation instead.
+- **Checked at five viewports on 2026-11-22** (768 x 1024, 1024 x 768, 820 x 1180, 414 x 896, 360 x 800;
+  touch emulation on the three under 900 px): no horizontal overflow (`scrollWidth - innerWidth` is 0 at
+  every size), the print canvas sits inside the viewport with the header above it and the tools bar below
+  it, all ten header boxes are present, and no console error is logged. The only elements wider than the
+  viewport are the header's own horizontal scroll container and the docked panels' scroll strips, which is
+  what they are for. A tablet (768 x 1024) is therefore covered by the layout rules, not just the two
+  sizes §7 names.
 - Checklist for the real-device pass: (1) iPhone Safari opens `/create`, draws and holds many layers on the 4500 × 5400 canvas without the page reloading (browser canvas limits are not verified in the source); (2) Burmese text typed with the Text tool, in several fonts and with effects, renders correctly on the canvas, the mockup and the print sheet; (3) the on-screen keyboard never hides the text box or caret; (4) uploads from the gallery and camera, including photos over 10 MB; (5) every tool with one finger, a second finger never taking over, Pan view, `+` / `−` / Reset view; (6) the Layers box and Edit sidebar never overlap, and the bottom navigation and safe areas never cover the editor; (7) portrait to landscape, dark and light, 20 to 30 layers, and the 30-step undo limit; (8) a reload loses the working canvas today (E1) and is recorded as such.
 
 ### E3 — `circle` preset
@@ -802,19 +809,67 @@ rather than in the Tools bar.
 
 | Suite | Tests |
 |---|---|
+| **Editor** | **224** |
+| `tests/browser-guards.test.cjs` | 1 |
+| `tests/canvas-shell.test.cjs` | 30 |
+| `tests/canvas-spec.test.cjs` | 2 |
+| `tests/design-draft.test.cjs` | 10 |
+| `tests/design-export.test.cjs` | 7 |
+| `tests/editor-align.test.cjs` | 8 |
+| `tests/editor-arrange.test.cjs` | 8 |
+| `tests/editor-attributes.test.cjs` | 12 |
+| `tests/editor-flip.test.cjs` | 7 |
+| `tests/editor-font-audit.test.cjs` | 5 |
+| `tests/editor-fonts.test.cjs` | 12 |
+| `tests/editor-image-ppi.test.cjs` | 9 |
 | `tests/editor-layers.test.cjs` | 49 |
-| `tests/canvas-shell.test.cjs` | 29 |
-| `tests/photo-adjustments.test.cjs` | 18 |
-| `tests/editor-attributes.test.cjs` | 8 |
+| `tests/editor-path-boolean.test.cjs` | 10 |
 | `tests/editor-pen-path.test.cjs` | 6 |
 | `tests/editor-price.test.cjs` | 4 |
-| `tests/canvas-spec.test.cjs` | 2 |
-| `tests/design-draft.test.cjs` | 7 |
-| `tests/editor-align.test.cjs` | 8 |
+| `tests/editor-shortcuts.test.cjs` | 6 |
 | `tests/editor-snap.test.cjs` | 8 |
-| `tests/editor-fonts.test.cjs` | 12 |
-| `tests/editor-font-audit.test.cjs` | 5 |
-| `tests/editor-touch.cjs` | 14 browser sections (desktop and phone): the draft reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, and a console guard that fails the run on any uncaught exception or `console.error` |
+| `tests/editor-tool-options.test.cjs` | 12 |
+| `tests/photo-adjustments.test.cjs` | 18 |
+| **Admin** | **152** |
+| `tests/account-orders.test.cjs` | 6 |
+| `tests/admin-ads.test.cjs` | 12 |
+| `tests/admin-attributes.test.cjs` | 10 |
+| `tests/admin-demo-auth.test.cjs` | 4 |
+| `tests/admin-demo-data.test.cjs` | 13 |
+| `tests/admin-jersey.test.cjs` | 10 |
+| `tests/admin-loyalty.test.cjs` | 10 |
+| `tests/admin-modules.test.cjs` | 11 |
+| `tests/admin-order-print.test.cjs` | 11 |
+| `tests/admin-orders.test.cjs` | 7 |
+| `tests/admin-posts.test.cjs` | 13 |
+| `tests/admin-pricing.test.cjs` | 16 |
+| `tests/admin-settlements.test.cjs` | 8 |
+| `tests/admin-takedown.test.cjs` | 7 |
+| `tests/order-archive.test.cjs` | 9 |
+| `tests/order-qr.test.cjs` | 5 |
+| **Storefront and shared** | **129** |
+| `tests/cart-lines.test.cjs` | 9 |
+| `tests/checkout.test.cjs` | 10 |
+| `tests/delivery-quote.test.cjs` | 5 |
+| `tests/guide-card.test.cjs` | 5 |
+| `tests/guide-http.test.cjs` | 5 |
+| `tests/guides.test.cjs` | 10 |
+| `tests/nyein-brand.test.cjs` | 5 |
+| `tests/payments.test.cjs` | 9 |
+| `tests/print-quality.test.cjs` | 16 |
+| `tests/product-mockup.test.cjs` | 14 |
+| `tests/product-trust-row.test.cjs` | 4 |
+| `tests/rate-limit.test.cjs` | 9 |
+| `tests/search.test.cjs` | 5 |
+| `tests/storefront-info.test.cjs` | 8 |
+| `tests/structured-data.test.cjs` | 8 |
+| `tests/wishlist.test.cjs` | 7 |
+| **All suites** | **505** |
 
-The last full run (`node --test tests/*.test.cjs`) reported 502 passing, 0 failing, against a server on
-port 3000.
+`tests/editor-touch.cjs` is the browser suite (14 sections, run against a live server): the draft
+reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, and a console guard
+that fails the run on any uncaught exception or `console.error`.
+
+The last full run (`node --test tests/*.test.cjs`) reported 505 passing, 0 failing, against a server
+on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise).
+
