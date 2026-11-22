@@ -49,6 +49,9 @@ async function main() {
   async function load(width, height, mobile) {
     await send("Emulation.setDeviceMetricsOverride", { width, height, mobile, deviceScaleFactor: 1 });
     await send("Emulation.setTouchEmulationEnabled", { enabled: mobile, maxTouchPoints: 5 });
+    // Every section starts from a blank editor. The draft restore would otherwise carry the
+    // previous section's layers into this one, so "Layer 1" would not be the layer on screen.
+    await send("Storage.clearDataForOrigin", { origin, storageTypes: "local_storage" });
     await send("Page.navigate", { url: `${origin}/create` });
     for (let n = 0; n < 40; n++) {
       await pause(100);
@@ -710,6 +713,40 @@ async function main() {
     });
     await pause(120);
   }
+  /** A reload must bring the design back: the draft carries layers, moves and all. */
+  async function draftRestore() {
+    await load(1440, 900, false);
+    const canvas = await rect('canvas[aria-label="Blank print canvas"]', false);
+    await clickMouse('button[aria-label="Brush"]');
+    const from = { x: canvas.x + canvas.w * 0.35, y: canvas.y + canvas.h * 0.4 };
+    const to = { x: canvas.x + canvas.w * 0.55, y: canvas.y + canvas.h * 0.55 };
+    await mouse("mouseMoved", from);
+    await mouse("mousePressed", from, 1);
+    for (let n = 1; n <= 8; n++) {
+      await mouse("mouseMoved", { x: from.x + ((to.x - from.x) * n) / 8, y: from.y + ((to.y - from.y) * n) / 8 }, 1);
+      await pause(20);
+    }
+    await mouse("mouseReleased", to);
+    // The draft write is debounced by 400ms, so give it room before reading storage.
+    await pause(900);
+    const draft = await evaluate(() => JSON.parse(localStorage.getItem("mh-fashion-design-draft-v1") ?? "null"));
+    assert.ok(draft && draft.layers.length >= 1, "the drawn layer is written to the draft");
+    assert.ok(draft.placement && Object.keys(draft.placement).length >= 1, "the draft carries where the layer sits");
+    const strokes = () => evaluate(() => document.querySelectorAll('[data-editor-artwork-stroke="true"]').length);
+    const before = await strokes();
+    assert.ok(before >= 1, "the stroke is on the canvas before the reload");
+    await send("Page.reload");
+    for (let n = 0; n < 40; n++) {
+      await pause(100);
+      if (await evaluate(() => !!document.querySelector('button[aria-label="Canvas options"]'))) break;
+    }
+    await pause(700);
+    assert.equal(await strokes(), before, "the reload paints the same artwork");
+    const notice = await evaluate(() => document.querySelector('[role="status"][aria-live="polite"]')?.textContent ?? "");
+    assert.match(notice, /Restored the design from your last visit/);
+    console.log("PASS draft restore: a reload brings the artwork back and says so");
+  }
+
   async function tinyArtwork() {
     await load(390, 844, true);
     await tap('button[aria-label="Canvas options"]');
@@ -748,6 +785,7 @@ async function main() {
     await phone(390, 844);
     await phone(320, 740);
     await tinyArtwork();
+    await draftRestore();
     await load(740, 390, true);
     const landscape = await evaluate(() => {
       const v = document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect();

@@ -144,9 +144,14 @@ test("the product page renders the mockup from the selection with the design on 
 
 test("the editor keeps its open design so the product page can preview it", () => {
   const canvas = readFileSync(path.join(__dirname, "..", "apps/web/src/components/EditorCanvas.tsx"), "utf8");
-  assert.match(canvas, /saveDesignDraft\(layers\)/);
-  assert.match(canvas, /window\.setTimeout\(\(\) => saveDesignDraft\(layers\), 400\)/);
-  assert.match(canvas, /\}, \[layers\]\);/);
+  // The draft travels with where each layer was left on the canvas, or a reload drops every move.
+  assert.match(canvas, /saveDesignDraft\(layers, placement\)/);
+  assert.match(canvas, /window\.setTimeout\(\(\) => \{/);
+  assert.match(canvas, /\}, 400\);/);
+  assert.match(canvas, /\}, \[layers, canvasLayerTransforms, canvasLayerScales, canvasLayerRotations\]\);/);
+  // Opening the editor restores that draft instead of starting on a blank layer.
+  assert.match(canvas, /readDesignDraftSnapshot\(\)/);
+  assert.match(canvas, /Restored the design from your last visit/);
 });
 
 test("colour thumbnails skip the generic default look", () => {

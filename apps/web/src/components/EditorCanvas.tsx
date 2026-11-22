@@ -101,7 +101,7 @@ import {
   imageLayerBox,
 } from "@/lib/editor-upload";
 import type { EditorProduct } from "@/lib/editor-product";
-import { saveDesignDraft } from "@/lib/design-draft";
+import { designLayersHaveArtwork, readDesignDraftSnapshot, saveDesignDraft } from "@/lib/design-draft";
 
 // The shared artwork space is 1000 x 1200 units; new text starts centred on it.
 const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
@@ -595,10 +595,49 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
 
   // The product page previews whatever design is open here, so the draft is kept in the
   // browser. Debounced because a brush stroke rewrites the layers on every pointer move.
+  // Each layer's move/scale/rotate travels with it, or a reload drops every placement.
+  const draftWarningShownRef = useRef(false);
   useEffect(() => {
-    const timer = window.setTimeout(() => saveDesignDraft(layers), 400);
+    const timer = window.setTimeout(() => {
+      const placement = Object.fromEntries(layers.map((layer) => [layer.id, {
+        offset: canvasLayerTransforms[layer.id] ?? { x: 0, y: 0 },
+        scale: canvasLayerScales[layer.id] ?? { x: 1, y: 1 },
+        rotation: canvasLayerRotations[layer.id] ?? 0,
+      }]));
+      const stored = saveDesignDraft(layers, placement);
+      if (!stored && !draftWarningShownRef.current) {
+        draftWarningShownRef.current = true;
+        setToolNotice("This browser is not saving your design. Keep this tab open until you order.");
+      }
+    }, 400);
     return () => window.clearTimeout(timer);
-  }, [layers]);
+  }, [layers, canvasLayerTransforms, canvasLayerScales, canvasLayerRotations]);
+
+  /**
+   * A reload continues the same artwork. Restoring after mount (not in the state initialiser) keeps
+   * the server-rendered blank canvas and the first client render identical, so hydration matches.
+   */
+  const draftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    const snapshot = readDesignDraftSnapshot();
+    if (!snapshot || !designLayersHaveArtwork(snapshot.layers)) return;
+    const highestId = snapshot.layers.reduce((highest, layer) => {
+      const match = /^layer-(\d+)$/.exec(layer.id);
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+    nextLayerIdRef.current = Math.max(nextLayerIdRef.current, highestId + 1);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLayers(snapshot.layers);
+    setCanvasLayerTransforms(Object.fromEntries(Object.entries(snapshot.placement).map(([id, placement]) => [id, placement.offset])));
+    setCanvasLayerScales(Object.fromEntries(Object.entries(snapshot.placement).map(([id, placement]) => [id, placement.scale])));
+    setCanvasLayerRotations(Object.fromEntries(Object.entries(snapshot.placement).map(([id, placement]) => [id, placement.rotation])));
+    const topLayerId = snapshot.layers[0]?.id ?? null;
+    setSelectedLayerId(topLayerId);
+    setSelectedLayerIds(topLayerId ? [topLayerId] : []);
+    setToolNotice("Restored the design from your last visit");
+  }, []);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>("layer-1");
   const [selectedTarget, setSelectedTarget] = useState<LayerEditTarget>("artwork");
   const [maskBrushMode, setMaskBrushMode] = useState<MaskBrushMode>("hide");

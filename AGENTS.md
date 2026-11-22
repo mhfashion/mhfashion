@@ -352,6 +352,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `aria-label` + `title` naming the current value and `data-header-language` / `data-header-currency`.
   Keep all three or the state becomes invisible again.
 
+## Editor draft restore (`apps/web/src/lib/design-draft.ts`, `EditorCanvas.tsx`)
+- The draft payload is `{ layers, placement }`; `placement[id] = { offset, scale, rotation }`. `readDesignDraftSnapshot()` reads it, `saveDesignDraft(layers, placement)` writes it.
+- The editor restores the draft in a **post-mount effect**, not a state initialiser: the server render and the first client render must stay identical or hydration mismatches. That is why the effect carries `// eslint-disable-next-line react-hooks/set-state-in-effect`.
+- `designLayersHaveArtwork()` gates the restore, so a draft holding only blank layers still opens on one blank layer. A refused write shows the storage notice once (`draftWarningShownRef`).
+- `tests/editor-touch.cjs` clears `local_storage` for the origin at the start of every `load()`: with the restore in place, sections would otherwise inherit the previous section's layers and `[aria-label="Select Layer 1"]` would not exist.
+- `tests/product-mockup.test.cjs` asserts the draft call site by regex; changing the debounce body means updating that test too.
+
+## E4 / E6 helpers are groundwork only (plan decision)
+- `apps/web/src/lib/editor-align.ts` and `editor-snap.ts` are pure and unit-tested, but **nothing calls them yet**. The owner decided (2026-11-21) that align and snap target the per-mockup design areas, and both items wait for that discussion. Do not wire them to `ARTWORK_PRINT_AREA` or any panel control before that decision; it was wired once and reverted for exactly this reason.
+
 ## Pushing from this workspace (important)
 - The ambient `GITHUB_TOKEN` and the git credential helper token are the **same GitHub App
   installation token** (`x-oauth-client-id: Iv23lizrrwLGm04hszl7`), and it has **read-only

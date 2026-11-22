@@ -18,22 +18,62 @@ export function designLayersHaveArtwork(layers: EditorArtworkLayer[] | null | un
   ));
 }
 
-export function saveDesignDraft(layers: EditorArtworkLayer[]): void {
-  if (typeof window === "undefined") return;
+/**
+ * Where a layer sits on the canvas. Move, resize and rotate are held beside the layer model, so a
+ * draft that stored only `layers` put every restored layer back at its untransformed anchor.
+ */
+export type DesignPlacement = { offset: { x: number; y: number }; scale: { x: number; y: number }; rotation: number };
+
+export type DesignDraftSnapshot = {
+  layers: EditorArtworkLayer[];
+  placement: Record<string, DesignPlacement>;
+};
+
+/** `false` means the browser refused the write (quota, private mode, storage disabled). */
+export function saveDesignDraft(layers: EditorArtworkLayer[], placement?: Record<string, DesignPlacement>): boolean {
+  if (typeof window === "undefined") return false;
   try {
-    window.localStorage.setItem(DESIGN_DRAFT_KEY, JSON.stringify({ layers, updatedAt: Date.now() }));
+    window.localStorage.setItem(DESIGN_DRAFT_KEY, JSON.stringify({ layers, placement: placement ?? {}, updatedAt: Date.now() }));
+    return true;
   } catch {
     // A full quota or a private-mode browser must not break editing.
+    return false;
   }
 }
 
 export function readDesignDraft(): EditorArtworkLayer[] | null {
+  return readDesignDraftSnapshot()?.layers ?? null;
+}
+
+function readPlacement(value: unknown): Record<string, DesignPlacement> {
+  if (!value || typeof value !== "object") return {};
+  const placement: Record<string, DesignPlacement> = {};
+  for (const [id, entry] of Object.entries(value as Record<string, unknown>)) {
+    const candidate = entry as Partial<DesignPlacement> | null;
+    if (!candidate) continue;
+    const x = Number(candidate.offset?.x);
+    const y = Number(candidate.offset?.y);
+    const scaleX = Number(candidate.scale?.x);
+    const scaleY = Number(candidate.scale?.y);
+    const rotation = Number(candidate.rotation);
+    placement[id] = {
+      offset: { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 },
+      scale: { x: Number.isFinite(scaleX) && scaleX > 0 ? scaleX : 1, y: Number.isFinite(scaleY) && scaleY > 0 ? scaleY : 1 },
+      rotation: Number.isFinite(rotation) ? rotation : 0,
+    };
+  }
+  return placement;
+}
+
+/** The whole draft, including where each layer was left on the canvas. */
+export function readDesignDraftSnapshot(): DesignDraftSnapshot | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(DESIGN_DRAFT_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { layers?: EditorArtworkLayer[] };
-    return Array.isArray(parsed.layers) ? parsed.layers : null;
+    const parsed = JSON.parse(raw) as { layers?: EditorArtworkLayer[]; placement?: unknown };
+    if (!Array.isArray(parsed.layers)) return null;
+    return { layers: parsed.layers, placement: readPlacement(parsed.placement) };
   } catch {
     return null;
   }

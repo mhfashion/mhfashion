@@ -269,11 +269,16 @@ The design library is a local placeholder until the storage endpoint exists
 - Undo and Redo keep the last 30 layer-array snapshots and cover layer changes: add, delete, move,
   resize, style, reorder, group and mask.
 - Viewport zoom, pan and mockup positions are not in the history.
-- The layer array is written to the browser's `localStorage` under `mh-fashion-design-draft-v1`, 400 ms
-  after the last change (`lib/design-draft.ts`, called from `EditorCanvas`).
-- The editor never reads that draft back: opening `/create` always starts with one blank layer, so a
-  reload loses the working canvas from the customer's point of view even though the stored draft is
-  still there.
+- The layer array and each layer's move/scale/rotate are written to the browser's `localStorage` under
+  `mh-fashion-design-draft-v1`, 400 ms after the last change (`lib/design-draft.ts`, called from
+  `EditorCanvas`).
+- Opening `/create` reads that draft back and restores the artwork where it was left, then says
+  "Restored the design from your last visit". The restore runs after mount, so the server-rendered blank
+  canvas and the first client render still match.
+- A draft with no artwork (only blank layers) is ignored, so a fresh visit still starts on one blank
+  layer. A browser that refuses storage shows "This browser is not saving your design. Keep this tab open
+  until you order." once, instead of failing silently.
+- The restore half of the draft is done; Save and Buy still do not write anything outside the browser.
 - A product page whose product allows a custom design renders that stored draft as its mockup and offers
   an `Edit Design` link to `/create?product=<slug>`. The editor ignores the `?product=` value and always
   opens on the default product.

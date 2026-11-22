@@ -160,6 +160,10 @@ the owner approves an item before it starts.
 - Acceptance: reload keeps the artwork; a placed order shows the design in the admin order view with the
   print sheet and mockups; a browser with storage disabled shows a clear message instead of losing work.
 - Blocked on the decision in §6 D1 (where the design lives) and on the payment/order work.
+- **Step 1 done 2026-11-21: the draft is restored on load.** `lib/design-draft.ts` stores each layer's
+  move/scale/rotate beside the layers (`readDesignDraftSnapshot`), `EditorCanvas` restores it after mount
+  and shows "Restored the design from your last visit", and a browser that refuses storage says so once.
+  Reload keeps the artwork; the order hand-off and Save still wait on D1.
 
 ### Built: E3 the `circle` text preset (2026-11-22)
 
@@ -192,6 +196,8 @@ the owner approves an item before it starts.
   of three or more layers.
 - Constraint: moves layer origins, never scales, treats a linked set as one unit.
 - Owner decision (2026-11-21): the alignment targets are the design areas the shop defines for each mockup, not always the canvas centre. This item starts after the mockup design-area discussion.
+- **Helper only 2026-11-21:** `lib/editor-align.ts` (`alignOffset`, `tidyDeltas`) and its 8 unit tests are
+  written; it is not wired to any control yet, because the target area is the decision above.
 - Acceptance: unit tests on the helper against `PRINT_CANVAS_SPEC`; a canvas test that the artwork lands
   inside the print area.
 
@@ -206,6 +212,8 @@ the owner approves an item before it starts.
 - While dragging, snap to the canvas edges and centre, and to other layers' edges and centres, with a
   visible guide line; a modifier key suspends snapping.
 - Owner decision (2026-11-21): the snap targets include the design areas defined per mockup. This item starts after the mockup design-area discussion.
+- **Helper only 2026-11-21:** `lib/editor-snap.ts` (`snapTargetLines`, `snapBoxToLines`, `offsetBox`) and
+  its 8 unit tests are written and take the target area as a parameter; the drag is not wired to it yet.
 - Acceptance: a drag within the snap distance lands exactly on the guide, the guide disappears on release,
   and touch dragging keeps working.
 
@@ -606,6 +614,10 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | `tests/editor-pen-path.test.cjs` | 6 |
 | `tests/editor-price.test.cjs` | 4 |
 | `tests/canvas-spec.test.cjs` | 1 |
-| `tests/editor-touch.cjs` | browser flow (desktop and phone) |
+| `tests/design-draft.test.cjs` | 7 |
+| `tests/editor-align.test.cjs` | 8 |
+| `tests/editor-snap.test.cjs` | 8 |
+| `tests/editor-touch.cjs` | browser flow (desktop and phone), including a reload that must restore the draft |
 
-The last run of the three editor helper suites (layers, pen path, canvas spec) reported 56 passing.
+The last full run (`node --test tests/*.test.cjs`) reported 483 passing, 0 failing, against a server on
+port 3000.
