@@ -162,3 +162,18 @@ test("a download inlines the font file, so the SVG needs no network", () => {
   assert.ok(!/https?:/.test(css), "nothing in the download points back at the bucket");
   assert.equal(fonts.embeddedFontFaceCss(font, () => null), "", "no file, no rule");
 });
+
+test("the picker previews a font with its regular file, or whatever it ships", () => {
+  const [family] = fonts.parseEditorFontManifest({ fonts: [entry({ files: [
+    { weight: 700, style: "normal", file: "fonts/padauk/bold.woff2" },
+    { weight: 400, style: "normal", file: "fonts/padauk/regular.woff2" },
+    { weight: 400, style: "italic", file: "fonts/padauk/italic.woff2" },
+  ] })] }).fonts;
+  assert.equal(fonts.previewFontFile(family).file, "fonts/padauk/regular.woff2", "regular wins even when it is listed later");
+
+  const [boldOnly] = fonts.parseEditorFontManifest({ fonts: [entry({ files: [{ weight: 700, style: "normal", file: "fonts/padauk/bold.woff2" }] })] }).fonts;
+  assert.equal(fonts.previewFontFile(boldOnly).file, "fonts/padauk/bold.woff2", "a font without a regular still previews");
+
+  const css = fonts.fontFaceCss(boldOnly, "https://cdn.example.com", [fonts.previewFontFile(boldOnly)]);
+  assert.equal(css.match(/@font-face/g).length, 1, "one file, one rule — the picker does not pull a family");
+});

@@ -366,6 +366,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Only fonts used by a text layer are fetched: `fontsInUse()` matches the first family of the CSS stack, ignores disabled fonts (their layers fall back to the stack) and `applyEditorFontFaces` never injects the same slug twice.
 - `unicode-range` splits Latin and Myanmar, so a large Myanmar file downloads only for Myanmar text.
 - The download embeds the used fonts: `designExportFontCss()` fetches each used woff2 and `designExportDocument({ fontCss })` puts the rules in `<defs><style><![CDATA[...]]></style></defs>` before the artwork. The PNG is rasterised through an `<img>`, which cannot fetch a font, so without this the customer's file would paint a fallback. A file that fails to download is skipped, never fatal.
+- An open Font section loads one file per font so each row paints in its own face (`previewFontFile` → `applyEditorFontPreviews`, keyed `<slug>#preview` so the full load later still adds the other weights). Nothing is fetched while the section is closed and the artwork uses no hosted font.
 - Before an upload, `npm run fonts:check -- path/to/fonts` runs the same parser over a local copy of the folder and reports dropped entries, listed-but-absent files and files over 1 MB; it exits 1 so it can gate the upload. Pass either the bucket root or the `fonts/` folder — both resolve.
 - Still open: the R2 upload + CORS rule, licence checks, embedding (or outlining) in the press bundle SVG, and the admin-driven list.
 

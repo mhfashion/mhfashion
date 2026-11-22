@@ -12,6 +12,7 @@ import {
   fontShelfGroups,
   fontsInUse,
   parseEditorFontManifest,
+  previewFontFile,
   type EditorFontEntry,
   type EditorFontShelf,
 } from "@/lib/editor-fonts";
@@ -46,22 +47,38 @@ export function loadEditorFontLibrary(): Promise<EditorFontEntry[]> {
   return manifestPromise;
 }
 
-const appliedSlugs = new Set<string>();
+const appliedKeys = new Set<string>();
 
-/** Only fonts the artwork uses are fetched; repeat calls add nothing, so every caller may ask. */
-export function applyEditorFontFaces(fonts: EditorFontEntry[], families: Iterable<string | null | undefined>): void {
-  if (typeof document === "undefined") return;
-  const used = fontsInUse(fonts, families).filter((font) => !appliedSlugs.has(font.slug));
-  if (!used.length) return;
+/** One `<style>` for every face the page has asked for; each font is added once. */
+function injectFontCss(key: string, css: string): void {
+  if (!css || appliedKeys.has(key) || typeof document === "undefined") return;
   let style = document.getElementById(FONT_STYLE_ID) as HTMLStyleElement | null;
   if (!style) {
     style = document.createElement("style");
     style.id = FONT_STYLE_ID;
     document.head.append(style);
   }
-  const css = used.map((font) => fontFaceCss(font, fontLibraryBase())).join("\n");
   style.append(document.createTextNode(`${css}\n`));
-  used.forEach((font) => appliedSlugs.add(font.slug));
+  appliedKeys.add(key);
+}
+
+/** Only fonts the artwork uses are fetched; repeat calls add nothing, so every caller may ask. */
+export function applyEditorFontFaces(fonts: EditorFontEntry[], families: Iterable<string | null | undefined>): void {
+  for (const font of fontsInUse(fonts, families)) {
+    injectFontCss(font.slug, fontFaceCss(font, fontLibraryBase()));
+  }
+}
+
+/**
+ * The picker paints each font's name in that font, so the list needs one file per font while it is
+ * open. Only the regular file is loaded, and only once.
+ */
+export function applyEditorFontPreviews(fonts: EditorFontEntry[]): void {
+  for (const font of fonts) {
+    if (!font.enabled) continue;
+    const file = previewFontFile(font);
+    if (file) injectFontCss(`${font.slug}#preview`, fontFaceCss(font, fontLibraryBase(), [file]));
+  }
 }
 
 async function fontFileDataUrl(file: string): Promise<string | null> {
@@ -100,8 +117,11 @@ export async function designExportFontCss(families: string[]): Promise<string> {
     .join("\n");
 }
 
-/** The picker's fonts, shelf by shelf, plus the faces the given artwork needs. */
-export function useEditorFontLibrary(families: string[]): {
+/**
+ * The picker's fonts, shelf by shelf, plus the faces the given artwork needs. `preview` also loads
+ * one file per font, so an open picker can paint every name in its own face.
+ */
+export function useEditorFontLibrary(families: string[], { preview = false }: { preview?: boolean } = {}): {
   names: string[];
   shelves: { shelf: EditorFontShelf; label: string; names: string[] }[];
   fromManifest: boolean;
@@ -118,7 +138,8 @@ export function useEditorFontLibrary(families: string[]): {
   useEffect(() => {
     if (!fonts.length) return;
     applyEditorFontFaces(fonts, familyKey ? familyKey.split("|") : []);
-  }, [fonts, familyKey]);
+    if (preview) applyEditorFontPreviews(fonts);
+  }, [fonts, familyKey, preview]);
   const names = useMemo(() => (fonts.length ? editorFontNames(fonts) : [...EDITOR_SYSTEM_FONTS]), [fonts]);
   const shelves = useMemo(() => fontShelfGroups(fonts), [fonts]);
   return { names, shelves, fromManifest: fonts.length > 0 };

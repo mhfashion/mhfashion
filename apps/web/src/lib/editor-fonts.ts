@@ -187,10 +187,18 @@ function fontFaceBlock(font: EditorFontEntry, src: string, file: EditorFontFile)
 }
 
 /** `@font-face` rules for one font, split by script so a large Myanmar file downloads only when used. */
-export function fontFaceCss(font: EditorFontEntry, base: string): string {
-  return font.files
+export function fontFaceCss(font: EditorFontEntry, base: string, files: EditorFontFile[] = font.files): string {
+  return files
     .map((file) => fontFaceBlock(font, `url('${fontFileUrl(base, file.file)}') format('woff2')`, file))
     .join("\n");
+}
+
+/**
+ * The one file the picker paints a font's own name with: regular, else whatever the font ships.
+ * A label only needs one weight, so opening the list does not pull a whole family.
+ */
+export function previewFontFile(font: EditorFontEntry): EditorFontFile | null {
+  return font.files.find((file) => file.weight === 400 && file.style === "normal") ?? font.files[0] ?? null;
 }
 
 /**

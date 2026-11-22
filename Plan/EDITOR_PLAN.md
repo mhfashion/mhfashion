@@ -482,6 +482,12 @@ the owner approves an item before it starts.
   that is not in the folder, and any file over 1 MB; it exits 1 while something is wrong, so the owner can
   gate the upload on it. Verified on a good folder, a missing weight, a folder passed as either the bucket
   root or `fonts/`, and an entry without a licence.
+- **Step 4 done 2026-11-22: the list paints each font.** The picker already asked for `font-family: <name>` per
+  row, but a hosted face was never loaded until the font was chosen, so the labels painted in the fallback.
+  Opening the Font section now loads one file per enabled font (`previewFontFile`: the regular, else the first)
+  through the same single `<style>`, keyed `<slug>#preview` so a later full load still adds the other weights.
+  Verified against a local manifest: nothing was loaded while the section was closed; opening it injected one
+  400-weight rule and fetched only `regular.woff2`; the row carries `font-family: Padauk`.
 - **Still open:** upload the manifest and the font files to R2 and add the site origin to the bucket's CORS
   rule; check each licence for commercial print; embed (or outline) the used fonts in the **press bundle**
   SVG, which is the remaining E16 dependency; move the font list into the admin dashboard as E15 does;
@@ -645,9 +651,9 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | `tests/design-draft.test.cjs` | 7 |
 | `tests/editor-align.test.cjs` | 8 |
 | `tests/editor-snap.test.cjs` | 8 |
-| `tests/editor-fonts.test.cjs` | 11 |
+| `tests/editor-fonts.test.cjs` | 12 |
 | `tests/editor-font-audit.test.cjs` | 5 |
 | `tests/editor-touch.cjs` | browser flow (desktop and phone), including a reload that must restore the draft |
 
-The last full run (`node --test tests/*.test.cjs`) reported 500 passing, 0 failing, against a server on
+The last full run (`node --test tests/*.test.cjs`) reported 501 passing, 0 failing, against a server on
 port 3000.

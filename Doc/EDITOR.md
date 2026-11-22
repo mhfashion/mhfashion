@@ -152,6 +152,8 @@ design; each one creates a text layer and opens the inline editor.
   fallback stack. A manifest entry without a licence, with a file outside the bucket, or with a shelf the
   editor does not show is skipped and named, never fatal. See `Doc/R2-STORAGE.md` §3.2b for the file
   layout and the manifest shape.
+- **The list shows the font.** Each name in the picker is painted in its own face, so opening the Font section
+  loads one file per font (the regular, else whatever the font ships) — not the whole family.
 - **The download carries the font.** "Download my design" inlines the `@font-face` rules of the fonts the
   artwork uses as base64 into a `<defs><style>` block, because the PNG is rasterised through an `<img>`,
   which fetches nothing. A font file that cannot be downloaded is left out and the file falls back, so a

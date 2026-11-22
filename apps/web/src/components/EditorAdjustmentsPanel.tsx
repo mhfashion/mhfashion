@@ -434,12 +434,16 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   const image = selectedLayer?.image;
   const shapeStyle = selectedLayer?.shape ? resolveEditorShapeStyle(selectedLayer.shape) : null;
   const [fontQuery, setFontQuery] = useState("");
-  // The hosted library replaces the eight system fonts once `fonts/manifest.json` exists in R2.
-  const fontLibrary = useEditorFontLibrary(text ? [text.fontFamily ?? EDITOR_TEXT_FONT_FAMILY] : []);
   const [recentFonts, setRecentFonts] = useState<string[]>([]);
   const [nextEffectId, setNextEffectId] = useState(1);
   const [appliedStyle, setAppliedStyle] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState("Tool Options");
+  // The hosted library replaces the eight system fonts once `fonts/manifest.json` exists in R2. An open
+  // Font section also loads one file per font, so each name in the list paints in its own face.
+  const fontLibrary = useEditorFontLibrary(
+    text ? [text.fontFamily ?? EDITOR_TEXT_FONT_FAMILY] : [],
+    { preview: openSection === "Font" },
+  );
   const effectStack: EditorTextEffect[] = text ? text.effects ?? (text.textEffect === "shadow"
     ? [{ id: "legacy-shadow", kind: "shadow", color: text.effectColor ?? "#000000", offsetX: text.effectOffset ?? 12, offsetY: text.effectOffset ?? 12, blur: text.effectBlur ?? 0 }]
     : text.textEffect === "outline"
