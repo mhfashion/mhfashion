@@ -55,7 +55,7 @@ Checked item by item in the source.
 
 | Area | State |
 |---|---|
-| Print canvas | 4500 × 5400 px at 300 dpi, transparent, blank on open, frozen spec |
+| Print canvas | 4500 × 5400 px at 300 dpi, transparent, blank on open, frozen spec; the element lays out at 900 × 1080 (`PRINT_CANVAS_BACKING_SPEC`) because nothing is drawn into its bitmap, and the print size stays in the spec and the `data-canvas-*` attributes |
 | Workspace | pasteboard around the canvas, zoom 0.25×–3×, pan by wheel / Space / Hand tool, grid toggle |
 | Tools | Move, Hand, Pencil, Pen, Text, Brush, Eraser, Shape, Gradient; options normalised on load |
 | Tool options | every tool has a `Tool Options · <tool>` box at the top of the Adjustments panel (Brush/Pencil, Eraser, Pen, Text, Shape, Move, Gradient); a box writes one field at a time and merges into the stored settings |
@@ -65,10 +65,10 @@ Checked item by item in the source.
 | Eraser | brush mode and whole-stroke mode, stored as erasure passes, clearable |
 | Selection | content-derived box, eight resize handles, rotate handle, hit radius scaled to the box, 15° rotation snap |
 | Move | pick-and-drag, group drag, linked drag, arrow-key nudge, layers can be parked off-canvas and still grabbed |
-| Text | inline editor with wrapping, caret panning, per-layer styling, font search and recents (eight system fonts), an effect stack of thirteen kinds (shadow, outline, glow, offset, echo, extrude, stripe, blur, gradient, pattern, hollow, bevel, gloss), three decorations, Plain/Arch/Wave warp (Arch and Wave are slants, see §4) |
+| Text | inline editor with wrapping, caret panning, per-layer styling, a font picker fed by the R2 manifest (search, recents, shelves) with the eight system fonts as fallback, each name painted in its own face, an effect stack of thirteen kinds (shadow, outline, glow, offset, echo, extrude, stripe, blur, gradient, pattern, hollow, bevel, gloss), three decorations, Plain/Arch/Wave warp (Arch and Wave are slants, see §4) |
 | Text styles | 31 one-click looks on Classic, Fill and 3D shelves (including Chrome 3D, Gold, Ice, Lava, Balloon, Jelly, Wood, Marble, LED); every tile and every effect row paints its own live preview through the canvas renderer; a style only writes an effect stack, so every part stays editable |
 | Text bounds | ink-based, grows with effects and decorations; verified to ≤1.1 px in browser frame differencing |
-| Shapes | nine presets, stroke/fill/line style/rounding/shadow/glow, builder merge/subtract/intersect on rectangles |
+| Shapes | nine presets, stroke/fill/line style/rounding/shadow/glow, builder select/merge/subtract/intersect/exclude over any path data (`booleanPathData`), not just rectangles |
 | Pen | anchors with Bézier handles, drag handles (Alt breaks symmetry), insert and remove nodes, finish with Enter, discard with Escape |
 | Brush | per-tool options box: preset chips painted as rows of dabs, nib (tip, size, angle, roundness), paint (opacity, flow, spacing, smoothing), edge (softness, feather), shape dynamics (size, opacity, angle and roundness jitter, scatter, fade-out), dab blend, reset; strokes smoothed as drawn |
 | Gradients | five types, up to eight stops, presets, on-canvas axis, thumbnails |
@@ -76,8 +76,13 @@ Checked item by item in the source.
 | Mockups | Front and Back boxes with connectors, artwork mirror clipped to the print area, independent overlay transforms, shared 3500 px tier |
 | Header Bar 2 | eight selection boxes (Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size), live price; Save and Buy disabled |
 | Edit sidebar | Designs, Elements, Text, Upload, Image Create; rail stays visible; additions land in the Layers box |
-| Browser draft | the layers are written to `localStorage` (`mh-fashion-design-draft-v1`) 400 ms after a change; a design-editable product page renders that draft and links back to `/create` |
-| Undo / redo | 30 layer snapshots, layer changes only |
+| Browser draft | the layers are written to `localStorage` (`mh-fashion-design-draft-v1`) 400 ms after a change; `/create` restores them on load and says "Restored the design from your last visit"; a design-editable product page renders that draft too |
+| Undo / redo | 30 layer snapshots, layer changes only; Ctrl+Z / Ctrl+Shift+Z (⌘ on macOS) through `lib/editor-shortcuts.ts` |
+| Download | "Download my design" saves a 38.1 × 45.72 cm SVG (300 dpi PNG too) with the used fonts inlined as base64 `@font-face` rules |
+| Fonts | the picker reads `fonts/manifest.json` from R2 (`lib/editor-fonts.ts`, `lib/editor-font-library.ts`); bad entries are skipped by name; the eight system fonts stay the fallback |
+| Flip | horizontal and vertical, about the selection's own centre (`flipLayerPlacement`) |
+| Hover | the canvas outlines the layer under the pointer and the Layers row highlights with it |
+| Image resolution | a photo that would print below the press resolution is flagged in the Photo panel (`lib/editor-image-ppi.ts`) |
 | Phone | 44 px targets, Pan view mode, view-only zoom, second finger cannot hijack a gesture, no panel overlap |
 
 ## 3. Contracts that must not drift
@@ -102,16 +107,16 @@ What the code does not do, with the evidence.
 
 | Gap | Evidence |
 |---|---|
-| No save button and no restore | Save and Buy are `disabled` in `EditorHeaderBar2`. The only persistence is the browser draft (`saveDesignDraft` in `lib/design-draft.ts`, called from `EditorCanvas` on a 400 ms debounce), and `/create` never reads it back: `readDesignDraft` is only used by `ProductDetailClient`, so a reload starts on one blank layer while the old draft stays in `localStorage`. `clearDesignDraft` is exported but never called, nothing reaches the database, and `/create` ignores the `?product=` it is given |
+| No Save, and no design outside the browser | Save and Buy are `disabled` in `EditorHeaderBar2`. The browser draft is restored on load (`readDesignDraftSnapshot` in `lib/design-draft.ts`), but nothing reaches a database, `clearDesignDraft` is never called, and `/create` ignores the `?product=` it is given. Waiting on decision D1 |
 | No design hand-off to an order | the editor never writes a design; the admin order record is built from the demo store, not from `/create` |
 | Undo is layer-only | `undoStack`/`redoStack` hold `EditorArtworkLayer[][]`; viewport and mockup positions are outside it |
 | Arch and Wave do not bend text | `editorTextPresetMatrix` returns one shear matrix for the whole text block (6° for Arch, 4° for Wave); no glyph follows a curve. The `circle` option is no longer offered and survives only as a legacy stored value |
-| Only eight fonts, none Burmese | `EDITOR_FONTS` in `EditorAdjustmentsPanel.tsx` lists Inter, Arial, Georgia, Impact, Courier New, Trebuchet MS, Verdana and Times New Roman; no web font is loaded (no `next/font`, no `@font-face`), so the painted font depends on the viewer's device, and no Myanmar font is offered |
+| No Myanmar font until the bucket is filled | the picker reads `fonts/manifest.json` from R2 and falls back to the eight system fonts, but the shop has not uploaded a manifest yet, so today's list is still Inter, Arial, Georgia, Impact, Courier New, Trebuchet MS, Verdana and Times New Roman |
 | Brush packs are a contract only | `public/brushes/README.md` defines `brushes.json` and tip files, `brushes.json` is empty, and no code reads it |
 | No stylus or finger pressure | no `pressure` in the source |
 | No eyedropper | none in the source |
-| No tool shortcut keys | the only shortcuts are Space, arrows, Enter, Escape and undo/redo; no brush-size cursor was found in the canvas code |
-| No align, tidy or distribute | no helper in `lib/`, no control in the panels |
+| No tool shortcut keys beyond undo/redo | `lib/editor-shortcuts.ts` maps Ctrl/⌘+Z and Ctrl/⌘+Shift+Z; the other shortcuts are Space, arrows, Enter and Escape; no tool letters and no brush-size cursor |
+| No align or tidy control | `lib/editor-align.ts` (`alignOffset`, `tidyDeltas`) and its 8 unit tests exist, but no panel control calls them: the target area waits on the per-mockup design-area decision |
 | No positional snapping | only `snapEditorRotationDelta` (15°); no guides, no edge or centre snapping |
 | No context menu | no right-click menu on the canvas or the Layers box |
 | No glyph, uppercase or ligature controls | none in the text controls |
@@ -131,7 +136,7 @@ the owner approves an item before it starts.
 | # | Item | Why | Files | Size |
 |---|---|---|---|---|
 | E1 | Save the design, then hand it to the order | Save and Buy are dead buttons, the browser draft is never restored, and no order carries the artwork | `EditorHeaderBar2`, `EditorCanvas`, `lib/design-draft.ts`, the order payload | large |
-| E2 | Real-phone QA, and fix the `editor-touch.cjs` Edit-sidebar crash | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
+| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 12/12; the canvas is bounded to 972k px) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
 | E3 | Settle the `circle` preset — **done 2026-11-22** | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
 | E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
 | E5 | Flip horizontal and vertical — **done 2026-11-22** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar` | medium |
@@ -146,7 +151,7 @@ the owner approves an item before it starts.
 | E14 | Image resolution warning — **done 2026-11-22** | a photo enlarged past what the press can print sharply is only discovered after printing | `lib/editor-image-ppi.ts`, `editor-layers`, `EditorCanvas`, Layers box, Adjustment box | small |
 | E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium — **step 1 done 2026-11-22** (one vocabulary); the admin-driven chain still waits for the database |
 | E16 | Download my design — **done 2026-11-22** | the customer had no copy of the artwork; the press bundle was the only file | `lib/design-export.ts`, `EditorDesignExport`, `EditorToolsBar` | small |
-| E17 | Font library, including Burmese fonts — **approved 2026-11-22; fonts hosted in R2; step 1 done 2026-11-22** | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, R2, design export, print export | medium |
+| E17 | Font library, including Burmese fonts — **approved 2026-11-22; steps 1–4 done 2026-11-22** (manifest picker, download embedding, upload check, list previews); the press bundle waits on E1 | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, R2, design export, print export | medium |
 | E18 | Text effects, round 2 | more looks and finer control for the effect stack | `editor-layers`, `EditorLayerPreview`, `EditorAdjustmentsPanel` | medium |
 | E19 | A real text bend | Arch and Wave only slant the text | `editor-layers`, renderer, bounds, print | medium |
 | E20 | Brushes, round 2 | brush packs, pressure, stabiliser and a size cursor | Brush box, `public/brushes`, `EditorCanvas` | medium |
