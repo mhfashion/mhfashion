@@ -87,8 +87,8 @@ test("aligning a layer puts it flush with the artboard edge or centre", () => {
 test("the text style presets are editable effect stacks", () => {
   const ids = lib.EDITOR_TEXT_STYLES.map((preset) => preset.id);
   assert.equal(new Set(ids).size, ids.length, "preset ids are unique");
-  assert.deepEqual(ids, ["neon", "aurora", "sunset", "halo", "sticker", "retro", "chrome", "outline", "shadow", "echo", "stripe", "long-shadow", "comic", "isometric", "varsity", "poster", "hollow", "dots", "checker", "grid"]);
-  const kinds = new Set(["shadow", "outline", "glow", "offset", "echo", "extrude", "stripe", "blur", "gradient", "pattern", "hollow"]);
+  assert.deepEqual(ids, ["neon", "aurora", "sunset", "halo", "sticker", "retro", "chrome", "outline", "shadow", "echo", "stripe", "long-shadow", "comic", "isometric", "varsity", "poster", "hollow", "dots", "checker", "grid", "chrome-3d", "gold", "ice", "lava", "balloon", "jelly", "wood", "marble", "led", "comic-3d", "iso-3d"]);
+  const kinds = new Set(["shadow", "outline", "glow", "offset", "echo", "extrude", "stripe", "blur", "gradient", "pattern", "hollow", "bevel", "gloss"]);
   for (const preset of lib.EDITOR_TEXT_STYLES) {
     assert.ok(preset.label && preset.hint, `${preset.id} is labelled`);
     assert.ok(preset.effects.length > 0, `${preset.id} paints something`);
@@ -130,7 +130,7 @@ test("the Adjustments panel offers Text styles, Frame and swatches", () => {
   assert.doesNotMatch(panel, /<Section title="Arrange"/);
   assert.doesNotMatch(panel, /Align layer to canvas/);
   assert.match(panel, /<Section title="Text styles"/);
-  assert.match(panel, /aria-label="Text style presets"/);
+  assert.match(panel, /aria-label=\{`Text style presets \$\{group\}`\}/);
   assert.match(panel, /textStyleEffects\(preset, /);
   assert.match(panel, /<Section title="Frame"/);
   assert.match(panel, /ariaLabel="Image corner radius"/);

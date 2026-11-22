@@ -607,3 +607,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Warp tiles (`TextTransformTile`) render `EditorTextArtwork` with `textTransform`, so Plain/Arch/Wave show
   the real matrix. `circle` was dropped from the UI because `editorTextPresetMatrix` returns identity for it
   — the old tile drew a CSS ring around text the canvas never bent.
+
+## 3D text materials (`EditorLayerPreview.tsx`, `editor-layers.ts`)
+- A 3D look is a stack, not a kind: a shaded `extrude` for the side, a `bevel` for the lit/shaded edges, a
+  `gradient` for the face and often a `gloss` on top. `Gold`, `Chrome 3D`, `Ice`, `Lava`, `Balloon`, `Jelly`,
+  `Wood`, `Marble`, `LED`, `Comic 3D` and `Isometric` (shelf `3D`) are built that way; the owner pointed at
+  Vecteezy's 3D text PSD catalogue as the reference.
+- `extrude` takes `color` (near the face) and `color2` (far end); `mixEditorColors` ramps the copies so the
+  side shades instead of staying one flat slab. Do not paint every copy in `color` again — that was the
+  "stacked paper" look.
+- `bevel` paints a lit copy at `(-w, -w)` in `color2` and a shaded copy at `(+w, +w)` in `color`; its padding
+  must `grow()` on **both** diagonals, or the lit edge is cropped.
+- `gloss` is a `<rect>` filled with a top-down white ramp and clipped to a `<clipPath>` built from the same
+  text, so it can only paint inside the glyphs. It adds no padding.
+- Style presets carry `group` (`Classic` / `Fill` / `3D`) and the gallery renders one shelf per group; the ids
+  must stay unique — the older layered-metal `chrome` and the new `chrome-3d` material are different looks.

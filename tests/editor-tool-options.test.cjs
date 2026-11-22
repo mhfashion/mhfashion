@@ -200,3 +200,43 @@ test("pattern and hollow keep the transform box honest", () => {
   assert.ok(hollow.left - plain.left >= 5, "a hollow outline strokes half its width outside the ink");
   assert.ok(hollow.bottom - plain.bottom >= 5, "and does so below the glyphs too");
 });
+
+test("3D materials shade the extrusion, light the bevel and gloss the face", () => {
+  const { editorTextPaintPadding, mixEditorColors } = lib.exports;
+  const previewSource = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
+
+  // The side of an extrusion runs from the far colour to the face colour, so it reads as depth.
+  assert.equal(mixEditorColors("#000000", "#ffffff", 0.5), "#808080");
+  assert.equal(mixEditorColors("#123456", "#123456", 0.4), "#123456");
+  assert.equal(mixEditorColors("nonsense", "#ffffff", 0.9), "#ffffff");
+  assert.equal(mixEditorColors("#ffffff", "#000000", 5), "#000000", "the mix clamps past the ends");
+  assert.match(previewSource, /fill: mixEditorColors\(effect\.color2 \?\? effect\.color, effect\.color, \(step \+ 1\) \/ count\)/);
+
+  // A bevel paints a lit edge and a shaded edge behind the glyphs.
+  assert.match(previewSource, /effect\.kind === "bevel"[\s\S]{0,320}fill: effect\.color2 \?\? "#ffffff"/);
+  assert.match(previewSource, /effect\.kind === "bevel"[\s\S]{0,520}fill: effect\.color, opacity/);
+
+  // A gloss is a ramp clipped to the glyphs, so it cannot spill past them.
+  assert.match(previewSource, /id=\{`\$\{idPrefix\}-gloss-clip-\$\{effectKey\(effect\)\}`\}/);
+  assert.match(previewSource, /clipPath=\{`url\(#\$\{idPrefix\}-gloss-clip-\$\{effectKey\(effect\)\}\)`\}/);
+
+  const text = { value: "Aa", x: 100, y: 200, fontSize: 100, color: "#ffffff" };
+  const plain = editorTextPaintPadding({ ...text, effects: [] });
+  const gloss = editorTextPaintPadding({ ...text, effects: [{ id: "g", kind: "gloss", color: "#ffffff", opacity: 0.8 }] });
+  assert.deepEqual(gloss, plain, "a gloss paints inside the ink");
+  const bevel = editorTextPaintPadding({ ...text, effects: [{ id: "b", kind: "bevel", color: "#334155", color2: "#ffffff", width: 6 }] });
+  assert.ok(bevel.left - plain.left >= 6, "the lit edge reaches past the ink");
+  assert.ok(bevel.bottom - plain.bottom >= 6, "and so does the shaded edge");
+});
+
+test("the style gallery is shelved, and the 3D shelf carries the material looks", () => {
+  const { EDITOR_TEXT_STYLES } = lib.exports;
+  const panelSource = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
+  const groups = [...new Set(EDITOR_TEXT_STYLES.map((preset) => preset.group))];
+  assert.deepEqual(groups, ["Classic", "Fill", "3D"], "the shelves are declared once, in order");
+  assert.ok(EDITOR_TEXT_STYLES.filter((preset) => preset.group === "3D").length >= 10, "the 3D shelf is not a token entry");
+  const ids = EDITOR_TEXT_STYLES.map((preset) => preset.id);
+  assert.equal(new Set(ids).size, ids.length, "no two presets share an id");
+  assert.match(panelSource, /\(\["Classic", "Fill", "3D"\] as const\)\.map\(\(group\)/);
+  assert.match(panelSource, /preset\.group === group/);
+});

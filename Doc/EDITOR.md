@@ -128,8 +128,11 @@ design; each one creates a text layer and opens the inline editor.
   text layer puts the caret at the end of the text.
 - Text wraps to the layer's `wrapWidth` (880 units for new text). Text saved before wrapping existed has
   no width and stays unwrapped.
-- **Text styles** apply a look in one click: Neon, Aurora, Sunset, Halo, Sticker, Retro, Chrome, Outline,
-  Shadow, Echo, Striped, Long shadow, Comic, Isometric, Varsity, Poster, Hollow, Dots, Checker and Grid. Every tile paints the preset's
+- **Text styles** apply a look in one click, on three shelves:
+  - *Classic*: Neon, Aurora, Sunset, Halo, Sticker, Retro, Chrome, Outline, Shadow, Echo, Striped,
+    Long shadow, Comic, Isometric, Varsity, Poster.
+  - *Fill*: Hollow, Dots, Checker, Grid.
+  - *3D materials*: Chrome 3D, Gold, Ice, Lava, Balloon, Jelly, Wood, Marble, LED, Comic 3D, Isometric. Every tile paints the preset's
   real effect stack on a sample "Aa", through the same renderer the canvas uses, so the tile is the result.
   A preset only writes an effect stack, so every part of it can still be tuned, reordered or removed; the
   tile stays highlighted only while the stack still matches it.
@@ -139,10 +142,14 @@ design; each one creates a text layer and opens the inline editor.
   weight, italic, underline, alignment, letter-spacing and line height.
 - Effects are a stack, and the box lists them as pictures: each tile paints a sample "Aa" with that one
   effect, and each row of the stack shows its own thumbnail. The kinds are shadow, outline, glow, offset,
-  echo, extrude, stripe, blur, gradient, pattern and hollow. Each can be added, enabled or disabled, moved
-  up or down, removed, and given its own colour, offset, blur or width.
+  echo, extrude, stripe, blur, gradient, pattern, hollow, bevel and gloss. Each can be added, enabled or
+  disabled, moved up or down, removed, and given its own colour, offset, blur or width.
   A gradient fill takes two colours and paints over the glyphs; a pattern fills them with dots, a grid or a
-  checker; a blur paints a soft copy behind them; a hollow turns the glyphs into an outline.
+  checker; a blur paints a soft copy behind them; a hollow turns the glyphs into an outline; a bevel lights
+  one edge and shades the other, which is what raises a face off its side; a gloss clips a light ramp to the
+  upper half of the glyphs, the way a foil balloon catches light.
+- An extrusion takes a **far colour** as well as its near one, so the side runs dark to light and reads as
+  depth instead of a flat slab.
 - **Transform** (warp) tiles paint Plain, Arch and Wave through the same renderer, so the bend on the tile is
   the bend on the canvas.
 - Decorations: a horizontal line, a colour cut or an oblique cut, each with its own colour and width.

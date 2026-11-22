@@ -2,7 +2,7 @@
 
 import { useId, type SVGProps } from "react";
 import type { EditorGradient, EditorImageContent, EditorShapePath, EditorShapeStyle, EditorTextContent, EditorTextEffect } from "@/lib/editor-layers";
-import { EDITOR_TEXT_FONT_FAMILY, editorTextDecoration, editorTextEffects, editorTextLines, editorTextPresetTransform, editorGradientConicWedges, editorGradientDiamondFacets, editorGradientGeometry, roundEditorShapePath, sortEditorGradientStops } from "@/lib/editor-layers";
+import { EDITOR_TEXT_FONT_FAMILY, editorTextDecoration, editorTextEffects, editorTextLines, editorTextMetrics, editorTextPresetTransform, mixEditorColors, editorGradientConicWedges, editorGradientDiamondFacets, editorGradientGeometry, roundEditorShapePath, sortEditorGradientStops } from "@/lib/editor-layers";
 import { buildToneTable, colorMatrixValues, grainParams, photoFilterCss, splitToneBands, vignetteParams } from "@/lib/photo-adjustments";
 
 // The print canvas and every preview share one 1000 x 1200 unit artwork space.
@@ -116,6 +116,12 @@ export function EditorTextArtwork({ text, idPrefix }: { text: EditorTextContent;
             {motif === "checker" && <><rect width={tile / 2} height={tile / 2} fill={effect.color} /><rect x={tile / 2} y={tile / 2} width={tile / 2} height={tile / 2} fill={effect.color} /></>}
           </pattern>;
         })}
+        {effects.filter((effect) => effect.enabled !== false && effect.kind === "gloss").map((effect) => (
+          <linearGradient key={effect.id} id={`${idPrefix}-gloss-${effectKey(effect)}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={effect.color} stopOpacity={Math.max(0.05, Math.min(1, effect.opacity ?? 0.75))} />
+            <stop offset="55%" stopColor={effect.color} stopOpacity="0" />
+          </linearGradient>
+        ))}
         {effects.filter((effect) => effect.enabled !== false && effect.kind === "gradient").map((effect) => (
           <linearGradient key={effect.id} id={`${idPrefix}-grad-${effectKey(effect)}`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor={effect.color} />
@@ -141,6 +147,13 @@ export function EditorTextArtwork({ text, idPrefix }: { text: EditorTextContent;
         if (effect.kind === "blur") {
           return drawText(`effect-${key}`, { fill: effect.color, filter: `url(#${idPrefix}-blur-${key})`, opacity, "data-editor-text-effect": effect.kind });
         }
+        if (effect.kind === "bevel") {
+          const edge = Math.max(1, effect.width ?? 4);
+          return [
+            drawText(`effect-${key}-lit`, { x: text.x - edge, y: text.y - edge, fill: effect.color2 ?? "#ffffff", opacity, "data-editor-text-effect": effect.kind }),
+            drawText(`effect-${key}-shade`, { x: text.x + edge, y: text.y + edge, fill: effect.color, opacity, "data-editor-text-effect": effect.kind }),
+          ];
+        }
         if (effect.kind === "echo") {
           const count = Math.max(1, Math.min(8, Math.round(effect.count ?? 3)));
           return Array.from({ length: count }, (_, copy) => drawText(`effect-${key}-${copy}`, { x: text.x + offsetX * (copy + 1) / count, y: text.y + offsetY * (copy + 1) / count, fill: effect.color, opacity: opacity * (1 - copy / (count + 1)), "data-editor-text-effect": effect.kind }));
@@ -148,16 +161,36 @@ export function EditorTextArtwork({ text, idPrefix }: { text: EditorTextContent;
         if (effect.kind === "extrude") {
           const count = Math.max(1, Math.min(16, Math.round(effect.count ?? 8)));
           const angle = (effect.angle ?? 45) * Math.PI / 180;
-          return Array.from({ length: count }, (_, step) => drawText(`effect-${key}-${step}`, { x: text.x + Math.cos(angle) * (effect.distance ?? 18) * (step + 1) / count, y: text.y + Math.sin(angle) * (effect.distance ?? 18) * (step + 1) / count, fill: effect.color, opacity, "data-editor-text-effect": effect.kind }));
+          return Array.from({ length: count }, (_, step) => drawText(`effect-${key}-${step}`, {
+            x: text.x + Math.cos(angle) * (effect.distance ?? 18) * (step + 1) / count,
+            y: text.y + Math.sin(angle) * (effect.distance ?? 18) * (step + 1) / count,
+            // The deepest copy is the far end of the side, the last one meets the face.
+            fill: mixEditorColors(effect.color2 ?? effect.color, effect.color, (step + 1) / count),
+            opacity,
+            "data-editor-text-effect": effect.kind,
+          }));
         }
         return null;
       })}
+      {effects.filter((effect) => effect.enabled !== false && effect.kind === "gloss").map((effect) => (
+        <clipPath key={`clip-${effect.id}`} id={`${idPrefix}-gloss-clip-${effectKey(effect)}`}>
+          <text x={text.x} y={text.y} fontSize={text.fontSize} textAnchor={textAnchor} style={textStyle}>
+            {lines.map((line, index) => <tspan key={index} x={text.x} dy={index === 0 ? 0 : lineHeight}>{line}</tspan>)}
+          </text>
+        </clipPath>
+      ))}
       {hollow
         ? drawText("base-text", { fill: "none", stroke: hollow.color, strokeWidth: hollow.width ?? 6, paintOrder: "stroke", "data-editor-text-effect": "hollow" })
         : drawText("base-text", { fill: text.color, stroke: "none" })}
       {effects.filter((effect) => effect.enabled !== false && effect.kind === "gradient").map((effect) => drawText(`gradient-${effectKey(effect)}`, { fill: `url(#${idPrefix}-grad-${effectKey(effect)})`, opacity: Math.max(0.05, Math.min(1, effect.opacity ?? 1)), "data-editor-text-effect": effect.kind }))}
       {effects.filter((effect) => effect.enabled !== false && effect.kind === "stripe").map((effect) => drawText(`stripe-${effectKey(effect)}`, { fill: `url(#${idPrefix}-stripe-${effectKey(effect)})`, opacity: Math.max(0.05, Math.min(1, effect.opacity ?? 0.72)), "data-editor-text-effect": effect.kind }))}
       {effects.filter((effect) => effect.enabled !== false && effect.kind === "pattern").map((effect) => drawText(`pattern-${effectKey(effect)}`, { fill: `url(#${idPrefix}-pattern-${effectKey(effect)})`, opacity: Math.max(0.05, Math.min(1, effect.opacity ?? 1)), "data-editor-text-effect": effect.kind }))}
+      {effects.filter((effect) => effect.enabled !== false && effect.kind === "gloss").map((effect) => {
+        const metrics = editorTextMetrics(text);
+        const top = text.y + metrics.inkTop;
+        const height = Math.max(1, metrics.inkBottom - metrics.inkTop);
+        return <rect key={`gloss-${effect.id}`} x={text.x + metrics.inkLeft} y={top} width={Math.max(1, metrics.inkWidth)} height={height} fill={`url(#${idPrefix}-gloss-${effectKey(effect)})`} clipPath={`url(#${idPrefix}-gloss-clip-${effectKey(effect)})`} data-editor-text-effect={effect.kind} />;
+      })}
       {decoration?.kind === "line" && <line x1={decoration.x1} y1={decoration.y1} x2={decoration.x2} y2={decoration.y2} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={decoration.width} strokeLinecap="round" data-editor-text-decoration="line" />}
       {decoration?.kind === "cut" && <rect x={decoration.x} y={decoration.y} width={decoration.width} height={decoration.height} fill={text.decorationColor ?? "#d4ff3f"} opacity="0.8" data-editor-text-decoration="cut" />}
       {decoration?.kind === "oblique" && <line x1={decoration.x1} y1={decoration.y1} x2={decoration.x2} y2={decoration.y2} stroke={text.decorationColor ?? "#d4ff3f"} strokeWidth={decoration.width} data-editor-text-decoration="oblique" />}

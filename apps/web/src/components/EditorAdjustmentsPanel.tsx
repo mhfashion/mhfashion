@@ -64,6 +64,8 @@ const EFFECT_TYPES: { kind: EditorTextEffectKind; label: string; color: string }
   { kind: "gradient", label: "Gradient", color: "#37d7ff" },
   { kind: "pattern", label: "Pattern", color: "#d4ff3f" },
   { kind: "hollow", label: "Hollow", color: "#d4ff3f" },
+  { kind: "bevel", label: "Bevel", color: "#334155" },
+  { kind: "gloss", label: "Gloss", color: "#ffffff" },
 ];
 
 /** The sample stack each effect tile paints, so the tile shows the effect it adds. */
@@ -586,9 +588,14 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
             </Section>
             <Section title="Text styles" open={openSection === "Text styles"} onToggle={() => toggleSection("Text styles")}>
               <div className="space-y-2">
-                <div role="group" aria-label="Text style presets" className="grid grid-cols-2 gap-1">
-                  {EDITOR_TEXT_STYLES.map((preset) => <TextStyleTile key={preset.id} preset={preset} active={appliedStyle === preset.id} onApply={() => applyTextStyle(preset.id)} />)}
-                </div>
+                {(["Classic", "Fill", "3D"] as const).map((group) => (
+                  <div key={group} role="group" aria-label={`Text style presets ${group}`}>
+                    <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-text-muted">{group === "3D" ? "3D materials" : group}</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {EDITOR_TEXT_STYLES.filter((preset) => preset.group === group).map((preset) => <TextStyleTile key={preset.id} preset={preset} active={appliedStyle === preset.id} onApply={() => applyTextStyle(preset.id)} />)}
+                    </div>
+                  </div>
+                ))}
                 <p className="text-[9px] leading-relaxed text-text-muted">Each tile paints its real effect stack on the sample, so what you see is what lands on the canvas. A preset writes an editable stack — tune, reorder or remove each layer below.</p>
               </div>
             </Section>
@@ -617,10 +624,12 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
                         <NumberField label="Offset X" value={effect.offsetX ?? 10} min={-80} max={80} ariaLabel={`${effect.kind} offset X ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { offsetX: value })} />
                         <NumberField label="Offset Y" value={effect.offsetY ?? 10} min={-80} max={80} ariaLabel={`${effect.kind} offset Y ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { offsetY: value })} />
                       </>}
-                      {(effect.kind === "gradient" || effect.kind === "pattern") && <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">{effect.kind === "gradient" ? "End color" : "Backdrop"}<input aria-label={effect.kind === "gradient" ? `Gradient end color ${index + 1}` : `Pattern backdrop ${index + 1}`} type="color" value={effect.color2 ?? "#d4ff3f"} onChange={(event) => updateTextEffect(effect.id, { color2: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></label>}
+                      {(effect.kind === "gradient" || effect.kind === "pattern" || effect.kind === "bevel" || effect.kind === "extrude") && <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">{effect.kind === "gradient" ? "End color" : effect.kind === "pattern" ? "Backdrop" : effect.kind === "bevel" ? "Highlight" : "Far color"}<input aria-label={`${effect.kind} second color ${index + 1}`} type="color" value={effect.color2 ?? (effect.kind === "bevel" ? "#ffffff" : effect.kind === "extrude" ? "#111827" : "#d4ff3f")} onChange={(event) => updateTextEffect(effect.id, { color2: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></label>}
                       {(effect.kind === "shadow" || effect.kind === "glow" || effect.kind === "blur") && <NumberField label={effect.kind === "shadow" ? "Softness" : effect.kind === "glow" ? "Glow softness" : "Blur"} value={effect.blur ?? 4} min={0} max={30} ariaLabel={effect.kind === "shadow" ? "Text shadow softness" : `${effect.kind} softness ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { blur: value })} />}
                       {effect.kind === "pattern" && <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Motif</span><div role="group" aria-label={`Pattern motif ${index + 1}`} className="flex gap-1">{(["dots", "grid", "checker"] as const).map((motif) => <button key={motif} type="button" aria-label={`Pattern motif ${motif}`} aria-pressed={(effect.pattern ?? "dots") === motif} onClick={() => updateTextEffect(effect.id, { pattern: motif })} className="rounded-md border border-border px-1.5 py-0.5 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{motif}</button>)}</div></div>}
                       {effect.kind === "pattern" && <NumberField label="Tile size" value={effect.distance ?? 14} min={4} max={60} ariaLabel={`Pattern tile size ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { distance: value })} />}
+                      {effect.kind === "bevel" && <NumberField label="Edge" value={effect.width ?? 4} min={1} max={20} ariaLabel={`Bevel edge ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { width: value })} />}
+                      {effect.kind === "gloss" && <NumberField label="Strength" value={Math.round((effect.opacity ?? 0.75) * 100)} min={5} max={100} ariaLabel={`Gloss strength ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { opacity: value / 100 })} />}
                       {(effect.kind === "outline" || effect.kind === "glow" || effect.kind === "hollow") && <NumberField label={effect.kind === "outline" ? "Outline width" : effect.kind === "hollow" ? "Line width" : "Glow width"} value={effect.width ?? (effect.kind === "outline" ? 6 : 12)} min={1} max={40} ariaLabel={`${effect.kind} width ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { width: value })} />}
                       {(effect.kind === "echo" || effect.kind === "extrude") && <NumberField label={effect.kind === "echo" ? "Echo count" : "Extrude steps"} value={effect.count ?? (effect.kind === "echo" ? 3 : 8)} min={1} max={16} ariaLabel={`${effect.kind} count ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { count: value })} />}
                       {(effect.kind === "extrude" || effect.kind === "stripe") && <NumberField label={effect.kind === "extrude" ? "Depth" : "Stripe spacing"} value={effect.distance ?? 18} min={1} max={80} ariaLabel={`${effect.kind} distance ${index + 1}`} onChange={(value) => updateTextEffect(effect.id, { distance: value })} />}

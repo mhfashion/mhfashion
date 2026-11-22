@@ -226,14 +226,17 @@ export type LayerEditTarget = "artwork" | "mask";
 export type EditorLayerBlendMode = "normal" | "multiply" | "screen" | "overlay";
 export type LayerMaskStroke = ArtworkStroke & { mode: MaskBrushMode };
 export type EditorLayerKind = "artwork" | "text" | "shape" | "image" | "gradient";
-export type EditorTextEffectKind = "shadow" | "outline" | "glow" | "offset" | "echo" | "extrude" | "stripe" | "blur" | "gradient" | "pattern" | "hollow";
+export type EditorTextEffectKind = "shadow" | "outline" | "glow" | "offset" | "echo" | "extrude" | "stripe" | "blur" | "gradient" | "pattern" | "hollow" | "bevel" | "gloss";
 /** Tiling painted by a `pattern` fill: a motif in `color` over a `color2` backdrop. */
 export type EditorTextPattern = "dots" | "grid" | "checker";
 export type EditorTextEffect = {
   id: string;
   kind: EditorTextEffectKind;
   color: string;
-  /** Second stop for the "gradient" fill and the backdrop of a "pattern"; ignored by the other kinds. */
+  /**
+   * Second stop for the "gradient" fill, the backdrop of a "pattern", the lit face of a
+   * "bevel" (the first colour is the shadowed edge) and the far end of an "extrude".
+   */
   color2?: string;
   /** Tiling of a "pattern" fill. */
   pattern?: EditorTextPattern;
@@ -354,16 +357,22 @@ export function editorTextPaintPadding(text: EditorTextContent): { left: number;
     pad.bottom = Math.max(pad.bottom, y + spread);
   };
   for (const effect of editorTextEffects(text)) {
-    if (effect.enabled === false || effect.kind === "stripe" || effect.kind === "pattern") continue;
+    if (effect.enabled === false || effect.kind === "stripe" || effect.kind === "pattern" || effect.kind === "gloss") continue;
     const offsetX = effect.offsetX ?? 10;
     const offsetY = effect.offsetY ?? 10;
-    const stroke = (effect.kind === "outline" ? effect.width ?? 6 : effect.kind === "hollow" ? effect.width ?? 6 : effect.kind === "glow" ? (effect.width ?? 12) * 1.5 : 0) / 2;
+    const stroke = (effect.kind === "outline" ? effect.width ?? 6 : effect.kind === "hollow" ? effect.width ?? 6 : effect.kind === "bevel" ? effect.width ?? 4 : effect.kind === "glow" ? (effect.width ?? 12) * 1.5 : 0) / 2;
     // Blurred effects bleed roughly three standard deviations past the shape they blur.
     const blur = effect.blur ?? (effect.kind === "glow" ? 4 : 1);
     const spread = stroke + (effect.kind === "shadow" || effect.kind === "glow" || effect.kind === "blur" ? blur * 3 : 0);
     if (effect.kind === "blur") grow(0, 0, spread);
     else if (effect.kind === "shadow" || effect.kind === "offset") grow(offsetX, offsetY, spread);
     else if (effect.kind === "outline" || effect.kind === "glow" || effect.kind === "hollow") grow(0, 0, spread);
+    else if (effect.kind === "bevel") {
+      // A bevel paints one copy up-left and one down-right, so it grows every side.
+      const edge = effect.width ?? 4;
+      grow(edge, edge);
+      grow(-edge, -edge);
+    }
     else if (effect.kind === "extrude") {
       const reach = effect.distance ?? 18;
       const angle = (effect.angle ?? 45) * Math.PI / 180;
@@ -384,6 +393,19 @@ export function editorTextPaintPadding(text: EditorTextContent): { left: number;
   pad.right = Math.max(pad.right, decoration.right);
   pad.bottom = Math.max(pad.bottom, decoration.bottom);
   return pad;
+}
+
+/** Linear mix of two `#rrggbb` colours, used to shade an extruded side from far to near. */
+export function mixEditorColors(from: string, to: string, amount: number): string {
+  const parse = (value: string) => {
+    const hex = /^#([0-9a-f]{6})$/i.exec(value.trim());
+    return hex ? [0, 2, 4].map((at) => parseInt(hex[1].slice(at, at + 2), 16)) : null;
+  };
+  const a = parse(from);
+  const b = parse(to);
+  if (!a || !b) return amount < 0.5 ? from : to;
+  const t = Math.max(0, Math.min(1, amount));
+  return `#${a.map((channel, index) => Math.round(channel + (b[index] - channel) * t).toString(16).padStart(2, "0")).join("")}`;
 }
 
 export const EDITOR_TEXT_DEFAULT_LINE_HEIGHT = 1.2;
@@ -1975,30 +1997,44 @@ export type EditorTextStylePreset = {
   id: string;
   label: string;
   hint: string;
+  /** Shelf the tile sits on in the styles gallery. */
+  group: "Classic" | "Fill" | "3D";
   effects: Omit<EditorTextEffect, "id">[];
 };
 
 export const EDITOR_TEXT_STYLES: EditorTextStylePreset[] = [
-  { id: "neon", label: "Neon", hint: "Glowing tube", effects: [{ kind: "glow", color: "#37d7ff", width: 20, blur: 14, opacity: 0.9 }, { kind: "glow", color: "#d4ff3f", width: 9, blur: 6, opacity: 0.8 }] },
-  { id: "aurora", label: "Aurora", hint: "Gradient + halo", effects: [{ kind: "glow", color: "#37d7ff", width: 16, blur: 12, opacity: 0.75 }, { kind: "gradient", color: "#37d7ff", color2: "#d4ff3f" }] },
-  { id: "sunset", label: "Sunset", hint: "Warm gradient", effects: [{ kind: "gradient", color: "#ff9a3c", color2: "#ff2d95" }, { kind: "shadow", color: "#3b0764", offsetX: 5, offsetY: 6, blur: 4 }] },
-  { id: "halo", label: "Halo", hint: "Soft bloom", effects: [{ kind: "blur", color: "#ffffff", blur: 10, opacity: 0.65 }, { kind: "glow", color: "#ffffff", width: 6, blur: 3, opacity: 0.5 }] },
-  { id: "sticker", label: "Sticker", hint: "White cut edge", effects: [{ kind: "outline", color: "#ffffff", width: 12 }, { kind: "shadow", color: "#111827", offsetX: 6, offsetY: 8, blur: 3 }] },
-  { id: "retro", label: "Retro", hint: "Deep 3D block", effects: [{ kind: "extrude", color: "#ff5b8a", distance: 9, count: 7 }, { kind: "outline", color: "#111827", width: 4 }] },
-  { id: "chrome", label: "Chrome", hint: "Layered metal", effects: [{ kind: "offset", color: "#c7d2fe", offsetX: 4, offsetY: 5 }, { kind: "outline", color: "#0f172a", width: 5 }, { kind: "glow", color: "#ffffff", width: 7, blur: 5, opacity: 0.7 }] },
-  { id: "outline", label: "Outline", hint: "Colour edge", effects: [{ kind: "outline", color: "#d4ff3f", width: 7 }] },
-  { id: "shadow", label: "Shadow", hint: "Soft drop", effects: [{ kind: "shadow", color: "#111827", offsetX: 8, offsetY: 10, blur: 6 }] },
-  { id: "echo", label: "Echo", hint: "Rhythm trails", effects: [{ kind: "echo", color: "#37d7ff", count: 4, offsetX: 12, offsetY: 12 }] },
-  { id: "stripe", label: "Striped", hint: "Barber bars", effects: [{ kind: "stripe", color: "#f97316", width: 6, distance: 14, angle: -30 }] },
-  { id: "long-shadow", label: "Long shadow", hint: "Flat trail", effects: [{ kind: "echo", color: "#0ea5e9", count: 8, offsetX: 26, offsetY: 26 }, { kind: "outline", color: "#0f172a", width: 3 }] },
-  { id: "comic", label: "Comic", hint: "Ink and drop", effects: [{ kind: "outline", color: "#111827", width: 9 }, { kind: "offset", color: "#facc15", offsetX: 10, offsetY: 12 }] },
-  { id: "isometric", label: "Isometric", hint: "Deep block", effects: [{ kind: "extrude", color: "#7c3aed", distance: 14, count: 12, angle: 30 }, { kind: "outline", color: "#111827", width: 4 }] },
-  { id: "varsity", label: "Varsity", hint: "Stacked drop", effects: [{ kind: "extrude", color: "#d4ff3f", distance: 8, count: 6, angle: 90 }, { kind: "outline", color: "#111827", width: 5 }] },
-  { id: "poster", label: "Poster", hint: "Hard offset", effects: [{ kind: "offset", color: "#ff2d95", offsetX: 12, offsetY: 12 }, { kind: "outline", color: "#111827", width: 6 }] },
-  { id: "hollow", label: "Hollow", hint: "Open letters", effects: [{ kind: "hollow", color: "#ffffff", width: 5 }, { kind: "shadow", color: "#0f172a", offsetX: 7, offsetY: 9, blur: 2 }] },
-  { id: "dots", label: "Dots", hint: "Polka fill", effects: [{ kind: "pattern", color: "#d4ff3f", color2: "#111827", pattern: "dots", distance: 13 }, { kind: "outline", color: "#111827", width: 4 }] },
-  { id: "checker", label: "Checker", hint: "Two-tone blocks", effects: [{ kind: "pattern", color: "#ff2d95", color2: "#ffffff", pattern: "checker", distance: 16 }, { kind: "outline", color: "#111827", width: 4 }] },
-  { id: "grid", label: "Grid", hint: "Graph fill", effects: [{ kind: "pattern", color: "#37d7ff", color2: "#0b1220", pattern: "grid", distance: 12, width: 2 }, { kind: "glow", color: "#37d7ff", width: 8, blur: 6, opacity: 0.6 }] },
+  { id: "neon", group: "Classic", label: "Neon", hint: "Glowing tube", effects: [{ kind: "glow", color: "#37d7ff", width: 20, blur: 14, opacity: 0.9 }, { kind: "glow", color: "#d4ff3f", width: 9, blur: 6, opacity: 0.8 }] },
+  { id: "aurora", group: "Classic", label: "Aurora", hint: "Gradient + halo", effects: [{ kind: "glow", color: "#37d7ff", width: 16, blur: 12, opacity: 0.75 }, { kind: "gradient", color: "#37d7ff", color2: "#d4ff3f" }] },
+  { id: "sunset", group: "Classic", label: "Sunset", hint: "Warm gradient", effects: [{ kind: "gradient", color: "#ff9a3c", color2: "#ff2d95" }, { kind: "shadow", color: "#3b0764", offsetX: 5, offsetY: 6, blur: 4 }] },
+  { id: "halo", group: "Classic", label: "Halo", hint: "Soft bloom", effects: [{ kind: "blur", color: "#ffffff", blur: 10, opacity: 0.65 }, { kind: "glow", color: "#ffffff", width: 6, blur: 3, opacity: 0.5 }] },
+  { id: "sticker", group: "Classic", label: "Sticker", hint: "White cut edge", effects: [{ kind: "outline", color: "#ffffff", width: 12 }, { kind: "shadow", color: "#111827", offsetX: 6, offsetY: 8, blur: 3 }] },
+  { id: "retro", group: "Classic", label: "Retro", hint: "Deep 3D block", effects: [{ kind: "extrude", color: "#ff5b8a", distance: 9, count: 7 }, { kind: "outline", color: "#111827", width: 4 }] },
+  { id: "chrome", group: "Classic", label: "Chrome", hint: "Layered metal", effects: [{ kind: "offset", color: "#c7d2fe", offsetX: 4, offsetY: 5 }, { kind: "outline", color: "#0f172a", width: 5 }, { kind: "glow", color: "#ffffff", width: 7, blur: 5, opacity: 0.7 }] },
+  { id: "outline", group: "Classic", label: "Outline", hint: "Colour edge", effects: [{ kind: "outline", color: "#d4ff3f", width: 7 }] },
+  { id: "shadow", group: "Classic", label: "Shadow", hint: "Soft drop", effects: [{ kind: "shadow", color: "#111827", offsetX: 8, offsetY: 10, blur: 6 }] },
+  { id: "echo", group: "Classic", label: "Echo", hint: "Rhythm trails", effects: [{ kind: "echo", color: "#37d7ff", count: 4, offsetX: 12, offsetY: 12 }] },
+  { id: "stripe", group: "Classic", label: "Striped", hint: "Barber bars", effects: [{ kind: "stripe", color: "#f97316", width: 6, distance: 14, angle: -30 }] },
+  { id: "long-shadow", group: "Classic", label: "Long shadow", hint: "Flat trail", effects: [{ kind: "echo", color: "#0ea5e9", count: 8, offsetX: 26, offsetY: 26 }, { kind: "outline", color: "#0f172a", width: 3 }] },
+  { id: "comic", group: "Classic", label: "Comic", hint: "Ink and drop", effects: [{ kind: "outline", color: "#111827", width: 9 }, { kind: "offset", color: "#facc15", offsetX: 10, offsetY: 12 }] },
+  { id: "isometric", group: "Classic", label: "Isometric", hint: "Deep block", effects: [{ kind: "extrude", color: "#7c3aed", distance: 14, count: 12, angle: 30 }, { kind: "outline", color: "#111827", width: 4 }] },
+  { id: "varsity", group: "Classic", label: "Varsity", hint: "Stacked drop", effects: [{ kind: "extrude", color: "#d4ff3f", distance: 8, count: 6, angle: 90 }, { kind: "outline", color: "#111827", width: 5 }] },
+  { id: "poster", group: "Classic", label: "Poster", hint: "Hard offset", effects: [{ kind: "offset", color: "#ff2d95", offsetX: 12, offsetY: 12 }, { kind: "outline", color: "#111827", width: 6 }] },
+  { id: "hollow", group: "Fill", label: "Hollow", hint: "Open letters", effects: [{ kind: "hollow", color: "#ffffff", width: 5 }, { kind: "shadow", color: "#0f172a", offsetX: 7, offsetY: 9, blur: 2 }] },
+  { id: "dots", group: "Fill", label: "Dots", hint: "Polka fill", effects: [{ kind: "pattern", color: "#d4ff3f", color2: "#111827", pattern: "dots", distance: 13 }, { kind: "outline", color: "#111827", width: 4 }] },
+  { id: "checker", group: "Fill", label: "Checker", hint: "Two-tone blocks", effects: [{ kind: "pattern", color: "#ff2d95", color2: "#ffffff", pattern: "checker", distance: 16 }, { kind: "outline", color: "#111827", width: 4 }] },
+  { id: "grid", group: "Fill", label: "Grid", hint: "Graph fill", effects: [{ kind: "pattern", color: "#37d7ff", color2: "#0b1220", pattern: "grid", distance: 12, width: 2 }, { kind: "glow", color: "#37d7ff", width: 8, blur: 6, opacity: 0.6 }] },
+  // 3D materials: a shaded extrusion, a lit bevel, a face gradient and often a gloss.
+  { id: "chrome-3d", group: "3D", label: "Chrome 3D", hint: "Reflective metal", effects: [{ kind: "extrude", color: "#cbd5e1", color2: "#1e293b", distance: 12, count: 10 }, { kind: "bevel", color: "#334155", color2: "#ffffff", width: 3 }, { kind: "gradient", color: "#f8fafc", color2: "#64748b" }, { kind: "outline", color: "#0f172a", width: 4 }] },
+  { id: "gold", group: "3D", label: "Gold", hint: "Polished foil", effects: [{ kind: "extrude", color: "#fbbf24", color2: "#78350f", distance: 12, count: 10 }, { kind: "bevel", color: "#b45309", color2: "#fffbeb", width: 3 }, { kind: "gradient", color: "#fef08a", color2: "#d97706" }, { kind: "outline", color: "#451a03", width: 3 }, { kind: "gloss", color: "#ffffff", opacity: 0.6 }] },
+  { id: "ice", group: "3D", label: "Ice", hint: "Frozen glass", effects: [{ kind: "gradient", color: "#e0f2fe", color2: "#38bdf8" }, { kind: "bevel", color: "#0284c7", color2: "#ffffff", width: 3 }, { kind: "glow", color: "#7dd3fc", width: 10, blur: 6, opacity: 0.7 }] },
+  { id: "lava", group: "3D", label: "Lava", hint: "Molten fire", effects: [{ kind: "gradient", color: "#fde047", color2: "#dc2626" }, { kind: "bevel", color: "#7f1d1d", color2: "#fef3c7", width: 3 }, { kind: "glow", color: "#f97316", width: 12, blur: 8, opacity: 0.7 }] },
+  { id: "balloon", group: "3D", label: "Balloon", hint: "Foil balloon", effects: [{ kind: "gradient", color: "#fef9c3", color2: "#facc15" }, { kind: "gloss", color: "#ffffff", opacity: 0.85 }, { kind: "bevel", color: "#ca8a04", color2: "#fffef0", width: 3 }, { kind: "outline", color: "#78350f", width: 4 }] },
+  { id: "jelly", group: "3D", label: "Jelly", hint: "Soft plastic", effects: [{ kind: "gradient", color: "#f5d0fe", color2: "#a855f7" }, { kind: "gloss", color: "#ffffff", opacity: 0.85 }, { kind: "bevel", color: "#7e22ce", color2: "#fdf4ff", width: 4 }, { kind: "blur", color: "#c084fc", blur: 10, opacity: 0.5 }] },
+  { id: "wood", group: "3D", label: "Wood", hint: "Carved timber", effects: [{ kind: "gradient", color: "#e0b083", color2: "#7c4a21" }, { kind: "bevel", color: "#4b2a12", color2: "#f5d0a9", width: 3 }, { kind: "outline", color: "#2b1a0c", width: 4 }] },
+  { id: "marble", group: "3D", label: "Marble", hint: "Stone relief", effects: [{ kind: "gradient", color: "#ffffff", color2: "#cbd5e1" }, { kind: "bevel", color: "#94a3b8", color2: "#ffffff", width: 3 }, { kind: "outline", color: "#111827", width: 3 }, { kind: "shadow", color: "#0f172a", offsetX: 6, offsetY: 8, blur: 4 }] },
+  { id: "led", group: "3D", label: "LED", hint: "Light tube", effects: [{ kind: "glow", color: "#22d3ee", width: 18, blur: 12, opacity: 0.85 }, { kind: "glow", color: "#a5f3fc", width: 8, blur: 5 }, { kind: "outline", color: "#0e7490", width: 4 }] },
+  { id: "comic-3d", group: "3D", label: "Comic 3D", hint: "Ink block", effects: [{ kind: "extrude", color: "#111827", distance: 12, count: 12 }, { kind: "outline", color: "#ffffff", width: 8 }, { kind: "offset", color: "#facc15", offsetX: 10, offsetY: 12 }] },
+  { id: "iso-3d", group: "3D", label: "Isometric", hint: "Deep block", effects: [{ kind: "extrude", color: "#7c3aed", color2: "#312e81", distance: 16, count: 14, angle: 30 }, { kind: "bevel", color: "#4c1d95", color2: "#ddd6fe", width: 3 }, { kind: "outline", color: "#111827", width: 3 }] },
 ];
 
 /** Turns a preset into effects with unique ids, so the stack editor can reorder and tune them. */
