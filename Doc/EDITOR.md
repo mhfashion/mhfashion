@@ -298,6 +298,11 @@ The design library is a local placeholder until the storage endpoint exists
 - Opening `/create` reads that draft back and restores the artwork where it was left, then says
   "Restored the design from your last visit". The restore runs after mount, so the server-rendered blank
   canvas and the first client render still match.
+- The draft is treated as untrusted: `sanitizeDesignDraftLayers` drops a layer with no id or with no
+  usable content for its kind, drops a stroke or shape path whose points are not a list of finite
+  numbers, clamps the opacity fields and keeps the rest, so a half-written or hand-edited draft opens
+  with what still paints instead of blanking the page. A layer that paints nothing is kept: that is the
+  editor's own blank layer.
 - A draft with no artwork (only blank layers) is ignored, so a fresh visit still starts on one blank
   layer. A browser that refuses storage shows "This browser is not saving your design. Keep this tab open
   until you order." once, instead of failing silently.

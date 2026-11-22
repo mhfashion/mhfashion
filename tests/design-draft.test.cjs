@@ -100,3 +100,66 @@ test("an unreadable draft is treated as no draft", () => {
   assert.equal(draft.readDesignDraftSnapshot(), null);
   delete global.window;
 });
+
+test("a layer that cannot be painted is skipped instead of blanking the editor", () => {
+  // Each of these used to reach the renderer and throw while painting, which leaves the whole
+  // editor on "This page couldn't load" until the visitor clears storage.
+  withStorage();
+  const dropped = [
+    { layers: [null] },
+    { layers: [{}] },
+    { layers: [{ id: "  " }] },
+    { layers: [{ id: "x", kind: "text" }] },
+    { layers: [{ id: "x", kind: "text", text: { value: 42, x: 0, y: 0, fontSize: 110, color: "#000" } }] },
+    { layers: [{ id: "x", kind: "text", text: { value: "hi", x: 0, y: 0, fontSize: "big", color: "#000" } }] },
+    { layers: [{ id: "x", kind: "shape" }] },
+    { layers: [{ id: "x", kind: "shape", shape: { paths: [null] } }] },
+    { layers: [{ id: "x", kind: "shape", shape: { paths: [{ points: "nope" }] } }] },
+    { layers: [{ id: "x", kind: "image" }] },
+  ];
+  for (const raw of dropped) {
+    global.window.localStorage.getItem = () => JSON.stringify(raw);
+    const snapshot = draft.readDesignDraftSnapshot();
+    assert.ok(snapshot, `${JSON.stringify(raw)} still opens the editor`);
+    assert.deepEqual(snapshot.layers, [], `${JSON.stringify(raw)} keeps no unpaintable layer`);
+  }
+  // A layer with no paint at all is the editor's own blank layer: harmless, so it is kept.
+  for (const raw of [{ layers: [{ id: "x" }] }, { layers: [{ id: "x", kind: "artwork", strokes: [{ points: "nope" }] }] }]) {
+    global.window.localStorage.getItem = () => JSON.stringify(raw);
+    const snapshot = draft.readDesignDraftSnapshot();
+    assert.deepEqual(snapshot.layers.map((entry) => [entry.id, entry.strokes.length]), [["x", 0]], `${JSON.stringify(raw)} is a blank layer`);
+  }
+  delete global.window;
+});
+
+test("a half-written layer keeps the parts that still paint", () => {
+  withStorage();
+  const broken = {
+    ...layer("layer-1"),
+    opacity: "nope",
+    visible: "yes",
+    strokes: [
+      { points: [{ x: 0.1, y: 0.1 }, { x: 0.4, y: 0.4 }], width: 20 },
+      { points: "nope" },
+      { points: [{ x: Number.NaN, y: 0.2 }, { x: 0.3, y: 0.3 }] },
+    ],
+  };
+  global.window.localStorage.getItem = () => JSON.stringify({ layers: [broken, null, { id: "dup", kind: "artwork" }, { id: "dup", kind: "artwork" }] });
+  const snapshot = draft.readDesignDraftSnapshot();
+  assert.deepEqual(snapshot.layers.map((entry) => entry.id), ["layer-1", "dup"], "bad entries are dropped, not the good ones");
+  assert.equal(snapshot.layers[0].strokes.length, 1, "only the stroke with usable points survives");
+  assert.deepEqual(snapshot.layers[0].strokes[0].points, [{ x: 0.1, y: 0.1 }, { x: 0.4, y: 0.4 }]);
+  assert.equal(snapshot.layers[0].opacity, 100, "a broken opacity falls back to fully opaque");
+  assert.equal(snapshot.layers[0].visible, true, "only an explicit false hides a layer");
+  delete global.window;
+});
+
+test("the product page overlay survives a draft holding a null layer", () => {
+  withStorage();
+  global.window.localStorage.getItem = () => JSON.stringify({ layers: [null] });
+  const layers = draft.readDesignDraft();
+  assert.deepEqual(layers, []);
+  assert.equal(draft.resolveDesignOverlay({ draft: layers }), null, "nothing to draw, so no overlay");
+  assert.equal(draft.designLayersHaveArtwork([null]), false, "a null entry is not artwork");
+  delete global.window;
+});

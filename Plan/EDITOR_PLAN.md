@@ -171,6 +171,17 @@ the owner approves an item before it starts.
   move/scale/rotate beside the layers (`readDesignDraftSnapshot`), `EditorCanvas` restores it after mount
   and shows "Restored the design from your last visit", and a browser that refuses storage says so once.
   Reload keeps the artwork; the order hand-off and Save still wait on D1.
+- **Bug fixed 2026-11-22: a corrupt draft blanked the editor.** Reading the draft back put whatever was in
+  `localStorage` in front of the renderer, so three shapes killed `/create` with "This page couldn't load"
+  until the visitor cleared storage: a `null` layer (`Cannot read properties of null (reading 'strokes')`),
+  a stroke whose `points` was not a list (`e.points.map is not a function`), and a shape path of `null`
+  (`Cannot read properties of undefined (reading 'flatMap')`). `readDesignDraftSnapshot` now runs every
+  layer through `sanitizeDesignDraftLayers`: a layer without an id, or whose declared kind has no usable
+  content, is dropped; unusable strokes and shape paths are dropped and the rest of the layer is kept;
+  numbers are coerced and clamped; an unknown kind from an older build is treated as plain artwork. A
+  layer that paints nothing is still kept, because that is the editor's own blank layer. Verified with
+  ten corrupt drafts in Chromium (every one now opens the canvas with no console error) and
+  `tests/design-draft.test.cjs` (3 new tests, 10 in the file).
 
 ### Built: E3 the `circle` text preset (2026-11-22)
 

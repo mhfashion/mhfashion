@@ -448,6 +448,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The stack keeps 30 snapshots (`slice(-29)` plus the new one). Verified in `tests/editor-touch.cjs`: 35 pencil strokes then 40 `Ctrl+Z` presses leave exactly 5 strokes.
 - A pencil stroke paints **two** `[data-editor-artwork-stroke="true"]` elements, so count strokes as `elements / 2` when asserting.
 
+## The stored draft is untrusted input
+- `readDesignDraftSnapshot` runs every layer through `sanitizeDesignDraftLayers` (`lib/design-draft.ts`).
+  Before that, three corrupt drafts white-screened `/create` with "This page couldn't load" until storage
+  was cleared: a `null` layer, `strokes: [{ points: "nope" }]`, and `shape.paths: [null]`.
+- Rules: a layer needs a non-empty string `id`; a `text` layer needs `text.value` string and a positive
+  `fontSize`; a `shape` layer needs at least one path with two usable points; an `image` layer needs
+  `image`. Strokes and paths keep only points that are finite **numbers** (`JSON.stringify` turns `NaN`
+  into `null`, so `Number(null) === 0` must not sneak a point through). An unknown `kind` from an older
+  build is treated as `artwork`, and a layer that paints nothing is kept as the editor's blank layer.
+- `designLayersHaveArtwork` also tolerates a `null` entry, because the product page feeds it the draft.
+
 ## Drawing with no layer
 - `startArtworkStroke` used to `return` silently when no layer was selected or the layer was locked, so a
   design whose layers had all been deleted looked like a broken canvas. It now sets the tools-bar notice
