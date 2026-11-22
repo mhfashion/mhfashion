@@ -422,12 +422,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `CANVAS_LAYER_TRAVEL_LIMIT` (2400 artwork units) bounds how far a layer can be dragged, so it stays reachable; the pasteboard is clamped to the same limit.
 - `MockupArtwork` now receives `layerOffsets`/`layerScales`/`layerOrigins`/`layerRotations` and mirrors the canvas, then clips the artwork to the print area with a `clipPath` in overlay coordinates (`printScale = BASE_ARTWORK_SCALE * safeTransform.scale`). A layer dragged off-canvas therefore disappears from the mockup exactly as it would print.
 
-## Phone and touch checks (`tests/editor-touch.cjs`, 13 sections)
+## Phone and touch checks (`tests/editor-touch.cjs`, 14 sections)
 - `EDITOR_CDP_URL` (default `http://127.0.0.1:9222`) must point at the Chromium started with `--remote-debugging-port`; the suite needs a server on port 3000.
 - `denseDesign()` covers 25 layers, the 30-step undo floor, a second finger placed mid-stroke, and a portrait→landscape rotation.
 - Every pointer handler guards `!event.isPrimary`, so a second touch cannot take over; the check asserts one stroke and ink no taller than the pencil width.
 - In landscape the canvas is legitimately **below** the fold: the editor viewport scrolls internally, so assert reachability with `canvasRect.bottom - viewRect.top <= view.scrollHeight`, not against `innerHeight`.
 - Tool button labels are `Move`, `Hand tool`, `Pencil tool`, `Pen tool`, `Text tool`, `Brush`, `Eraser tool`, `Shape tools`, `Gradient tool` — `Brush` has no "tool" suffix.
+- The run ends with a console guard: `Runtime.enable` is on, every `Runtime.exceptionThrown` and every `console.error`/`console.assert` is collected, and the last section asserts the list is empty. A production React build reports a caught render error through `console.error`, so this is what catches a broken panel. Proved by throwing `Error("guard probe: uncaught")` and calling `console.error("guard probe: logged")` in the page: both are captured.
+- Network noise is deliberately not collected (`Log.entryAdded` is off), so an optional asset that 404s does not fail the run.
+- `Save` and `Buy` are `disabled` until accounts and payment exist (E1), so a sweep must not treat their dead state as a defect.
 
 ## Testing pitfalls
 - `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.

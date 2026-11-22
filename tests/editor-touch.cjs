@@ -17,8 +17,19 @@ async function main() {
   });
   let sequence = 0;
   const pending = new Map();
+  // Anything the page throws or logs as an error fails the run: a caught render error is how a
+  // broken panel shows up in a production build, where React does not rethrow.
+  const pageProblems = [];
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
+    if (message.method === "Runtime.exceptionThrown") {
+      const details = message.params.exceptionDetails;
+      pageProblems.push(`exception: ${(details.exception?.description ?? details.text ?? "").split("\n")[0]}`);
+    }
+    if (message.method === "Runtime.consoleAPICalled" && (message.params.type === "error" || message.params.type === "assert")) {
+      const text = message.params.args.map((arg) => String(arg.value ?? arg.description ?? arg.type)).join(" ");
+      pageProblems.push(`${message.params.type}: ${text.slice(0, 300)}`);
+    }
     const entry = pending.get(message.id);
     if (!entry) return;
     pending.delete(message.id);
@@ -857,6 +868,7 @@ async function main() {
 
   try {
     await send("Page.enable");
+    await send("Runtime.enable");
     await phone(390, 844);
     await phone(320, 740);
     await tinyArtwork();
@@ -1124,6 +1136,10 @@ async function main() {
     await pause(120);
     await clickMouse('button[aria-label="Expand editor tools"]');
     console.log("PASS desktop keyboard: Ctrl+Z and Ctrl+Shift+Z undo and redo, text fields keep their own undo");
+
+    const uniqueProblems = [...new Set(pageProblems)];
+    assert.deepEqual(uniqueProblems, [], `the page logged no error during the run:\n${uniqueProblems.join("\n")}`);
+    console.log("PASS console: no uncaught exception and no console error across every section");
   } finally {
     ws.close();
   }

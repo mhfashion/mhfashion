@@ -136,7 +136,7 @@ the owner approves an item before it starts.
 | # | Item | Why | Files | Size |
 |---|---|---|---|---|
 | E1 | Save the design, then hand it to the order | Save and Buy are dead buttons, the browser draft is never restored, and no order carries the artwork | `EditorHeaderBar2`, `EditorCanvas`, `lib/design-draft.ts`, the order payload | large |
-| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 13/13; the canvas is bounded to 972k px; items 5–7 verified in emulation) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
+| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 14/14; the canvas is bounded to 972k px; items 5–7 verified in emulation) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
 | E3 | Settle the `circle` preset — **done 2026-11-22** | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
 | E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
 | E5 | Flip horizontal and vertical — **done 2026-11-22; moves out of the Tools bar into the Adjustments panel (owner, 2026-11-22, see E22)** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar`, Adjustments panel | medium |
@@ -196,7 +196,7 @@ the owner approves an item before it starts.
   390x844: backing store 900x1080, `data-canvas-width/height/dpi` still 4500/5400/300, the on-screen box
   unchanged at 292x350 (ratio 0.834). The physical-device pass still has to confirm it on hardware.
 - **Emulation pass 2026-11-22: checklist items 5, 6 and 7 are verified in Chromium, and the checks are now
-  part of the suite.** A new `denseDesign()` section in `tests/editor-touch.cjs` (13 sections, all pass) proves:
+  part of the suite.** A new `denseDesign()` section in `tests/editor-touch.cjs` (14 sections, all pass) proves:
   25 added layers sit beside the blank one and each add lands in well under a second; 35 pencil strokes then 40
   `Ctrl+Z` presses leave exactly 5 strokes, so the undo floor is the documented 30 snapshots; a second finger
   placed mid-stroke does not start a second stroke or extend the line (the tallest ink stays at the pencil width,
@@ -796,7 +796,7 @@ rather than in the Tools bar.
 | `tests/editor-snap.test.cjs` | 8 |
 | `tests/editor-fonts.test.cjs` | 12 |
 | `tests/editor-font-audit.test.cjs` | 5 |
-| `tests/editor-touch.cjs` | browser flow (desktop and phone), including a reload that must restore the draft |
+| `tests/editor-touch.cjs` | 14 browser sections (desktop and phone): the draft reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, and a console guard that fails the run on any uncaught exception or `console.error` |
 
 The last full run (`node --test tests/*.test.cjs`) reported 502 passing, 0 failing, against a server on
 port 3000.
