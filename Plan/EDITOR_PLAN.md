@@ -146,7 +146,7 @@ the owner approves an item before it starts.
 | E14 | Image resolution warning — **done 2026-11-22** | a photo enlarged past what the press can print sharply is only discovered after printing | `lib/editor-image-ppi.ts`, `editor-layers`, `EditorCanvas`, Layers box, Adjustment box | small |
 | E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium — **step 1 done 2026-11-22** (one vocabulary); the admin-driven chain still waits for the database |
 | E16 | Download my design — **done 2026-11-22** | the customer had no copy of the artwork; the press bundle was the only file | `lib/design-export.ts`, `EditorDesignExport`, `EditorToolsBar` | small |
-| E17 | Font library, including Burmese fonts | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, admin, print export | medium |
+| E17 | Font library, including Burmese fonts — **approved 2026-11-22; fonts hosted in R2** | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, R2, design export, print export | medium |
 | E18 | Text effects, round 2 | more looks and finer control for the effect stack | `editor-layers`, `EditorLayerPreview`, `EditorAdjustmentsPanel` | medium |
 | E19 | A real text bend | Arch and Wave only slant the text | `editor-layers`, renderer, bounds, print | medium |
 | E20 | Brushes, round 2 | brush packs, pressure, stabiliser and a size cursor | Brush box, `public/brushes`, `EditorCanvas` | medium |
@@ -415,23 +415,45 @@ the owner approves an item before it starts.
   intersect one 4-point ring, exclude one path of two 6-point rings, and the transform box shrinks and
   grows with the result (210x251 → 190x191 → 90x91 → 210x251 px).
 
-### E17 — Font library, including Burmese fonts  *(proposed, 2026-11-22)*
+### E17 — Font library, including Burmese fonts  *(approved 2026-11-22; the font files live in R2)*
 
 - **Facts checked in the source:** the font list is eight names, all system fonts; none is a Myanmar font; no
   font file is loaded anywhere, so the font a layer paints with depends on the device. `Doc/PRINT-BUNDLE.md`
   says text stays text in the print SVG and is converted to outlines only if the press lacks the font.
-- **Proposal:** a hosted font library. Font files (woff2) are self-hosted and loaded by the editor, the
-  mockups and the print sheet, so all three show the same letters. Fonts sit on shelves (Sans, Serif,
-  Display, Script, Burmese). The shop adds and removes fonts from the admin dashboard, as E15 does for the
-  header choices. Only fonts in use are loaded.
+- **Approved:** a hosted font library. The font files live in R2 and are put there by the shop (owner,
+  2026-11-22). The editor, the mockups and the print sheet all load the same files, so all three show the same
+  letters. Fonts sit on shelves (Sans, Serif, Display, Script, Burmese). Only fonts in use are loaded. The
+  admin dashboard takes over adding and removing fonts later, as E15 does for the header choices.
+- **In R2:** follows the folder pattern of `Doc/R2-STORAGE.md`:
+  - `fonts/<font-slug>/<style>.woff2` (for example `regular`, `bold`, `italic`), woff2 only, with a version in
+    the file name when a font is replaced so a cached copy is never served stale.
+  - `fonts/manifest.json` lists each font: slug, display name, shelf, its files by weight and style, the scripts
+    it covers (Latin, Myanmar), the licence name and link, and whether it is on. A bad entry is skipped, not
+    fatal (the same rule as `brushes.json`). Until the database exists the manifest is the source of truth
+    (decision D13); `Doc/R2-STORAGE.md` gains a "Fonts" section when this is built.
+  - The base address comes from the same public R2 address the mockups use, never hard-coded, so a later move
+    to AWS S3 changes one setting.
+  - A browser only uses a font served from another address if R2 allows that site with an
+    `Access-Control-Allow-Origin` header, so the bucket needs a CORS rule for the site (`Doc/R2-STORAGE.md`
+    §7 covers CORS; it is not needed for fonts today).
+  - Myanmar fonts are large: load one only when a layer uses it, and split Latin and Myanmar with a
+    `unicode-range` if a file is big.
+- **Export (a dependency of E16):** the design download draws the SVG through an `<img>`, which does not load
+  fonts from the network, so the export must embed the fonts the artwork uses inside the SVG (base64 woff2) or
+  turn the text into outlines; otherwise the PNG falls back to a system font. The E16 section already warns of
+  this. The press SVG and the press bundle follow the same rule.
+- **Licence:** every manifest entry carries its licence and a link; the owner confirms that commercial print
+  use is allowed before a font is switched on.
 - **Burmese:** a few open-licence Myanmar families offered as a shelf; the licence of each font is checked
   before it ships (open-licence fonts such as Padauk and the Noto Myanmar families are the usual candidates).
   Unicode is the supported encoding; Zawgyi text is not converted (decision D10).
 - **Print:** at export time the text is converted to outlines, or the font file is embedded, so the press
   never lacks a font.
 - Acceptance: Burmese text shows correct shaping (stacked consonants, medial signs, vowel order) on the canvas,
-  the mockup and the print sheet, with and without effects; a font removed in the admin still renders on
-  existing designs; the editor does not load fonts it does not use; checked on Web and Phone, EN and MM.
+  the mockup and the print sheet, with and without effects; a font switched off still renders on existing
+  designs; the editor does not load fonts it does not use; the fonts load from R2 with the CORS rule in place;
+  the downloaded PNG and SVG show the chosen font, not a fallback; a font whose file is missing falls back
+  quietly and the editor says so once; a bad manifest entry is skipped; checked on Web and Phone, EN and MM.
 
 ### E18 — Text effects, round 2  *(proposed, 2026-11-22)*
 
@@ -537,9 +559,10 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | D7 | Do the pre-filled header defaults count as chosen for the Buy gate (E12)? | Yes: only Color is empty today, and the gate exists to stop an order missing a value, which a default never does |
 | D8 | Raise the 2000 px upload cap (E14)? | Raise it, or keep the original at order time. At the cap a photo is already about 139 to 167 ppi at the default size, so the warning would fire on nearly every photo; raising it needs the real-device check in E2 |
 | D9 | Fit Type is a priced post attribute but has no box in the editor header. Where does the customer choose it, and is it required before Buy? (Owner, 2026-11-21: Sleeve has not been decided to be added, so it is outside this question.) | Settle this before E1: the order must carry whatever the price depends on |
-| D10 | Which Burmese fonts, and is Zawgyi text supported? (E17) | Offer a short list of open-licence Unicode fonts, check each licence, and treat Zawgyi as out of scope |
+| D10 | Which Burmese fonts, and is Zawgyi text supported? (E17; the files live in R2, put there by the shop) | Offer a short list of open-licence Unicode fonts, check each licence, and treat Zawgyi as out of scope |
 | D11 | How is the text bend built? (E19) | An SVG text path for Arc, Circle and Wave; per-cluster placement for Flag and Bulge; keep it off for Burmese until verified |
 | D12 | Who supplies the starter brush tips? (E20) | The owner supplies the ones they own; the rest come from open-licence packs, each licence checked |
+| D13 | Until the database exists, where does the font list live? (E17) | `fonts/manifest.json` in R2, edited by the shop; it moves into the database with the rest of the admin data |
 
 ### Owner decisions recorded (2026-11-21)
 
@@ -554,7 +577,8 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    missing.
 7. The header holds eight selection boxes, as listed in §2.
 8. The choices behind the header boxes, and the rules between them, must be changeable from the admin dashboard, not fixed in code (E15).
-9. More text effects, more brushes and better tool adjustments are wanted (owner request, 2026-11-22). E17 to E21 are proposals; none is approved to start.
+9. More text effects, more brushes and better tool adjustments are wanted (owner request, 2026-11-22). E18 to E21 are proposals; none is approved to start.
+10. The font library (E17) is approved. The font files live in R2 and the shop puts them there (owner, 2026-11-22).
 
 ## 7. Verification and change policy
 
