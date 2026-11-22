@@ -898,7 +898,7 @@ on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise).
 | Checkout submit on an empty form | used to report only the terms; now lists name, phone, address, township, city and terms together |
 | Pen / shape / eraser with a single click (no drag) | no junk layer, no console error |
 | Press sheet from `/admin/orders` at 390x844 | opens its own tab (real click keeps the popup), 390/390 scroll, print button present |
-| Admin orders at 390x844 | 390/390 scroll, orders open, no console error |
+| Admin orders at 390x844 (touch) | 390/390 scroll; a tap on "Advance #MH1086 to Printing" moves the order Processing → Printing; the drawer opens with the print button and the note field; printing records a `reprints` entry so the button reads "Reprint the press sheet" |
 | Delivery fee on checkout | by design the fee is quoted later; "Total today" is the subtotal and the panel says so |
 
 The shop catalogue and the checkout cannot be exercised in this workspace: products come from
