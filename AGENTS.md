@@ -622,3 +622,35 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   text, so it can only paint inside the glyphs. It adds no padding.
 - Style presets carry `group` (`Classic` / `Fill` / `3D`) and the gallery renders one shelf per group; the ids
   must stay unique — the older layered-metal `chrome` and the new `chrome-3d` material are different looks.
+
+## Flip, hover linking, and drawing-tool hit targets (`EditorCanvas.tsx`)
+- `flipLayerPlacement(placement, axis, centre)` in `lib/editor-transform.ts` mirrors a layer about a line
+  through the selection centre. A negative scale alone would flip each layer about its **own** centre, so a
+  multi-layer selection flipped in place instead of as one picture: the offset is reflected too, and the
+  rotation is negated so a turned layer's ink mirrors rather than spins. The toolbar buttons
+  (`Flip horizontal` / `Flip vertical`) drive it and it renders as `scale(-1 1)` / `scale(1 -1)` on the
+  layer group.
+- Hovering the canvas draws `[data-editor-hover-outline]` (dashed) for the layer under the pointer and the
+  matching Layers row gets `data-layer-hovered="true"` plus a 1px inset ring. Hover never changes the
+  selection: `hoveredLayerId` is separate state from `selectedLayerIds`.
+- Resize and rotate handles take presses only when the Move tool is active
+  (`pointerEvents={moveEnabled ? "auto" : "none"}`). They used to sit above the pasteboard for every tool, so
+  a pencil stroke that started inside a handle's hit circle resized the layer instead of painting.
+
+## Test harness notes (`tests/editor-touch.cjs`, `tests/canvas-shell.test.cjs`)
+- The Edit sidebar is `#editor-edit-sidebar`, its `aria-label` is `<Section> editor sidebar`, and on a phone
+  it opens in two steps: `Expand Edit sidebar` shows the rail (`aside[aria-label="Edit sidebar rail"]`,
+  buttons labelled `Open <Section> in Edit sidebar`), then a rail button opens the panel. The panel is
+  `min(17rem, 86vw)` wide, so 272px at 390 — not the old 224px cap.
+- Editor Header Bar 2 has ten boxes: Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM,
+  Color, Size, Save, Buy. Phone: 112x44; desktop: 112x28 capsules with radius 9999. Only the Color box has no
+  accent fill (`rgba(0,0,0,0)` + accent text), so look up its index by name instead of assuming index 2.
+- Freehand strokes render as `<g data-editor-artwork-stroke="true">` (round brush dabs are circles), not
+  `<path>`. Query `[data-editor-artwork-stroke="true"]`, and read the mockup's move transform from
+  `svg[role="group"] g g` — the outer `<g>` is the print-area clip and never carries a transform.
+- The default tool is `pen`, which only drops anchors; tests that need a stroke must click `Pencil tool`
+  first. A desktop mouse stroke also needs it.
+- Under CDP touch emulation a mostly **vertical** finger drag on the print canvas is claimed as a viewport pan
+  (`touch-pan-y` on `[aria-label="Editor viewport"]`), which cancels the stroke: the same drag with mouse
+  events paints fine. Tests stroke mostly horizontally (`strokeCanvas()`).
+- Current price table: T-Shirt + 160 GSM + XL = 28,000 Ks; GSM 240 = 31,500; GSM 240 + 3XL = 33,500.

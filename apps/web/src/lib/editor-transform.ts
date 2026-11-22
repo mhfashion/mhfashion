@@ -11,6 +11,41 @@ export function rotateTransformPoint(point: TransformPoint, center: TransformPoi
   return { x: center.x + x * cos - y * sin, y: center.y + x * sin + y * cos };
 }
 
+export type LayerPlacement = {
+  offset: TransformPoint;
+  scale: TransformPoint;
+  pivot: TransformPoint;
+  rotation: number;
+};
+
+/**
+ * Mirror a layer's move/scale/rotate about a vertical (`horizontal` flip) or horizontal
+ * (`vertical` flip) line through `centre`.
+ *
+ * A negative scale alone would only mirror each layer about its own centre, so a multi-layer
+ * selection would flip in place instead of as one picture. Reflecting the offset as well moves
+ * a layer that sits off the mirror line to the matching spot on the other side, and reversing
+ * the rotation keeps a turned layer's ink mirrored rather than merely spun.
+ */
+export function flipLayerPlacement(
+  placement: LayerPlacement,
+  axis: "horizontal" | "vertical",
+  centre: TransformPoint,
+): LayerPlacement {
+  const mirrorX = axis === "horizontal";
+  return {
+    offset: {
+      x: mirrorX ? 2 * centre.x - 2 * placement.pivot.x - placement.offset.x : placement.offset.x,
+      y: mirrorX ? placement.offset.y : 2 * centre.y - 2 * placement.pivot.y - placement.offset.y,
+    },
+    scale: mirrorX
+      ? { x: -(placement.scale.x || 1), y: placement.scale.y }
+      : { x: placement.scale.x, y: -(placement.scale.y || 1) },
+    pivot: placement.pivot,
+    rotation: -placement.rotation,
+  };
+}
+
 const HANDLE_AXIS: Record<TransformHandle, { x: -1 | 0 | 1; y: -1 | 0 | 1 }> = {
   "top-left": { x: -1, y: -1 },
   "top-center": { x: 0, y: -1 },

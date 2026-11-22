@@ -16,7 +16,7 @@ import {
   releaseLargeArtworkTier,
 } from "@/lib/editor-artwork-tiers";
 import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
-import { getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } from "@/lib/editor-transform";
+import { flipLayerPlacement, getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } from "@/lib/editor-transform";
 import type { TransformHandle } from "@/lib/editor-transform";
 import {
   addLayerMask,
@@ -292,6 +292,10 @@ function ArtworkOverlay({
   onResize,
   onResizeEnd,
   layerRotations,
+  hoveredBounds,
+  hoveredRotation = 0,
+  onHoverMove,
+  onHoverEnd,
   onRotateStart,
   onRotate,
   onRotateEnd,
@@ -324,6 +328,11 @@ function ArtworkOverlay({
   onResize: (event: React.PointerEvent<SVGSVGElement>) => void;
   onResizeEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
   layerRotations: Record<string, number>;
+  /** Box of the layer under the pointer, drawn dashed so hover never looks like a selection. */
+  hoveredBounds?: CanvasBounds | null;
+  hoveredRotation?: number;
+  onHoverMove?: (clientX: number, clientY: number) => void;
+  onHoverEnd?: () => void;
   onRotateStart: (event: React.PointerEvent<SVGCircleElement>) => void;
   onRotate: (event: React.PointerEvent<SVGSVGElement>) => void;
   onRotateEnd: (event: React.PointerEvent<SVGSVGElement>) => void;
@@ -495,7 +504,12 @@ function ArtworkOverlay({
           );
         })()}
       </g>
-      {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMovePick} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
+      {moveEnabled && <rect x="0" y="0" width="1000" height="1200" fill="transparent" onPointerDown={onMovePick} onPointerMove={(event) => onHoverMove?.(event.clientX, event.clientY)} onPointerLeave={() => onHoverEnd?.()} className="pointer-events-auto cursor-move touch-none" aria-label="Move canvas artwork" />}
+      {hoveredBounds && (
+        <g pointerEvents="none" data-editor-hover-outline="true" transform={`rotate(${hoveredRotation} ${hoveredBounds.x + hoveredBounds.width / 2} ${hoveredBounds.y + hoveredBounds.height / 2})`}>
+          <rect x={hoveredBounds.x} y={hoveredBounds.y} width={hoveredBounds.width} height={hoveredBounds.height} fill="none" stroke="#9cc7ff" strokeWidth={1.25} strokeDasharray="7 5" vectorEffect="non-scaling-stroke" />
+        </g>
+      )}
       {selectedLayerIds.length > 0 && selectionBounds && !editingText && !drawingStroke && !transformControlsHidden && (
         <g pointerEvents="none" data-editor-transform-controls="true" transform={`rotate(${transformRotation} ${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height / 2})`}>
           <rect x={selectionBounds.x} y={selectionBounds.y} width={selectionBounds.width} height={selectionBounds.height} fill="none" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" data-transform-outline="true" />
@@ -508,7 +522,7 @@ function ArtworkOverlay({
               onPointerEnter={() => setHoveredHandle(handle.key)}
               onPointerLeave={() => setHoveredHandle((current) => (current === handle.key ? null : current))}
             >
-              <circle cx={handle.x} cy={handle.y} r={handleHitRadius} fill="transparent" pointerEvents="auto" onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} aria-description="Drag to resize. Hold Shift to stretch freely; hold Alt or Option to scale from the center." />
+              <circle cx={handle.x} cy={handle.y} r={handleHitRadius} fill="transparent" pointerEvents={moveEnabled ? "auto" : "none"} onPointerDown={onResizeStart} aria-label={`Resize selected layer ${handle.key}`} aria-description="Drag to resize. Hold Shift to stretch freely; hold Alt or Option to scale from the center." />
               <g transform={`translate(${handle.x} ${handle.y}) rotate(${handle.angle}) scale(${handleBoxScale})`} pointerEvents="none">
                 <rect x="-6" y="-6" width="12" height="12" rx="2.5" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
                 {hoveredHandle === handle.key && (
@@ -517,7 +531,7 @@ function ArtworkOverlay({
               </g>
             </g>
           ))}
-          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + rotateOffset} r={rotateHitRadius} fill="transparent" pointerEvents="auto" onPointerDown={onRotateStart} className="cursor-grab" aria-label="Rotate selected layer" aria-description="Drag to rotate. Hold Shift to snap to 15-degree increments." />
+          <circle cx={selectionBounds.x + selectionBounds.width / 2} cy={selectionBounds.y + selectionBounds.height + rotateOffset} r={rotateHitRadius} fill="transparent" pointerEvents={moveEnabled ? "auto" : "none"} onPointerDown={onRotateStart} className="cursor-grab" aria-label="Rotate selected layer" aria-description="Drag to rotate. Hold Shift to snap to 15-degree increments." />
           <g transform={`translate(${selectionBounds.x + selectionBounds.width / 2} ${selectionBounds.y + selectionBounds.height + rotateOffset}) scale(${rotateBoxScale})`} pointerEvents="none" data-rotate-handle="true">
             <circle r="10" fill="#ffffff" stroke="#4c9dff" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
             <path d="M2-5a5 5 0 1 0 3 7M2-5v3m0-3h3" fill="none" stroke="#202124" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" data-rotate-glyph="true" />
@@ -566,6 +580,9 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const [canvasLayerTransforms, setCanvasLayerTransforms] = useState<Record<string, Point>>({});
   const [canvasLayerScales, setCanvasLayerScales] = useState<Record<string, Point>>({});
   const [canvasLayerRotations, setCanvasLayerRotations] = useState<Record<string, number>>({});
+  // A layer under the pointer, or a row under the pointer in the Layers box. Hover only
+  // draws an outline; it never changes the selection.
+  const [hoveredLayerId, setHoveredLayerId] = useState<string | null>(null);
   const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>(["layer-1"]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
@@ -605,6 +622,29 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   // Arrange controls in the Adjustments panel: align to the artboard, flip, rotate, reset,
   // duplicate. Aligning adjusts the layer's canvas offset, so the artwork itself never moves
   // inside its own transform.
+  /**
+   * Mirror the selection about its own centre. Flipping is a sign change on the scale plus a
+   * reflected offset, so the renderer, the transform box, hit-testing and the mockup all follow
+   * without a separate flip flag to keep in sync.
+   */
+  const flipSelectedLayers = (axis: "horizontal" | "vertical") => {
+    const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
+    if (!ids.length) return;
+    const bounds = boundsForLayerIds(ids);
+    if (!bounds) return;
+    const centre = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+    const placements = ids.map((id) => [id, flipLayerPlacement({
+      offset: canvasLayerTransforms[id] ?? { x: 0, y: 0 },
+      scale: canvasLayerScales[id] ?? { x: 1, y: 1 },
+      pivot: canvasLayerOrigins[id] ?? centre,
+      rotation: canvasLayerRotations[id] ?? 0,
+    }, axis, centre)] as const);
+    setCanvasLayerTransforms((current) => ({ ...current, ...Object.fromEntries(placements.map(([id, next]) => [id, next.offset])) }));
+    setCanvasLayerScales((current) => ({ ...current, ...Object.fromEntries(placements.map(([id, next]) => [id, next.scale])) }));
+    setCanvasLayerRotations((current) => ({ ...current, ...Object.fromEntries(placements.map(([id, next]) => [id, next.rotation])) }));
+    setToolNotice(axis === "horizontal" ? "Flipped horizontally" : "Flipped vertically");
+  };
+
   // Arrow-pad nudges from the Adjustments panel: offset only, so the artwork
   // never moves inside its own transform.
   const nudgeSelectedLayer = (dx: number, dy: number) => {
@@ -653,6 +693,12 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     return unionCanvasBounds(bounds);
   }, [canvasLayerRotations, canvasLayerScales, canvasLayerTransforms, canvasLayerOrigins, layers]);
   const selectionBounds = useMemo(() => boundsForLayerIds(selectedLayerIds), [boundsForLayerIds, selectedLayerIds]);
+  // Hovering something already selected adds nothing, so the dashed box only appears for a layer
+  // the user is not editing.
+  const hoveredBounds = useMemo(() => (
+    hoveredLayerId && !selectedLayerIds.includes(hoveredLayerId) ? boundsForLayerIds([hoveredLayerId]) : null
+  ), [boundsForLayerIds, hoveredLayerId, selectedLayerIds]);
+  const hoveredRotation = hoveredLayerId ? canvasLayerRotations[hoveredLayerId] ?? 0 : 0;
   const [pasteboardRect, setPasteboardRect] = useState<PasteboardRect | null>(null);
   // A layer may be parked far outside the print area, so the Move tool's pick surface has to
   // cover every visible layer, not a fixed margin around the canvas. Sized in percentages of
@@ -1318,6 +1364,11 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
    * move/scale/rotate, which keeps the test exact for a rotated layer instead of falling back
    * to its axis-aligned box.
    */
+  function hoverCanvasLayer(clientX: number, clientY: number) {
+    const normalized = toCanvasPointUnclamped(clientX, clientY);
+    setHoveredLayerId(hitTestLayerAt({ x: normalized.x * 1000, y: normalized.y * 1200 }));
+  }
+
   function hitTestLayerAt(point: Point): string | null {
     for (const layer of layers) {
       if (!layer.visible) continue;
@@ -1957,7 +2008,12 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) return;
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
+    // Capture is best-effort: a phone that has already cancelled the touch throws
+    // NotFoundError here, and aborting would silently drop the stroke.
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {}
+
     if (activeTool === "eraser") {
       beginEraserPass(event.pointerId, point, selectedLayer.id, selectedTarget);
       return;
@@ -2667,6 +2723,10 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
                   onEditingTextChange={updateEditingText}
                   onEditingTextCommit={commitEditingText}
                   onEditingTextStyle={updateEditingTextStyle}
+                  hoveredBounds={hoveredBounds}
+                  hoveredRotation={hoveredRotation}
+                  onHoverMove={hoverCanvasLayer}
+                  onHoverEnd={() => setHoveredLayerId(null)}
                   onResizeStart={startCanvasLayerResize}
                   onResize={resizeCanvasLayer}
                   onResizeEnd={endCanvasLayerResize}
@@ -2974,6 +3034,8 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           onMoveLayer={moveLayer}
           onMoveLayerToIndex={moveLayerToIndex}
           onUpdateLayer={updateLayer}
+          hoveredLayerId={hoveredLayerId}
+          onHoverLayer={setHoveredLayerId}
           onGroupSelected={groupSelectedLayers}
           onUngroupSelected={ungroupSelectedLayers}
           onLinkSelected={linkSelectedLayers}
@@ -2997,6 +3059,8 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
         onBackgroundColorChange={setBackgroundColor}
         onUndo={undoCanvasAction}
         onRedo={redoCanvasAction}
+        canFlip={selectedLayerIds.length > 0}
+        onFlip={flipSelectedLayers}
         onSwapColors={() => {
           const nextForeground = backgroundColor;
           setBackgroundColor(foregroundColor);

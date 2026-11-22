@@ -112,6 +112,8 @@ export default function EditorLayersPanel({
   onLinkSelected,
   onSelectGroup,
   onOpenAdjustments,
+  hoveredLayerId = null,
+  onHoverLayer,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -136,6 +138,9 @@ export default function EditorLayersPanel({
   onLinkSelected: () => void;
   onSelectGroup: (groupId: string) => void;
   onOpenAdjustments: () => void;
+  /** The layer highlighted on the canvas, so the row can show it without changing the selection. */
+  hoveredLayerId?: string | null;
+  onHoverLayer?: (id: string | null) => void;
 }) {
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -242,7 +247,7 @@ export default function EditorLayersPanel({
               ) : null;
               const isSelected = selectedLayerIds.includes(layer.id);
               const isMaskSelected = isSelected && selectedTarget === "mask";
-                const rowClass = `relative flex min-h-9 items-center gap-1 border-b border-[#c9c9c9] px-1 dark:border-[#292929] ${isSelected ? "bg-[#d2e5f8] dark:bg-[#4b5661]" : "bg-[#f1f1f1] hover:bg-[#e5e5e5] dark:bg-[#353535] dark:hover:bg-[#404040]"} [@media(pointer:coarse)]:min-h-11`;
+                const rowClass = `relative flex min-h-9 items-center gap-1 border-b border-[#c9c9c9] px-1 dark:border-[#292929] ${isSelected ? "bg-[#d2e5f8] dark:bg-[#4b5661]" : "bg-[#f1f1f1] hover:bg-[#e5e5e5] dark:bg-[#353535] dark:hover:bg-[#404040]"} ${hoveredLayerId === layer.id && !isSelected ? "ring-1 ring-inset ring-[#4c9dff]" : ""} [@media(pointer:coarse)]:min-h-11`;
               return (
                 <div key={layer.id} className="relative">
                   {isGroupHeader && (
@@ -251,7 +256,7 @@ export default function EditorLayersPanel({
                       <button type="button" aria-label={`Select group ${layer.groupId}`} onClick={() => onSelectGroup(layer.groupId!)} className="flex min-w-0 flex-1 items-center gap-1 truncate text-left"><FolderPlus size={13} aria-hidden="true" /> Group</button>
                     </div>
                   )}
-                  <div role="listitem" data-layer-id={layer.id} className={rowClass} draggable onDragStart={() => setDraggedLayerId(layer.id)} onDragEnd={() => setDraggedLayerId(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedLayerId && draggedLayerId !== layer.id) onMoveLayerToIndex(draggedLayerId, index); setDraggedLayerId(null); }}>
+                  <div role="listitem" data-layer-id={layer.id} data-layer-hovered={hoveredLayerId === layer.id ? "true" : undefined} className={rowClass} draggable onDragStart={() => setDraggedLayerId(layer.id)} onDragEnd={() => setDraggedLayerId(null)} onPointerEnter={() => onHoverLayer?.(layer.id)} onPointerLeave={() => onHoverLayer?.(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedLayerId && draggedLayerId !== layer.id) onMoveLayerToIndex(draggedLayerId, index); setDraggedLayerId(null); }}>
                   <button type="button" aria-label={`${layer.visible ? "Hide" : "Show"} ${layer.name}`} aria-pressed={layer.visible} onClick={() => onToggleVisibility(layer.id)} className={`${TINY_ICON} h-7 w-7 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)_and_(max-height:500px)]:h-8 [@media(pointer:coarse)_and_(max-height:500px)]:w-8`}>
                     {layer.visible ? <Eye size={13} aria-hidden="true" /> : <EyeOff size={13} aria-hidden="true" />}
                   </button>

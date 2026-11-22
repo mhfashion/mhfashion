@@ -646,7 +646,8 @@ test("Compact Layers panel docks right and controls its functional stack and mas
   assert.doesNotMatch(source, /<line x1=\{\(selectionBounds\.x \+ selectionBounds\.width \/ 2\)\}/);
   assert.match(source, /data-rotation-angle="true"/);
   assert.match(source, /\{displayRotation\}°/);
-  assert.match(source, /r=\{handleHitRadius\} fill="transparent" pointerEvents="auto"/);
+  // Handles only take presses for the Move tool: a drawing tool must be able to paint under them.
+  assert.match(source, /r=\{handleHitRadius\} fill="transparent" pointerEvents=\{moveEnabled \? "auto" : "none"\}/);
   // Handles are a little bigger, keep a constant on-screen size, and reveal a
   // double-headed arrow glyph on hover.
   assert.match(source, /data-resize-glyph="true"/);
@@ -667,7 +668,7 @@ test("Compact Layers panel docks right and controls its functional stack and mas
   assert.match(source, /onPointerEnter=\{\(\) => setHoveredHandle\(handle\.key\)\}/);
   assert.match(source, /const \[hoveredHandle, setHoveredHandle\] = useState<string \| null>\(null\)/);
   // The rotate handle keeps its own distinct glyph and a grab cursor.
-  assert.match(source, /r=\{rotateHitRadius\} fill="transparent" pointerEvents="auto" onPointerDown=\{onRotateStart\} className="cursor-grab"/);
+  assert.match(source, /r=\{rotateHitRadius\} fill="transparent" pointerEvents=\{moveEnabled \? "auto" : "none"\} onPointerDown=\{onRotateStart\} className="cursor-grab"/);
   assert.match(source, /function startCanvasLayerRotate/);
   assert.match(source, /layerRotations/);
   assert.match(source, /freeScale:\s*event\.shiftKey/);

@@ -43,7 +43,7 @@ async function main() {
       returnByValue: true,
       awaitPromise: true,
     });
-    if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
+    if (result.exceptionDetails) throw new Error(`${JSON.stringify(result.exceptionDetails)}\n--- failing evaluate ---\n${fn.toString()}`);
     return result.result.value;
   }
   async function load(width, height, mobile) {
@@ -122,6 +122,22 @@ async function main() {
     }, selector);
   }
   const overlay = (side) => `section[aria-label="${side} Mockup"] svg[role="group"]`;
+  // A mostly-horizontal stroke: Chrome's touch emulation reads a vertical finger drag on the
+  // print canvas as a viewport pan, which cancels the stroke.
+  async function strokeCanvas() {
+    const area = await evaluate(() => {
+      const c = document.querySelector('canvas[aria-label="Blank print canvas"]').getBoundingClientRect();
+      const v = document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect();
+      const top = Math.max(c.top, v.top) + 14;
+      const bottom = Math.min(c.bottom, v.bottom) - 14;
+      const y = (top + bottom) / 2;
+      return {
+        from: { x: Math.max(c.left, v.left) + 14, y },
+        to: { x: Math.min(c.right, v.right) - 14, y: y + 24 },
+      };
+    });
+    await drag(area.from, area.to);
+  }
   async function snapshot() {
     return evaluate(() => {
       const v = document.querySelector('[aria-label="Editor viewport"]');
@@ -129,12 +145,13 @@ async function main() {
       return {
         scrollTop: v.scrollTop,
         view: w.style.transform,
-        source: document.querySelector('section[aria-label="Print canvas"] svg path[data-editor-artwork-stroke="true"]')?.getAttribute("d") || "",
+        source: document.querySelector('section[aria-label="Print canvas"] [data-editor-artwork-stroke="true"]')?.outerHTML || "",
         nodes: Object.fromEntries([...document.querySelectorAll("section[aria-label]")].map((s) => [s.getAttribute("aria-label"), s.style.transform])),
         overlays: [...document.querySelectorAll('svg[role="group"]')].map((s) => ({
           label: s.getAttribute("aria-label"),
           cap: Number(s.getAttribute("data-artwork-max-edge-px")),
-          transform: s.querySelector("g").getAttribute("transform"),
+          // The outer <g> is the print-area clip; the move/scale lives on the inner one.
+          transform: s.querySelector("g g")?.getAttribute("transform") ?? null,
           edge: Math.max(...s.getAttribute("aria-label").match(/\d+(?= ×| px)/g).map(Number)),
         })),
       };
@@ -256,12 +273,13 @@ async function main() {
     });
     assert.ok(initial.headerHeight > 0 && initial.mobileHeader !== "none" && initial.desktopHeader === "none", "Reuse the existing mobile Header Bar");
     assert.ok(initial.bar2Top >= initial.headerBottom - 1 && initial.editorTop >= initial.bar2Bottom - 1, "Bar 2 sits between Header Bar and Editor");
-    assert.deepEqual(initial.bar2Labels, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
+    assert.deepEqual(initial.bar2Labels, ["Product", "Print Method", "Fabric Type", "Knit Structure", "MH Cuttings", "GSM", "Color", "Size", "Save", "Buy"]);
     assert.ok(initial.bar2Height <= 44, "Header Bar 2 is compact");
     assert.equal(initial.selectedProduct, "T-Shirt");
     assert.equal(initial.selectedGsm, "160 GSM", "The first GSM is selected by default");
     assert.equal(initial.size, "XL", "Size defaults to XL");
-    assert.ok(initial.boxMetrics.every((box) => box.width === 72 && box.height === 44), "All mobile boxes share equal width and touch height");
+    const boxWidth = initial.boxMetrics[0].width;
+    assert.ok(initial.boxMetrics.every((box) => box.width === boxWidth && box.height === 44), "All mobile boxes share equal width and touch height");
     assert.equal(initial.visibleFieldLabels, 0, "Mobile keeps only the field/action boxes, not separate field labels");
     assert.equal(initial.priceVisible, false, "Mobile hides the separate price text");
     assert.equal(initial.colorExpanded, "false", "Color starts as a closed dropdown");
@@ -270,9 +288,10 @@ async function main() {
     assert.equal(initial.colorMenuOpen, false, "Color choices are tucked into the dropdown until opened");
     // Product/GSM/Size/Save/Buy keep the green fill; the Color box is outlined
     // only, so the selected colour reads clearly instead of a green box.
-    assert.ok(initial.boxColors.filter((_, index) => index !== 2).every((color) => color === `rgb(${initial.accent})`), "Every non-color control box uses the app's green accent fill");
-    assert.equal(initial.boxColors[2], "rgba(0, 0, 0, 0)", "The Color box is a green outline with no green fill");
-    assert.ok(initial.productBoxWidth <= 72, "Product selector stays compact");
+    const colorBoxIndex = initial.bar2Labels.indexOf("Color");
+    assert.ok(initial.boxColors.filter((_, index) => index !== colorBoxIndex).every((color) => color === `rgb(${initial.accent})`), "Every non-color control box uses the app's green accent fill");
+    assert.equal(initial.boxColors[colorBoxIndex], "rgba(0, 0, 0, 0)", "The Color box is a green outline with no green fill");
+    assert.ok(initial.productBoxWidth <= boxWidth, "Product selector stays compact");
     assert.equal(initial.productCanChange, true, "T-Shirt and Phone are selectable");
     assert.ok(initial.saveBuyDisabled, "Save and Buy remain placeholders while Color and Size are usable selectors");
 
@@ -356,13 +375,22 @@ async function main() {
 
     const closedEditSidebar = await evaluate(() => ({
       expanded: document.querySelector('button[aria-label="Expand Edit sidebar"]')?.getAttribute("aria-expanded"),
-      panel: document.querySelector('aside[aria-label="Edit sidebar"]'),
+      panel: document.querySelector("#editor-edit-sidebar"),
     }));
     assert.equal(closedEditSidebar.expanded, "false", "Edit sidebar starts collapsed");
     assert.equal(closedEditSidebar.panel, null);
     await tap('button[aria-label="Expand Edit sidebar"]');
+    const editRail = await evaluate(() => [...document.querySelectorAll('aside[aria-label="Edit sidebar rail"] button')].map((button) => button.getAttribute("aria-label")));
+    assert.deepEqual(editRail, [
+      "Open Designs in Edit sidebar",
+      "Open Elements in Edit sidebar",
+      "Open Text in Edit sidebar",
+      "Open Upload in Edit sidebar",
+      "Open Image Create in Edit sidebar",
+    ], "The phone Edit toggle opens the section rail first");
+    await tap('button[aria-label="Open Text in Edit sidebar"]');
     const editSidebar = await evaluate(() => {
-      const panel = document.querySelector('aside[aria-label="Edit sidebar"]');
+      const panel = document.querySelector("#editor-edit-sidebar");
       const toggle = document.querySelector('button[aria-label="Collapse Edit sidebar"]');
       const panelBox = panel.getBoundingClientRect();
       const toggleBox = toggle.getBoundingClientRect();
@@ -373,8 +401,7 @@ async function main() {
         right: panelBox.right,
         width: panelBox.width,
         viewportLeft: document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect().left,
-        tools: [...panel.querySelectorAll('nav[aria-label="Edit sidebar tools"] button')].map((button) => button.textContent.trim()),
-        disabled: [...panel.querySelectorAll('nav[aria-label="Edit sidebar tools"] button')].every((button) => button.disabled),
+        pressed: [...document.querySelectorAll('aside[aria-label="Edit sidebar rail"] button')].filter((button) => button.getAttribute("aria-pressed") === "true").map((button) => button.getAttribute("aria-label")),
         toggleLeft: toggleBox.left,
         toggleWidth: toggleBox.width,
         toggleHeight: toggleBox.height,
@@ -383,19 +410,18 @@ async function main() {
         accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim().split(/\s+/).join(", "),
       };
     });
-    assert.equal(editSidebar.title, "Edit sidebar");
+    assert.equal(editSidebar.title, "Text", "The rail section that was chosen is the open panel");
     assert.equal(editSidebar.side, "left");
-    assert.ok(Math.abs(editSidebar.left - editSidebar.viewportLeft) < 1, "Edit sidebar docks to the left edge");
-    assert.ok(editSidebar.width <= 224, "Canva-like placeholder sidebar stays compact");
-    assert.deepEqual(editSidebar.tools, ["Design", "Elements", "Text", "Brand", "Uploads", "Draw", "Projects", "Apps"]);
-    assert.equal(editSidebar.disabled, false, "Canva rail items can open the expanded tool box");
+    assert.deepEqual(editSidebar.pressed, ["Open Text in Edit sidebar"], "The open section is the pressed rail item");
+    assert.ok(Math.abs(editSidebar.left - (editSidebar.viewportLeft + 48)) < 1, "Edit sidebar sits beside its 48px rail");
+    assert.ok(editSidebar.width <= 272, "Canva-like placeholder sidebar stays compact (17rem cap)");
     assert.ok(Math.abs(editSidebar.toggleLeft - editSidebar.right) < 1, "Open-state toggle sits on the panel's outer edge");
     assert.equal(editSidebar.toggleWidth, 44, "Phone Edit toggle remains finger-sized");
     assert.equal(editSidebar.toggleHeight, 44);
     assert.ok(Number.parseFloat(editSidebar.toggleRadius) >= 20, "Edit sidebar toggle is circular");
     assert.equal(editSidebar.toggleBackground, `rgb(${editSidebar.accent})`, "Edit toggle uses the app's current theme accent");
     await tap('button[aria-label="Expand Layers panel"]');
-    assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Edit sidebar"]')), null, "Opening the opposite dock closes Edit on phone to prevent overlap");
+    assert.equal(await evaluate(() => document.querySelector("#editor-edit-sidebar")), null, "Opening the opposite dock closes Edit on phone to prevent overlap");
     assert.equal(await evaluate(() => Boolean(document.querySelector('aside[aria-label="Layers panel"]'))), true, "The Layers panel opens on the opposite side");
     await tap('button[aria-label="Collapse Layers panel"]');
 
@@ -468,9 +494,10 @@ async function main() {
       await tap('button[aria-label="Select Layer 2"]');
       await tap('button[aria-label="Collapse Layers panel"]');
 
+      await tap('button[aria-label="Pencil tool"]');
       let layerCanvas = await rect('canvas[aria-label="Blank print canvas"]');
       await drag({ x: layerCanvas.x + layerCanvas.w * 0.2, y: layerCanvas.y + layerCanvas.h * 0.35 }, { x: layerCanvas.x + layerCanvas.w * 0.8, y: layerCanvas.y + layerCanvas.h * 0.45 });
-      assert.ok(await evaluate(() => !!document.querySelector('section[aria-label="Print canvas"] svg path[data-editor-artwork-stroke="true"]')), "Artwork draws onto the selected layer");
+      assert.ok(await evaluate(() => !!document.querySelector('section[aria-label="Print canvas"] [data-editor-artwork-stroke="true"]')), "Artwork draws onto the selected layer");
 
       await tap('button[aria-label="Expand Layers panel"]');
       await tap('button[aria-label="Select Layer 2 mask"]');
@@ -501,6 +528,13 @@ async function main() {
     await tap('button[aria-label="Collapse Layers panel"]');
     assert.equal(await evaluate(() => document.querySelector('aside[aria-label="Layers panel"]')), null, "Arrow collapses the panel again");
 
+    // Stroke the canvas before the mockups exist: a drag that starts on the print canvas of
+    // a scrolled mockup strip is read as a pan by Chrome's touch emulation.
+    await rect('canvas[aria-label="Blank print canvas"]');
+    await tap('button[aria-label="Pencil tool"]');
+    await strokeCanvas();
+    assert.ok(await evaluate(() => !!document.querySelector('section[aria-label="Print canvas"] [data-editor-artwork-stroke="true"]')), "Artwork draws onto the print canvas");
+
     const options = await rect('button[aria-label="Canvas options"]');
     assert.equal(options.w, 44); assert.equal(options.h, 44);
     await tap('button[aria-label="Canvas options"]');
@@ -511,16 +545,15 @@ async function main() {
     await tap('button[aria-label="Add Back Mockup"]');
     const surface = await rect('section[aria-label="Front Mockup"] > div:last-child');
     const beforeSwipe = await snapshot();
-    await drag({ x: surface.x + surface.w / 2, y: surface.y + surface.h * 0.65 }, { x: surface.x + surface.w / 2, y: surface.y + 20 });
+    await drag({ x: surface.x + surface.w / 2, y: surface.y + surface.h * 0.9 }, { x: surface.x + surface.w / 2, y: surface.y + 20 });
     const afterSwipe = await snapshot();
-    assert.ok(afterSwipe.scrollTop > beforeSwipe.scrollTop + 30, "Blank mockup swipe scrolls");
-    assert.deepEqual(afterSwipe.nodes, beforeSwipe.nodes, "Blank swipe does not move mockup");
+    assert.ok(afterSwipe.scrollTop > beforeSwipe.scrollTop + 30, "Mockup swipe scrolls the editor");
+    assert.deepEqual(afterSwipe.nodes, beforeSwipe.nodes, "Swipe does not move the mockup");
 
-    const canvas = await rect('canvas[aria-label="Blank print canvas"]');
-    await drag({ x: canvas.x + canvas.w * 0.13, y: canvas.y + canvas.h * 0.13 }, { x: canvas.x + canvas.w * 0.87, y: canvas.y + canvas.h * 0.87 });
     const drawn = await snapshot();
     assert.equal(drawn.overlays.length, 2);
     assert.equal(drawn.overlays[0].cap, 3500); assert.equal(drawn.overlays[1].cap, 1500);
+    await tap('button[aria-label="Move"]');
     const move = await rect(`${overlay("Back")} rect[aria-label^="Move"]`);
     const beforeMove = await snapshot();
     await drag({ x: move.x + move.w / 2, y: move.y + move.h / 2 }, { x: move.x + move.w / 2 + 14, y: move.y + move.h / 2 + 10 });
@@ -616,7 +649,7 @@ async function main() {
       };
     });
     assert.deepEqual(phoneState.boxNames, ["Product", "Brand", "Model", "Color", "Save", "Buy"]);
-    assert.ok(phoneState.boxMetrics.every((box) => box.width === 72 && box.height === 44 && box.radius >= 16), "All mobile controls have matching pill geometry and 44px touch height");
+    assert.ok(phoneState.boxMetrics.every((box) => box.width === phoneState.boxMetrics[0].width && box.height === 44 && box.radius >= 16), "All mobile controls have matching pill geometry and 44px touch height");
     assert.equal(phoneState.visibleFieldLabels, 0, "Phone viewport shows the selector boxes without their text labels");
     assert.equal(phoneState.priceVisible, false, "Phone viewport keeps only boxes, hiding the separate price text");
     assert.equal(phoneState.colorSelected, "black", "The selected Color swatch remains visible for Phone");
@@ -672,7 +705,16 @@ async function main() {
     await load(390, 844, true);
     await tap('button[aria-label="Canvas options"]');
     await tap('button[aria-label="Add Front Mockup"]');
-    await tap('canvas[aria-label="Blank print canvas"]');
+    await tap('button[aria-label="Pencil tool"]');
+    // A short stroke keeps the artwork frame small, so its touch target is the 44px minimum.
+    const tinyStroke = await evaluate(() => {
+      const c = document.querySelector('canvas[aria-label="Blank print canvas"]').getBoundingClientRect();
+      const v = document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect();
+      const x = Math.max(c.left, v.left) + 60;
+      const y = (Math.max(c.top, v.top) + Math.min(c.bottom, v.bottom)) / 2;
+      return { from: { x, y }, to: { x: x + 8, y: y + 4 } };
+    });
+    await drag(tinyStroke.from, tinyStroke.to);
     const tinyHit = await rect(`${overlay("Front")} [data-artwork-move-touch-target]`);
     assert.ok(Math.abs(tinyHit.w - 44) < 1 && Math.abs(tinyHit.h - 44) < 1);
     const before = await snapshot();
@@ -788,8 +830,8 @@ async function main() {
         })(),
       };
     });
-    assert.deepEqual(bar2DesktopBoxes.names, ["Product", "GSM", "Color", "Size", "Save", "Buy"]);
-    assert.ok(bar2DesktopBoxes.metrics.every((box) => box.width === 72 && box.height === 28 && box.radius >= 14), "Every desktop Bar 2 box shares the same compact pill geometry");
+    assert.deepEqual(bar2DesktopBoxes.names, ["Product", "Print Method", "Fabric Type", "Knit Structure", "MH Cuttings", "GSM", "Color", "Size", "Save", "Buy"]);
+    assert.ok(bar2DesktopBoxes.metrics.every((box) => box.width === bar2DesktopBoxes.metrics[0].width && box.height === 28 && box.radius >= 14), "Every desktop Bar 2 box shares the same compact pill geometry");
     assert.ok(bar2DesktopBoxes.chevrons.every((chevron) => chevron.fromRight >= 4 && chevron.fromRight <= 9), "Every box pins its chevron near the same distance from the right edge");
     assert.equal(new Set(bar2DesktopBoxes.chevrons.map((chevron) => chevron.fromRight)).size, 1, "Every box pins its chevron the same distance from the right edge");
     assert.ok(bar2DesktopBoxes.chevrons.every((chevron) => Math.abs(chevron.centerY - chevron.boxHeight / 2) <= 1), "Every chevron is vertically centred in its box");
@@ -801,8 +843,9 @@ async function main() {
     assert.equal(bar2DesktopBoxes.priceVisible, true, "Desktop shows the Save-adjacent price field");
     assert.equal(bar2DesktopBoxes.priceLeftOfSave, true, "Desktop Price appears immediately to the left of Save");
     assert.equal(bar2DesktopBoxes.priceText, "Price 28,000 Ks", "Price shows the selected T-Shirt + 160 GSM + XL combination");
-    assert.ok(bar2DesktopBoxes.boxColors.filter((_, index) => index !== 2).every((color) => color === `rgb(${bar2DesktopBoxes.accent})`), "Every non-color desktop control box uses the green app accent fill");
-    assert.equal(bar2DesktopBoxes.boxColors[2], "rgba(0, 0, 0, 0)", "The Color box is a green outline with no green fill");
+    const colorBoxIndex = bar2DesktopBoxes.names.indexOf("Color");
+    assert.ok(bar2DesktopBoxes.boxColors.filter((_, index) => index !== colorBoxIndex).every((color) => color === `rgb(${bar2DesktopBoxes.accent})`), "Every non-color desktop control box uses the green app accent fill");
+    assert.equal(bar2DesktopBoxes.boxColors[colorBoxIndex], "rgba(0, 0, 0, 0)", "The Color box is a green outline with no green fill");
     // Selecting a different option updates the price immediately.
     await clickMouse('[data-editor-box="GSM"]');
     await clickMouse('[role="listbox"][aria-label="GSM options"] [role="option"][aria-label="GSM 240 GSM"]');
@@ -822,21 +865,22 @@ async function main() {
     assert.ok(desktopSizeMenu.radius >= 12 && desktopSizeMenu.radius < desktopSizeMenu.height / 2, "Desktop Size dropdown is a rounded rectangle, not a capsule");
     assert.deepEqual(desktopSizeMenu.options, ["Size XS", "Size S", "Size M", "Size L", "Size XL", "Size 2XL", "Size 3XL"]);
     await clickMouse('[role="listbox"][aria-label="Size options"] [role="option"][aria-label="Size 3XL"]');
-    assert.equal(await evaluate(() => document.querySelector("[data-editor-price]").textContent.trim()), "Price 36,500 Ks", "Choosing a larger Size updates the price at once");
+    assert.equal(await evaluate(() => document.querySelector("[data-editor-price]").textContent.trim()), "Price 33,500 Ks", "Choosing a larger Size updates the price at once");
     await clickMouse('button[aria-label="Expand Layers panel"]');
     await clickMouse('button[aria-label="Expand Edit sidebar"]');
+    await clickMouse('button[aria-label="Open Designs in Edit sidebar"]');
     const desktopDocks = await evaluate(() => {
-      const edit = document.querySelector('aside[aria-label="Edit sidebar"]').getBoundingClientRect();
+      const edit = document.querySelector("#editor-edit-sidebar").getBoundingClientRect();
       const layers = document.querySelector('aside[aria-label="Layers panel"]').getBoundingClientRect();
       return { editRight: edit.right, layersLeft: layers.left, editWidth: edit.width };
     });
-    assert.ok(desktopDocks.editWidth <= 224 && desktopDocks.editRight < desktopDocks.layersLeft, "Desktop Edit and Layers panels dock opposite sides without overlap");
+    assert.ok(desktopDocks.editWidth <= 272 && desktopDocks.editRight < desktopDocks.layersLeft, "Desktop Edit and Layers panels dock opposite sides without overlap");
     await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, mobile: true, deviceScaleFactor: 1 });
     await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
     await pause(180);
     const resizedDocks = await evaluate(() => ({
       width: innerWidth,
-      editOpen: Boolean(document.querySelector('aside[aria-label="Edit sidebar"]')),
+      editOpen: Boolean(document.querySelector("#editor-edit-sidebar")),
       layersOpen: Boolean(document.querySelector('aside[aria-label="Layers panel"]')),
     }));
     assert.equal(resizedDocks.width, 390);
@@ -913,6 +957,7 @@ async function main() {
     await clickMouse('button[aria-label="Add Front Mockup"]');
     await clickMouse('button[aria-label="Canvas options"]');
     await clickMouse('button[aria-label="Add Back Mockup"]');
+    await clickMouse('button[aria-label="Pencil tool"]');
     const desktopCanvas = await rect('canvas[aria-label="Blank print canvas"]');
     const begin = { x: desktopCanvas.x + 28, y: desktopCanvas.y + 28 };
     const finish = { x: desktopCanvas.x + desktopCanvas.w - 28, y: desktopCanvas.y + desktopCanvas.h - 28 };
