@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { loadModule } = require("./helpers/load-ts-module.cjs");
 const ts = require("typescript");
 const source = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorCanvas.tsx"), "utf8");
 const mockupArtwork = readFileSync(path.join(__dirname, "../apps/web/src/components/MockupArtwork.tsx"), "utf8");
@@ -1173,13 +1174,7 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
 });
 
 test("editor tool options normalize to safe ranges", () => {
-  const fileName = path.join(__dirname, "../apps/web/src/lib/editor-layers.ts");
-  const compiled = ts.transpileModule(layerModelSource, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-    fileName,
-  }).outputText;
-  const module = { exports: {} };
-  new Function("module", "exports", compiled)(module, module.exports);
+  const module = { exports: loadModule("apps/web/src/lib/editor-layers.ts") };
   const { normalizeEditorToolOptions, EDITOR_TOOL_OPTIONS_DEFAULT } = module.exports;
 
   const defaults = normalizeEditorToolOptions(undefined);

@@ -64,7 +64,7 @@ import {
   updateLayerLastErasure,
   updateLayerLastStroke,
 } from "@/lib/editor-layers";
-import type { ArtworkStroke, EditorBrushShape, EditorErasure, EditorGradient, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
+import type { ArtworkStroke, EditorBrushShape, EditorErasure, EditorGradient, EditorShapeBuilderMode, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
 import {
   cornerEditorPenAnchor,
   draggedEditorPenAnchor,
@@ -2447,7 +2447,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     setLayers((current) => updateEditorImageAdjustments(current, selectedLayerId, update));
   }
 
-  function updateSelectedShapeBuilder(builderMode: "select" | "merge" | "subtract" | "intersect") {
+  function updateSelectedShapeBuilder(builderMode: EditorShapeBuilderMode) {
     if (!selectedLayerId) return;
     setLayers((current) => builderMode === "select" ? updateEditorShapeBuilderMode(current, selectedLayerId, builderMode) : applyEditorShapeBuilderOperation(current, selectedLayerId, builderMode));
   }

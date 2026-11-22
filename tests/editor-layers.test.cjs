@@ -4,21 +4,9 @@ const path = require("node:path");
 const test = require("node:test");
 const ts = require("typescript");
 
-const sourcePath = path.join(__dirname, "../apps/web/src/lib/editor-layers.ts");
-const source = readFileSync(sourcePath, "utf8");
-const compiled = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-  fileName: sourcePath,
-}).outputText;
-const layerModel = { exports: {} };
-new Function("module", "exports", compiled)(layerModel, layerModel.exports);
-const transformSourcePath = path.join(__dirname, "../apps/web/src/lib/editor-transform.ts");
-const transformCompiled = ts.transpileModule(readFileSync(transformSourcePath, "utf8"), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-  fileName: transformSourcePath,
-}).outputText;
-const transformModule = { exports: {} };
-new Function("module", "exports", transformCompiled)(transformModule, transformModule.exports);
+const { loadModule } = require("./helpers/load-ts-module.cjs");
+const layerModel = { exports: loadModule("apps/web/src/lib/editor-layers.ts") };
+const transformModule = { exports: loadModule("apps/web/src/lib/editor-transform.ts") };
 const { getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } = transformModule.exports;
 const {
   addLayerMask,
@@ -403,7 +391,7 @@ test("invalid numeric appearance updates do not poison layer opacity", () => {
   assert.equal(updateEditorLayer([layer], "one", { opacity: 125, fillOpacity: -5 })[0].fillOpacity, 0);
 });
 
-test("shape builder performs deterministic rectangle merge, subtract, and intersect geometry", () => {
+test("shape builder folds overlapping squares into one printable path per mode", () => {
   const layer = createEditorShapeLayer("shape-builder", "Builder", {
     paths: [
       { d: "M 100 100 H 500 V 500 H 100 Z", fill: "#111111" },
@@ -412,16 +400,21 @@ test("shape builder performs deterministic rectangle merge, subtract, and inters
   });
   const merged = applyEditorShapeBuilderOperation([layer], layer.id, "merge")[0];
   assert.equal(merged.shape.paths.length, 1);
-  assert.match(merged.shape.paths[0].d, /M 100 100.*M 300 300/);
+  assert.equal(merged.shape.paths[0].d, "M 100 100 L 500 100 L 500 300 L 700 300 L 700 700 L 300 700 L 300 500 L 100 500 Z");
 
   const subtracted = applyEditorShapeBuilderOperation([layer], layer.id, "subtract")[0];
   assert.equal(subtracted.shape.builderMode, "subtract");
-  assert.equal(subtracted.shape.paths.length, 2);
-  assert.match(subtracted.shape.paths[0].d, /M 100 100 H 300/);
+  assert.equal(subtracted.shape.paths.length, 1, "one path, not a pile of rectangles");
+  assert.equal(subtracted.shape.paths[0].d, "M 100 100 L 500 100 L 500 300 L 300 300 L 300 500 L 100 500 Z");
 
   const intersected = applyEditorShapeBuilderOperation([layer], layer.id, "intersect")[0];
   assert.equal(intersected.shape.builderMode, "intersect");
-  assert.equal(intersected.shape.paths[0].d, "M 300 300 H 500 V 500 H 300 Z");
+  assert.equal(intersected.shape.paths[0].d, "M 500 300 L 500 500 L 300 500 L 300 300 Z");
+
+  const excluded = applyEditorShapeBuilderOperation([layer], layer.id, "exclude")[0];
+  assert.equal(excluded.shape.builderMode, "exclude");
+  assert.equal(excluded.shape.paths.length, 1);
+  assert.equal((excluded.shape.paths[0].d.match(/M /g) ?? []).length, 2, "both outer pieces stay in one path");
 });
 
 test("shape preset geometry covers reversed drags and returns renderable vector paths", () => {

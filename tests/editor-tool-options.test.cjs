@@ -4,13 +4,8 @@ const path = require("node:path");
 const test = require("node:test");
 const ts = require("typescript");
 
-const sourcePath = path.join(__dirname, "../apps/web/src/lib/editor-layers.ts");
-const compiled = ts.transpileModule(readFileSync(sourcePath, "utf8"), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-  fileName: sourcePath,
-}).outputText;
-const lib = { exports: {} };
-new Function("module", "exports", compiled)(lib, lib.exports);
+const { loadModule } = require("./helpers/load-ts-module.cjs");
+const lib = { exports: loadModule("apps/web/src/lib/editor-layers.ts") };
 const {
   EDITOR_TOOL_OPTIONS_DEFAULT,
   EDITOR_ERASER_PRESETS,

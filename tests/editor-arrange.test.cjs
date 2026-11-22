@@ -4,16 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const ts = require("typescript");
 
-function loadModule(relativePath) {
-  const sourcePath = path.join(__dirname, "..", relativePath);
-  const compiled = ts.transpileModule(readFileSync(sourcePath, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-    fileName: sourcePath,
-  }).outputText;
-  const loaded = { exports: {} };
-  new Function("module", "exports", compiled)(loaded, loaded.exports);
-  return loaded.exports;
-}
+const { loadModule } = require("./helpers/load-ts-module.cjs");
 
 const lib = loadModule("apps/web/src/lib/editor-layers.ts");
 const panel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");

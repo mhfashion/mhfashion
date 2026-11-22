@@ -668,3 +668,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - CDP resize probes must click `button[aria-label="Move"]` first: with a drawing tool active the transform
   handles carry `pointerEvents="none"`, so a press at a handle paints instead of resizing. The tool button
   label is "Move", not "Move tool".
+
+## Shape Builder geometry (`apps/web/src/lib/editor-path-boolean.ts`)
+- The builder flattens every path into closed rings, splits both sides where they cross, keeps each piece
+  by the side it falls on, then chains the kept pieces back into rings. `applyEditorShapeBuilderOperation`
+  folds all paths on the layer (first path is the base for subtract) into one path.
+- Endpoints are merged to a canonical point (0.01 unit) **before** chaining: a crossing is computed once
+  from each edge and the two results differ in the last bits, so an exact-key chain walk silently drops
+  the ring and the operation looks like a no-op with fractional canvas coordinates.
+- Rings are oriented by nesting depth (even depth one way, odd the other) so holes cut correctly under the
+  nonzero fill rule. An empty result is reported as `""` and the caller keeps the original artwork.
+- Test loaders now go through `tests/helpers/load-ts-module.cjs`, which evaluates sibling `.ts` imports, so
+  a lib may import another lib. Do not go back to a bare `new Function("module", "exports", ...)` loader.
+- A CDP check of the builder must draw the second shape starting **outside** the first shape's transform
+  box: a press inside the box drags the selection instead of starting a new shape. The Shape Builder
+  section of the Adjustment box is collapsed until its header is clicked.

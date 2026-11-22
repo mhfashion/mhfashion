@@ -131,7 +131,7 @@ the owner approves an item before it starts.
 | E5 | Flip horizontal and vertical — **done 2026-11-22** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar` | medium |
 | E6 | Snap guides while dragging | free placement drifts off the print area | `EditorCanvas` drag paths | medium |
 | E7 | Hover highlight between canvas and Layers — **done 2026-11-22** | finding the row for a shape on a busy canvas is slow | `EditorCanvas`, `EditorLayersPanel` | small |
-| E8 | Shape Builder for `exclude` and arbitrary paths | the builder only merges rectangles today | `applyEditorShapeBuilderOperation` | medium |
+| E8 | Shape Builder for `exclude` and arbitrary paths — **done 2026-11-22** | the builder only merges rectangles today | `lib/editor-path-boolean.ts`, `applyEditorShapeBuilderOperation` | medium |
 | E9 | Enable the remaining products | Hoodie, Cup, Kids and Bag are visible but dead | `EditorHeaderBar2`, mockups, `editor-price` | medium |
 | E10 | Connect the sidebar library and image generation | Designs, Elements and Image Create are placeholders | `editor-design-library`, R2 endpoint, image service | large |
 | E11 | Per-character styling, glyphs, artboards | only if the catalogue needs them | text model migration, renderers, export | large |
@@ -336,6 +336,23 @@ the owner approves an item before it starts.
 - Verified: `tests/editor-image-ppi.test.cjs` (the 300 / 171 / 139 / 167 / 69 / 83 ppi cases, the level
   steps, the null cases) and a Chromium check: a 1200 px upload shows "100 ppi · low", and resizing it up
   1.5× turns the badge to "67 ppi" and the notice to "upload-1200.png: print quality dropped to 67 ppi".
+
+### Built: E8 Shape Builder booleans (2026-11-22)
+
+- `lib/editor-path-boolean.ts` is the geometry: an SVG path walker (M, L, H, V, C, S, Q, T, Z, absolute and
+  relative; an arc falls back to a straight line to its endpoint) that flattens curves into closed rings,
+  a split-and-classify boolean that keeps the pieces each operation wants, and a chain walk that rebuilds
+  rings. Endpoints within a hundredth of a unit of each other are merged first, because the crossing of
+  edge A with edge B is computed twice and the two results differ in the last bits.
+- Rings are oriented by nesting depth, so a hole cuts the right way under the nonzero fill rule.
+- `applyEditorShapeBuilderOperation` now folds every path on the layer (the first is the base for
+  subtract) into one path, and leaves the artwork alone when the result would be empty.
+- The Adjustment box offers Select / Merge / Subtract / Intersect / Exclude.
+- Verified: `tests/editor-path-boolean.test.cjs` (areas, ring counts, curves, rotated shapes, pen paths,
+  relative commands, fractional coordinates, empty results) and a Chromium run that draws two overlapping
+  rectangles on one layer and clicks each mode: merge gives one 8-point ring, subtract one 6-point ring,
+  intersect one 4-point ring, exclude one path of two 6-point rings, and the transform box shrinks and
+  grows with the result (210x251 → 190x191 → 90x91 → 210x251 px).
 
 ## 6. Decisions for the owner
 

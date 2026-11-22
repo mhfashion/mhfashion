@@ -164,8 +164,12 @@ Nine presets: rectangle, rounded rectangle, ellipse, triangle, diamond, line, ar
 
 - Style: stroke colour and width, fill on/off and colour, line style (solid, dash, dot), corner rounding,
   drop shadow and glow.
-- Shape Builder: merge, subtract and intersect. It operates on the first two axis-aligned rectangles of
-  the layer.
+- Shape Builder: merge, subtract, intersect and exclude. It works on any closed path on the layer —
+  presets, rotated shapes and pen paths — because the geometry (`lib/editor-path-boolean.ts`) flattens
+  every path into rings, splits it where the sides cross, keeps the pieces each operation wants and chains
+  them back into rings. The first path is the base, so subtract cuts the rest out of it; the result is one
+  path, and the transform box follows it. Curves are sampled at 0.25 artwork units (about one print
+  pixel), and a result that would be empty leaves the artwork untouched.
 - New shapes are added as paths on one shape layer rather than a new layer per shape.
 
 ## 8. Pen
@@ -330,6 +334,7 @@ EDITOR_TEST_ORIGIN=http://127.0.0.1:3000 node tests/editor-touch.cjs
 | `tests/editor-price.test.cjs` | product, GSM and size price table |
 | `tests/editor-shortcuts.test.cjs` | the undo/redo key matrix, the text-field rule, non-Latin layouts |
 | `tests/editor-image-ppi.test.cjs` | the print ppi formula, its levels, and the layers it cannot measure |
+| `tests/editor-path-boolean.test.cjs` | the four builder operations on rectangles, curves, rotated shapes and pen paths |
 | `tests/canvas-spec.test.cjs` | the frozen canvas spec |
 | `tests/editor-touch.cjs` | phone and desktop interaction driven through the browser: tiny artwork, landscape, dark/light, dock arrows, tier resize, drawing |
 
