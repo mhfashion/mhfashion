@@ -844,6 +844,22 @@ async function main() {
     assert.equal(await painted(), 2, "the second finger does not start a second stroke");
     assert.ok(Math.max(...ink) < 40, `the line stays on the first finger (tallest ${Math.max(...ink)} px)`);
 
+    // With no layer at all a stroke must say why it painted nothing.
+    await load(390, 844, true);
+    await tap('button[aria-label="Expand Layers panel"]');
+    await tap('button[aria-label="Delete selected layer"]');
+    assert.equal(await evaluate(() => document.querySelectorAll("[data-layer-id]").length), 0, "the last layer can be deleted");
+    await tap('button[aria-label="Collapse Layers panel"]');
+    await tap('button[aria-label="Pencil tool"]');
+    const emptyCanvas = await rect('canvas[aria-label="Blank print canvas"]', false);
+    await drag({ x: emptyCanvas.x + 30, y: emptyCanvas.y + 60 }, { x: emptyCanvas.x + 110, y: emptyCanvas.y + 60 });
+    assert.equal(await painted(), 0, "no stroke lands without a layer");
+    assert.equal(
+      await evaluate(() => document.querySelector('[data-testid="editor-tools-bar"] [role="status"]')?.textContent ?? ""),
+      "Add a layer before drawing.",
+      "a stroke with no layer says what to do",
+    );
+
     await load(390, 844, true);
     await send("Emulation.setDeviceMetricsOverride", { width: 844, height: 390, mobile: true, deviceScaleFactor: 2 });
     await pause(1400);

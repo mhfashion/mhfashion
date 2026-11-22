@@ -2119,7 +2119,14 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       setToolNotice(rejection);
       return;
     }
-    if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) return;
+    if (!selectedLayer || selectedLayer.locked || (selectedTarget === "mask" && selectedLayer.mask === null)) {
+      // The Pen tool already says this; the brush, pencil and eraser used to return silently, so a
+      // stroke on a design whose layers were all deleted looked like a broken canvas.
+      event.preventDefault();
+      event.stopPropagation();
+      setToolNotice(layers.length ? "Select an unlocked layer before drawing." : "Add a layer before drawing.");
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     // Capture is best-effort: a phone that has already cancelled the touch throws

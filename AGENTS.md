@@ -448,6 +448,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The stack keeps 30 snapshots (`slice(-29)` plus the new one). Verified in `tests/editor-touch.cjs`: 35 pencil strokes then 40 `Ctrl+Z` presses leave exactly 5 strokes.
 - A pencil stroke paints **two** `[data-editor-artwork-stroke="true"]` elements, so count strokes as `elements / 2` when asserting.
 
+## Drawing with no layer
+- `startArtworkStroke` used to `return` silently when no layer was selected or the layer was locked, so a
+  design whose layers had all been deleted looked like a broken canvas. It now sets the tools-bar notice
+  (`[data-testid="editor-tools-bar"] [role="status"]`): `Add a layer before drawing.` when `layers.length === 0`,
+  else `Select an unlocked layer before drawing.` — the wording the Pen tool already used. The notice has no
+  auto-clear timer, so a test can read it after the stroke.
+- `deleteEditorLayer` has no floor, so the last layer can be deleted; `tests/editor-touch.cjs` covers that
+  path (collapse the Layers panel first, or the drag lands on the panel).
+
 ## Layer picking (canvas and pasteboard)
 - A press picks the layer under the pointer, then drags it: `hitTestLayerAt` maps the point back through each layer's own move/scale/rotate (top-first, visible only), and `pickLayerAt` selects then calls `beginLayerDrag`.
 - The transform box is a **solid** `rect` over the selected layer's whole area, so it also intercepts presses. `startSelectionBoxPress` hit-tests on that press too: a hit on a layer that is not already selected re-picks it, anything else drags the current selection. Without this, any layer sitting under the box could only be selected from the Layers panel.

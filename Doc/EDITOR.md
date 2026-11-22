@@ -289,8 +289,9 @@ The design library is a local placeholder until the storage endpoint exists
 - The appearance fields take no snapshot of their own: the opacity and fill numbers and the blend-mode
   select (`updateLayer`) change the layer in place, so the next undo jumps back past that edit as well.
 - Viewport zoom, pan and mockup positions are not in the history.
-- Deleting every layer leaves an empty list. The panel still offers Add layer, but until one is added the
-  drawing tools do nothing; `Plan/EDITOR_PLAN.md` §4 records this as a gap for an owner decision.
+- Deleting every layer leaves an empty list. The panel still offers Add layer, and a stroke on the empty
+  design says "Add a layer before drawing." instead of returning silently (a locked or missing layer says
+  "Select an unlocked layer before drawing.", as the Pen tool already did).
 - The layer array and each layer's move/scale/rotate are written to the browser's `localStorage` under
   `mh-fashion-design-draft-v1`, 400 ms after the last change (`lib/design-draft.ts`, called from
   `EditorCanvas`).
