@@ -142,6 +142,16 @@ design; each one creates a text layer and opens the inline editor.
   swatches beside the colour wheel.
 - The Adjustment box styles the whole layer: font family (with search and recent fonts), size, colour,
   weight, italic, underline, alignment, letter-spacing and line height.
+- **Fonts come from the shop's R2 bucket** (`fonts/manifest.json`, `lib/editor-fonts.ts`,
+  `lib/editor-font-library.ts`). The picker lists the manifest's fonts shelf by shelf (Sans, Serif,
+  Display, Script, Burmese) and only the fonts a text layer actually uses are fetched, as `@font-face`
+  rules with a Latin and a Myanmar `unicode-range`. Without a manifest — or with one the bucket cannot
+  serve — the picker falls back to the eight system fonts (Inter, Arial, Georgia, Impact, Courier New,
+  Trebuchet MS, Verdana, Times New Roman), so nothing on screen changes until fonts are uploaded. A layer
+  stores the family name, so a design made with a font that is later switched off still paints in the
+  fallback stack. A manifest entry without a licence, with a file outside the bucket, or with a shelf the
+  editor does not show is skipped and named, never fatal. See `Doc/R2-STORAGE.md` §3.2b for the file
+  layout and the manifest shape.
 - Effects are a stack, and the box lists them as pictures: each tile paints a sample "Aa" with that one
   effect, and each row of the stack shows its own thumbnail. The kinds are shadow, outline, glow, offset,
   echo, extrude, stripe, blur, gradient, pattern, hollow, bevel and gloss. Each can be added, enabled or

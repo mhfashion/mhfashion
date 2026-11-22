@@ -146,7 +146,7 @@ the owner approves an item before it starts.
 | E14 | Image resolution warning — **done 2026-11-22** | a photo enlarged past what the press can print sharply is only discovered after printing | `lib/editor-image-ppi.ts`, `editor-layers`, `EditorCanvas`, Layers box, Adjustment box | small |
 | E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium — **step 1 done 2026-11-22** (one vocabulary); the admin-driven chain still waits for the database |
 | E16 | Download my design — **done 2026-11-22** | the customer had no copy of the artwork; the press bundle was the only file | `lib/design-export.ts`, `EditorDesignExport`, `EditorToolsBar` | small |
-| E17 | Font library, including Burmese fonts — **approved 2026-11-22; fonts hosted in R2** | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, R2, design export, print export | medium |
+| E17 | Font library, including Burmese fonts — **approved 2026-11-22; fonts hosted in R2; step 1 done 2026-11-22** | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, R2, design export, print export | medium |
 | E18 | Text effects, round 2 | more looks and finer control for the effect stack | `editor-layers`, `EditorLayerPreview`, `EditorAdjustmentsPanel` | medium |
 | E19 | A real text bend | Arch and Wave only slant the text | `editor-layers`, renderer, bounds, print | medium |
 | E20 | Brushes, round 2 | brush packs, pressure, stabiliser and a size cursor | Brush box, `public/brushes`, `EditorCanvas` | medium |
@@ -458,6 +458,21 @@ the owner approves an item before it starts.
   2026-11-22, D10).
 - **Print:** at export time the text is converted to outlines, or the font file is embedded, so the press
   never lacks a font.
+- **Step 1 done 2026-11-22: the manifest and the loader.** `lib/editor-fonts.ts` parses
+  `fonts/manifest.json` (shelf, scripts, weights, styles, licence, `enabled`), refuses a file that is not a
+  bucket-relative `.woff2` or an entry without a licence, and skips a bad entry by name instead of failing.
+  `lib/editor-font-library.ts` fetches the manifest once, builds `@font-face` rules with a Latin and a
+  Myanmar `unicode-range`, and loads only the fonts a text layer uses. The picker lists the manifest's fonts
+  shelf by shelf and falls back to the eight system fonts when there is no manifest, so nothing on screen
+  changed until fonts are uploaded. Documented in `Doc/R2-STORAGE.md` §3.2b and `Doc/EDITOR.md` §6.
+  Verified: `tests/editor-fonts.test.cjs` (10 tests) and the browser suite, which still lists the eight
+  system fonts. Checked again against a manifest served from a local bucket: the picker listed the hosted
+  font only (the bad entry was skipped), picking it injected both weights, and the browser downloaded only
+  the weight the layer used; the missing font file fell back without an error.
+- **Still open:** upload the manifest and the font files to R2 and add the site origin to the bucket's CORS
+  rule; check each licence for commercial print; embed the used fonts (or outline the text) in the design
+  download and the press SVG, which is the E16 dependency; move the font list into the admin dashboard as
+  E15 does; confirm Burmese shaping on a real device.
 - Acceptance: Burmese text shows correct shaping (stacked consonants, medial signs, vowel order) on the canvas,
   the mockup and the print sheet, with and without effects; a font switched off still renders on existing
   designs; the editor does not load fonts it does not use; the fonts load from R2 with the CORS rule in place;
@@ -617,7 +632,8 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | `tests/design-draft.test.cjs` | 7 |
 | `tests/editor-align.test.cjs` | 8 |
 | `tests/editor-snap.test.cjs` | 8 |
+| `tests/editor-fonts.test.cjs` | 10 |
 | `tests/editor-touch.cjs` | browser flow (desktop and phone), including a reload that must restore the draft |
 
-The last full run (`node --test tests/*.test.cjs`) reported 483 passing, 0 failing, against a server on
+The last full run (`node --test tests/*.test.cjs`) reported 493 passing, 0 failing, against a server on
 port 3000.

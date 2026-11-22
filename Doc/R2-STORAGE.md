@@ -46,6 +46,9 @@ mh-fashion-assets/
 │   ├── editor/<garment-slug>/<look>.<webp|png|jpg>    ← editor panel photos (square, flat)
 │   └── 3d/<product-slug>/<look>.<webp|png|jpg>        ← 3D renders (reserved, see 3.1d)
 ├── models/<product-slug>.glb                          ← 3D garment models
+├── fonts/
+│   ├── manifest.json                                  ← the font list the editor reads (3.2b)
+│   └── <font-slug>/<style>.woff2                      ← one file per weight and style
 ├── designs/<design-slug>.svg                          ← design library source files
 ├── posts/<post-slug>.svg                              ← T-shirt post artwork
 └── orders/<order-id>/<file>.svg                       ← copies of what the press received
@@ -122,6 +125,70 @@ still tries that path after `mockups/product/...`, so nothing breaks — move th
 - each element must be its own `<g id="...">` so the editor can list it as a layer
 - no external fonts or images: convert text to paths or embed the font
 - file name = design slug (`street-wave.svg`)
+
+### 3.2b Fonts — `fonts/manifest.json` + `fonts/<font-slug>/<style>.woff2`
+
+The editor's font picker is driven by this manifest, so a font is added or removed by uploading
+files, not by a code change (`apps/web/src/lib/editor-fonts.ts` reads it, and
+`lib/editor-font-library.ts` loads only the fonts a design uses).
+
+```
+fonts/
+  manifest.json
+  padauk/regular.woff2
+  padauk/bold.woff2
+  grotesk/regular.woff2
+```
+
+```json
+{
+  "version": 1,
+  "fonts": [
+    {
+      "slug": "padauk",
+      "name": "Padauk",
+      "shelf": "burmese",
+      "scripts": ["myanmar", "latin"],
+      "licence": { "name": "SIL Open Font License 1.1", "url": "https://scripts.sil.org/OFL" },
+      "files": [
+        { "weight": 400, "style": "normal", "file": "fonts/padauk/regular.woff2" },
+        { "weight": 700, "style": "normal", "file": "fonts/padauk/bold.woff2" }
+      ],
+      "enabled": true
+    }
+  ]
+}
+```
+
+Rules the editor enforces (a bad entry is skipped and named, never fatal — the same rule as
+`brushes.json`):
+
+| Field | Rule |
+| --- | --- |
+| `slug` | lowercase words joined by `-`; unique; also the folder name |
+| `name` | what the picker shows and what a layer stores; unique, ≤ 60 characters |
+| `shelf` | `sans`, `serif`, `display`, `script` or `burmese`; the picker lists them in that order |
+| `scripts` | `latin`, `myanmar`, or both; defaults to `latin`. The file is declared with a `unicode-range` per script, so a large Myanmar font is only downloaded for Myanmar text |
+| `files[].file` | **bucket-relative** `.woff2` path. Absolute URLs, `..` and other formats are refused |
+| `files[].weight` | 100–900, integer, default 400 |
+| `files[].style` | `normal` or `italic`, default `normal` |
+| `licence` | required: `name` plus a `url`. A font without a licence is not shipped |
+| `enabled` | `false` hides the font from the picker; designs already using it fall back |
+
+- **woff2 only.** It is the smallest and every current browser reads it; convert a `.ttf`/`.otf`
+  before uploading (`fonttools`: `pyftsubset Font.ttf --flavor=woff2 --output-file=regular.woff2`).
+- **Replacing a font:** add the version to the file name (`regular-2.woff2`) and update the
+  manifest, so a browser never serves a stale cached copy.
+- **Only fonts in use are loaded.** A design that uses none of the manifest's fonts downloads
+  nothing.
+- **Burmese:** Unicode only. Zawgyi text is not supported and is not converted (owner decision,
+  2026-11-22). Check the shaping of stacked consonants and medial signs on the canvas, the mockup
+  and the print sheet before switching a font on.
+- **CORS:** the font files are fetched by the page, so the bucket needs the site origin in its CORS
+  rule (§7). Without it the browser refuses the font and the editor falls back to a system font.
+- **Licence:** confirm commercial print use for each font before `enabled: true`.
+- **Print:** the press SVG either embeds the font (base64 woff2) or converts the text to outlines;
+  a downloaded PNG/SVG must show the chosen font, not a fallback.
 
 ### 3.3 Posts — `posts/<post-slug>.svg`
 

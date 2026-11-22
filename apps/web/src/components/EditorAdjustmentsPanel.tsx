@@ -8,9 +8,9 @@ import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
 import { IMAGE_PRINT_LEVEL_LABEL, type ImagePrintQuality } from "@/lib/editor-image-ppi";
 import { EditorTextArtwork } from "@/components/EditorLayerPreview";
+import { useEditorFontLibrary } from "@/lib/editor-font-library";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
-const EDITOR_FONTS = ["Inter", "Arial", "Georgia", "Impact", "Courier New", "Trebuchet MS", "Verdana", "Times New Roman"];
 const TOOL_LABELS: Record<EditorTool, string> = {
   move: "Move",
   hand: "Hand",
@@ -434,6 +434,8 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   const image = selectedLayer?.image;
   const shapeStyle = selectedLayer?.shape ? resolveEditorShapeStyle(selectedLayer.shape) : null;
   const [fontQuery, setFontQuery] = useState("");
+  // The hosted library replaces the eight system fonts once `fonts/manifest.json` exists in R2.
+  const fontLibrary = useEditorFontLibrary(text ? [text.fontFamily ?? EDITOR_TEXT_FONT_FAMILY] : []);
   const [recentFonts, setRecentFonts] = useState<string[]>([]);
   const [nextEffectId, setNextEffectId] = useState(1);
   const [appliedStyle, setAppliedStyle] = useState<string | null>(null);
@@ -445,8 +447,8 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
       : []) : [];
   const filteredFonts = useMemo(() => {
     const needle = fontQuery.trim().toLowerCase();
-    return EDITOR_FONTS.filter((font) => !needle || font.toLowerCase().includes(needle));
-  }, [fontQuery]);
+    return fontLibrary.names.filter((font) => !needle || font.toLowerCase().includes(needle));
+  }, [fontLibrary.names, fontQuery]);
   function toggleSection(section: string) { setOpenSection((current) => current === section ? "" : section); }
   function chooseFont(fontFamily: string) {
     onUpdateTextStyle({ fontFamily });

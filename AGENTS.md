@@ -359,6 +359,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `tests/editor-touch.cjs` clears `local_storage` for the origin at the start of every `load()`: with the restore in place, sections would otherwise inherit the previous section's layers and `[aria-label="Select Layer 1"]` would not exist.
 - `tests/product-mockup.test.cjs` asserts the draft call site by regex; changing the debounce body means updating that test too.
 
+## Font library (`apps/web/src/lib/editor-fonts.ts`, `editor-font-library.ts`)
+- The picker's fonts come from `<NEXT_PUBLIC_R2_PUBLIC_URL>/fonts/manifest.json`. No bucket address, a missing manifest or a broken one all end as an empty list, and `EDITOR_SYSTEM_FONTS` (the original eight) is shown instead — so nothing on screen changes until fonts are uploaded.
+- A layer stores the family **name** (`text.fontFamily`), and a manifest font loads as `@font-face` with `font-family: '<name>'`. Do not rewrite stored designs to a new family string.
+- `parseEditorFontManifest` skips an entry (naming it in `skipped`) when the slug is not lowercase-dashed, the name is missing or duplicated, the shelf is unknown, no file is a bucket-relative `.woff2`, or there is no licence.
+- Only fonts used by a text layer are fetched: `fontsInUse()` matches the first family of the CSS stack, ignores disabled fonts (their layers fall back to the stack) and `applyEditorFontFaces` never injects the same slug twice.
+- `unicode-range` splits Latin and Myanmar, so a large Myanmar file downloads only for Myanmar text.
+- Still open: the R2 upload + CORS rule, licence checks, font embedding in the design download / press SVG, and the admin-driven list.
+
 ## E4 / E6 helpers are groundwork only (plan decision)
 - `apps/web/src/lib/editor-align.ts` and `editor-snap.ts` are pure and unit-tested, but **nothing calls them yet**. The owner decided (2026-11-21) that align and snap target the per-mockup design areas, and both items wait for that discussion. Do not wire them to `ARTWORK_PRINT_AREA` or any panel control before that decision; it was wired once and reverted for exactly this reason.
 

@@ -102,6 +102,7 @@ import {
 } from "@/lib/editor-upload";
 import type { EditorProduct } from "@/lib/editor-product";
 import { designLayersHaveArtwork, readDesignDraftSnapshot, saveDesignDraft } from "@/lib/design-draft";
+import { useEditorFontLibrary } from "@/lib/editor-font-library";
 
 // The shared artwork space is 1000 x 1200 units; new text starts centred on it.
 const CANVAS_ARTWORK_CENTER = { x: 500, y: 600 };
@@ -592,6 +593,12 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>(["layer-1"]);
   const [mockups, setMockups] = useState<MockupSide[]>([]);
   const [layers, setLayers] = useState<EditorArtworkLayer[]>(() => [createEditorArtworkLayer("layer-1", "Layer 1")]);
+  // A hosted font is fetched only when a text layer asks for it, here and in the Adjustment box.
+  const textFontFamilies = useMemo(
+    () => layers.flatMap((layer) => (layer.text ? [layer.text.fontFamily ?? EDITOR_TEXT_FONT_FAMILY] : [])),
+    [layers],
+  );
+  useEditorFontLibrary(textFontFamilies);
 
   // The product page previews whatever design is open here, so the draft is kept in the
   // browser. Debounced because a brush stroke rewrites the layers on every pointer move.
