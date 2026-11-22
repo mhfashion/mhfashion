@@ -137,7 +137,7 @@ the owner approves an item before it starts.
 | # | Item | Why | Files | Size |
 |---|---|---|---|---|
 | E1 | Save the design, then hand it to the order | Save and Buy are dead buttons, the browser draft is never restored, and no order carries the artwork | `EditorHeaderBar2`, `EditorCanvas`, `lib/design-draft.ts`, the order payload | large |
-| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 14/14; the canvas is bounded to 972k px; items 5–7 verified in emulation) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
+| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 15/15; the canvas is bounded to 972k px; items 5–7 verified in emulation) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
 | E3 | Settle the `circle` preset — **done 2026-11-22** | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
 | E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
 | E5 | Flip horizontal and vertical — **done 2026-11-22; moves out of the Tools bar into the Adjustments panel (owner, 2026-11-22, see E22)** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar`, Adjustments panel | medium |
@@ -232,6 +232,14 @@ the owner approves an item before it starts.
   viewport are the header's own horizontal scroll container and the docked panels' scroll strips, which is
   what they are for. A tablet (768 x 1024) is therefore covered by the layout rules, not just the two
   sizes §7 names.
+- **Bug fixed 2026-11-22: a long Burmese word broke inside its syllables.** A word wider than the
+  wrap limit was split per code point, so `"မြန်မာနိုင်ငံ"` painted lines that began with `"ာ"` and `"်"` —
+  vowel signs and the asat hanging off nothing, and the artwork broke at different places than the
+  textarea. The split now runs over grapheme clusters (`editorTextGraphemes`, `Intl.Segmenter`) and merges
+  a cluster that opens with a combining mark back into the previous one, because UAX #29 gives a Myanmar
+  spacing mark its own cluster. Verified with `tests/editor-layers.test.cjs` (Myanmar and joined-emoji
+  cases) and in Chromium: a 130-code-point Burmese word at the default 110px/880 wrap paints 10 lines,
+  rejoins to the original string, and no line starts with a mark, on the canvas, the mockup and the preview.
 - Checklist for the real-device pass: (1) iPhone Safari opens `/create`, draws and holds many layers on the 4500 × 5400 canvas without the page reloading (browser canvas limits are not verified in the source); (2) Burmese text typed with the Text tool, in several fonts and with effects, renders correctly on the canvas, the mockup and the print sheet; (3) the on-screen keyboard never hides the text box or caret; (4) uploads from the gallery and camera, including photos over 10 MB; (5) every tool with one finger, a second finger never taking over, Pan view, `+` / `−` / Reset view; (6) the Layers box and Edit sidebar never overlap, and the bottom navigation and safe areas never cover the editor; (7) portrait to landscape, dark and light, 20 to 30 layers, and the 30-step undo limit; (8) a reload loses the working canvas today (E1) and is recorded as such.
 
 ### E3 — `circle` preset
@@ -866,9 +874,10 @@ rather than in the Tools bar.
 | `tests/wishlist.test.cjs` | 7 |
 | **All suites** | **505** |
 
-`tests/editor-touch.cjs` is the browser suite (14 sections, run against a live server): the draft
-reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, and a console guard
-that fails the run on any uncaught exception or `console.error`.
+`tests/editor-touch.cjs` is the browser suite (15 sections, run against a live server): the draft
+reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, a long Burmese word
+wrapping between grapheme clusters, and a console guard that fails the run on any uncaught exception or
+`console.error`.
 
 The last full run (`node --test tests/*.test.cjs`) reported 505 passing, 0 failing, against a server
 on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise).

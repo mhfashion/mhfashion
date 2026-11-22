@@ -54,6 +54,7 @@ const {
   updateLayerLastStroke,
   editorTextCanvasBounds,
   editorTextLines,
+  editorTextGraphemes,
   editorTextMetrics,
   resetEditorTextMeasurementCache,
   editorTextLineMetrics,
@@ -708,6 +709,19 @@ test("long text soft-wraps at the layer wrap width so it flows downward", () => 
   assert.ok(pieces.every((line) => editorTextLineWidth(longWord, line) <= 300), "no piece exceeds the limit");
 
   // Hard newlines are preserved, and each is wrapped independently.
+  // Myanmar vowel signs, medials and the asat attach to the cluster before them, so a break that
+  // lands inside one paints a line starting with a mark hanging off nothing.
+  const myanmar = editorTextLines({ ...base, value: "မြန်မာနိုင်ငံ", wrapWidth: 300 });
+  assert.ok(myanmar.length > 1, "a long word still breaks");
+  assert.equal(myanmar.join(""), "မြန်မာနိုင်ငံ", "no character is lost or doubled");
+  for (const line of myanmar) assert.ok(!/^\p{M}/u.test(line), `line "${line}" starts with a combining mark`);
+  assert.deepEqual(editorTextGraphemes("မြန်မာနိုင်ငံ"), ["မြ", "န်", "မာ", "နို", "င်", "ငံ"], "clusters carry their marks");
+  // A joined emoji is one grapheme, so it must never be cut in half.
+  const family = "👨‍👩‍👧‍👦";
+  const emoji = editorTextLines({ ...base, value: family.repeat(3), wrapWidth: 300 });
+  assert.deepEqual(emoji, [family, family, family], "a joined emoji stays whole");
+  assert.deepEqual(editorTextGraphemes(family), [family]);
+
   const mixed = editorTextLines({ ...base, value: "short\none two three four five six", wrapWidth: 900 });
   assert.equal(mixed[0], "short", "an explicit newline still starts a new line");
   assert.ok(mixed.length > 2, "the long second line wraps as well");

@@ -26,6 +26,8 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 
 ## Testing notes
 - `node --test tests/*.test.cjs` reports 460 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
+- The last section types a 130-code-point Burmese word and reads the painted `tspan`s (one `<text>` per
+  renderer, one `tspan` per painted line), so it fails if a line ever starts with a combining mark.
 - `tests/editor-touch.cjs` runs to the end and passes on a server built from current `main`; the phone **Edit sidebar** section used to throw on a `null` `getBoundingClientRect` and no longer does.
 - Production-UI checks can be driven headlessly with Chromium + CDP:
   `chromium --headless=new --no-sandbox --remote-debugging-port=9222 about:blank`,
@@ -422,7 +424,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `CANVAS_LAYER_TRAVEL_LIMIT` (2400 artwork units) bounds how far a layer can be dragged, so it stays reachable; the pasteboard is clamped to the same limit.
 - `MockupArtwork` now receives `layerOffsets`/`layerScales`/`layerOrigins`/`layerRotations` and mirrors the canvas, then clips the artwork to the print area with a `clipPath` in overlay coordinates (`printScale = BASE_ARTWORK_SCALE * safeTransform.scale`). A layer dragged off-canvas therefore disappears from the mockup exactly as it would print.
 
-## Phone and touch checks (`tests/editor-touch.cjs`, 14 sections)
+## Phone and touch checks (`tests/editor-touch.cjs`, 15 sections)
 - `EDITOR_CDP_URL` (default `http://127.0.0.1:9222`) must point at the Chromium started with `--remote-debugging-port`; the suite needs a server on port 3000.
 - `denseDesign()` covers 25 layers, the 30-step undo floor, a second finger placed mid-stroke, and a portrait→landscape rotation.
 - Every pointer handler guards `!event.isPrimary`, so a second touch cannot take over; the check asserts one stroke and ink no taller than the pencil width.
@@ -474,7 +476,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Both paths must keep working together. A press on the selection itself has to still drag it, so the box handler only re-picks when `!selectedLayerIds.includes(hitId)`.
 
 ## Text layers: downward writing, wrapping, and the ink-hugging box
-- `editorTextLines(text)` in `apps/web/src/lib/editor-layers.ts` is the single source of painted lines: it splits on `\n` and then soft-wraps each line to `text.wrapWidth`, breaking at spaces and falling back to a per-character split for a word wider than the limit. Fit is measured on `advance` (not ink `width`) so artwork line breaks match the browser's textarea wrapping.
+- `editorTextLines(text)` in `apps/web/src/lib/editor-layers.ts` is the single source of painted lines: it splits on `\n` and then soft-wraps each line to `text.wrapWidth`, breaking at spaces and falling back to `editorTextGraphemes(word)` for a word wider than the limit. Fit is measured on `advance` (not ink `width`) so artwork line breaks match the browser's textarea wrapping.
+- The fallback must break between **grapheme clusters**, never per code point. In Myanmar script the vowel signs, medials and the asat attach to the character before them, so `"မြန်မာနိုင်ငံ"` split per code point painted lines that began with `"ာ"` and `"်"` — marks hanging off nothing. `editorTextGraphemes` segments with `Intl.Segmenter` and then merges a cluster that opens with a combining mark back into the previous one, because UAX #29 puts a Myanmar spacing mark such as `"ာ"` (Mc) in its own cluster. Joined emoji (`👨‍👩‍👧‍👦`) also stay whole.
+- Verified in Chromium: a 130-code-point Burmese word at the default 110px/880 wrap paints 10 lines of one word each, the lines rejoin to the original string, and no line starts with a combining mark, in all three renderers (canvas, mockup, preview).
 - Every renderer must use it: `EditorLayerPreview.tsx` and the inline editor in `EditorCanvas.tsx` both do. Do **not** reintroduce `text.value.split("\n")` — that paints a long line as one unbroken run straight off the canvas.
 - New text gets `wrapWidth: DEFAULT_TEXT_WRAP_WIDTH` (880) from `addCanvasTextLayer`. Older layers have no `wrapWidth` and stay unwrapped, so existing artwork is not reflowed.
 - The inline editor's `foreignObject` height uses the wrapped line count and its width uses `wrapWidth ?? TEXT_EDIT_BOX_WIDTH`. Sizing from the newline count clipped soft-wrapped lines below the box, which read as "typing stopped working".

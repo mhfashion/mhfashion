@@ -791,6 +791,36 @@ async function main() {
     assert.equal(dimensions, "12px");
     console.log("PASS phone tiny artwork: repeated selected moves, distinct resize target and readable dimensions");
   }
+  /**
+   * A word wider than the wrap limit must break between grapheme clusters: in Myanmar script the
+   * vowel signs and the asat attach to the character before them, so a code-point split painted a
+   * line that began with a mark hanging off nothing.
+   */
+  async function burmeseWrapping() {
+    await load(1440, 900, false);
+    await clickMouse('button[aria-label="Text tool"]');
+    const centre = await evaluate(() => {
+      const r = document.querySelector('canvas[aria-label="Blank print canvas"]').getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    await clickPoint(centre);
+    await pause(400);
+    const word = "မြန်မာနိုင်ငံ".repeat(10);
+    await send("Input.insertText", { text: word });
+    await pause(400);
+    await evaluate(() => document.activeElement?.blur());
+    await pause(600);
+    const painted = await evaluate(() => [...document.querySelectorAll("svg text")]
+      .map((text) => [...text.querySelectorAll("tspan")].map((span) => span.textContent))
+      .filter((lines) => lines.length));
+    assert.equal(painted.length, 3, "the canvas, the mockup and the preview all paint the layer");
+    for (const lines of painted) {
+      assert.ok(lines.length > 1, "a word wider than the wrap limit breaks onto more than one line");
+      assert.equal(lines.join(""), word, "no character is lost or doubled by the wrap");
+      for (const line of lines) assert.ok(!/^\p{M}/u.test(line), `line "${line}" starts with a combining mark`);
+    }
+    console.log("PASS Burmese wrapping: a long word breaks between clusters on the canvas, the mockup and the preview");
+  }
   /** E2 checklist 7: a busy design, the 30-step undo floor, a second finger and a rotation. */
   async function denseDesign() {
     await load(390, 844, true);
@@ -890,6 +920,7 @@ async function main() {
     await tinyArtwork();
     await draftRestore();
     await denseDesign();
+    await burmeseWrapping();
     await load(740, 390, true);
     const landscape = await evaluate(() => {
       const v = document.querySelector('[aria-label="Editor viewport"]').getBoundingClientRect();

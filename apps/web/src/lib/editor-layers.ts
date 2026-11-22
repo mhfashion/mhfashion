@@ -418,6 +418,36 @@ export const EDITOR_TEXT_DEFAULT_LINE_HEIGHT = 1.2;
  * downward. Words break at spaces; a single word wider than the limit is split
  * by character so it can never overflow either.
  */
+/**
+ * A break has to land between grapheme clusters, not between code points: in Myanmar script the
+ * vowel signs, medials and the asat attach to the cluster before them, so `"မြန်မာနိုင်ငံ"` split per
+ * code point painted a line that began with `"ာ"` — a vowel sign hanging off nothing. The browser's
+ * own wrapping breaks on clusters, so this also keeps the textarea and the artwork in step.
+ */
+const editorTextGraphemeSegmenter = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
+  ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+  : null;
+
+/**
+ * UAX #29 puts a Myanmar spacing mark such as `"ာ"` in its own cluster (SpacingMark does not join the
+ * cluster before it), so a grapheme split alone still let a line begin with `"ာ"`. A cluster that opens
+ * with a combining mark belongs to the character before it, so it is merged back.
+ */
+const editorTextStartsWithMark = /^\p{M}/u;
+
+export function editorTextGraphemes(value: string): string[] {
+  if (!value) return [];
+  const clusters = editorTextGraphemeSegmenter
+    ? [...editorTextGraphemeSegmenter.segment(value)].map((entry) => entry.segment)
+    : [...value];
+  const graphemes: string[] = [];
+  for (const cluster of clusters) {
+    if (graphemes.length && editorTextStartsWithMark.test(cluster)) graphemes[graphemes.length - 1] += cluster;
+    else graphemes.push(cluster);
+  }
+  return graphemes;
+}
+
 export function editorTextLines(text: EditorTextContent): string[] {
   const limit = text.wrapWidth ?? 0;
   const hardLines = text.value.split("\n");
@@ -440,9 +470,9 @@ export function editorTextLines(text: EditorTextContent): string[] {
         continue;
       }
       if (current) wrapped.push(current);
-      // A single word longer than the limit is broken by character.
+      // A single word longer than the limit is broken between grapheme clusters.
       let piece = "";
-      for (const char of word) {
+      for (const char of editorTextGraphemes(word)) {
         if (piece && !fits(piece + char)) {
           wrapped.push(piece);
           piece = char;
