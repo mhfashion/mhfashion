@@ -17,7 +17,9 @@ editors.
 
 These two files (`Plan/EDITOR_PLAN.md` and `Doc/EDITOR.md`) are the whole editor plan and documentation.
 
-**Checked against the source on 2026-11-21** in `apps/web/src`.
+**Checked against the source on 2026-11-21** in `apps/web/src`, and refreshed on 2026-11-22 against `main` after the
+commits that added per-tool option boxes, text styles, 3D text materials, the effects gallery, the brush pack
+folder, keyboard undo, the resolution warning, flip, the Shape Builder booleans and the design download.
 
 ---
 
@@ -25,26 +27,26 @@ These two files (`Plan/EDITOR_PLAN.md` and `Doc/EDITOR.md`) are the whole editor
 
 | Piece | File | Lines |
 |---|---|---|
-| Route shell: site header, Header Bar 2, workspace | `app/create/page.tsx` | 25 |
-| Canvas: tools, selection, layers, mockups, undo | `components/EditorCanvas.tsx` | 2,983 |
-| Layer model, text metrics, shapes, gradients, masks | `lib/editor-layers.ts` | 1,847 |
-| Layers box | `components/EditorLayersPanel.tsx` | 327 |
-| Adjustment box | `components/EditorAdjustmentsPanel.tsx` | 438 |
-| Tool bar | `components/EditorToolsBar.tsx` | 256 |
-| Header bar: Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size, price, Save, Buy | `components/EditorHeaderBar2.tsx` | 397 |
+| Route shell: site header, Header Bar 2, workspace | `app/create/page.tsx` | 29 |
+| Canvas: tools, selection, layers, mockups, undo | `components/EditorCanvas.tsx` | 3,157 |
+| Layer model, text metrics, shapes, gradients, masks | `lib/editor-layers.ts` | 2,044 |
+| Layers box | `components/EditorLayersPanel.tsx` | 355 |
+| Adjustment box | `components/EditorAdjustmentsPanel.tsx` | 676 |
+| Tool bar | `components/EditorToolsBar.tsx` | 330 |
+| Header bar: Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size, price, Save, Buy | `components/EditorHeaderBar2.tsx` | 386 |
 | Edit sidebar | `components/EditorEditSidebar.tsx` | 338 |
 | Layer painting | `components/EditorArtworkLayers.tsx` | 332 |
-| Layer thumbnails | `components/EditorLayerPreview.tsx` | 274 |
+| Layer thumbnails | `components/EditorLayerPreview.tsx` | 364 |
 | Photo adjustments | `components/EditorPhotoAdjustments.tsx` | 261 |
 | Mockup mirror of the artwork | `components/MockupArtwork.tsx` | — |
 | Pen path geometry | `lib/editor-pen-path.ts` | 198 |
-| Transform maths | `lib/editor-transform.ts` | 97 |
+| Transform maths | `lib/editor-transform.ts` | 132 |
 | Canvas spec | `lib/editor-canvas-spec.ts` | 9 |
 | Artwork tiers | `lib/editor-artwork-tiers.ts` | 38 |
 | Upload limits and compression | `lib/editor-upload.ts` | 101 |
 | Price table | `lib/editor-price.ts` | 45 |
 | Product and GSM defaults | `lib/editor-product.ts` | 4 |
-| Print attributes | `lib/editor-attributes.ts` | 47 |
+| Print attributes | `lib/editor-attributes.ts` | 72 |
 | Design library placeholder | `lib/editor-design-library.ts` | 181 |
 
 ## 2. What works today
@@ -55,18 +57,20 @@ Checked item by item in the source.
 |---|---|
 | Print canvas | 4500 × 5400 px at 300 dpi, transparent, blank on open, frozen spec |
 | Workspace | pasteboard around the canvas, zoom 0.25×–3×, pan by wheel / Space / Hand tool, grid toggle |
-| Tools | Move, Hand, Pencil, Pen, Text, Brush, Eraser, Shape, Gradient; per-tool options, normalised on load |
+| Tools | Move, Hand, Pencil, Pen, Text, Brush, Eraser, Shape, Gradient; options normalised on load |
+| Tool options | every tool has a `Tool Options · <tool>` box at the top of the Adjustments panel (Brush/Pencil, Eraser, Pen, Text, Shape, Move, Gradient); a box writes one field at a time and merges into the stored settings |
 | Layers | five kinds; drag reorder; folders with nested children; rename, hide, lock; opacity, fill, blend mode; duplicate, delete |
 | Groups and links | group/ungroup with folder rows; link/unlink as transform membership |
 | Masks | non-destructive mask strokes (black hides, white reveals), painted with the brush, add/remove, thumbnail |
 | Eraser | brush mode and whole-stroke mode, stored as erasure passes, clearable |
 | Selection | content-derived box, eight resize handles, rotate handle, hit radius scaled to the box, 15° rotation snap |
 | Move | pick-and-drag, group drag, linked drag, arrow-key nudge, layers can be parked off-canvas and still grabbed |
-| Text | inline editor with wrapping, caret panning, per-layer styling, font search and recents, seven effect kinds with stacking, three decorations, arch and wave presets |
+| Text | inline editor with wrapping, caret panning, per-layer styling, font search and recents (eight system fonts), an effect stack of thirteen kinds (shadow, outline, glow, offset, echo, extrude, stripe, blur, gradient, pattern, hollow, bevel, gloss), three decorations, Plain/Arch/Wave warp (Arch and Wave are slants, see §4) |
+| Text styles | 31 one-click looks on Classic, Fill and 3D shelves (including Chrome 3D, Gold, Ice, Lava, Balloon, Jelly, Wood, Marble, LED); every tile and every effect row paints its own live preview through the canvas renderer; a style only writes an effect stack, so every part stays editable |
 | Text bounds | ink-based, grows with effects and decorations; verified to ≤1.1 px in browser frame differencing |
 | Shapes | nine presets, stroke/fill/line style/rounding/shadow/glow, builder merge/subtract/intersect on rectangles |
 | Pen | anchors with Bézier handles, drag handles (Alt breaks symmetry), insert and remove nodes, finish with Enter, discard with Escape |
-| Brush | size, hardness, flow, spacing, round/square, blend modes, presets, smoothed strokes |
+| Brush | per-tool options box: preset chips painted as rows of dabs, nib (tip, size, angle, roundness), paint (opacity, flow, spacing, smoothing), edge (softness, feather), shape dynamics (size, opacity, angle and roundness jitter, scatter, fade-out), dab blend, reset; strokes smoothed as drawn |
 | Gradients | five types, up to eight stops, presets, on-canvas axis, thumbnails |
 | Images | client-side compression (2 MB, 2000 px), nine photo-adjustment groups, non-destructive values, masks |
 | Mockups | Front and Back boxes with connectors, artwork mirror clipped to the print area, independent overlay transforms, shared 3500 px tier |
@@ -90,6 +94,7 @@ Each of these was a real defect once. Keep them when changing the editor.
 8. Mockup artwork is clipped to the print area.
 9. Print geometry (4500 × 5400 px, `unitsPerCm`, layer records) is a contract with the press.
 10. The shared header's language and currency pills always show the active option.
+11. A new text effect kind needs a default in `effectSample` and `EffectTile`, or its tile paints empty; the renderer and the bounds share `editorTextEffects` and `editorTextPaintPadding`, so a new kind must extend the padding too.
 
 ## 4. Verified gaps
 
@@ -100,12 +105,13 @@ What the code does not do, with the evidence.
 | No save button and no restore | Save and Buy are `disabled` in `EditorHeaderBar2`. The only persistence is the browser draft (`saveDesignDraft` in `lib/design-draft.ts`, called from `EditorCanvas` on a 400 ms debounce), and `/create` never reads it back: `readDesignDraft` is only used by `ProductDetailClient`, so a reload starts on one blank layer while the old draft stays in `localStorage`. `clearDesignDraft` is exported but never called, nothing reaches the database, and `/create` ignores the `?product=` it is given |
 | No design hand-off to an order | the editor never writes a design; the admin order record is built from the demo store, not from `/create` |
 | Undo is layer-only | `undoStack`/`redoStack` hold `EditorArtworkLayer[][]`; viewport and mockup positions are outside it |
-| No keyboard undo | only the tool-bar buttons; there is no `Ctrl+Z` handler |
-| `circle` text preset paints nothing | `editorTextPresetTransform` returns `undefined` for `none` and `circle`; the Adjustment box still offers it |
-| Shape Builder is rectangle-only | `applyEditorShapeBuilderOperation` parses only axis-aligned `M … H … V … H … Z` rectangles and uses the first two paths |
+| Arch and Wave do not bend text | `editorTextPresetMatrix` returns one shear matrix for the whole text block (6° for Arch, 4° for Wave); no glyph follows a curve. The `circle` option is no longer offered and survives only as a legacy stored value |
+| Only eight fonts, none Burmese | `EDITOR_FONTS` in `EditorAdjustmentsPanel.tsx` lists Inter, Arial, Georgia, Impact, Courier New, Trebuchet MS, Verdana and Times New Roman; no web font is loaded (no `next/font`, no `@font-face`), so the painted font depends on the viewer's device, and no Myanmar font is offered |
+| Brush packs are a contract only | `public/brushes/README.md` defines `brushes.json` and tip files, `brushes.json` is empty, and no code reads it |
+| No stylus or finger pressure | no `pressure` in the source |
+| No eyedropper | none in the source |
+| No tool shortcut keys | the only shortcuts are Space, arrows, Enter, Escape and undo/redo; no brush-size cursor was found in the canvas code |
 | No align, tidy or distribute | no helper in `lib/`, no control in the panels |
-| No flip | no horizontal or vertical flip on any layer kind |
-| No hover highlight | canvas → panel selection sync exists; hovering neither side highlights the other |
 | No positional snapping | only `snapEditorRotationDelta` (15°); no guides, no edge or centre snapping |
 | No context menu | no right-click menu on the canvas or the Layers box |
 | No glyph, uppercase or ligature controls | none in the text controls |
@@ -140,6 +146,11 @@ the owner approves an item before it starts.
 | E14 | Image resolution warning — **done 2026-11-22** | a photo enlarged past what the press can print sharply is only discovered after printing | `lib/editor-image-ppi.ts`, `editor-layers`, `EditorCanvas`, Layers box, Adjustment box | small |
 | E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium — **step 1 done 2026-11-22** (one vocabulary); the admin-driven chain still waits for the database |
 | E16 | Download my design — **done 2026-11-22** | the customer had no copy of the artwork; the press bundle was the only file | `lib/design-export.ts`, `EditorDesignExport`, `EditorToolsBar` | small |
+| E17 | Font library, including Burmese fonts | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, admin, print export | medium |
+| E18 | Text effects, round 2 | more looks and finer control for the effect stack | `editor-layers`, `EditorLayerPreview`, `EditorAdjustmentsPanel` | medium |
+| E19 | A real text bend | Arch and Wave only slant the text | `editor-layers`, renderer, bounds, print | medium |
+| E20 | Brushes, round 2 | brush packs, pressure, stabiliser and a size cursor | Brush box, `public/brushes`, `EditorCanvas` | medium |
+| E21 | Tool adjustments, polish | numeric entry, reset, shortcuts, eyedropper, richer Pen and Shape boxes, phone layout | `EditorAdjustmentsPanel`, `EditorToolsBar`, `EditorCanvas` | medium |
 
 ### E1 — Save and order hand-off
 
@@ -404,6 +415,115 @@ the owner approves an item before it starts.
   intersect one 4-point ring, exclude one path of two 6-point rings, and the transform box shrinks and
   grows with the result (210x251 → 190x191 → 90x91 → 210x251 px).
 
+### E17 — Font library, including Burmese fonts  *(proposed, 2026-11-22)*
+
+- **Facts checked in the source:** the font list is eight names, all system fonts; none is a Myanmar font; no
+  font file is loaded anywhere, so the font a layer paints with depends on the device. `Doc/PRINT-BUNDLE.md`
+  says text stays text in the print SVG and is converted to outlines only if the press lacks the font.
+- **Proposal:** a hosted font library. Font files (woff2) are self-hosted and loaded by the editor, the
+  mockups and the print sheet, so all three show the same letters. Fonts sit on shelves (Sans, Serif,
+  Display, Script, Burmese). The shop adds and removes fonts from the admin dashboard, as E15 does for the
+  header choices. Only fonts in use are loaded.
+- **Burmese:** a few open-licence Myanmar families offered as a shelf; the licence of each font is checked
+  before it ships (open-licence fonts such as Padauk and the Noto Myanmar families are the usual candidates).
+  Unicode is the supported encoding; Zawgyi text is not converted (decision D10).
+- **Print:** at export time the text is converted to outlines, or the font file is embedded, so the press
+  never lacks a font.
+- Acceptance: Burmese text shows correct shaping (stacked consonants, medial signs, vowel order) on the canvas,
+  the mockup and the print sheet, with and without effects; a font removed in the admin still renders on
+  existing designs; the editor does not load fonts it does not use; checked on Web and Phone, EN and MM.
+
+### E18 — Text effects, round 2  *(proposed, 2026-11-22)*
+
+Today an effect holds colour, a second colour, offset, blur, width, count, distance, angle and opacity, and the
+stack has thirteen kinds. Proposed additions, each with its own tile, row thumbnail, default and paint padding
+(contract 11):
+
+1. **Inner shadow and inner glow** — depth inside the letters, the missing piece of many 3D looks.
+2. **Outline options** — position (outside, centre, inside), join (round, mitre) and a second outline for a
+   double-outline look. An outline has only colour and width today.
+3. **Backdrop plate** — a rounded rectangle or pill behind the text with padding, radius and colour, for
+   label and sticker looks.
+4. **Image or texture fill** — the glyphs show a photo or texture instead of a flat colour.
+5. **Distress** — a grain mask removes parts of the letters for the vintage apparel look; the textures arrive
+   through a drop folder like the brush packs.
+6. **Pattern controls** — size, spacing and angle for dots, grid and checker, plus stripes, diagonals, stars
+   and waves, and a halftone dot that changes size across the letters.
+7. **Per-effect blend mode** (opacity already exists).
+8. **Stack tools** — duplicate an effect, copy a stack from one text layer to another, and save the current
+   stack as "my style".
+9. **More styles** on the shelves for the new kinds (for example a Retro, a Neon and a Distress shelf). A glitch
+   or RGB-split look needs no new kind; it is a preset of existing offsets.
+- **Print caution:** effects that rely on soft transparency (large blur, glow, soft shadow) can print
+  differently on a dark garment depending on the print method. Ask the print desk which effects are safe, and
+  consider previewing the design on a dark and a light garment colour.
+- Acceptance: for each kind the tile paints, the row thumbnail paints, the transform box contains all paint
+  (frame differencing, ≤1.1 px), the effect survives save and reload (once E1 lands), Burmese text keeps its
+  clusters intact under the effect, and it works at 1440 × 900 and 390 × 844.
+
+### E19 — A real text bend  *(proposed, 2026-11-22)*
+
+- **Fact:** `editorTextPresetMatrix` returns one shear matrix (6° Arch, 4° Wave). The whole block leans; nothing
+  curves. The Warp tiles therefore preview a slant.
+- **Proposal:** real bends — Arc up and down, Circle, Wave, Flag, Rise, Bulge and Pinch — each with a Bend
+  amount from −100 to +100. The Plain option stays.
+- **Method (decision D11):** lay the text along a curve in the renderer (an SVG text path for Arc, Circle and
+  Wave, per-cluster placement for Flag and Bulge). The transform box and the print export must follow the
+  bent ink (contract 1).
+- **Burmese:** complex-script text can break when it is split into single characters, so clusters must stay
+  whole; if bending Burmese cannot be made correct on the supported browsers, the bend stays off for text that
+  contains Myanmar until it is verified.
+- Acceptance: each bend paints on the canvas, the tile, the mockup and the print export identically; the box
+  contains the ink; Bend 0 equals Plain; Burmese and Latin text both checked on Web and Phone.
+
+### E20 — Brushes, round 2  *(proposed, 2026-11-22)*
+
+- **Fact:** the Brush box already has presets, nib, paint, edge and shape-dynamics controls. The brush pack
+  contract (`public/brushes/README.md`) exists but nothing reads it yet.
+- **Wire the brush pack:** the Brush box builds its gallery from `brushes.json` (a bad row is skipped, not
+  fatal), shelved by `group`, with PNG stamp tips tinted to the brush colour and SVG vector tips.
+- **A starter set:** Ink (pen, marker), Dry media (chalk, charcoal, pencil), Airbrush, Splatter, Texture (grain,
+  sponge) and Shape (stars, leaves). The owner supplies them or chooses open-licence tips; each licence is
+  checked.
+- **Pressure:** the pointer's pressure drives size and opacity when a stylus or pressure-capable screen
+  reports it, with an on/off switch per brush; no pressure is read today. Fingers report none, so the feature
+  is optional.
+- **Stabiliser:** a smoothing-by-lag slider for shaky hands, mostly useful on a phone.
+- **Nib cursor:** a circle or tip outline at the real size for the current zoom while the Brush, Pencil or
+  Eraser is active.
+- **Colour dynamics:** hue, saturation and brightness jitter alongside the existing jitters.
+- **My brushes:** save the current settings as a named preset; a symmetry (mirror) mode may follow.
+- Acceptance: a dropped pack appears without a code change and a malformed entry is skipped; a stamp brush
+  draws the tip at the right size, spacing and angle; the Eraser can use the same tips; pressure, stabiliser and
+  cursor work on Web and Phone; strokes still print identically to the canvas.
+
+### E21 — Tool adjustments, polish  *(proposed, 2026-11-22)*
+
+1. **Number fields:** every slider gets a number field, step arrows, a per-field reset (double-click) and
+   arrow-key stepping (Shift for ×10); the value shows while dragging.
+2. **Shortcut keys:** V Move, H Hand, B Brush, N Pencil, P Pen, T Text, E Eraser, U Shape, G Gradient, I
+   Eyedropper, `[` and `]` for brush size, X to swap colours, D for the default colours; each is shown in the
+   tool tooltip and is ignored while a field has focus (the same rule as E13).
+3. **Eyedropper:** pick a colour from the canvas or the mockup; the browser's EyeDropper API where it exists,
+   canvas sampling elsewhere.
+4. **Pen box:** join style, line style (solid, dashed, dotted), end shapes for open paths, and a separate fill
+   for closed paths. Today it holds width, width presets and cap.
+5. **Shape box:** defaults for fill, stroke, width and corner radius, star points and polygon sides, and a hint
+   for the modifier keys (Shift keeps proportions, Alt draws from the centre). Today it holds only the presets.
+6. **Text box:** a default text style for new text, default line height and wrap width, next to size, font,
+   weight, alignment, spacing and colour.
+7. **Gradient box:** an angle field and the stop editor reachable from the tool box, plus opacity.
+8. **Reset everywhere:** every box gets a reset to its tool defaults; the Brush/Pencil box has one today and
+   the other boxes list none.
+9. **Presets and recents:** the shop's own saved presets per tool (save, rename, delete) and the last six
+   colours and fonts.
+10. **Phone:** a tool's options open as a bottom sheet with large sliders, one box at a time, never hiding the
+    canvas, 44 px targets.
+11. **Persistence (decision for the owner):** whether tool settings survive a reload.
+- Acceptance: each item works with mouse, touch and keyboard; the values stay in range after typing; settings
+  are never lost when another field changes (`updateToolOptions` merges per field); Web at 1440 × 900 and Phone
+  at 390 × 844; the Tool Options tests grow with each box.
+
 ## 6. Decisions for the owner
 
 | # | Question | Recommendation |
@@ -417,6 +537,9 @@ the owner approves an item before it starts.
 | D7 | Do the pre-filled header defaults count as chosen for the Buy gate (E12)? | Yes: only Color is empty today, and the gate exists to stop an order missing a value, which a default never does |
 | D8 | Raise the 2000 px upload cap (E14)? | Raise it, or keep the original at order time. At the cap a photo is already about 139 to 167 ppi at the default size, so the warning would fire on nearly every photo; raising it needs the real-device check in E2 |
 | D9 | Fit Type is a priced post attribute but has no box in the editor header. Where does the customer choose it, and is it required before Buy? (Owner, 2026-11-21: Sleeve has not been decided to be added, so it is outside this question.) | Settle this before E1: the order must carry whatever the price depends on |
+| D10 | Which Burmese fonts, and is Zawgyi text supported? (E17) | Offer a short list of open-licence Unicode fonts, check each licence, and treat Zawgyi as out of scope |
+| D11 | How is the text bend built? (E19) | An SVG text path for Arc, Circle and Wave; per-cluster placement for Flag and Bulge; keep it off for Burmese until verified |
+| D12 | Who supplies the starter brush tips? (E20) | The owner supplies the ones they own; the rest come from open-licence packs, each licence checked |
 
 ### Owner decisions recorded (2026-11-21)
 
@@ -431,6 +554,7 @@ the owner approves an item before it starts.
    missing.
 7. The header holds eight selection boxes, as listed in §2.
 8. The choices behind the header boxes, and the rules between them, must be changeable from the admin dashboard, not fixed in code (E15).
+9. More text effects, more brushes and better tool adjustments are wanted (owner request, 2026-11-22). E17 to E21 are proposals; none is approved to start.
 
 ## 7. Verification and change policy
 
