@@ -13,11 +13,15 @@ function loadCanvasSpec() {
   }).outputText;
   const module = { exports: {} };
   new Function("module", "exports", compiled)(module, module.exports);
-  return module.exports.PRINT_CANVAS_SPEC;
+  return module.exports;
+}
+
+function loadCanvasModule() {
+  return loadCanvasSpec();
 }
 
 test("print canvas is a blank fixed transparent 4500×5400 PNG target at 300 DPI", () => {
-  const spec = loadCanvasSpec();
+  const spec = loadCanvasModule().PRINT_CANVAS_SPEC;
   assert.deepEqual(spec, {
     widthPx: 4500,
     heightPx: 5400,
@@ -28,4 +32,16 @@ test("print canvas is a blank fixed transparent 4500×5400 PNG target at 300 DPI
     startsBlank: true,
   });
   assert.equal(Object.isFrozen(spec), true);
+});
+
+test("the on-screen canvas keeps the print area's shape at a size a phone can allocate", () => {
+  const { PRINT_CANVAS_SPEC, PRINT_CANVAS_BACKING_SPEC } = loadCanvasModule();
+  assert.equal(
+    PRINT_CANVAS_BACKING_SPEC.widthPx / PRINT_CANVAS_BACKING_SPEC.heightPx,
+    PRINT_CANVAS_SPEC.widthPx / PRINT_CANVAS_SPEC.heightPx,
+    "a different ratio would squash the print area on screen",
+  );
+  const area = PRINT_CANVAS_BACKING_SPEC.widthPx * PRINT_CANVAS_BACKING_SPEC.heightPx;
+  assert.ok(area <= 16_777_216, `the backing store must fit the 16.7 M px iOS limit, got ${area}`);
+  assert.ok(area < PRINT_CANVAS_SPEC.widthPx * PRINT_CANVAS_SPEC.heightPx, "and stay far below the print size");
 });

@@ -17,7 +17,7 @@ import {
   reconcileLargeArtworkTier,
   releaseLargeArtworkTier,
 } from "@/lib/editor-artwork-tiers";
-import { PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
+import { PRINT_CANVAS_BACKING_SPEC, PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
 import { editorHistoryShortcut } from "@/lib/editor-shortcuts";
 import { imagePrintQuality, imagePrintLevelRank } from "@/lib/editor-image-ppi";
 import type { ImagePrintQuality } from "@/lib/editor-image-ppi";
@@ -2729,8 +2729,8 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
               <div className="relative">
                 <canvas
                   ref={canvasNodeRef}
-                  width={PRINT_CANVAS_SPEC.widthPx}
-                  height={PRINT_CANVAS_SPEC.heightPx}
+                  width={PRINT_CANVAS_BACKING_SPEC.widthPx}
+                  height={PRINT_CANVAS_BACKING_SPEC.heightPx}
                   data-canvas-width={PRINT_CANVAS_SPEC.widthPx}
                   data-canvas-height={PRINT_CANVAS_SPEC.heightPx}
                   data-resolution-dpi={PRINT_CANVAS_SPEC.resolutionDpi}

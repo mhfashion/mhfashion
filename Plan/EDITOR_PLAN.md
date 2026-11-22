@@ -182,6 +182,13 @@ the owner approves an item before it starts.
 - Acceptance: `tests/editor-touch.cjs` passes end to end, and a written note records the devices, OS
   versions and what was checked.
 - Owner decision (2026-11-21): this item is done by testing on real devices and fixing what is found, not by emulation alone.
+- **Source half done 2026-11-22: the canvas limit is bounded.** Checklist item (1) is a real risk in the code:
+  the print canvas was a `<canvas width=4500 height=5400>`, a 24.3 million pixel backing store (~97 MB), and
+  older iOS refuses a canvas above 16.7 million pixels. Nothing draws into that bitmap — the artwork paints in
+  the SVG layers above it — so the element now takes `PRINT_CANVAS_BACKING_SPEC` (900 x 1080, 972k px) and keeps
+  the print size in `PRINT_CANVAS_SPEC` and the `data-canvas-*` attributes. Verified in Chromium at 1440x900 and
+  390x844: backing store 900x1080, `data-canvas-width/height/dpi` still 4500/5400/300, the on-screen box
+  unchanged at 292x350 (ratio 0.834). The physical-device pass still has to confirm it on hardware.
 - Checklist for the real-device pass: (1) iPhone Safari opens `/create`, draws and holds many layers on the 4500 × 5400 canvas without the page reloading (browser canvas limits are not verified in the source); (2) Burmese text typed with the Text tool, in several fonts and with effects, renders correctly on the canvas, the mockup and the print sheet; (3) the on-screen keyboard never hides the text box or caret; (4) uploads from the gallery and camera, including photos over 10 MB; (5) every tool with one finger, a second finger never taking over, Pan view, `+` / `−` / Reset view; (6) the Layers box and Edit sidebar never overlap, and the bottom navigation and safe areas never cover the editor; (7) portrait to landscape, dark and light, 20 to 30 layers, and the 30-step undo limit; (8) a reload loses the working canvas today (E1) and is recorded as such.
 
 ### E3 — `circle` preset
@@ -647,7 +654,7 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | `tests/editor-attributes.test.cjs` | 8 |
 | `tests/editor-pen-path.test.cjs` | 6 |
 | `tests/editor-price.test.cjs` | 4 |
-| `tests/canvas-spec.test.cjs` | 1 |
+| `tests/canvas-spec.test.cjs` | 2 |
 | `tests/design-draft.test.cjs` | 7 |
 | `tests/editor-align.test.cjs` | 8 |
 | `tests/editor-snap.test.cjs` | 8 |
@@ -655,5 +662,5 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 | `tests/editor-font-audit.test.cjs` | 5 |
 | `tests/editor-touch.cjs` | browser flow (desktop and phone), including a reload that must restore the draft |
 
-The last full run (`node --test tests/*.test.cjs`) reported 501 passing, 0 failing, against a server on
+The last full run (`node --test tests/*.test.cjs`) reported 502 passing, 0 failing, against a server on
 port 3000.

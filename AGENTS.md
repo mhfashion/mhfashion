@@ -266,6 +266,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `Validate and deploy MH Fashion` on `main` also fails for the missing-secrets reason described above.
 - The session `GITHUB_TOKEN` is **read-only** on this repo (`Resource not accessible by integration`): push, PR edits, and comments all return 403. Ask the owner for a PAT with `contents: write` when a push is required; it works for `git push` but not for PR body edits or comments unless it also has `pull_requests: write`.
 
+## The print canvas element
+- `<canvas aria-label="Blank print canvas">` is a **layout box**, not a bitmap: the artwork paints in the SVG layers above it and nothing calls `getContext`. Its backing store is `PRINT_CANVAS_BACKING_SPEC` (900x1080 = 972k px) because a real 4500x5400 store is 24.3 M px (~97 MB) and older iOS refuses a canvas above 16.7 M px. The print size lives in `PRINT_CANVAS_SPEC` and the `data-canvas-*` attributes, so keep those when changing the display size. Verified: backing 900x1080, attributes 4500/5400/300, on-screen box unchanged.
+
 ## Text Free Transform box (`apps/web/src/lib/editor-layers.ts`)
 - `editorTextBounds` / `editorTextCanvasBounds` must contain everything the layer paints, not just the glyph ink. `editorTextPaintPadding(text)` returns how far each painted effect (outline stroke, shadow/echo offset, glow, extrusion) and the strike-through/cut/oblique decoration reaches past the ink; the bounds grow by it on all four sides.
 - `editorTextEffects(text)` resolves the painted effect list (explicit `effects`, else the legacy `textEffect` preset) for both the renderer and the bounds — keep them sharing it, or the box and the paint drift apart again.
