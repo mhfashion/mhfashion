@@ -1306,8 +1306,19 @@ proposal, not an approved order.
     on the press sheet (`tests/order-qr.test.cjs`). **Reprint flow shipped:** every run of the press
     sheet is recorded on the order (`AdminOrder.reprints`, `recordOrderReprint`), the sheet prints
     "First print" or "Reprint N" with who ran it, and the order drawer shows the count and switches its
-    button to "Reprint sheet". Still open: a customer refund request flow (today `/returns` and
-    `/contact` are the only channel), and any barcode a specific scanner needs.
+    button to "Reprint sheet".
+    **Refund requests shipped 2026-11-22:** the customer asks from Account → Order History → "Request a
+    refund" on the order itself (`lib/order-refunds.ts`), so the claim sits with the garment instead of a
+    second inbox. The reasons are exactly what `/returns` covers — misprint, wrong colour or size we sent,
+    damaged, never arrived — and **not** a change of mind, which the form says out loud. An order can ask
+    once while a request is open; an unpaid, cancelled or already-refunded order says why it cannot. The
+    admin order drawer lists the requests ("1 waiting"), approves or declines, and a decline needs a reply
+    the customer then sees under the request. Approving moves the order to `Refunded`, the stage the revenue
+    figures already exclude, and records who decided and when. `/returns` now points at the flow. Checked in
+    Chromium end to end: request from the account page, the drawer shows it, an empty decline is refused,
+    and approving leaves `stage: Refunded` with the decision stamped. `tests/order-refunds.test.cjs` covers
+    the reasons against the published policy, the blockers, one-open-request, approve/decline, the queue
+    order and the read repair. Still open: any barcode a specific scanner needs.
 14. **Operations:** error monitoring, Supabase backups. **Timestamps are done:** everything is stored
     as UTC ISO strings and every admin screen and printable document shows them in `Asia/Yangon`
     (`YANGON_TIME_ZONE`), so the device clock cannot change an hour or move an order to another day.

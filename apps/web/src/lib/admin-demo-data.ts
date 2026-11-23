@@ -19,6 +19,7 @@ import {
   normalizeCascadeRules,
   type AttributeCascadeRule,
 } from "@/lib/attribute-rules";
+import { normalizeRefundRequests, type AdminOrderRefundRequest } from "@/lib/order-refunds";
 
 export const ADMIN_DEMO_DATA_KEY = "mh-fashion-admin-demo-data-v1";
 
@@ -170,6 +171,8 @@ export type AdminOrder = {
   note: string;
   /** Every run of the press sheet, oldest first; the last `MAX_ORDER_REPRINTS` are kept. */
   reprints?: AdminOrderReprint[];
+  /** Refund requests the customer raised from their account, oldest first. */
+  refundRequests?: AdminOrderRefundRequest[];
 };
 
 const DESIGN_INKS = ["#2f7d32", "#c08a2e", "#203459", "#b83219", "#4b3f8f", "#1f7a6d", "#8a1f5c", "#33413a"];
@@ -2034,7 +2037,10 @@ export function readAdminDemoData(): AdminDemoData {
       if (parsed && parsed.version === 1 && Array.isArray(parsed.orders) && Array.isArray(parsed.products)) {
         // Entries saved before the Posts module existed have no tshirtPosts key.
         const products = Array.isArray(parsed.products) ? parsed.products : [];
-        const orders = parsed.orders.map((order) => backfillOrderPrintSpec(order, products));
+        const orders = parsed.orders.map((order) => ({
+          ...backfillOrderPrintSpec(order, products),
+          refundRequests: normalizeRefundRequests(order.refundRequests),
+        }));
         cache = {
           ...parsed,
           designTakedowns: Array.isArray(parsed.designTakedowns) ? parsed.designTakedowns : [],

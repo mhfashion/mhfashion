@@ -152,7 +152,8 @@ export const INFO_PAGES: Record<string, InfoPage> = {
       {
         heading: "How to report it",
         body: [
-          "Use the contact page and include the order number and a photo. We reprint or refund once we can see the fault; the order keeps its record either way.",
+          "Open your account, choose Order History and press Request a refund on the order: pick what went wrong, say what happened, and the print desk answers within one working day.",
+          "If you would rather write, use the contact page with the order number and a photo. We reprint or refund once we can see the fault; the order keeps its record either way.",
         ],
       },
       {

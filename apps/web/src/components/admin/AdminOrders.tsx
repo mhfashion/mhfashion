@@ -17,6 +17,9 @@ import {
 import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { downloadDeliveryJson } from "@/lib/delivery";
 import {
+  decideRefund, pendingRefundRequests, refundReasonLabel, type AdminOrderRefundRequest,
+} from "@/lib/order-refunds";
+import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
   adminDayKey, adminDayLabel, adminTodayKey, buildMockupDiagramSvg, designLayerSize,
   formatAdminDateTime, formatKs, nextOrderStage,
@@ -65,6 +68,7 @@ export default function AdminOrders() {
   const [sort, setSort] = useState<AdminOrderSort>("Newest first");
   const [openId, setOpenId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [refundReply, setRefundReply] = useState("");
 
   // The QR on a printed sheet links to `/admin?order=…`. Read it after mount so the server render
   // and the first client render agree; the panel opens on the next paint.
@@ -100,9 +104,23 @@ export default function AdminOrders() {
   const nextStage = selected ? nextOrderStage(selected.stage) : null;
   const queueUnits = data.orders.filter((order) => !["Delivered", "Cancelled", "Refunded"].includes(order.stage)).reduce((total, order) => total + orderUnits(order), 0);
 
+  const refundQueue = useMemo(() => pendingRefundRequests(data.orders), [data.orders]);
+
   function openOrder(order: AdminOrder) {
     setOpenId(order.id);
     setNoteDraft(order.note);
+    setRefundReply("");
+  }
+
+  function answerRefund(order: AdminOrder, request: AdminOrderRefundRequest, decision: "Approved" | "Declined") {
+    updateAdminData((current) => {
+      const target = current.orders.find((entry) => entry.id === order.id);
+      if (!target) return current;
+      const result = decideRefund(target, request.id, decision, getDemoAdminSession()?.name ?? "Admin", new Date().toISOString(), refundReply);
+      if (result.issues.length) return current;
+      return replaceOrder(current, result.order);
+    });
+    setRefundReply("");
   }
 
   function advance(order: AdminOrder) {
@@ -256,7 +274,14 @@ export default function AdminOrders() {
                     <td className="px-3 py-2.5 text-[#727d8a]">{order.items.map((item) => `${item.name} ×${item.quantity}`).join(", ")}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-[#394250]">{formatKs(orderTotalKs(order))}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[#727d8a]">{order.payment}</td>
-                    <td className="px-3 py-2.5"><AdminBadge tone={STAGE_TONES[order.stage]}>{order.stage}</AdminBadge></td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <AdminBadge tone={STAGE_TONES[order.stage]}>{order.stage}</AdminBadge>
+                        {order.refundRequests?.some((request) => request.status === "Requested")
+                          ? <AdminBadge tone="amber">Refund asked</AdminBadge>
+                          : null}
+                      </div>
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[#919aa6]">{formatAdminDateTime(order.placedAt)}</td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-right sm:px-5">
                       <div className="inline-flex items-center gap-1.5">
@@ -313,6 +338,41 @@ export default function AdminOrders() {
                 <div><dt className="text-[#87909b]">Press sheet</dt><dd className="font-semibold text-[#394250]">{pressSheetLabel(selected)}</dd></div>
               </dl>
             </div>
+
+            {selected.refundRequests?.length ? (
+              <div data-order-refunds>
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#7b8492]">
+                  Refund requests {refundQueue.length ? `· ${refundQueue.length} waiting` : ""}
+                </h3>
+                <div className="space-y-2">
+                  {[...(selected.refundRequests ?? [])].reverse().map((request) => (
+                    <div key={request.id} data-order-refund={request.status} className="rounded-xl border border-[#edf0f3] bg-[#fafbfc] p-2.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <AdminBadge tone={request.status === "Requested" ? "amber" : request.status === "Approved" ? "green" : "slate"}>{request.status}</AdminBadge>
+                        <p className="text-[10px] font-bold text-[#27303b]">{refundReasonLabel(request.reason)}</p>
+                        <span className="ml-auto text-[9px] text-[#87909b]">{formatAdminDateTime(request.at)}</span>
+                      </div>
+                      {request.note ? <p className="mt-1 text-[10px] leading-snug text-[#505a68]">{request.note}</p> : null}
+                      {request.status === "Requested" ? (
+                        <div className="mt-2">
+                          <AdminTextarea aria-label="Reply to the refund request" rows={2} value={refundReply} onChange={(event) => setRefundReply(event.target.value)} placeholder="What the customer should know (required to decline)" />
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            <AdminButton compact onClick={() => answerRefund(selected, request, "Approved")} aria-label="Approve the refund"><Check size={12} /> Refund it</AdminButton>
+                            <AdminButton compact variant="secondary" onClick={() => answerRefund(selected, request, "Declined")} aria-label="Decline the refund"><X size={12} /> Decline</AdminButton>
+                          </div>
+                          <p className="mt-1 text-[9px] text-[#9aa2ae]">Refunding moves the order to Refunded, which the revenue figures already exclude.</p>
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-[9px] text-[#87909b]">
+                          {request.status} by {request.decidedBy ?? "—"} · {request.decidedAt ? formatAdminDateTime(request.decidedAt) : "—"}
+                          {request.reply ? ` · “${request.reply}”` : ""}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div>
               <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#7b8492]">Items</h3>

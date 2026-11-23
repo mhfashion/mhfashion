@@ -416,6 +416,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Refund requests (`apps/web/src/lib/order-refunds.ts`)
+- The customer asks from Account → **Order History** (the tab label comes from i18n `account.orders`, so a
+  probe must match "Order History", not "My Orders"), on the order card itself; the admin answers in the
+  order drawer (`data-order-refunds`).
+- `REFUND_REASONS` must stay equal to what `/returns` publishes — misprint, wrong colour/size we sent,
+  damaged, never arrived — and must never gain "change of mind".
+- `refundBlocker` gates the ask: unpaid, cancelled and refunded orders explain why, and one open request at
+  a time. `decideRefund` requires a reply to decline and sets `stage: "Refunded"` on approval, which is the
+  stage every revenue figure already excludes.
+- Requests live on `AdminOrder.refundRequests` and are repaired on read by `normalizeRefundRequests`.
+
 ## Attribute cascade (`apps/web/src/lib/attribute-rules.ts`)
 - Rules are `{ target, source, value, allowed }`, stored in `data.attributeCascade`, seeded with the four
   documented §4.1 rules. `cascadeAllows`/`cascadeOptions` narrow a list; `isValidCombination` and

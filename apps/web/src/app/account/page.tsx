@@ -29,7 +29,15 @@ import { useCurrency } from "@/lib/currency-context";
 import { useTheme } from "@/lib/theme-context";
 import { useI18n } from "@/lib/i18n";
 import { useWishlist } from "@/lib/wishlist-context";
-import { useAdminDemoData } from "@/lib/admin-demo-store";
+import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
+import {
+  REFUND_REASONS,
+  latestRefundRequest,
+  refundBlocker,
+  refundReasonLabel,
+  requestRefund,
+  type RefundReasonId,
+} from "@/lib/order-refunds";
 import {
   formatOrderDate, myOrders, orderItemDetail, orderStageTone, orderTotalKs, orderUnits, STAGE_TONE_CLASS,
 } from "@/lib/my-orders";
@@ -147,6 +155,35 @@ function OrderStageBadge({ stage }: { stage: string }) {
 
 function AccountOrderCard({ order, formatMoney, detailed = false }: { order: AdminOrder; formatMoney: (value: number) => string; detailed?: boolean }) {
   const units = orderUnits(order);
+  const [asking, setAsking] = useState(false);
+  const [reason, setReason] = useState<RefundReasonId>(REFUND_REASONS[0].id);
+  const [note, setNote] = useState("");
+  const [problems, setProblems] = useState<string[]>([]);
+  const latest = latestRefundRequest(order);
+  const blocker = refundBlocker(order);
+
+  function send() {
+    let failed: string[] = [];
+    updateAdminData((store) => {
+      const target = store.orders.find((entry) => entry.id === order.id);
+      if (!target) return store;
+      const result = requestRefund(target, {
+        reason,
+        note,
+        at: new Date().toISOString(),
+        id: `rf-${Date.now().toString(36)}`,
+      });
+      failed = result.issues;
+      if (failed.length) return store;
+      return { ...store, orders: store.orders.map((entry) => (entry.id === order.id ? result.order : entry)) };
+    });
+    setProblems(failed);
+    if (!failed.length) {
+      setAsking(false);
+      setNote("");
+    }
+  }
+
   return (
     <div data-account-order={order.id} className="rounded-xl border border-border p-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -178,6 +215,44 @@ function AccountOrderCard({ order, formatMoney, detailed = false }: { order: Adm
           })}
           {order.note ? <li className="text-[11px] text-text-muted">Note: {order.note}</li> : null}
         </ul>
+      ) : null}
+      {latest ? (
+        <div data-account-refund={latest.status} className="mt-3 rounded-xl border border-border bg-bg p-3">
+          <p className="text-[11px] font-bold">
+            Refund request · {refundReasonLabel(latest.reason)} · <span className="text-accent">{latest.status}</span>
+          </p>
+          {latest.note ? <p className="mt-1 text-[11px] text-text-secondary">{latest.note}</p> : null}
+          {latest.reply ? <p className="mt-1 text-[11px] text-text-secondary">MH Fashion: {latest.reply}</p> : null}
+          {latest.status === "Requested" ? <p className="mt-1 text-[10px] text-text-muted">We answer within one working day.</p> : null}
+        </div>
+      ) : null}
+      {blocker && !latest ? <p className="mt-3 text-[10px] text-text-muted">{blocker}</p> : null}
+      {detailed && !blocker ? (
+        asking ? (
+          <div className="mt-3 rounded-xl border border-border bg-bg p-3" data-account-refund-form>
+            <label className="block text-[10px] font-bold uppercase tracking-wide text-text-muted">
+              What went wrong
+              <select aria-label="Refund reason" value={reason} onChange={(event) => setReason(event.target.value as RefundReasonId)} className="mt-1 w-full rounded-lg border border-border bg-bg-surface px-2 py-2 text-xs font-semibold">
+                {REFUND_REASONS.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
+              </select>
+            </label>
+            <label className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-text-muted">
+              Tell us what happened
+              <textarea aria-label="Refund note" rows={3} value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-bg-surface px-2 py-2 text-xs" placeholder="A photo helps; attach it in the reply or send it through the contact page." />
+            </label>
+            <p className="mt-2 text-[10px] text-text-muted">
+              Printed pieces are made for one order, so a refund covers a misprint, a wrong item or damage — not a change of mind.{" "}
+              <Link href="/returns" className="font-semibold text-accent">Read the policy</Link>
+            </p>
+            {problems.map((problem) => <p key={problem} role="alert" className="mt-1 text-[10px] font-semibold text-[#a33]">{problem}</p>)}
+            <div className="mt-2 flex gap-2">
+              <button type="button" onClick={send} className="rounded-full bg-accent px-3 py-2 text-[11px] font-bold text-accent-foreground">Send the request</button>
+              <button type="button" onClick={() => { setAsking(false); setProblems([]); }} className="rounded-full border border-border px-3 py-2 text-[11px] font-bold">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" data-account-refund-open onClick={() => setAsking(true)} className="mt-3 text-[11px] font-bold text-accent">Request a refund</button>
+        )
       ) : null}
     </div>
   );
