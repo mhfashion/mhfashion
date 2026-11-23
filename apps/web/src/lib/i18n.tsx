@@ -39,6 +39,9 @@ const LocaleContext = createContext<{ locale: Locale; setLocale: (locale: Locale
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en");
   useEffect(() => { const saved = window.localStorage.getItem("mh-locale"); if (saved === "en" || saved === "my") setLocaleState(saved); }, []);
+  // A screen reader picks its voice from <html lang>; Burmese text read with an English voice is
+  // unintelligible, so the document declares whichever language is on screen.
+  useEffect(() => { document.documentElement.lang = locale; }, [locale]);
   const setLocale = (next: Locale) => { setLocaleState(next); window.localStorage.setItem("mh-locale", next); };
   const value = useMemo(() => ({ locale, setLocale, t: (key: string) => dictionaries[locale][key] ?? en[key] ?? key }), [locale]);
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;

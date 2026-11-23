@@ -334,6 +334,21 @@ async function main() {
     await assertAccessibleNames([["/", "header"], ["/create", 'canvas[aria-label="Blank print canvas"]'], ["/checkout", "main"]]);
     console.log("PASS accessible names: home, editor and checkout controls are all named");
 
+    // A screen reader picks its voice from <html lang>, so the document has to follow the switcher.
+    await visit("/", "header");
+    assert.equal(await evaluate(() => document.documentElement.lang), "en", "the page starts declared as English");
+    await evaluate(() => document.querySelector('button[data-header-language]').click());
+    await pause(300);
+    assert.equal(await evaluate(() => document.documentElement.lang), "my", "switching to Myanmar declares Burmese");
+    assert.ok(await evaluate(() => Boolean(document.querySelector('button[data-header-language="my"]'))), "the switcher shows Myanmar as active");
+    await visit("/", "header");
+    assert.equal(await evaluate(() => document.documentElement.lang), "my", "a reload keeps the declared language");
+    await evaluate(() => document.querySelector('button[data-header-language]').click());
+    await pause(300);
+    await visit("/", "header");
+    assert.equal(await evaluate(() => document.documentElement.lang), "en", "switching back declares English again");
+    console.log("PASS document language: <html lang> follows the language switcher and survives a reload");
+
     // ---------- phone ----------
     await viewport(390, 844, true);
     await visit("/", "header");
