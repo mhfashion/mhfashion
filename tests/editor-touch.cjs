@@ -864,6 +864,46 @@ async function main() {
     }
     console.log("PASS Burmese wrapping: a long word breaks between clusters on the canvas, the mockup and the preview");
   }
+  /** E2 checklist 6: on the shortest phone every tool is tappable and the canvas clears the bar. */
+  async function shortPhoneBar() {
+    await load(320, 480, true);
+    const bar = await evaluate(() => {
+      const tools = document.querySelector('[data-testid="editor-tools-bar"]');
+      const nav = document.querySelector('nav[aria-label="Mobile navigation"]');
+      const barRect = tools.getBoundingClientRect();
+      const navRect = nav ? nav.getBoundingClientRect() : null;
+      const buttons = [...tools.querySelectorAll("button[aria-label]")].map((button) => {
+        const r = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return {
+          label: button.getAttribute("aria-label"),
+          covered: !(hit === button || button.contains(hit)),
+          offscreen: r.bottom > window.innerHeight + 1 || r.top < 0,
+        };
+      });
+      return {
+        count: buttons.length,
+        barBottom: barRect.bottom,
+        navTop: navRect ? navRect.top : null,
+        problems: buttons.filter((b) => b.covered || b.offscreen).map((b) => b.label),
+      };
+    });
+    assert.ok(bar.count >= 9, "the bar still shows every tool at 320 px wide");
+    assert.deepEqual(bar.problems, [], `no tool is covered or off screen (${bar.problems.join(", ")})`);
+    assert.ok(bar.navTop === null || bar.barBottom <= bar.navTop + 1,
+      `the tools bar ends above the bottom navigation (${Math.round(bar.barBottom)} vs ${Math.round(bar.navTop ?? 0)})`);
+    // The canvas has to be able to scroll clear of the bar, not just sit under it.
+    const cleared = await evaluate(() => {
+      const viewport = document.querySelector('[aria-label="Editor viewport"]');
+      viewport.scrollTop = viewport.scrollHeight;
+      const canvas = document.querySelector('canvas[aria-label="Blank print canvas"]').getBoundingClientRect();
+      const barRect = document.querySelector('[data-testid="editor-tools-bar"]').getBoundingClientRect();
+      return { canvasBottom: canvas.bottom, barTop: barRect.top };
+    });
+    assert.ok(cleared.canvasBottom <= cleared.barTop + 1,
+      `scrolled to the end the print canvas sits above the bar (${Math.round(cleared.canvasBottom)} vs ${Math.round(cleared.barTop)})`);
+    console.log(`PASS short phone bar: ${bar.count} tools tappable at 320x480, bar clear of the navigation, canvas scrolls above it`);
+  }
   /** E2 checklist 3: the soft keyboard shrinks the viewport; the caret has to stay in view. */
   async function keyboardCaret() {
     await load(390, 844, true);
@@ -1332,6 +1372,7 @@ async function main() {
     console.log("PASS hover highlight: canvas to row, row to canvas, no selection change, touch unaffected");
 
     await keyboardCaret();
+    await shortPhoneBar();
 
     const uniqueProblems = [...new Set(pageProblems)];
     assert.deepEqual(uniqueProblems, [], `the page logged no error during the run:\n${uniqueProblems.join("\n")}`);

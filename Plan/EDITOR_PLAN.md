@@ -240,6 +240,10 @@ the owner approves an item before it starts.
   spacing mark its own cluster. Verified with `tests/editor-layers.test.cjs` (Myanmar and joined-emoji
   cases) and in Chromium: a 130-code-point Burmese word at the default 110px/880 wrap paints 10 lines,
   rejoins to the original string, and no line starts with a mark, on the canvas, the mockup and the preview.
+- **Checklist item 6 is covered at the tightest size (2026-11-22).** At 320 × 480 the `short phone bar`
+  section finds all 16 bar buttons hit-testing to themselves (none covered, none off screen), the bar
+  ending above the `Mobile navigation` bar, and the print canvas scrolling clear above the bar. No bug
+  was found; the check now guards the clearance work on the smallest screen the shop supports.
 - **Checklist item 3 is now covered in emulation and fixed in the source (2026-11-22).** A phone keyboard
   shrinks the *visual* viewport without shrinking the layout box, so the caret could sit below the last
   visible pixel with nothing re-panning it: measured on 390 × 844, after six lines the caret line sat at
@@ -247,7 +251,7 @@ the owner approves an item before it starts.
   `visualViewport` (`offsetTop` + `height`) instead of the layout box, and it re-runs on `resize`,
   `orientationchange` and the visual viewport's own `resize`/`scroll`, not only on a text change. Same
   measurement after the fix: caret 264–302 inside 153–334, and it stays in view when the screen returns
-  to 844. The new `keyboard caret` section in `tests/editor-touch.cjs` pins it (18 sections, all pass).
+  to 844. The new `keyboard caret` section in `tests/editor-touch.cjs` pins it (19 sections, all pass).
   A real keyboard still has to confirm it on hardware, which is what E2 itself requires.
 - Checklist for the real-device pass: (1) iPhone Safari opens `/create`, draws and holds many layers on the 4500 × 5400 canvas without the page reloading (browser canvas limits are not verified in the source); (2) Burmese text typed with the Text tool, in several fonts and with effects, renders correctly on the canvas, the mockup and the print sheet; (3) the on-screen keyboard never hides the text box or caret; (4) uploads from the gallery and camera, including photos over 10 MB; (5) every tool with one finger, a second finger never taking over, Pan view, `+` / `−` / Reset view; (6) the Layers box and Edit sidebar never overlap, and the bottom navigation and safe areas never cover the editor; (7) portrait to landscape, dark and light, 20 to 30 layers, and the 30-step undo limit; (8) a reload loses the working canvas today (E1) and is recorded as such.
 
@@ -920,10 +924,11 @@ Counted on 2026-11-22 from the files themselves (each file run on its own, passi
 | `tests/wishlist.test.cjs` | 7 |
 | **All suites** | **705** |
 
-`tests/editor-touch.cjs` is the browser suite (17 sections, run against a live server): the draft
+`tests/editor-touch.cjs` is the browser suite (19 sections, run against a live server): the draft
 reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, a long Burmese word
 wrapping between grapheme clusters, an upload that cannot be decoded, the hover highlight in both
-directions, and a console guard that fails the run on any uncaught exception or `console.error`.
+directions, the caret above a shrinking (keyboard-sized) viewport, the 320 × 480 tools bar, and a
+console guard that fails the run on any uncaught exception or `console.error`.
 
 `tests/storefront-e2e.cjs` drives the purchase path over CDP at 1440 × 900 and 390 × 844 touch.
 
