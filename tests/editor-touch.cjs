@@ -864,6 +864,46 @@ async function main() {
     }
     console.log("PASS Burmese wrapping: a long word breaks between clusters on the canvas, the mockup and the preview");
   }
+  /** E2: landscape phones and tablets hold the same rules as portrait — the bar is widest there. */
+  async function landscapeAndTablet() {
+    for (const [width, height, touch] of [[844, 390, true], [480, 320, true], [768, 1024, true], [1024, 768, true]]) {
+      await load(width, height, touch);
+      const layout = await evaluate(() => {
+        const bar = document.querySelector('[data-testid="editor-tools-bar"]');
+        const nav = document.querySelector('nav[aria-label="Mobile navigation"]');
+        const canvas = document.querySelector('canvas[aria-label="Blank print canvas"]');
+        const viewport = document.querySelector('[aria-label="Editor viewport"]');
+        const barRect = bar.getBoundingClientRect();
+        const navRect = nav?.getBoundingClientRect() ?? null;
+        const canvasRect = canvas.getBoundingClientRect();
+        const viewRect = viewport.getBoundingClientRect();
+        const unreachable = [...bar.querySelectorAll("button[aria-label]")].filter((button) => {
+          const r = button.getBoundingClientRect();
+          if (r.width === 0 || r.right > window.innerWidth + 1 || r.left < -1) return true;
+          const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+          return !(hit === button || button.contains(hit));
+        }).map((button) => button.getAttribute("aria-label"));
+        return {
+          barTop: barRect.top,
+          barBottom: barRect.bottom,
+          navTop: navRect && navRect.height > 0 ? navRect.top : null,
+          buttons: bar.querySelectorAll("button[aria-label]").length,
+          unreachable,
+          canvasVisible: canvasRect.bottom > viewRect.top && canvasRect.top < viewRect.bottom && canvasRect.width > 0,
+          overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          viewportHeight: window.innerHeight,
+        };
+      });
+      const at = `${width}×${height}`;
+      assert.ok(layout.barTop >= 0 && layout.barBottom <= layout.viewportHeight, `the tools bar is in view at ${at}`);
+      assert.equal(layout.buttons, 16, `every tool is present at ${at}`);
+      assert.deepEqual(layout.unreachable, [], `every tool is tappable at ${at}`);
+      assert.ok(layout.navTop === null || layout.navTop >= layout.barBottom, `the navigation stays below the tools bar at ${at}`);
+      assert.ok(layout.canvasVisible, `the print canvas is on screen at ${at}`);
+      assert.ok(layout.overflowX <= 0, `the page does not scroll sideways at ${at} (${layout.overflowX}px)`);
+    }
+    console.log("PASS landscape and tablet: 844×390, 480×320, 768×1024 and 1024×768 keep the bar tappable and the canvas on screen");
+  }
   /** E2 checklist 2: Burmese text with each effect still paints, whole, on every surface. */
   async function burmeseEffects() {
     await load(1440, 900, false);
@@ -1423,6 +1463,7 @@ async function main() {
     await keyboardCaret();
     await shortPhoneBar();
     await burmeseEffects();
+    await landscapeAndTablet();
 
     const uniqueProblems = [...new Set(pageProblems)];
     assert.deepEqual(uniqueProblems, [], `the page logged no error during the run:\n${uniqueProblems.join("\n")}`);

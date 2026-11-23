@@ -240,6 +240,12 @@ the owner approves an item before it starts.
   spacing mark its own cluster. Verified with `tests/editor-layers.test.cjs` (Myanmar and joined-emoji
   cases) and in Chromium: a 130-code-point Burmese word at the default 110px/880 wrap paints 10 lines,
   rejoins to the original string, and no line starts with a mark, on the canvas, the mockup and the preview.
+- **The bar and canvas hold in landscape and on a tablet (2026-11-22).** `landscapeAndTablet` loads
+  844 × 390, 480 × 320, 768 × 1024 and 1024 × 768 touch and asserts the tools bar is fully in view,
+  all 16 tools are present and tappable (nothing overlapping them), the mobile navigation starts at or
+  below the bar's bottom, the print canvas is on screen, and the page does not scroll sideways. All
+  four pass. The existing `phone landscape` section only checked that the touch controls survive the
+  desktop breakpoint; this adds the tappability rule the 320 × 480 section uses.
 - **Checklist item 2 is covered for effects (2026-11-22).** `burmeseEffects` types a Burmese layer,
   then reloads it once per effect (shadow, outline, glow, extrude, gradient) through the saved draft and
   checks three things each time: the Burmese text still paints, no painted copy is truncated, and the
@@ -931,12 +937,12 @@ Counted on 2026-11-22 from the files themselves (each file run on its own, passi
 | `tests/wishlist.test.cjs` | 7 |
 | **All suites** | **705** |
 
-`tests/editor-touch.cjs` is the browser suite (20 sections, run against a live server): the draft
+`tests/editor-touch.cjs` is the browser suite (21 sections, run against a live server): the draft
 reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, a long Burmese word
 wrapping between grapheme clusters, Burmese text under all five painted effects, an upload that cannot
 be decoded, the hover highlight in both directions, the caret above a shrinking (keyboard-sized)
-viewport, the 320 × 480 tools bar, and a console guard that fails the run on any uncaught exception or
-`console.error`.
+viewport, the 320 × 480 tools bar, the bar and canvas at 844 × 390, 480 × 320, 768 × 1024 and
+1024 × 768, and a console guard that fails the run on any uncaught exception or `console.error`.
 
 `tests/storefront-e2e.cjs` drives the purchase path over CDP at 1440 × 900 and 390 × 844 touch.
 
