@@ -69,10 +69,12 @@ test("the contact page is the claim channel and composes a real email", () => {
   assert.match(page, /CONTACT_EMAIL/);
 
   const form = read("apps/web/src/components/ContactForm.tsx");
-  for (const marker of ["data-contact-form", "data-contact-send", "data-contact-subject", 'aria-label="Topic"', 'aria-label="Message"', "Copyright claim", "mailto:", "navigator.clipboard"]) {
+  for (const marker of ["data-contact-form", "data-contact-send", "data-contact-record", "data-contact-subject", 'aria-label="Topic"', 'aria-label="Message"', "Copyright claim", "mailto:", "navigator.clipboard", "submitContactMessage"]) {
     assert.ok(form.includes(marker), `ContactForm is missing ${marker}`);
   }
-  assert.match(form, /nothing is sent until you press send/i, "the form must not pretend it submitted");
+  // A message is recorded in the shop inbox with a reference, and the mail app is still an option.
+  assert.match(form, /is with the shop/, "the form must say where the message went");
+  assert.match(form, /reference/i, "the customer needs something to quote back");
 
   const terms = pageText(info.INFO_PAGES.terms);
   assert.match(terms, /Claims are received through the contact page/);

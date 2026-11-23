@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BarChart3, Bell, Box, Brush, CircleHelp, ClipboardList, Globe2, House, Layers3, LogOut, Megaphone, Menu, Newspaper, Package, Percent, Crown, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, Box, Brush, CircleHelp, ClipboardList, Globe2, House, Inbox, Layers3, LogOut, Megaphone, Menu, Newspaper, Package, Percent, Crown, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
 import { getDemoAdminSession, signOutDemoAdmin, type AdminDemoSession } from "@/lib/admin-demo-auth";
 import type { AdminModuleId } from "@/lib/admin-demo-data";
 
@@ -23,6 +23,7 @@ const NAV: { id: AdminModuleId; label: string; href: string; icon: LucideIcon }[
   { id: "inventory", label: "Inventory", href: "/admin/inventory", icon: Box },
   { id: "promotions", label: "Promotions", href: "/admin/promotions", icon: Percent },
   { id: "reports", label: "Reports", href: "/admin/reports", icon: BarChart3 },
+  { id: "messages", label: "Messages", href: "/admin/messages", icon: Inbox },
   { id: "settings", label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

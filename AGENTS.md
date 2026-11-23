@@ -416,6 +416,19 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Contact inbox (`apps/web/src/lib/contact-messages.ts`, `components/admin/AdminMessages.tsx`)
+- `/contact` records a message in `AdminDemoData.contactMessages`; the form shows the reference and says it
+  is with the shop. The mailto button is still there, but it is no longer the only path.
+- Validation lives in `contactDraftIssues` and the form and the store both use it: a refused message writes
+  nothing (`submitContactMessage` returns the same object). A **claim** without a design reference is
+  refused, because the takedown cannot be actioned without it.
+- References come from the highest existing `#MSG-n`, so a deleted message never lets a number be reused.
+- `setContactStatus` only moves forward: opening marks read, answered is final, and an answered message
+  never falls back to new.
+- Admin → Messages (`messages` module id) shows unread/claims/answered counts and a reply mailto with the
+  reference in the subject. A claim points at Designs → take down.
+- This is a browser-local record, not delivery. Real email needs §12.1.
+
 ## Size charts (`apps/web/src/lib/size-chart.ts`, `components/ProductSizeChart.tsx`)
 - Stored in **centimetres**, keyed by the product's own size label, snapped to 0.5 cm; inches are derived
   for display. A blank cell clears that measure and an emptied size disappears, so "no chart" and "0 cm"

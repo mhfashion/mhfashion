@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Copy, Mail, Send } from "lucide-react";
+import { Check, Copy, Mail, Send } from "lucide-react";
 import { CONTACT_EMAIL } from "@/lib/storefront-info";
+import { updateAdminData } from "@/lib/admin-demo-store";
+import { contactDraftIssues, submitContactMessage, type ContactMessage } from "@/lib/contact-messages";
 
 const TOPICS = [
   { id: "claim", label: "Copyright claim about a design", subject: "Copyright claim" },
@@ -21,6 +23,8 @@ export default function ContactForm() {
   const [designLink, setDesignLink] = useState("");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  const [sent, setSent] = useState<ContactMessage | null>(null);
+  const [issues, setIssues] = useState<string[]>([]);
 
   const subject = useMemo(() => {
     const base = TOPICS.find((entry) => entry.id === topic)?.subject ?? "Enquiry";
@@ -42,6 +46,20 @@ export default function ContactForm() {
   const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   const ready = Boolean(name.trim() && email.trim() && message.trim());
 
+  function sendToShop() {
+    const draft = { topic, name, email, orderNumber, designRef: designLink, body: message };
+    const found = contactDraftIssues(draft);
+    setIssues(found);
+    if (found.length) return;
+    let recorded: ContactMessage | null = null;
+    updateAdminData((current) => {
+      const result = submitContactMessage(current, draft);
+      recorded = result.message;
+      return result.data;
+    });
+    setSent(recorded);
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(`To: ${CONTACT_EMAIL}\nSubject: ${subject}\n\n${body}`);
@@ -58,7 +76,7 @@ export default function ContactForm() {
     <section data-contact-form className="rounded-2xl border border-border bg-bg-surface p-4 shadow-sm sm:p-6">
       <h2 className="text-sm font-black">Write to us</h2>
       <p className="mt-1 text-[10px] text-text-muted">
-        The form builds the email for you; nothing is sent until you press send in your own mail app.
+        Send it to the shop here and it is recorded with a reference. You can still open it in your own mail app instead.
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -90,14 +108,35 @@ export default function ContactForm() {
         </label>
       </div>
 
+      {sent ? (
+        <div data-contact-sent className="mt-4 rounded-xl border border-[#cfe8c2] bg-[#f3fbee] px-3 py-2.5 text-[11px] leading-5 text-[#2f6b2a]">
+          <p className="flex items-center gap-1.5 font-bold"><Check size={13} /> Message {sent.id} is with the shop</p>
+          <p className="mt-0.5">We reply to {sent.email} within one business day. Keep the reference if you write again.</p>
+          <button type="button" onClick={() => setSent(null)} className="mt-1 text-[10px] font-bold underline">Write another message</button>
+        </div>
+      ) : null}
+      {issues.length ? (
+        <ul data-contact-issues className="mt-3 space-y-1 rounded-xl border border-[#f3d2d4] bg-[#fff6f6] px-3 py-2 text-[10px] font-semibold text-[#c9424a]">
+          {issues.map((issue) => <li key={issue}>{issue}</li>)}
+        </ul>
+      ) : null}
+
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={sendToShop}
+          data-contact-record
+          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-[11px] font-bold text-accent-foreground"
+        >
+          <Send size={13} /> Send to the shop
+        </button>
         <a
           href={ready ? mailto : undefined}
           data-contact-send
           aria-disabled={!ready}
-          className={`inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-[11px] font-bold text-accent-foreground ${ready ? "" : "pointer-events-none opacity-50"}`}
+          className={`inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[11px] font-bold ${ready ? "" : "pointer-events-none opacity-50"}`}
         >
-          <Send size={13} /> Open in your email app
+          <Mail size={13} /> Open in your email app
         </a>
         <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[11px] font-bold">
           <Copy size={13} /> {copied ? "Copied" : "Copy the message"}

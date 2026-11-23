@@ -22,6 +22,7 @@ import {
 import { normalizeRefundRequests, type AdminOrderRefundRequest } from "@/lib/order-refunds";
 import { normalizeLoyaltyLedger, type LoyaltyEntry } from "@/lib/loyalty-ledger";
 import { normalizeSizeChart, type ProductSizeChart } from "@/lib/size-chart";
+import { normalizeContactMessages, type ContactMessage } from "@/lib/contact-messages";
 
 export const ADMIN_DEMO_DATA_KEY = "mh-fashion-admin-demo-data-v1";
 
@@ -42,6 +43,7 @@ export type AdminModuleId =
   | "inventory"
   | "promotions"
   | "reports"
+  | "messages"
   | "settings";
 
 export const ADMIN_ORDER_STAGES = [
@@ -612,6 +614,8 @@ export type AdminDemoData = {
   stock: Record<string, Record<string, number>>;
   designs: AdminDesign[];
   designTakedowns: AdminDesignTakedown[];
+  /** Messages written through `/contact` (Plan P1 item 10). The shop reads them in Admin → Messages. */
+  contactMessages: ContactMessage[];
   attributeChain: AdminAttributeDefinition[];
   /** Plan §4.1 cascade as data, so Attribute Management can change it without a code change. */
   attributeCascade: AttributeCascadeRule[];
@@ -649,6 +653,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "inventory", label: "Inventory" },
   { id: "promotions", label: "Promotions" },
   { id: "reports", label: "Reports" },
+  { id: "messages", label: "Messages" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -2010,6 +2015,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     stock,
     designs,
     designTakedowns: [],
+    contactMessages: [],
     attributeChain: createSeedAttributeChain(),
     attributeCascade: DEFAULT_CASCADE_RULES.map((rule) => ({ ...rule, allowed: [...rule.allowed] })),
     deliveries: createSeedDeliveries(orders),
@@ -2068,6 +2074,7 @@ export function readAdminDemoData(): AdminDemoData {
         cache = {
           ...parsed,
           designTakedowns: Array.isArray(parsed.designTakedowns) ? parsed.designTakedowns : [],
+          contactMessages: normalizeContactMessages(parsed.contactMessages),
           attributeChain: Array.isArray(parsed.attributeChain) && parsed.attributeChain.length
             ? parsed.attributeChain
             : createSeedAttributeChain(),

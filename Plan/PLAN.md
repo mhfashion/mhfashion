@@ -1259,8 +1259,13 @@ proposal, not an approved order.
     **Storefront pages built 2026-11-21:** every footer link resolves — `/about`, `/faq`, `/shipping`,
     `/returns`, `/size-guide`, `/terms`, `/privacy`, `/cookie-policy`, `/products` and `/contact` are
     new pages; `/best-sellers` redirects to the one ranked list at `/popular`.
-    `tests/storefront-info.test.cjs` fails if a footer link has no route. Still open: a real inbox
-    behind `/contact`.
+    `tests/storefront-info.test.cjs` fails if a footer link has no route.
+    **Contact inbox built 2026-11-22:** `/contact` no longer only builds a mailto — "Send to the shop"
+    records the message in `contactMessages` with a reference (`#MSG-1`), the customer is told where it
+    went, and Admin → Messages lists the inbox with New / Read / Answered, a topic filter and a reply
+    that quotes the original with the reference in the subject. A claim without the design is refused
+    before it is stored, and a claim still points at the takedown flow in Designs. The message is still
+    a browser-local record, not email: delivery needs the server side of §12.1.
     **Size charts built 2026-11-22:** `lib/size-chart.ts` stores chest / length / shoulder / sleeve per
     size in centimetres (snapped to the half centimetre a tape reads), `AdminProduct.sizeChart` holds
     it, the Products drawer measures each size, and `/size-guide` lists every Active style that has
