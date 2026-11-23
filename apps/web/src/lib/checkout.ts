@@ -4,6 +4,7 @@
 import type { CartItem } from "@/lib/cart-items";
 import { type AdminDemoData, type AdminOrder, type AdminOrderItem, type AdminPaymentMethod } from "@/lib/admin-demo-data";
 import { applyPaymentEvent, orderAmountKs, type PaymentEvent, type PaymentProviderId, type PaymentStatus } from "@/lib/payments";
+import { awardPurchase, reversePurchase } from "@/lib/loyalty-ledger";
 
 /** Plan §8: Visa plus the three wallets. There is no cash on delivery. */
 export const CHECKOUT_PAYMENTS: { id: CheckoutPayment; label: string; hint: string }[] = [
@@ -171,8 +172,15 @@ export function applyPaymentStatus(
   };
   const result = applyPaymentEvent(order, event);
   if (!result.changed) return { data, order: result.order, issues: result.issues };
+  const orders = data.orders.map((entry) => (entry.id === orderId ? result.order : entry));
+  // The points follow the money: a paid order earns its pieces, a refund takes them back.
+  const ledger = result.order.stage === "Refunded"
+    ? reversePurchase(data.loyaltyLedger ?? [], result.order.id).ledger
+    : result.order.stage === "Pending Payment"
+      ? data.loyaltyLedger ?? []
+      : awardPurchase(data.loyaltyLedger ?? [], result.order, data.loyalty.rules, event.occurredAt).ledger;
   return {
-    data: { ...data, orders: data.orders.map((entry) => (entry.id === orderId ? result.order : entry)) },
+    data: { ...data, orders, loyaltyLedger: ledger },
     order: result.order,
     issues: result.issues,
   };

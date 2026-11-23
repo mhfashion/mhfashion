@@ -416,6 +416,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Customer points (`apps/web/src/lib/loyalty-ledger.ts`)
+- `data.loyalty` is the **economy** (daily grant, expiry, per-piece rate, tiers, milestones); `data.loyaltyLedger`
+  is the shopper's events. Never store a running total — expiry, refunds and corrections need the entries.
+- The daily grant is keyed to the **Yangon** day (`loyaltyDayKey`), not UTC, or a shopper in Yangon gets it twice.
+- `awardPurchase` is idempotent per `orderId`; `applyPaymentStatus` in `lib/checkout.ts` awards on a paid
+  status and reverses on a refunded one, so checkout, webhook and the admin refund cannot disagree.
+- The account page reads the clock in an effect (`now` state) so the server render and the first client
+  render agree; the ledger is empty on both, so the points read 0 until the browser has the store. Use an
+  epoch fallback for `pointsBalance`, never `new Date()` during render.
+- The section button is labelled from i18n: the points tab is **"AI Points"** (badge shows the balance), and
+  orders is **"Order History"**.
+
 ## Refund requests (`apps/web/src/lib/order-refunds.ts`)
 - The customer asks from Account → **Order History** (the tab label comes from i18n `account.orders`, so a
   probe must match "Order History", not "My Orders"), on the order card itself; the admin answers in the

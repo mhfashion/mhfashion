@@ -20,6 +20,7 @@ import {
   type AttributeCascadeRule,
 } from "@/lib/attribute-rules";
 import { normalizeRefundRequests, type AdminOrderRefundRequest } from "@/lib/order-refunds";
+import { normalizeLoyaltyLedger, type LoyaltyEntry } from "@/lib/loyalty-ledger";
 
 export const ADMIN_DEMO_DATA_KEY = "mh-fashion-admin-demo-data-v1";
 
@@ -600,6 +601,8 @@ export type AdminDemoData = {
   attributeCascade: AttributeCascadeRule[];
   deliveries: AdminDelivery[];
   loyalty: AdminLoyalty;
+  /** The customer's own points events (Plan §9); the economy in `loyalty` is what they obey. */
+  loyaltyLedger: LoyaltyEntry[];
   jerseyStyles: JerseyStyle[];
   tshirtPosts: AdminTshirtPost[];
   productPrices: AdminProductPriceRow[];
@@ -1995,6 +1998,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     attributeCascade: DEFAULT_CASCADE_RULES.map((rule) => ({ ...rule, allowed: [...rule.allowed] })),
     deliveries: createSeedDeliveries(orders),
     loyalty: createSeedLoyalty(),
+    loyaltyLedger: [],
     jerseyStyles: createSeedJerseyStyles(now),
     tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
     productPrices,
@@ -2052,6 +2056,10 @@ export function readAdminDemoData(): AdminDemoData {
           loyalty: parsed.loyalty?.rules && Array.isArray(parsed.loyalty.tiers) && Array.isArray(parsed.loyalty.milestones)
             ? parsed.loyalty
             : createSeedLoyalty(),
+          loyaltyLedger: normalizeLoyaltyLedger(
+            parsed.loyaltyLedger,
+            parsed.loyalty?.rules ?? createSeedLoyalty().rules,
+          ),
           jerseyStyles: Array.isArray(parsed.jerseyStyles) && parsed.jerseyStyles.length
             ? parsed.jerseyStyles
             : createSeedJerseyStyles(Date.now()),

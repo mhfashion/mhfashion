@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -30,6 +30,9 @@ import { useTheme } from "@/lib/theme-context";
 import { useI18n } from "@/lib/i18n";
 import { useWishlist } from "@/lib/wishlist-context";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
+import {
+  earnDaily, lifetimeSpendKs, loyaltyHistory, milestoneProgress, nextTier, pointsBalance, tierFor,
+} from "@/lib/loyalty-ledger";
 import {
   REFUND_REASONS,
   latestRefundRequest,
@@ -273,6 +276,28 @@ export default function AccountPage() {
   const wishlist = useWishlist();
   const store = useAdminDemoData();
   const orders = useMemo(() => myOrders(store.orders), [store.orders]);
+
+  // The clock is read after mount so the server render and the first client render agree; the ledger is
+  // empty on both, so the points read 0 until the browser has the store.
+  const [now, setNow] = useState("");
+  useEffect(() => setNow(new Date().toISOString()), []);
+  useEffect(() => {
+    if (!now) return;
+    updateAdminData((current) => {
+      const result = earnDaily(current.loyaltyLedger ?? [], current.loyalty.rules, now);
+      return result.granted ? { ...current, loyaltyLedger: result.ledger } : current;
+    });
+  }, [now]);
+
+  const ledger = store.loyaltyLedger ?? [];
+  const points = pointsBalance(ledger, now || "1970-01-01T00:00:00.000Z");
+  const spendKs = lifetimeSpendKs(orders);
+  const tier = tierFor(spendKs, store.loyalty.tiers);
+  const nextTierInfo = nextTier(spendKs, store.loyalty.tiers);
+  const milestones = milestoneProgress(orders, store.loyalty.milestones.filter((milestone) => milestone.enabled));
+  const history = loyaltyHistory(ledger, now || "1970-01-01T00:00:00.000Z").slice(0, 8);
+  const dailyPoints = store.loyalty.rules.dailyGrant;
+  const purchasePoints = store.loyalty.rules.purchasePointsPerUnit;
   const sectionLabel = (section: (typeof SECTIONS)[number]) => t(section.labelKey) === section.labelKey ? section.fallback : t(section.labelKey);
 
   const sectionContent = useMemo(() => active, [active]);
@@ -284,7 +309,7 @@ export default function AccountPage() {
         <div className="mx-auto grid w-full max-w-[1480px] gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="hidden xl:flex xl:flex-col xl:gap-4">
             <div className="rounded-2xl bg-gradient-to-br from-[#69b917] via-[#4a9d0f] to-[#25720b] p-5 text-center text-white shadow-sm"><div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/70 bg-slate-900 text-xl font-black shadow-lg">MTA</div><h2 className="mt-3 text-lg font-black">Min Thu Aung</h2><p className="text-xs text-white/80">@minthu.aung</p><span className="mt-3 inline-flex rounded-full bg-[#e7b52d] px-3 py-1 text-[10px] font-bold text-[#573600]">♛ {copy.member}</span></div>
-            <nav aria-label="Account navigation" className="rounded-2xl border border-border bg-bg-surface p-2">{SECTIONS.map((section) => { const Icon = section.Icon; return <button key={section.id} onClick={() => setActive(section.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-xs font-semibold transition-colors ${active === section.id ? "bg-accent/10 text-accent" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}><Icon size={17} /> {sectionLabel(section)}{section.id === "points" && <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[9px] text-accent-foreground">250</span>}</button>; })}<div className="my-2 border-t border-border" /><button className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold text-text-secondary hover:bg-bg"><LogOut size={17} /> {t("account.signOut")}</button></nav>
+            <nav aria-label="Account navigation" className="rounded-2xl border border-border bg-bg-surface p-2">{SECTIONS.map((section) => { const Icon = section.Icon; return <button key={section.id} onClick={() => setActive(section.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-xs font-semibold transition-colors ${active === section.id ? "bg-accent/10 text-accent" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}><Icon size={17} /> {sectionLabel(section)}{section.id === "points" && <span data-account-points-badge className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[9px] text-accent-foreground">{points.total}</span>}</button>; })}<div className="my-2 border-t border-border" /><button className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold text-text-secondary hover:bg-bg"><LogOut size={17} /> {t("account.signOut")}</button></nav>
             <div className="rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]"><Sparkles size={25} className="mx-auto text-[#6eae18]" /><h3 className="mt-3 text-base font-black">{copy.earn}</h3><p className="mt-2 text-[10px]">{copy.earnSub}</p><button className="mt-4 rounded-full bg-[#54a817] px-4 py-2 text-[10px] font-bold text-white">{copy.learn} <ArrowRight size={12} className="ml-1 inline" /></button></div>
           </aside>
 
@@ -297,7 +322,7 @@ export default function AccountPage() {
             {sectionContent === "dashboard" ? (
               <>
                 <section className="relative isolate mb-5 min-h-[205px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-6 py-7 text-[#172810] sm:px-9 sm:py-9"><div className="relative z-10 max-w-[58%]"><h1 className="text-3xl font-black leading-tight sm:text-4xl">{copy.welcome}</h1><p className="mt-3 text-sm text-[#355128]">{copy.welcomeSub}</p><button onClick={() => window.location.href = "/create"} className="mt-5 inline-flex items-center rounded-full bg-[#55a918] px-4 py-2.5 text-xs font-bold text-white">{copy.start} <ArrowRight size={15} className="ml-1.5" /></button></div><div className="absolute -right-8 -top-12 h-72 w-72 rounded-full bg-[#9bda45]/50" /><div className="absolute bottom-[-55px] right-[18%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block"><div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div></div><div className="absolute bottom-5 right-6 text-3xl font-black italic text-[#54a817]/80 sm:right-12">Create<br />Your Style</div></section>
-                <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard Icon={ShoppingBag} label={copy.totalOrders} value={String(orders.length)} helper={orders.length ? copy.recentOrders : copy.viewAllOrders} /><StatCard Icon={Star} label={copy.points} value="250" helper={`↑ +50 ${copy.thisMonth}`} tone="yellow" /><StatCard Icon={Wallet} label={copy.wallet} value={formatMoney(12500)} helper={`↑ +${formatMoney(2000)}`} tone="blue" /><StatCard Icon={Heart} label={copy.wishlist} value="8" helper="View all →" tone="red" /></section>
+                <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard Icon={ShoppingBag} label={copy.totalOrders} value={String(orders.length)} helper={orders.length ? copy.recentOrders : copy.viewAllOrders} /><StatCard Icon={Star} label={copy.points} value={String(points.total)} helper={points.permanent ? `${points.permanent} kept + ${points.daily} daily` : `${points.daily} daily`} tone="yellow" /><StatCard Icon={Wallet} label={copy.wallet} value={formatMoney(12500)} helper={`↑ +${formatMoney(2000)}`} tone="blue" /><StatCard Icon={Heart} label={copy.wishlist} value={String(wishlist.count)} helper="View all →" tone="red" /></section>
                 <div className="grid gap-5 lg:grid-cols-[1.25fr_0.9fr]">
                   <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><ShoppingBag size={19} className="text-accent" /> {copy.recentOrders}</h2><button onClick={() => setActive("orders")} className="text-xs font-semibold text-accent">{copy.viewAllOrders} <ArrowRight size={13} className="ml-1 inline" /></button></div>{orders.length ? (
                     <div className="space-y-3">{orders.slice(0, 3).map((order) => <AccountOrderCard key={order.id} order={order} formatMoney={formatMoney} />)}</div>
@@ -307,7 +332,7 @@ export default function AccountPage() {
                       <Link href="/products" className="mt-3 inline-flex rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">Browse products</Link>
                     </div>
                   )}</section>
-                  <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><Star size={19} className="text-accent" /> {copy.rewards}</h2><button onClick={() => setActive("points")} className="text-xs font-semibold text-accent">{copy.viewHistory} <ArrowRight size={13} className="ml-1 inline" /></button></div><div className="flex items-center gap-5"><div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-[10px] border-accent/25 border-l-accent border-t-accent"><div className="text-center"><p className="text-2xl font-black">250</p><p className="text-[10px] text-text-muted">Points</p></div></div><div><p className="text-xs text-text-muted">{copy.nextReward}</p><p className="mt-1 text-lg font-black text-accent">{copy.pointsNeeded}</p><p className="mt-2 text-xs leading-relaxed text-text-secondary">{copy.closer}</p></div></div><button onClick={() => setActive("points")} className="mt-5 w-full rounded-full bg-accent py-2.5 text-xs font-bold text-accent-foreground">{copy.explore} <ArrowRight size={14} className="ml-1 inline" /></button></section>
+                  <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><Star size={19} className="text-accent" /> {copy.rewards}</h2><button onClick={() => setActive("points")} className="text-xs font-semibold text-accent">{copy.viewHistory} <ArrowRight size={13} className="ml-1 inline" /></button></div><div className="flex items-center gap-5"><div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-[10px] border-accent/25 border-l-accent border-t-accent"><div className="text-center"><p data-account-points-total className="text-2xl font-black">{points.total}</p><p className="text-[10px] text-text-muted">Points</p></div></div><div><p className="text-xs text-text-muted">{copy.nextReward}</p><p className="mt-1 text-lg font-black text-accent">{nextTierInfo ? `${nextTierInfo.tier.name} · ${formatMoney(nextTierInfo.remainingKs)} to go` : `${tier?.name ?? "Member"} · ${tier?.discountPercent ?? 0}% off`}</p><p className="mt-2 text-xs leading-relaxed text-text-secondary">{points.expiresAt ? `${points.daily} daily points lapse at ${formatOrderDate(points.expiresAt)}.` : copy.closer}</p></div></div><button onClick={() => setActive("points")} className="mt-5 w-full rounded-full bg-accent py-2.5 text-xs font-bold text-accent-foreground">{copy.explore} <ArrowRight size={14} className="ml-1 inline" /></button></section>
                 </div>
                 <div className="mt-5 grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-border bg-bg-surface p-5"><h2 className="text-lg font-black"><Settings size={18} className="mr-2 inline text-accent" />{copy.accountSettings}</h2><p className="mt-1 text-xs text-text-muted">{copy.manage}</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{[{ Icon: Pencil, label: copy.editProfile }, { Icon: ShieldCheck, label: copy.changePassword }, { Icon: Bell, label: copy.notificationSettings }, { Icon: ShieldCheck, label: copy.privacy }].map(({ Icon, label }) => <button key={label} onClick={() => setActive("settings")} className="flex items-center gap-2 rounded-xl border border-border px-3 py-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}</button>)}</div></section><section className="rounded-2xl border border-border bg-bg-surface p-5"><h2 className="text-lg font-black"><HelpCircle size={18} className="mr-2 inline text-accent" />{copy.needHelp}</h2><p className="mt-1 text-xs text-text-muted">{copy.support}</p><div className="mt-4 space-y-2">{[{ Icon: HelpCircle, label: copy.faqs }, { Icon: MapPin, label: copy.contact }, { Icon: Bell, label: copy.chat }].map(({ Icon, label }) => <button key={label} className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}<ChevronRight size={14} className="ml-auto text-text-muted" /></button>)}</div></section></div>
               </>
@@ -366,7 +391,59 @@ export default function AccountPage() {
                     </div>
                   )
                 )}
-                {active === "points" && <div className="grid max-w-2xl gap-4 sm:grid-cols-2"><div className="rounded-xl border border-border p-5"><p className="text-xs text-text-muted">{copy.daily}</p><p className="mt-2 text-3xl font-black text-accent">300</p><p className="mt-2 text-[10px] leading-relaxed text-text-muted">Granted every day. Unused daily points expire at the end of the day.</p></div><div className="rounded-xl border border-border p-5"><p className="text-xs text-text-muted">{copy.purchase}</p><p className="mt-2 text-3xl font-black">150</p><p className="mt-2 text-[10px] leading-relaxed text-text-muted">Earned 50 points per product purchased. These never expire.</p></div></div>}
+                {active === "points" && (
+                  <div data-account-points className="max-w-2xl space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="rounded-xl border border-border p-5">
+                        <p className="text-xs text-text-muted">{copy.daily}</p>
+                        <p className="mt-2 text-3xl font-black text-accent">{dailyPoints}</p>
+                        <p className="mt-2 text-[10px] leading-relaxed text-text-muted">
+                          Granted once a day and unused daily points expire after {store.loyalty.rules.dailyExpiryHours} hours.
+                          {points.expiresAt ? ` You have ${points.daily} that lapse at ${formatOrderDate(points.expiresAt)}.` : ""}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border p-5">
+                        <p className="text-xs text-text-muted">{copy.purchase}</p>
+                        <p className="mt-2 text-3xl font-black">{points.permanent}</p>
+                        <p className="mt-2 text-[10px] leading-relaxed text-text-muted">Earned {purchasePoints} points per piece bought. These never expire.</p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-border p-5">
+                      <p className="text-xs font-bold">Tier · {tier?.name ?? "Member"} · {tier?.discountPercent ?? 0}% off</p>
+                      <p className="mt-1 text-[10px] text-text-muted">
+                        {formatMoney(spendKs)} kept with MH Fashion.
+                        {nextTierInfo ? ` ${nextTierInfo.tier.name} starts at ${formatMoney(nextTierInfo.tier.minSpendKs)}.` : " That is the top tier."}
+                      </p>
+                      {milestones.length ? (
+                        <ul className="mt-3 space-y-1.5">
+                          {milestones.map((entry) => (
+                            <li key={entry.milestone.id} className="flex items-center justify-between gap-2 text-[11px]">
+                              <span className={entry.reached ? "font-semibold text-accent" : "text-text-secondary"}>{entry.reached ? "✓ " : ""}{entry.milestone.label}</span>
+                              <span className="shrink-0 text-[10px] text-text-muted">{entry.reached ? "Reached" : `${entry.current.toLocaleString("en-US")} / ${entry.target.toLocaleString("en-US")}`}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                    <div className="rounded-xl border border-border p-5">
+                      <p className="text-xs font-bold">History</p>
+                      {history.length ? (
+                        <ul className="mt-2 divide-y divide-border text-[11px]">
+                          {history.map((entry) => (
+                            <li key={entry.id} className="flex items-center justify-between gap-2 py-1.5">
+                              <span className="min-w-0 text-text-secondary">
+                                {entry.kind === "daily" ? "Daily points" : `Bought ${entry.orderId ?? "an order"}`}
+                                <span className="ml-1 text-text-muted">· {formatOrderDate(entry.at)}</span>
+                                {entry.expired ? <span className="ml-1 text-[10px] text-[#a33]">expired</span> : null}
+                              </span>
+                              <span className={`shrink-0 font-semibold ${entry.expired ? "text-text-muted line-through" : "text-accent"}`}>+{entry.points}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="mt-1 text-[10px] text-text-muted">No points yet. The daily grant lands the first time you open this page, and each bought piece adds {purchasePoints}.</p>}
+                    </div>
+                  </div>
+                )}
                 {active === "settings" && <div className="max-w-xl space-y-3"><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">Currency</p><p className="mt-1 text-xs text-text-muted">Prices are shown in this currency across the site.</p></div><button onClick={toggleCurrency} className="rounded-full border border-border-light px-3 py-1 text-xs">{currency}</button></div><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{copy.theme}</p><p className="mt-1 text-xs text-text-muted">Switch between dark and light appearance.</p></div><button onClick={toggleTheme} className="rounded-full border border-border-light px-3 py-1 text-xs capitalize">{theme}</button></div><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{copy.notifications}</p><p className="mt-1 text-xs text-text-muted">In-app notifications are always on.</p></div><Check size={18} className="text-accent" /></div></div>}
               </section>
             )}

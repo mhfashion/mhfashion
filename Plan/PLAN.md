@@ -436,6 +436,22 @@ only when the owner approves that item.
 - AI points: 300 granted daily (unused ones expire), 100 per generated image,
   +50 per purchased product (never expire). Daily points are spent first.
 
+**The customer's points are real (2026-11-22).** `/admin/loyalty` configures the economy and
+`lib/loyalty-ledger.ts` is the ledger it acts on — one entry per event, never a running total, stored in
+`data.loyaltyLedger`. The daily 300 is granted once per **Yangon** day (a UTC day boundary would hand it
+out twice to a shopper in Yangon) and carries an expiry from `dailyExpiryHours`; buying earns
+`purchasePointsPerUnit` per piece with no expiry and **once per order**, so a replayed payment cannot earn
+twice; a refund removes exactly that order's entries, because the points follow the money — `applyPaymentStatus`
+writes both, so the checkout, the webhook and the admin refund path cannot disagree. The account page no
+longer prints a hardcoded 250: the sidebar badge, the stat card and the rewards ring read the live balance
+(daily + permanent, with the lapse time), the "AI Points" tab shows the split, the tier and what the next
+tier needs (lifetime spend of kept orders only — pending, cancelled and refunded are excluded), the
+milestone progress and the history with expired daily entries struck through. Checked in Chromium: the
+grant lands once and a reload adds nothing, a bought order shows beside it, and the tab reads
+"42,000 Ks kept · Silver starts at 100,000". Spending (100 per AI image) waits for the AI image action,
+which is still a stub. `tests/loyalty-ledger.test.cjs` covers the Yangon day, the once-per-order award,
+the refund reversal, expiry, tiers, milestones and the read repair.
+
 ## 10. Admin System
 
 **Built modules (2026-11-21).** `/admin` is no longer a dashboard preview: every module in the left
