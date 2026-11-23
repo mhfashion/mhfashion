@@ -171,6 +171,11 @@ the owner approves an item before it starts.
   move/scale/rotate beside the layers (`readDesignDraftSnapshot`), `EditorCanvas` restores it after mount
   and shows "Restored the design from your last visit", and a browser that refuses storage says so once.
   Reload keeps the artwork; the order hand-off and Save still wait on D1.
+- **A refused draft write is now covered (2026-11-22).** `storageRefused` makes `setItem` throw a
+  `QuotaExceededError` for the draft key only, adds a layer, and reads the `role="status"` text: the
+  editor says "This browser is not saving your design. Keep this tab open until you order." It then
+  restores `setItem` and checks the next change writes the draft again. The message already worked;
+  nothing in the suite asserted it, so a silent regression could have shipped.
 - **Bug fixed 2026-11-22: a corrupt draft blanked the editor.** Reading the draft back put whatever was in
   `localStorage` in front of the renderer, so three shapes killed `/create` with "This page couldn't load"
   until the visitor cleared storage: a `null` layer (`Cannot read properties of null (reading 'strokes')`),
@@ -939,12 +944,13 @@ Counted on 2026-11-22 from the files themselves (each file run on its own, passi
 | `tests/wishlist.test.cjs` | 7 |
 | **All suites** | **705** |
 
-`tests/editor-touch.cjs` is the browser suite (21 sections, run against a live server): the draft
+`tests/editor-touch.cjs` is the browser suite (22 sections, run against a live server): the draft
 reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, a long Burmese word
 wrapping between grapheme clusters, Burmese text under all five painted effects, an upload that cannot
 be decoded, the hover highlight in both directions, the caret above a shrinking (keyboard-sized)
 viewport, the 320 × 480 tools bar, the bar and canvas at 844 × 390, 480 × 320, 768 × 1024 and
-1024 × 768, and a console guard that fails the run on any uncaught exception or `console.error`.
+1024 × 768, a browser that refuses the draft, and a console guard that fails the run on any uncaught
+exception or `console.error`.
 
 `tests/storefront-e2e.cjs` drives the purchase path over CDP at 1440 × 900 and 390 × 844 touch.
 

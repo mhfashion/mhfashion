@@ -864,6 +864,32 @@ async function main() {
     }
     console.log("PASS Burmese wrapping: a long word breaks between clusters on the canvas, the mockup and the preview");
   }
+  /** E1 step 1: a browser that refuses the draft says so instead of losing the work silently. */
+  async function storageRefused() {
+    await load(1280, 900, false);
+    await clickMouse('button[aria-label="Expand Layers panel"]');
+    await pause(200);
+    await evaluate(() => {
+      const original = Storage.prototype.setItem;
+      window.__restoreSetItem = () => { Storage.prototype.setItem = original; };
+      Storage.prototype.setItem = function (key, value) {
+        if (key === "mh-fashion-design-draft-v1") throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+        return original.call(this, key, value);
+      };
+    });
+    await clickMouse('button[aria-label="Add layer"]');
+    await pause(900);
+    const notice = await evaluate(() => document.querySelector('[role="status"]')?.textContent?.trim() ?? "");
+    assert.match(notice, /not saving your design/i, "a refused draft write is announced, not swallowed");
+    await evaluate(() => {
+      window.__restoreSetItem?.();
+      return true;
+    });
+    await clickMouse('button[aria-label="Add layer"]');
+    await pause(900);
+    assert.ok(await evaluate(() => !!localStorage.getItem("mh-fashion-design-draft-v1")), "the draft is written again once storage works");
+    console.log("PASS storage refused: the editor says the design is not being saved, and saves again when it can");
+  }
   /** E2: landscape phones and tablets hold the same rules as portrait — the bar is widest there. */
   async function landscapeAndTablet() {
     for (const [width, height, touch] of [[844, 390, true], [480, 320, true], [768, 1024, true], [1024, 768, true]]) {
@@ -1471,6 +1497,7 @@ async function main() {
     await shortPhoneBar();
     await burmeseEffects();
     await landscapeAndTablet();
+    await storageRefused();
 
     const uniqueProblems = [...new Set(pageProblems)];
     assert.deepEqual(uniqueProblems, [], `the page logged no error during the run:\n${uniqueProblems.join("\n")}`);
