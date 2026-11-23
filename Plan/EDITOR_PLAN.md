@@ -240,6 +240,13 @@ the owner approves an item before it starts.
   spacing mark its own cluster. Verified with `tests/editor-layers.test.cjs` (Myanmar and joined-emoji
   cases) and in Chromium: a 130-code-point Burmese word at the default 110px/880 wrap paints 10 lines,
   rejoins to the original string, and no line starts with a mark, on the canvas, the mockup and the preview.
+- **Checklist item 2 is covered for effects (2026-11-22).** `burmeseEffects` types a Burmese layer,
+  then reloads it once per effect (shadow, outline, glow, extrude, gradient) through the saved draft and
+  checks three things each time: the Burmese text still paints, no painted copy is truncated, and the
+  effect's own signature reaches the painted SVG (the shadow colour, a stroked `<text>` for the outline,
+  a filter for the glow, the extrude colour, a gradient definition). All five pass, so no fix was needed;
+  the test fails if an effect is silently dropped for Burmese text. Fonts other than the default are
+  still only covered by the audit in `tests/editor-font-audit.test.cjs`.
 - **Checklist item 6 is covered at the tightest size (2026-11-22).** At 320 × 480 the `short phone bar`
   section finds all 16 bar buttons hit-testing to themselves (none covered, none off screen), the bar
   ending above the `Mobile navigation` bar, and the print canvas scrolling clear above the bar. No bug
@@ -924,11 +931,12 @@ Counted on 2026-11-22 from the files themselves (each file run on its own, passi
 | `tests/wishlist.test.cjs` | 7 |
 | **All suites** | **705** |
 
-`tests/editor-touch.cjs` is the browser suite (19 sections, run against a live server): the draft
+`tests/editor-touch.cjs` is the browser suite (20 sections, run against a live server): the draft
 reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, a long Burmese word
-wrapping between grapheme clusters, an upload that cannot be decoded, the hover highlight in both
-directions, the caret above a shrinking (keyboard-sized) viewport, the 320 × 480 tools bar, and a
-console guard that fails the run on any uncaught exception or `console.error`.
+wrapping between grapheme clusters, Burmese text under all five painted effects, an upload that cannot
+be decoded, the hover highlight in both directions, the caret above a shrinking (keyboard-sized)
+viewport, the 320 × 480 tools bar, and a console guard that fails the run on any uncaught exception or
+`console.error`.
 
 `tests/storefront-e2e.cjs` drives the purchase path over CDP at 1440 × 900 and 390 × 844 touch.
 

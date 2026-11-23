@@ -864,6 +864,55 @@ async function main() {
     }
     console.log("PASS Burmese wrapping: a long word breaks between clusters on the canvas, the mockup and the preview");
   }
+  /** E2 checklist 2: Burmese text with each effect still paints, whole, on every surface. */
+  async function burmeseEffects() {
+    await load(1440, 900, false);
+    await clickMouse('button[aria-label="Text tool"]');
+    const spot = await evaluate(() => {
+      const r = document.querySelector('canvas[aria-label="Blank print canvas"]').getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 3 };
+    });
+    await clickPoint(spot);
+    await pause(400);
+    const text = "မြန်မာစာလှလှ";
+    await send("Input.insertText", { text });
+    await pause(400);
+    await evaluate(() => document.activeElement?.blur());
+    await pause(600);
+    const painted = () => evaluate(() => [...document.querySelectorAll("svg text")]
+      .map((node) => node.textContent)
+      .filter((value) => /[\u1000-\u109F]/.test(value)));
+    const plain = await painted();
+    assert.ok(plain.some((value) => value.includes(text)), "the plain Burmese layer paints");
+    // Each effect must reach the paint, not just sit in the model: the signature is what the
+    // renderer writes for it, so a silently dropped effect fails here.
+    const effects = [
+      { id: "e1", kind: "shadow", color: "#ff2d55", offsetX: 14, offsetY: 14, blur: 0, paints: (markup) => /#ff2d55|255, 45, 85/.test(markup) },
+      { id: "e2", kind: "outline", color: "#000000", width: 8, paints: (markup) => /<text\b[^>]*stroke=/.test(markup) },
+      { id: "e3", kind: "glow", color: "#22d3ee", blur: 18, paints: (markup) => /filter/.test(markup) },
+      { id: "e4", kind: "extrude", color: "#111111", color2: "#333333", offsetX: 10, offsetY: 12, depth: 8, paints: (markup) => /#111111|17, 17, 17/.test(markup) },
+      { id: "e5", kind: "gradient", color: "#ff2d55", color2: "#22d3ee", paints: (markup) => /Gradient/.test(markup) },
+    ];
+    for (const effect of effects) {
+      await evaluate((next) => {
+        const key = "mh-fashion-design-draft-v1";
+        const draft = JSON.parse(localStorage.getItem(key));
+        const layers = draft.layers.filter((layer) => layer.kind === "text").slice(0, 1);
+        layers[0].text.effects = [next];
+        layers[0].text.textEffect = "none";
+        localStorage.setItem(key, JSON.stringify({ ...draft, layers }));
+      }, effect);
+      await send("Page.navigate", { url: "about:blank" });
+      await send("Page.navigate", { url: `${origin}/create` });
+      await pause(5000);
+      const values = await painted();
+      const markup = await evaluate(() => document.querySelector('section[aria-label="Print canvas"] svg')?.outerHTML ?? "");
+      assert.ok(values.length > 0, `${effect.kind}: the Burmese layer still paints`);
+      assert.ok(values.every((value) => value.includes(text)), `${effect.kind}: no Burmese text is truncated`);
+      assert.ok(effect.paints(markup), `${effect.kind}: the effect reaches the painted SVG (${(markup.match(/<text\b[^>]*>/) ?? [""])[0].slice(0, 160)})`);
+    }
+    console.log("PASS Burmese effects: shadow, outline, glow, extrude and gradient keep every glyph");
+  }
   /** E2 checklist 6: on the shortest phone every tool is tappable and the canvas clears the bar. */
   async function shortPhoneBar() {
     await load(320, 480, true);
@@ -1373,6 +1422,7 @@ async function main() {
 
     await keyboardCaret();
     await shortPhoneBar();
+    await burmeseEffects();
 
     const uniqueProblems = [...new Set(pageProblems)];
     assert.deepEqual(uniqueProblems, [], `the page logged no error during the run:\n${uniqueProblems.join("\n")}`);
