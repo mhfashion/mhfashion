@@ -1228,6 +1228,57 @@ async function main() {
     await clickMouse('button[aria-label="Expand editor tools"]');
     console.log("PASS desktop keyboard: Ctrl+Z and Ctrl+Shift+Z undo and redo, text fields keep their own undo");
 
+    // E7 — hover highlight, both directions. Hovering artwork outlines it and marks its Layers row;
+    // hovering a row outlines that layer's artwork. Neither changes the selection, and touch has no
+    // hover at all.
+    await clickMouse('button[aria-label="Move"]');
+    await clickMouse('button[aria-label="Add layer"]');
+    await pause(150);
+    const hoverTarget = await evaluate(() => {
+      const stroke = document.querySelector('section[aria-label="Print canvas"] [data-editor-artwork-stroke="true"]');
+      const box = stroke.getBoundingClientRect();
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    });
+    await mouse("mouseMoved", hoverTarget, 0);
+    await pause(200);
+    const rows = () => evaluate(() => ({
+      outline: !!document.querySelector('[data-editor-hover-outline="true"]'),
+      hovered: [...document.querySelectorAll('[data-layer-id][data-layer-hovered="true"]')].map((row) => row.dataset.layerId),
+      selected: [...document.querySelectorAll('[data-layer-id]')]
+        .filter((row) => row.querySelector('button[aria-label$="artwork"][aria-pressed="true"]'))
+        .map((row) => row.dataset.layerId),
+    }));
+    const canvasHover = await rows();
+    assert.equal(canvasHover.outline, true, "hovering artwork draws the hover outline");
+    assert.equal(canvasHover.hovered.length, 1, "and marks exactly one Layers row");
+    assert.equal(canvasHover.selected.length, 1, "while one layer stays selected");
+    assert.notEqual(canvasHover.hovered[0], canvasHover.selected[0], "the hovered row is the artwork's own layer, not the selection");
+    await mouse("mouseMoved", { x: 5, y: 5 }, 0);
+    await pause(200);
+    assert.deepEqual(await rows(), { outline: false, hovered: [], selected: canvasHover.selected }, "leaving the canvas clears the hover and keeps the selection");
+
+    const rowPoint = await evaluate(() => {
+      const row = [...document.querySelectorAll('[data-layer-id]')]
+        .find((item) => !item.querySelector('button[aria-label$="artwork"][aria-pressed="true"]'));
+      const box = row.getBoundingClientRect();
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    });
+    await mouse("mouseMoved", rowPoint, 0);
+    await pause(200);
+    const rowHover = await rows();
+    assert.equal(rowHover.outline, true, "hovering a Layers row outlines its artwork on the canvas");
+    assert.deepEqual(rowHover.hovered, [canvasHover.hovered[0]], "the row hover and the canvas hover name the same layer");
+    assert.deepEqual(rowHover.selected, canvasHover.selected, "and still does not change the selection");
+    await mouse("mouseMoved", { x: 5, y: 5 }, 0);
+    await pause(200);
+    assert.equal(await evaluate(() => !!document.querySelector('[data-editor-hover-outline="true"]')), false, "leaving the row clears the outline");
+
+    await load(390, 844, true);
+    await tap('canvas[aria-label="Blank print canvas"]');
+    await pause(250);
+    assert.equal(await evaluate(() => !!document.querySelector('[data-editor-hover-outline="true"]')), false, "a touch has no hover outline");
+    console.log("PASS hover highlight: canvas to row, row to canvas, no selection change, touch unaffected");
+
     const uniqueProblems = [...new Set(pageProblems)];
     assert.deepEqual(uniqueProblems, [], `the page logged no error during the run:\n${uniqueProblems.join("\n")}`);
     console.log("PASS console: no uncaught exception and no console error across every section");

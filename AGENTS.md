@@ -738,6 +738,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `pinchView` in `apps/web/src/lib/editor-pinch.ts` takes the scroller's `scrollX`/`scrollY` and adds their delta since the gesture started to the pan. Chrome anchors the scroll when the zoom makes the workspace taller, so without this the artwork jumps by the anchored amount (72 px measured) even though the finger maths is right.
 - Do not `preventDefault()` on a two-finger `touchstart`: it is enough to cancel the whole touch stream on the emulated device and the pinch never runs. Compensate for the scroll instead.
 
+## Hover highlight (canvas ⇄ Layers panel)
+- `hoveredLayerId` in `EditorCanvas.tsx` drives both directions: the canvas Move surface sets it on
+  pointer move, and `EditorLayersPanel` sets it from a row's `onPointerEnter`/`onPointerLeave`.
+- The canvas outline is `[data-editor-hover-outline="true"]` and is drawn **only when the hovered layer
+  is not selected**, so it never doubles the solid transform box. The row carries `data-layer-hovered`.
+- A layer row has no `aria-pressed` of its own: the "Select <name> artwork" button inside it does. Read
+  the selection from that button, not from `[data-layer-id][aria-pressed]` (that selector matches nothing).
+
 ## Testing pitfalls
 - `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.
 - The app registers a **service worker** (`/sw.js`). It serves the previous bundle after a rebuild and ignores `Network.setCacheDisabled`, so a browser probe can silently measure old code. Clear `local_storage,service_workers,cache_storage` (`Storage.clearDataForOrigin`) and navigate through `about:blank` before loading `/create` — `Page.navigate` to the URL the page already shows is a same-document no-op. `tests/editor-touch.cjs` now does both.

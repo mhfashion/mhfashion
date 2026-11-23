@@ -278,12 +278,17 @@ the owner approves an item before it starts.
 - Acceptance: a drag within the snap distance lands exactly on the guide, the guide disappears on release,
   and touch dragging keeps working.
 
-### E7 — Hover highlight
+### E7 — Hover highlight — **built 2026-11-22, acceptance covered**
 
 - Hovering a canvas layer highlights its Layers row; hovering a row outlines its canvas layer. No
-  selection change.
-- Acceptance: a browser test asserts both directions appear and clear, and that touch devices are
-  unaffected.
+  selection change. Implemented in `EditorCanvas.tsx` (`hoveredLayerId`, `hoveredBounds`, the
+  `[data-editor-hover-outline]` dashed box) and `EditorLayersPanel.tsx` (`onHoverLayer`, the row ring
+  and `data-layer-hovered`). The outline is only drawn for a layer that is **not** selected, so it never
+  doubles the solid transform box.
+- Acceptance met: the new `hover highlight` section in `tests/editor-touch.cjs` drives a real mouse in
+  Chromium at 1280 × 900 and asserts both directions and both clears — hover the artwork, then the row
+  of the same layer, then away — with the selection unchanged in every step, and a 390 × 844 touch tap
+  that leaves no outline. Suite now 17 sections, all pass.
 
 ### E8 — Shape Builder
 
