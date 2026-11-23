@@ -9,6 +9,7 @@ import CopyrightBar from "@/components/CopyrightBar";
 import BrowserZoomGuard from "@/components/BrowserZoomGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import JsonLd from "@/components/JsonLd";
+import CrashReporter from "@/components/CrashReporter";
 import PwaInstall from "@/components/PwaInstall";
 import { organizationSchema, websiteSchema } from "@/lib/structured-data";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
                 <CartProvider>
                   <BrowserZoomGuard />
                   <PwaInstall />
+                  <CrashReporter />
                   <div className="flex min-h-screen flex-col pb-[var(--mobile-navigation-height,4rem)] md:pb-0">
                     <div className="flex-1">{children}</div>
                     <CopyrightBar />

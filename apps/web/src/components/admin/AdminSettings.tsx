@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, RefreshCw, Save, ShieldCheck, Trash2, UserPlus, X } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
+import AdminCrashLogCard from "@/components/admin/AdminCrashLog";
 import {
   AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminDrawer, AdminEmpty,
   AdminField, AdminInput, AdminSelect, AdminTextarea,
@@ -201,6 +202,8 @@ export default function AdminSettings() {
               </div>
             </div>
           </AdminCard>
+
+          <AdminCrashLogCard />
 
           <AdminCard className="overflow-hidden">
             <AdminCardHeader title="Access model" description="How the plan splits admin work" />

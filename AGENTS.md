@@ -416,6 +416,24 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Crash log (`apps/web/src/lib/error-log.ts`, `app/error.tsx`, `app/global-error.tsx`, `components/CrashReporter.tsx`)
+- Nothing is uploaded: there is no endpoint. The log is per-device, under `mh-fashion-client-error-log`
+  (newest 25, message cut to 300 chars, stack to 1200), and the admin reads it in Settings.
+- `recordClientError` collapses an identical `message + path` into one row whose `at` moves forward, so a
+  render loop cannot fill the log. `path` is what separates two crashes with the same message.
+- Every function tolerates storage that is missing, disabled or full — reaching for `window.localStorage`
+  can throw on *access*, so `resolveStorage` guards it and `recordClientError` returns what was actually
+  stored (an empty array when the write failed).
+- `global-error.tsx` replaces the root layout, so it renders its own `<html>`/`<body>` and uses inline
+  styles: Tailwind is not guaranteed to be loaded on that path.
+- `CrashReporter` listens to `error` only (not `unhandledrejection`, which fires for every aborted fetch)
+  and filters `Script error.` (cross-origin) and `ResizeObserver loop` (the browser's own warning).
+- The admin table reads through `useSyncExternalStore` with a snapshot cached against the stored string;
+  an effect that called `setState` was both lint-flagged and stale across tabs.
+- Testing: seed or inspect `localStorage['mh-fashion-client-error-log']` directly. The admin workspace is
+  desktop-first on a phone (`/admin` widens the layout viewport on every page, e.g. its `min-w-[460px]`
+  tables), so measure the crash card against the row bounds rather than the window.
+
 ## Order barcode (`apps/web/src/lib/order-barcode.ts`)
 - Code 128B, hand-rolled: the table holds the published widths, **six numbers per symbol** (bar, space, bar,
   space, bar, space = 11 modules) and **seven for the stop** (13 modules). Every entry sums to 11, which is

@@ -1365,6 +1365,18 @@ proposal, not an approved order.
 14. **Operations:** error monitoring, Supabase backups. **Timestamps are done:** everything is stored
     as UTC ISO strings and every admin screen and printable document shows them in `Asia/Yangon`
     (`YANGON_TIME_ZONE`), so the device clock cannot change an hour or move an order to another day.
+    **Error monitoring, first step shipped 2026-11-22:** the site now has its own crash page
+    (`app/error.tsx`, and `app/global-error.tsx` for a root-layout failure) instead of Next's bare
+    "Application error", and every crash is written to the device that saw it
+    (`lib/error-log.ts`, key `mh-fashion-client-error-log`, newest 25, identical message+path collapsed
+    into one row). A window listener (`CrashReporter`) catches what a React boundary cannot — a throw
+    inside an event handler, which is how "the editor froze" actually arrives — and ignores
+    `Script error.` and `ResizeObserver loop` noise. The admin reads it under
+    **Settings → Crash log** (`AdminCrashLog`, live via `useSyncExternalStore`, with the stack behind a
+    tap and a Clear button). Verified in Chromium: a thrown handler error recorded itself on `/faq`,
+    appeared in the open Settings table without a reload, and Clear emptied both the table and the key.
+    **Still open:** a *server-side* feed, so a crash on a customer's phone reaches the owner — that needs
+    a provider (Sentry or a Supabase table plus an endpoint) and therefore a decision and a key.
 15. **Mobile app decision:** PWA first vs React Native. The editor cannot be ported to React
     Native directly, so **the PWA is what shipped 2026-11-22**: `app/manifest.ts` (standalone, 192/512
     icons plus a maskable tile drawn as real PNGs), `public/sw.js`, an install prompt that only appears
