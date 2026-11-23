@@ -416,6 +416,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Guide posts → products (`apps/web/src/lib/guide-products.ts`)
+- A guide post's links live in `guide_posts.product_links` (jsonb) and are normalised on read by
+  `normalizeGuideProductLinks`, so a hand-edited row cannot break a page: strings are accepted as bare
+  slugs, blanks/malformed entries are dropped, a slug that is really a path is refused, a repeat keeps the
+  first note, and the list stops at `GUIDE_PRODUCT_LIMIT` (6).
+- `GuidePost.productLinks` is required (empty array), not optional — the starter catalogue declares
+  `productLinks: []` on every post.
+- The post page fetches **all** of a post's products with `getProductsBySlugs` (one `.in()` query) and
+  resolves them through `resolveGuideProductLinks` with an injected lookup, so a slug the catalogue no
+  longer holds is dropped instead of rendered as a dead card. Do not call the lookup per slug.
+- `GuideShopLook` returns `null` for an empty list; that is what keeps existing articles unchanged.
+- The admin's Guide posts tab is read-only (the starter catalogue / Supabase is the source), so the links
+  are shown, not edited. Editing waits for the Nyein brief, as do style/colour/design variants.
+
 ## Crash log (`apps/web/src/lib/error-log.ts`, `app/error.tsx`, `app/global-error.tsx`, `components/CrashReporter.tsx`)
 - Nothing is uploaded: there is no endpoint. The log is per-device, under `mh-fashion-client-error-log`
   (newest 25, message cut to 300 chars, stack to 1200), and the admin reads it in Settings.

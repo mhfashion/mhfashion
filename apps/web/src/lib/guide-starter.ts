@@ -65,6 +65,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       featured: true,
       publishedAt: PUBLISHED_AT,
       seoTitle: "MH Fashion product and customization guide",
+      productLinks: [],
       seoDescription:
         "Understand MH Fashion product types, customization levels, attribute choices, and how planned pricing is determined.",
     },
@@ -100,6 +101,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       featured: false,
       publishedAt: PUBLISHED_AT,
       seoTitle: "MH Fashion apparel options and attribute guide",
+      productLinks: [],
       seoDescription:
         "See how print method, fabric, knit structure, GSM, color, cutting, and size choices are planned to work together.",
     },
@@ -150,6 +152,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       featured: true,
       publishedAt: PUBLISHED_AT,
       seoTitle: "MH Fashion editor guide — draw, arrange and print",
+      productLinks: [],
       seoDescription:
         "A walkthrough of the MH Fashion editor: the print canvas, drawing and text tools, the layers panel, the free transform box, the mockups, and how a design reaches the print desk.",
     },
@@ -184,6 +187,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       featured: false,
       publishedAt: PUBLISHED_AT,
       seoTitle: "MH Fashion preview and mockup guide",
+      productLinks: [],
       seoDescription:
         "Understand the planned MH Fashion preview layers, recolor approach, Front and Back artwork, and mockup attachment rules.",
     },
@@ -217,6 +221,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       featured: true,
       publishedAt: PUBLISHED_AT,
       seoTitle: "MH Fashion payment and checkout guide",
+      productLinks: [],
       seoDescription:
         "Understand the planned Visa and Myanmar payment choices, provider interface, and payment-first checkout workflow.",
     },
@@ -250,6 +255,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       featured: false,
       publishedAt: PUBLISHED_AT,
       seoTitle: "MH Fashion payment and order status guide",
+      productLinks: [],
       seoDescription:
         "See how the planned payment-first flow connects to MH Fashion order confirmation and production statuses.",
     },
@@ -279,6 +285,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       featured: true,
       publishedAt: PUBLISHED_AT,
       seoTitle: "MH Fashion delivery fee and provider guide",
+      productLinks: [],
       seoDescription:
         "Understand the planned MH Delivery and DHL provider flow, delivery fee timing, and courier settlement model.",
     },
@@ -312,6 +319,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       featured: false,
       publishedAt: PUBLISHED_AT,
       seoTitle: "MH Fashion order status and delivery guide",
+      productLinks: [],
       seoDescription:
         "Read the planned MH Fashion order timeline from payment through production, delivery handoff, and delivery completion.",
     },

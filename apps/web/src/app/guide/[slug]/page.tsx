@@ -17,6 +17,9 @@ import Header from "@/components/Header";
 import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
 import { getGuideCatalog, getGuidePostBySlug } from "@/lib/guides";
+import { resolveGuideProductLinks } from "@/lib/guide-products";
+import { getProductsBySlugs } from "@/lib/products";
+import GuideShopLook from "@/components/guide/GuideShopLook";
 import { guideMetadata } from "@/lib/guide-metadata";
 import JsonLd from "@/components/JsonLd";
 import { articleSchema, breadcrumbSchema } from "@/lib/structured-data";
@@ -77,6 +80,9 @@ export default async function GuideArticlePage({ params }: PageProps) {
   const category = catalog.categories.find((item) => item.slug === post.categorySlug);
   const categoryNames = new Map(catalog.categories.map((item) => [item.slug, item.name]));
   const related = catalog.posts.filter((item) => item.slug !== post.slug && item.categorySlug === post.categorySlug).slice(0, 3);
+  const linkedProducts = await getProductsBySlugs(post.productLinks.map((link) => link.slug));
+  const linkedBySlug = new Map(linkedProducts.map((product) => [product.slug, product]));
+  const shopLook = await resolveGuideProductLinks(post.productLinks, (productSlug) => linkedBySlug.get(productSlug) ?? null);
   const categoryUrl = `/guide?category=${encodeURIComponent(post.categorySlug)}#articles`;
 
   return (
@@ -145,6 +151,8 @@ export default async function GuideArticlePage({ params }: PageProps) {
                 <nav aria-label="On this page"><h2 className="mb-4 border-l-4 border-accent pl-3 text-xs font-black uppercase tracking-[0.15em]"><GuideLabel id="guide.onPage" fallback="On this page" /></h2><ol className="space-y-3">{post.sections.map((section, index) => <li key={`${index}:${section.heading}`}><a href={`#section-${index + 1}`} className="flex items-start gap-2 text-xs leading-relaxed text-text-secondary hover:text-accent"><span className="text-[10px] tabular-nums text-accent/70">{String(index + 1).padStart(2, "0")}</span>{section.heading}</a></li>)}</ol></nav>
               </aside>
             </div>
+
+            <GuideShopLook links={shopLook} />
 
             {related.length > 0 && <section aria-labelledby="related-heading" className="mt-10 border-t border-border pt-8"><div className="mb-5 flex items-center justify-between"><h2 id="related-heading" className="border-l-4 border-accent pl-3 text-xl font-black"><GuideLabel id="guide.keepExploring" fallback="Keep exploring" /></h2><Link href={categoryUrl} className="text-xs font-semibold text-accent">View all <ArrowRight size={14} className="ml-1 inline" /></Link></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{related.map((item, index) => <GuideCard key={item.id} post={item} categoryName={categoryNames.get(item.categorySlug) ?? "Guide"} index={index} />)}</div></section>}
           </div>

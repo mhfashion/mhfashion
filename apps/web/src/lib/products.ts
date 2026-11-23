@@ -173,6 +173,29 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 }
 
 /**
+ * One round trip for several slugs, in the order asked. A post that names six products must not cost six
+ * queries, and a slug the catalogue no longer holds simply comes back missing.
+ */
+export async function getProductsBySlugs(slugs: string[]): Promise<Product[]> {
+  const wanted = [...new Set(slugs.map((slug) => slug.trim()).filter(Boolean))];
+  if (wanted.length === 0) return [];
+  const supabase = getServerSupabase();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable")
+    .in("slug", wanted);
+  if (error || !data) {
+    if (error) console.error("getProductsBySlugs failed:", error.message);
+    return [];
+  }
+  const rows = data as ProductRow[];
+  const ranges = await getPriceRanges(rows.map((row) => row.id));
+  const products = rows.map((row) => toProduct(row, ranges));
+  return wanted.flatMap((slug) => products.filter((product) => product.slug === slug));
+}
+
+/**
  * Products of one catalogue line (the `sub_brand` column). Nyein is a ready-made line: it is
  * sold as shown, so those products never offer the design editor.
  */

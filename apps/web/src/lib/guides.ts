@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { GUIDE_STARTER_CATALOG } from "./guide-starter";
+import { normalizeGuideProductLinks, type GuideProductLink } from "./guide-products";
 
 export type GuideSection = {
   heading: string;
@@ -28,6 +29,8 @@ export type GuidePost = {
   publishedAt: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  /** The products this post sells, in the order it mentions them. Empty for a post that sells nothing. */
+  productLinks: GuideProductLink[];
 };
 
 export type GuideCatalog = {
@@ -56,6 +59,7 @@ type GuidePostRow = {
   published_at: unknown;
   seo_title: unknown;
   seo_description: unknown;
+  product_links?: unknown;
 };
 
 const GUIDE_QUERY_TIMEOUT_MS = 8_000;
@@ -191,6 +195,7 @@ function parseGuidePost(
     publishedAt: value.published_at,
     seoTitle: value.seo_title,
     seoDescription: value.seo_description,
+    productLinks: normalizeGuideProductLinks(value.product_links),
   };
 }
 
@@ -247,7 +252,7 @@ async function loadGuideCatalog(): Promise<GuideCatalog> {
       supabase
         .from("guide_posts")
         .select(
-          "id, category_id, slug, title, excerpt, cover_image_url, sections, reading_minutes, featured, published_at, seo_title, seo_description"
+          "id, category_id, slug, title, excerpt, cover_image_url, sections, reading_minutes, featured, published_at, seo_title, seo_description, product_links"
         )
         .eq("status", "published")
         .not("published_at", "is", null)

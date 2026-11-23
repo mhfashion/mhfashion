@@ -21,6 +21,7 @@ import {
 import { chainAsPostAttributes } from "@/lib/admin-attributes";
 import { jerseyStyles } from "@/lib/admin-jersey";
 import { GUIDE_STARTER_CATALOG } from "@/lib/guide-starter";
+import { guideProductLinkSummary } from "@/lib/guide-products";
 import { storePostSvg } from "@/lib/post-assets";
 
 type PostTab = "guide" | "tshirt" | "nyein" | "jersey";
@@ -213,6 +214,7 @@ export default function AdminPosts() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[11px] font-bold text-[#303844]">{post.title}</span>
                   <span className="mt-0.5 block truncate text-[9px] text-[#919aa6]">{post.excerpt}</span>
+                  <span className="mt-0.5 block truncate text-[9px] font-semibold text-[#6c7683]" data-guide-products>{guideProductLinkSummary(post.productLinks)}</span>
                 </span>
                 <span className="text-[9px] text-[#87909b]">{post.publishedAt ? formatAdminDate(post.publishedAt) : "Unpublished"}</span>
                 <AdminBadge tone={post.featured ? "green" : "slate"}>{post.featured ? "Featured" : "Guide"}</AdminBadge>

@@ -1310,6 +1310,21 @@ proposal, not an approved order.
 
 11. **Posts ↔ Product relationship** as a data model (how a T-shirt post relates to
     Product → Style → Color and to fixed-design products). The Nyein brief is still pending.
+    **The part that does not need the brief shipped 2026-11-22:** a guide post now names the products it
+    sells, in the order it mentions them, each with an optional "as shown" note
+    (`lib/guide-products.ts`, column `guide_posts.product_links`). The post page shows **Shop this look**
+    with a card per product — name, the note (else the catalogue line), the price in the reader's currency
+    — and renders **nothing at all** when the post names none or none still exist, so no article changed
+    shape. Slugs are tidied and refused if they are really a path (`/products/x`, `two words`), a repeat is
+    one card, and the list stops at six. All of a post's products come back in **one** query
+    (`getProductsBySlugs`), not one per slug. The admin's Guide posts tab shows each post's links, or "No
+    products linked". Verified in Chromium at 1440x900 and 390x844 touch with a probe page of three
+    products: 3-up grid on desktop, stacked cards on a phone, 0 px sideways scroll, correct hrefs, and a
+    real post with no links renders no section; `tests/guide-products.test.cjs`.
+    **Still open, and the reason the brief matters:** a link is currently a *product* only. Style, colour
+    and fixed-design variants, and editing the links from the admin (the guide posts come from the
+    starter catalogue or Supabase, while the admin Posts module edits a separate demo model) wait for the
+    Nyein brief.
 12. ~~**Admin modules not yet built:** Brush Management only.~~ **Brush Management shipped 2026-11-22:**
     `/admin/brushes` lists the brushes the editor picker will offer. Each brush carries the id that is also
     its bucket folder (`brushes/<id>/texture.png`, shown on every row because R2 is not connected), a name,
