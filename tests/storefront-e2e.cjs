@@ -391,6 +391,61 @@ async function main() {
     assert.equal(await evaluate(() => document.documentElement.lang), "en", "switching back declares English again");
     console.log("PASS document language: <html lang> follows the language switcher and survives a reload");
 
+    // A keyboard user must be able to leave the header without tabbing through it, and must be able to
+    // see where the focus is. Both are checked with real key events, not synthetic .focus() calls.
+    const key = async (name, code, keyCode) => {
+      await send("Input.dispatchKeyEvent", { type: "rawKeyDown", key: name, code, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode });
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key: name, code, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode });
+      await pause(150);
+    };
+    const focusState = () => evaluate(() => {
+      const element = document.activeElement;
+      if (!element) return null;
+      const style = getComputedStyle(element);
+      const parent = element.parentElement ? getComputedStyle(element.parentElement) : null;
+      const transparent = (colour) => /rgba\(0, 0, 0, 0\)|transparent/.test(colour);
+      return {
+        tag: element.tagName,
+        label: (element.getAttribute("aria-label") || element.textContent || "").trim().slice(0, 40),
+        skip: element.hasAttribute("data-skip-to-content"),
+        width: Math.round(element.getBoundingClientRect().width),
+        inHeader: Boolean(element.closest("header")),
+        indicator: (style.outlineStyle !== "none" && !transparent(style.outlineColor)) || style.boxShadow !== "none" || Boolean(parent && parent.boxShadow !== "none"),
+      };
+    });
+
+    await visit("/", "header");
+    await evaluate(() => { document.activeElement?.blur(); return true; });
+    await key("Tab", "Tab", 9);
+    const skipLink = await focusState();
+    assert.equal(skipLink?.skip, true, `the first Tab reaches the skip link: ${JSON.stringify(skipLink)}`);
+    assert.ok(skipLink.width > 0, "the skip link becomes visible when focused");
+    assert.equal(skipLink.indicator, true, "the focused skip link is visibly marked");
+
+    await key("Enter", "Enter", 13);
+    const landed = await focusState();
+    assert.equal(landed?.tag, "H1", `Enter moves the focus to the page heading: ${JSON.stringify(landed)}`);
+    await key("Tab", "Tab", 9);
+    const next = await focusState();
+    assert.equal(next?.inHeader, false, `the next Tab is inside the page, not the header: ${JSON.stringify(next)}`);
+
+    // Tab through the header itself: every control it passes must show a visible focus indicator.
+    await visit("/", "header");
+    await evaluate(() => { document.activeElement?.blur(); return true; });
+    const rings = [];
+    for (let step = 0; step < 14; step += 1) {
+      await key("Tab", "Tab", 9);
+      const state = await focusState();
+      if (!state) break;
+      if (state.skip) continue;
+      if (!state.inHeader) break;
+      rings.push(state);
+    }
+    assert.ok(rings.length >= 8, `the header walk visits its controls: ${rings.length}`);
+    const unmarked = rings.filter((state) => !state.indicator).map((state) => `${state.tag}:${state.label}`);
+    assert.deepEqual(unmarked, [], "every header control shows focus");
+    console.log("PASS keyboard: the skip link leaves the header and every header control shows focus");
+
     // ---------- phone ----------
     await viewport(390, 844, true);
     await visit("/", "header");

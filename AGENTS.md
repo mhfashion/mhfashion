@@ -652,6 +652,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Keyboard access (`SkipToContent.tsx`, `globals.css`)
+- The skip link focuses the page's **`<h1>`**, not a layout wrapper: the header is rendered *inside* each
+  page's `<main>`, so a `#main-content` anchor jumped to a point still in front of the header. Every page
+  has exactly one `<h1>` (asserted by `assertAccessibleNames`), which makes it a reliable target.
+- `:focus-visible { outline: 2px solid rgb(var(--accent)) }` lives in `@layer base` so a component's
+  `outline-none` utility still wins where focus is drawn by a border or ring instead (inputs, editor
+  overlay). Do not move it out of the base layer: it would repaint the inline text editor's textarea.
+- `tests/storefront-e2e.cjs` drives this with real CDP key events (`Input.dispatchKeyEvent`), because a
+  programmatic `.focus()` does not reliably set Chrome's keyboard modality and so misses `:focus-visible`.
+  The skip link is the first Tab stop, so the header walk has to skip that one state before collecting.
+
 ## Status announcements (`HeaderActions.tsx`, `CheckoutClient.tsx`, `EditorToolsBar.tsx`)
 - The cart badge is a picture of a number, so the header cart button names its count
   (`Cart, 2 in the cart`) and a `role="status"` sr-only line announces the change. The wishlist link

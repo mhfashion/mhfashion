@@ -36,6 +36,16 @@ body {
   @apply bg-bg text-text-primary;
 }
 
+/* Keyboard focus must be visible on every control that does not paint its own indicator. This sits
+   in the base layer so a component's `outline-none` utility still wins where the focus is drawn by a
+   border or ring instead. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+  }
+}
+
 /* Continuous right-to-left auto-scroll for the category row. The list is
    repeated 8x in the component so this only needs to translate by 1/8 of
    the total width for a perfectly seamless loop on any screen size. */

@@ -6,6 +6,7 @@ import { CartProvider } from "@/lib/cart-context";
 import { WishlistProvider } from "@/lib/wishlist-context";
 import { LocaleProvider } from "@/lib/i18n";
 import CopyrightBar from "@/components/CopyrightBar";
+import SkipToContent from "@/components/SkipToContent";
 import BrowserZoomGuard from "@/components/BrowserZoomGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import JsonLd from "@/components/JsonLd";
@@ -49,7 +50,9 @@ export default function RootLayout({
                   <PwaInstall />
                   <CrashReporter />
                   <div className="flex min-h-screen flex-col pb-[var(--mobile-navigation-height,4rem)] md:pb-0">
-                    <div className="flex-1">{children}</div>
+                    <SkipToContent />
+                    {/* The skip link's target: focusing it puts the next Tab inside the page. */}
+                    <div id="main-content" tabIndex={-1} className="flex-1 outline-none">{children}</div>
                     <CopyrightBar />
                   </div>
                   <MobileBottomNav />
