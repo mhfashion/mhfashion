@@ -9,10 +9,13 @@ import {
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import {
-  APPAREL_CATEGORIES, formatKs, productDraftFrom, productFromDraft, removeProduct,
+  APPAREL_CATEGORIES, APPAREL_SIZES, ONE_SIZE, formatKs, productDraftFrom, productFromDraft, removeProduct,
   upsertProduct, validateProductDraft,
   type AdminProduct, type AdminProductCategory, type AdminProductDraft, type AdminProductStatus,
 } from "@/lib/admin-demo-data";
+import {
+  SIZE_CHART_MEASURES, SIZE_CHART_MEASURE_LABEL, normalizeSizeChart, setSizeChartCell, type ProductSizeChart,
+} from "@/lib/size-chart";
 
 const CATEGORIES: AdminProductCategory[] = ["T-Shirt", "Hoodie", "Polo", "Jersey", "Cap", "Accessory"];
 const STATUSES: AdminProductStatus[] = ["Active", "Draft", "Archived"];
@@ -31,6 +34,7 @@ export default function AdminProducts() {
   const [draft, setDraft] = useState<AdminProductDraft | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [chart, setChart] = useState<ProductSizeChart>({});
 
   const query = search.trim().toLowerCase();
   const editing = editingId ? data.products.find((product) => product.id === editingId) ?? null : null;
@@ -42,18 +46,21 @@ export default function AdminProducts() {
   function startCreate() {
     setEditingId("new");
     setDraft(productDraftFrom());
+    setChart({});
     setErrors([]);
   }
 
   function startEdit(product: AdminProduct) {
     setEditingId(product.id);
     setDraft(productDraftFrom(product));
+    setChart(product.sizeChart ?? {});
     setErrors([]);
   }
 
   function closeEditor() {
     setEditingId(null);
     setDraft(null);
+    setChart({});
     setErrors([]);
   }
 
@@ -64,7 +71,7 @@ export default function AdminProducts() {
       setErrors(found);
       return;
     }
-    const product = productFromDraft(draft, editing ?? undefined);
+    const product = { ...productFromDraft(draft, editing ?? undefined), sizeChart: normalizeSizeChart(chart) };
     updateAdminData((current) => upsertProduct(current, product));
     closeEditor();
   }
@@ -211,6 +218,44 @@ export default function AdminProducts() {
             <p className="rounded-xl bg-[#f7f9fb] px-3 py-2 text-[9px] leading-4 text-[#87909b]">
               Apparel gets the standard size run (S–2XL); caps and accessories use a single size. Stock per size is managed in Inventory.
             </p>
+            <div data-size-chart-editor>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[#7b8492]">Size chart (cm)</p>
+              <p className="mb-2 mt-0.5 text-[9px] leading-4 text-[#87909b]">
+                Measure the finished garment flat. Leave a cell blank if it does not apply; the product page shows only what is filled.
+              </p>
+              <table className="w-full text-left text-[10px]">
+                <thead className="text-[9px] text-[#828c99]">
+                  <tr>
+                    <th className="pb-1 pr-2 font-semibold">Size</th>
+                    {SIZE_CHART_MEASURES.map((measure) => <th key={measure} className="pb-1 pr-2 font-semibold">{SIZE_CHART_MEASURE_LABEL[measure]}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(APPAREL_CATEGORIES.includes(draft.category) ? APPAREL_SIZES : ONE_SIZE).map((size) => (
+                    <tr key={size}>
+                      <td className="py-1 pr-2 font-bold text-[#394250]">{size}</td>
+                      {SIZE_CHART_MEASURES.map((measure) => (
+                        <td key={measure} className="py-1 pr-2">
+                          <AdminInput
+                            value={chart[size]?.[measure] === undefined ? "" : String(chart[size][measure])}
+                            onChange={(event) => {
+                              const raw = event.target.value.trim();
+                              setChart((current) => setSizeChartCell(current, size, measure, raw === "" ? null : Number(raw)));
+                            }}
+                            inputMode="decimal"
+                            placeholder="—"
+                            aria-label={`${size} ${SIZE_CHART_MEASURE_LABEL[measure]} in cm`}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mt-1 text-[9px] text-[#87909b]">
+                {Object.keys(chart).length ? `${Object.keys(chart).length} size${Object.keys(chart).length === 1 ? "" : "s"} measured` : "No measurements yet — the product page says so instead of guessing."}
+              </p>
+            </div>
           </div>
         ) : null}
       </AdminDrawer>

@@ -21,6 +21,7 @@ import {
 } from "@/lib/attribute-rules";
 import { normalizeRefundRequests, type AdminOrderRefundRequest } from "@/lib/order-refunds";
 import { normalizeLoyaltyLedger, type LoyaltyEntry } from "@/lib/loyalty-ledger";
+import { normalizeSizeChart, type ProductSizeChart } from "@/lib/size-chart";
 
 export const ADMIN_DEMO_DATA_KEY = "mh-fashion-admin-demo-data-v1";
 
@@ -367,6 +368,8 @@ export type AdminProduct = {
   priceKs: number;
   sizes: string[];
   status: AdminProductStatus;
+  /** Measured chart in centimetres, per size (Plan P1 item 10). Empty until the owner measures a style. */
+  sizeChart?: ProductSizeChart;
 };
 
 export type AdminDesign = {
@@ -2054,7 +2057,10 @@ export function readAdminDemoData(): AdminDemoData {
       const parsed = JSON.parse(raw) as AdminDemoData;
       if (parsed && parsed.version === 1 && Array.isArray(parsed.orders) && Array.isArray(parsed.products)) {
         // Entries saved before the Posts module existed have no tshirtPosts key.
-        const products = Array.isArray(parsed.products) ? parsed.products : [];
+        const products = (Array.isArray(parsed.products) ? parsed.products : []).map((product) => ({
+          ...product,
+          sizeChart: normalizeSizeChart(product.sizeChart),
+        }));
         const orders = parsed.orders.map((order) => ({
           ...backfillOrderPrintSpec(order, products),
           refundRequests: normalizeRefundRequests(order.refundRequests),

@@ -416,6 +416,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Size charts (`apps/web/src/lib/size-chart.ts`, `components/ProductSizeChart.tsx`)
+- Stored in **centimetres**, keyed by the product's own size label, snapped to 0.5 cm; inches are derived
+  for display. A blank cell clears that measure and an emptied size disappears, so "no chart" and "0 cm"
+  never look alike.
+- Nothing is seeded. `sizeChartIsEmpty` drives the "not published yet" panel — do not fill in a
+  placeholder chart, a wrong chest measurement is a returned garment.
+- The admin drawer always renders all four measure columns; only the public table drops columns
+  (`sizeChartMeasures`). Collapsing the editor columns mid-typing makes the next input vanish.
+- `/size-guide` renders `SizeChartLibrary` (works today, reads the admin store). The product page's Size
+  tab reads the chart by **product id**, but storefront ids come from Supabase while the chart lives in the
+  browser-local admin store, so that panel says "not published" until P0-1 gives both the same ids.
+
 ## Stock and sales (`apps/web/src/lib/stock-movement.ts`)
 - The owner's decision (2026-11-21) is that Inventory is **blank-garment stock** and does not cap sales, so
   a sale leaves it alone. `settings.deductStockOnSale` ships **false** and `syncStockWithStage` returns the

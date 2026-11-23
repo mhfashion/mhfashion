@@ -1259,8 +1259,14 @@ proposal, not an approved order.
     **Storefront pages built 2026-11-21:** every footer link resolves — `/about`, `/faq`, `/shipping`,
     `/returns`, `/size-guide`, `/terms`, `/privacy`, `/cookie-policy`, `/products` and `/contact` are
     new pages; `/best-sellers` redirects to the one ranked list at `/popular`.
-    `tests/storefront-info.test.cjs` fails if a footer link has no route. Still open: a numeric size
-    chart per product (the catalog has no measurements yet) and a real inbox behind `/contact`.
+    `tests/storefront-info.test.cjs` fails if a footer link has no route. Still open: a real inbox
+    behind `/contact`.
+    **Size charts built 2026-11-22:** `lib/size-chart.ts` stores chest / length / shoulder / sleeve per
+    size in centimetres (snapped to the half centimetre a tape reads), `AdminProduct.sizeChart` holds
+    it, the Products drawer measures each size, and `/size-guide` lists every Active style that has
+    numbers with a cm/in switch. Nothing is seeded: an unmeasured style says so, and the product page's
+    Size tab shows the same panel — it reads the chart by product id, so it starts working when the
+    catalog and the admin store share ids (P0-1).
     **Search built 2026-11-21:** `/search?q=` queries the catalog through `searchProducts` (name, line
     and product type in one PostgREST `or()`), and the header reaches it from three places — the
     desktop field, the tablet dropdown and the phone field in `MobileNav` (which used to submit to
