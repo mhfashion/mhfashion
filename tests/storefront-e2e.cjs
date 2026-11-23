@@ -71,14 +71,18 @@ async function main() {
     const missing = [];
     for (const [path, ready] of pages) {
       await visit(path, ready);
-      const unnamed = await evaluate(() => {
+      const found = await evaluate(() => {
         const name = (element) => (element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || "").trim();
-        return [...document.querySelectorAll('button, a[href], input:not([type="hidden"]), select, textarea')]
-          .filter((element) => !element.closest('[aria-hidden="true"]'))
-          .filter((element) => !name(element))
-          .map((element) => `${element.tagName.toLowerCase()}${element.getAttribute("type") ? `[${element.getAttribute("type")}]` : ""}`);
+        return {
+          unnamed: [...document.querySelectorAll('button, a[href], input:not([type="hidden"]), select, textarea')]
+            .filter((element) => !element.closest('[aria-hidden="true"]'))
+            .filter((element) => !name(element))
+            .map((element) => `${element.tagName.toLowerCase()}${element.getAttribute("type") ? `[${element.getAttribute("type")}]` : ""}`),
+          headings: document.querySelectorAll("h1").length,
+        };
       });
-      if (unnamed.length) missing.push(`${path}: ${unnamed.join(", ")}`);
+      if (found.unnamed.length) missing.push(`${path}: ${found.unnamed.join(", ")}`);
+      assert.equal(found.headings, 1, `${path} has exactly one <h1>`);
     }
     assert.deepEqual(missing, [], "every control has an accessible name");
   }
