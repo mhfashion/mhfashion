@@ -736,17 +736,17 @@ The local unit tests, corrected production-server HTTP tests, Next.js build, and
 
 **Recommendation:** Connect the page to authenticated, user-scoped data and persist profile edits. Until then, clearly label all data as a demo and avoid presenting sample identity/contact information as a real account.
 
-##### 8. Short phone viewports can clip the stacked editor workspace
+##### 8. Short phone viewports can clip the stacked editor workspace — RESOLVED 2026-11-22
 
-**Evidence:** `apps/web/src/components/EditorCanvas.tsx:105-120,124-160` uses `overflow-hidden`; below `md` the canvas/mockup stack vertically but retains width-derived heights and a 48px separator. The page uses an `h-dvh` container (`apps/web/src/app/create/page.tsx:5-8`), so on short phone viewports the lower content can extend beyond the available height without a scroll path.
+**Evidence (historical):** the viewport used `overflow-hidden`, and below `md` the canvas/mockup stack retained width-derived heights, so on a short phone viewport the lower content extended past the available height with no scroll path.
 
-**Recommendation:** Add vertical scrolling or a viewport-fit mode, then verify short phone heights and landscape layouts as part of the required Web/Desktop + Phone acceptance checks.
+**Fix:** the viewport scrolls (it already did) and `lib/editor-viewport.ts` measures how much of the print canvas the floating Tools Bar covers, reserving exactly that much room with a spacer inside the scroller. The spacer must not be padding on the scroller: the scroller is absolutely positioned, so its padding inflates its own box and pushed the editor under the bottom navigation at 740 × 390. Verified in Chromium at 320 × 480, 320 × 568 and 360 × 640: 0 px of the print canvas stays under the bar when scrolled to the end, no horizontal overflow; 390 × 844, 820 × 1180 and 1280 × 900 reserve nothing and are unchanged. `tests/editor-viewport.test.cjs` covers the geometry.
 
-##### 9. Touch pointers cannot pan the canvas on phones
+##### 9. Touch pointers cannot pan the canvas on phones — RESOLVED 2026-11-22
 
-**Evidence:** `EditorCanvas.tsx:68-71` accepts only middle-button drag or Space+left-button drag. A touchscreen primary pointer does not meet either condition, and the viewport is `overflow-hidden` (`EditorCanvas.tsx:115`), leaving no touch pan route.
+**Evidence (historical):** only middle-button drag or Space+left-button drag panned, so a touchscreen had no pan route.
 
-**Recommendation:** Add a deliberate touch pan gesture (and pinch zoom if supported), with appropriate touch-action/pointer handling and accessible alternatives. Test on phone and preserve interactions for controls.
+**Fix:** phones pan with the `Pan view` toggle or the Hand tool (both set `touch-action: none`), and two fingers pinch-zoom between 0.25× and 3× while panning, keeping the artwork under the fingers. The maths is in `lib/editor-pinch.ts` and the scroller's own offset is fed into it, because the browser anchors the scroll when the zoom makes the workspace taller and the artwork would otherwise jump by that amount (72 px in the first run). Measured in Chromium: the anchored point lands within 0 px, and the clamps stop at 3× and 0.25×. `tests/editor-pinch.test.cjs` covers it.
 
 ##### 10. Users can update their own reward-point balances
 

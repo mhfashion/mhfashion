@@ -468,7 +468,8 @@ test("every tool paints outside the print canvas, not just inside it", () => {
   // A touch screen keeps a ring instead: a viewport-wide `touch-none` surface would swallow
   // the scroll gesture that reaches the mockups.
   assert.match(source, /const ring = PASTEBOARD_TOUCH_RING_PX \* zoom;/);
-  assert.match(source, /const left = coarse \? canvasRect\.left - ring : viewportRect\.left;/);
+  assert.match(source, /const left = coarse \? Math\.max\(canvasRect\.left - ring, viewportRect\.left\) : viewportRect\.left;/);
+  assert.match(source, /const right = coarse \? Math\.min\(canvasRect\.right \+ ring, viewportRect\.right\) : viewportRect\.right;/);
   // It must not double as the workspace node drag handle.
   assert.match(source, /event\.target\.closest\("\[data-editor-pasteboard\]"\)\) return;/);
   // Layer masks and erasure masks are clipped to their own region, so a canvas-sized mask

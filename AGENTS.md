@@ -680,6 +680,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - To push without persisting the credential, pass a write-capable token inline and leave
   `origin` alone, so the read-only URL in `.git/config` is never overwritten:
   `git push "https://x-access-token:$TOKEN@github.com/mhfashion/mhfashion.git" HEAD:main`
+- 2026-11-21: a PAT pasted into the chat authenticated as `mhfashion` for `git ls-remote`
+  but was denied on push (`Permission to mhfashion/mhfashion.git denied to mhfashion`, 403)
+  and returned `401 Bad credentials` from the REST API — i.e. read-only or already revoked.
+  Pasting a PAT into a chat can trip GitHub secret scanning and revoke it; ask for a fresh
+  fine-grained PAT with `Contents: write` on `mhfashion/mhfashion` instead of reusing one.
 - The owner supplied a fine-grained PAT with `Contents: write`. It lives **outside the repo** at
   `~/.mh_push_token` (mode 600) and is used through `~/push-mhfashion.sh`, which pushes
   `HEAD:main` with the token inline. Never copy the token into a tracked file, and do not print it.
@@ -723,8 +728,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Network noise is deliberately not collected (`Log.entryAdded` is off), so an optional asset that 404s does not fail the run.
 - `Save` and `Buy` are `disabled` until accounts and payment exist (E1), so a sweep must not treat their dead state as a defect.
 
+## Short phone heights: reserving room under the floating tools bar
+- `apps/web/src/lib/editor-viewport.ts` (`editorToolsBarClearance`) returns how much room the scrolling viewport must reserve so the print canvas can be scrolled clear of the floating Tools Bar. It is 0 whenever the canvas is already clear, so the verified 390x844 / 820x1180 / 1280x900 layouts are untouched.
+- Reserve it with a **spacer element inside the scroller**, never with `paddingBottom` on the scroller. The scroller is `absolute inset-0`, so its padding inflates its own box: at 740x390 a 289 px padding grew the viewport to 474 px and pushed the editor 150 px under the bottom navigation (`tests/editor-touch.cjs` landscape clearance check catches it).
+- The measurement must keep its last answer when either box is still empty (`getBoundingClientRect().height === 0`) and retry at 150/400/900 ms; on a 320x480 first paint the bar has no height yet, and returning 0 there left the canvas with no room at all.
+- Verified at 320x480, 320x568, 360x640: scrolled to the end, 0 px of the print canvas stays under the bar (was 146 / 58 / 23), no horizontal overflow.
+
+## Pinch zoom and the scroller's own offset
+- `pinchView` in `apps/web/src/lib/editor-pinch.ts` takes the scroller's `scrollX`/`scrollY` and adds their delta since the gesture started to the pan. Chrome anchors the scroll when the zoom makes the workspace taller, so without this the artwork jumps by the anchored amount (72 px measured) even though the finger maths is right.
+- Do not `preventDefault()` on a two-finger `touchstart`: it is enough to cancel the whole touch stream on the emulated device and the pinch never runs. Compensate for the scroll instead.
+
 ## Testing pitfalls
 - `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.
+- The app registers a **service worker** (`/sw.js`). It serves the previous bundle after a rebuild and ignores `Network.setCacheDisabled`, so a browser probe can silently measure old code. Clear `local_storage,service_workers,cache_storage` (`Storage.clearDataForOrigin`) and navigate through `about:blank` before loading `/create` — `Page.navigate` to the URL the page already shows is a same-document no-op. `tests/editor-touch.cjs` now does both.
+- A long-lived CDP browser can end up with a detached page target: `Input.dispatchTouchEvent` then produces no events at all and `Page.reload` fails with `Not attached to an active page`. Recreate the target (`PUT /json/new?<url>` after closing the old one) or restart Chromium before concluding that a gesture is broken.
 - `next dev` blocks cross-origin `/_next/*` resources requested from `127.0.0.1` (it logs `Blocked cross-origin request to Next.js dev resource /_next/hmr`). The page then renders the server HTML but never hydrates, so clicks, effects, and `useState` do nothing — which looks exactly like a broken feature. Drive CDP probes at `http://localhost:3000` (or add `allowedDevOrigins`).
 - When measuring on-screen glyph ink against the transform box, hide `[data-editor-transform-controls="true"]` first; the resize-handle squares otherwise pollute the dark-pixel bbox.
 - In CDP drag tests, check the target point is not covered by another panel (e.g. the mockup panel on the right of the canvas). Use `document.elementFromPoint` to confirm.

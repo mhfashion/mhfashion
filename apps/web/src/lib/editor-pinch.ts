@@ -21,12 +21,15 @@ export type PinchFrame = {
   /** Where the fingers' midpoint was when the gesture began. */
   midpointX: number;
   midpointY: number;
+  /** The viewport's scroll offset at that moment; the workspace moves with it. */
+  scrollX: number;
+  scrollY: number;
   zoom: number;
   panX: number;
   panY: number;
 };
 
-export type PinchFingers = { distance: number; midpointX: number; midpointY: number };
+export type PinchFingers = { distance: number; midpointX: number; midpointY: number; scrollX?: number; scrollY?: number };
 
 export type PinchView = { zoom: number; panX: number; panY: number };
 
@@ -44,10 +47,15 @@ export function pinchView(start: PinchFrame, fingers: PinchFingers): PinchView {
   const anchorY = start.midpointY - start.rectTop;
   const shrink = 1 - zoom / start.zoom;
   const growth = zoom - start.zoom;
+  // The workspace lives in a scroller: anything that moves that scroll offset (the browser's scroll
+  // anchoring while the zoom makes the workspace taller, or the user) shifts the artwork on screen, so
+  // the pan has to absorb the same amount or the anchor slides.
+  const scrolledX = (fingers.scrollX ?? start.scrollX) - start.scrollX;
+  const scrolledY = (fingers.scrollY ?? start.scrollY) - start.scrollY;
   return {
     zoom,
-    panX: start.panX + (fingers.midpointX - start.midpointX) + anchorX * shrink + start.originX * growth,
-    panY: start.panY + (fingers.midpointY - start.midpointY) + anchorY * shrink + start.originY * growth,
+    panX: start.panX + (fingers.midpointX - start.midpointX) + anchorX * shrink + start.originX * growth + scrolledX,
+    panY: start.panY + (fingers.midpointY - start.midpointY) + anchorY * shrink + start.originY * growth + scrolledY,
   };
 }
 
@@ -57,9 +65,12 @@ export function pinchFrameFrom(
   rect: { left: number; top: number },
   origin: { x: number; y: number },
   fingers: PinchFingers,
+  scroll: { x: number; y: number } = { x: 0, y: 0 },
 ): PinchFrame {
   return {
     distance: fingers.distance,
+    scrollX: scroll.x,
+    scrollY: scroll.y,
     rectLeft: rect.left,
     rectTop: rect.top,
     originX: origin.x,

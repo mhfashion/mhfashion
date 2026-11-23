@@ -34,7 +34,7 @@ async function main() {
     if (!entry) return;
     pending.delete(message.id);
     clearTimeout(entry.timer);
-    if (message.error) entry.reject(new Error(JSON.stringify(message.error)));
+    if (message.error) entry.reject(new Error(`${entry.method}: ${JSON.stringify(message.error)}`));
     else entry.resolve(message.result);
   });
   function send(method, params = {}) {
@@ -44,7 +44,7 @@ async function main() {
         pending.delete(id);
         reject(new Error(`CDP timed out: ${method}`));
       }, 10000);
-      pending.set(id, { resolve, reject, timer });
+      pending.set(id, { resolve, reject, timer, method });
       ws.send(JSON.stringify({ id, method, params }));
     });
   }
@@ -62,7 +62,13 @@ async function main() {
     await send("Emulation.setTouchEmulationEnabled", { enabled: mobile, maxTouchPoints: 5 });
     // Every section starts from a blank editor. The draft restore would otherwise carry the
     // previous section's layers into this one, so "Layer 1" would not be the layer on screen.
-    await send("Storage.clearDataForOrigin", { origin, storageTypes: "local_storage" });
+    // The app registers a service worker, and it will happily serve the previous bundle after a
+    // rebuild, so clear it along with the draft.
+    await send("Storage.clearDataForOrigin", { origin, storageTypes: "local_storage,service_workers,cache_storage" });
+    // Navigating to the URL the page already shows is a same-document no-op, so every section after
+    // the first used to run on the previous section's document. Go through about:blank to force a
+    // real load.
+    await send("Page.navigate", { url: "about:blank" });
     await send("Page.navigate", { url: `${origin}/create` });
     for (let n = 0; n < 40; n++) {
       await pause(100);

@@ -7,6 +7,7 @@ import EditorArtworkLayers from "@/components/EditorArtworkLayers";
 import { GradientPreview } from "@/components/EditorLayerPreview";
 import EditorToolsBar, { type EditorTool } from "@/components/EditorToolsBar";
 import { pinchFrameFrom, pinchView, type PinchFrame } from "@/lib/editor-pinch";
+import { editorToolsBarClearance } from "@/lib/editor-viewport";
 import EditorDesignExport from "@/components/EditorDesignExport";
 import { downloadDesignPng, downloadDesignSvg, designExportDocument, serializeArtworkSvg, type DesignExportOutcome } from "@/lib/design-export";
 import EditorEditSidebar from "@/components/EditorEditSidebar";
@@ -802,6 +803,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   ), [boundsForLayerIds, hoveredLayerId, selectedLayerIds]);
   const hoveredRotation = hoveredLayerId ? canvasLayerRotations[hoveredLayerId] ?? 0 : 0;
   const [pasteboardRect, setPasteboardRect] = useState<PasteboardRect | null>(null);
+  const [toolsBarClearance, setToolsBarClearance] = useState(0);
   // A layer may be parked far outside the print area, so the Move tool's pick surface has to
   // cover every visible layer, not a fixed margin around the canvas. Sized in percentages of
   // the print area, which is the same box the artwork coordinate space maps onto.
@@ -964,10 +966,13 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       if (!canvasRect || !canvasRect.width || !canvasRect.height || !viewportRect) return;
       const coarse = window.matchMedia?.("(pointer: coarse)").matches === true;
       const ring = PASTEBOARD_TOUCH_RING_PX * zoom;
-      const left = coarse ? canvasRect.left - ring : viewportRect.left;
-      const right = coarse ? canvasRect.right + ring : viewportRect.right;
-      const top = coarse ? canvasRect.top - ring : viewportRect.top;
-      const bottom = coarse ? canvasRect.bottom + ring : viewportRect.bottom;
+      // On a phone the ring is clipped to the visible area. Unclipped it was wider than the screen,
+      // which gave the viewport a horizontal scrollbar and let the print canvas slide sideways out
+      // of view on a short phone; a surface the user cannot see or touch is worth nothing anyway.
+      const left = coarse ? Math.max(canvasRect.left - ring, viewportRect.left) : viewportRect.left;
+      const right = coarse ? Math.min(canvasRect.right + ring, viewportRect.right) : viewportRect.right;
+      const top = coarse ? Math.max(canvasRect.top - ring, viewportRect.top) : viewportRect.top;
+      const bottom = coarse ? Math.min(canvasRect.bottom + ring, viewportRect.bottom) : viewportRect.bottom;
       const percentX = (value: number) => ((value - canvasRect.left) / canvasRect.width) * 100;
       const percentY = (value: number) => ((value - canvasRect.top) / canvasRect.height) * 100;
       // Nothing can be parked past the layer travel limit, so stop growing with the window.
@@ -1002,6 +1007,51 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       observer?.disconnect();
     };
   }, [activeTool, zoom, pan, nodePositions, menuOpen, visibleMockups]);
+  // The tools bar floats over the viewport, so on a short phone the bottom of the print canvas sat
+  // under it with nothing to scroll: the area could not be reached at all. Reserve the overlap as
+  // bottom padding, and nothing on a layout where the canvas is already clear of the bar.
+  useEffect(() => {
+    const bar = document.querySelector<HTMLElement>('[data-testid="editor-tools-bar"]');
+    const viewport = viewportRef.current;
+    if (!bar || !viewport) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      // A drag or a pinch moves the canvas by hand; the padding is a layout fact, not a gesture one.
+      if (panStartRef.current || activeNodeDragRef.current || pinchStartRef.current) return;
+      const canvasRect = canvasNodeRef.current?.getBoundingClientRect();
+      const barRect = bar.getBoundingClientRect();
+      // Before the first paint either box can still be empty; keep the last answer rather than
+      // dropping back to no padding.
+      if (!canvasRect || !barRect.height) return;
+      const viewportRect = viewport.getBoundingClientRect();
+      setToolsBarClearance(
+        editorToolsBarClearance({ canvasBottom: canvasRect.bottom, barTop: barRect.top, viewportTop: viewportRect.top, viewportHeight: viewportRect.height }),
+      );
+    };
+    const schedule = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(measure);
+    };
+    schedule();
+    // The canvas and the bar can both land after this effect runs, so watch the workspace too and
+    // take a second look once the first paint is over.
+    const retries = [150, 400, 900].map((delay) => window.setTimeout(schedule, delay));
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
+    if (observer) {
+      observer.observe(bar);
+      observer.observe(viewport);
+      if (workspaceRef.current) observer.observe(workspaceRef.current);
+    }
+    window.addEventListener("resize", schedule);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      retries.forEach((timer) => window.clearTimeout(timer));
+      observer?.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, [zoom, pan, toolsCollapsed, layersOpen, editSidebarOpen]);
+
   const handleLargeTierRequested = useCallback((side: MockupSide) => {
     setLargeArtworkTierOwner((current) => claimLargeArtworkTier(current, side));
   }, []);
@@ -1163,6 +1213,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
         { left: rect.left, top: rect.top },
         { x: originX, y: originY },
         { distance, midpointX: midpoint.x, midpointY: midpoint.y },
+        { x: viewport.scrollLeft, y: viewport.scrollTop },
       );
     };
 
@@ -1176,7 +1227,13 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       // The page must not scroll or zoom under the fingers.
       event.preventDefault();
       const midpoint = touchMidpoint(event.touches);
-      const view = pinchView(start, { distance: touchDistance(event.touches), midpointX: midpoint.x, midpointY: midpoint.y });
+      const view = pinchView(start, {
+        distance: touchDistance(event.touches),
+        midpointX: midpoint.x,
+        midpointY: midpoint.y,
+        scrollX: viewport.scrollLeft,
+        scrollY: viewport.scrollTop,
+      });
       setZoom(view.zoom);
       setPan({ x: view.panX, y: view.panY });
     };
@@ -3181,6 +3238,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
               </section>
             ))}
           </div>
+          {toolsBarClearance > 0 && <div aria-hidden="true" className="shrink-0" style={{ height: toolsBarClearance }} />}
         </div>
         <EditorEditSidebar
           open={editSidebarOpen}

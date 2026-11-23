@@ -19,7 +19,7 @@ function loadModule(relativePath) {
 const pinch = loadModule("apps/web/src/lib/editor-pinch.ts");
 
 // A phone-sized frame: the workspace box starts at x 49, its origin is the top centre at 146 px.
-const PHONE = { distance: 120, rectLeft: 49, rectTop: 291, originX: 146, originY: 0, midpointX: 195, midpointY: 351, zoom: 1, panX: 0, panY: 0 };
+const PHONE = { distance: 120, rectLeft: 49, rectTop: 291, originX: 146, originY: 0, midpointX: 195, midpointY: 351, scrollX: 0, scrollY: 0, zoom: 1, panX: 0, panY: 0 };
 
 test("spreading two fingers zooms in by the ratio they spread", () => {
   const view = pinch.pinchView(PHONE, { distance: 240, midpointX: 195, midpointY: 351 });
@@ -79,6 +79,14 @@ test("a drag and a spread at once do both, still anchored", () => {
   assert.ok(Math.abs(after - (255 + (before - 195) * ratio)) < 0.001, "the first midpoint's artwork ends under the new midpoint");
 });
 
+test("the viewport scrolling mid-gesture does not slide the artwork", () => {
+  // The browser anchors the scroll when the zoom makes the workspace taller; the pan absorbs it.
+  const view = pinch.pinchView(PHONE, { distance: 240, midpointX: 195, midpointY: 351, scrollY: 72 });
+  const still = pinch.pinchView(PHONE, { distance: 240, midpointX: 195, midpointY: 351 });
+  assert.equal(view.panY - still.panY, 72, "the pan follows the scroll by the same amount");
+  assert.equal(view.panX, still.panX, "and the horizontal offset is untouched");
+});
+
 test("a gesture that starts with the fingers on top of each other changes nothing", () => {
   const view = pinch.pinchView({ ...PHONE, distance: 0 }, { distance: 200, midpointX: 195, midpointY: 351 });
   assert.deepEqual(view, { zoom: 1, panX: 0, panY: 0 }, "dividing by zero would fly the canvas off screen");
@@ -86,7 +94,7 @@ test("a gesture that starts with the fingers on top of each other changes nothin
 
 test("a frame can be taken from the live view and the measured box", () => {
   const frame = pinch.pinchFrameFrom({ zoom: 1.5, panX: 20, panY: -10 }, { left: 49, top: 291 }, { x: 146, y: 0 }, { distance: 120, midpointX: 195, midpointY: 351 });
-  assert.deepEqual(frame, { distance: 120, rectLeft: 49, rectTop: 291, originX: 146, originY: 0, midpointX: 195, midpointY: 351, zoom: 1.5, panX: 20, panY: -10 });
+  assert.deepEqual(frame, { distance: 120, rectLeft: 49, rectTop: 291, originX: 146, originY: 0, midpointX: 195, midpointY: 351, scrollX: 0, scrollY: 0, zoom: 1.5, panX: 20, panY: -10 });
 });
 
 test("the editor binds the gesture once and reads the live view through refs", () => {
@@ -98,5 +106,6 @@ test("the editor binds the gesture once and reads the live view through refs", (
   assert.match(canvas, /panStartRef\.current \|\| activeNodeDragRef\.current/, "a layer drag is not hijacked by a second finger");
   assert.match(canvas, /pinchView\(start,/, "the maths lives in the tested helper");
   assert.match(canvas, /const zoomRef = useRef\(zoom\);/, "the live view is read through a ref, not a stale closure");
+  assert.match(canvas, /scrollY: viewport.scrollTop/, "the scroller's own offset is fed into the gesture");
   assert.match(canvas, /viewport\.removeEventListener\("touchmove", handleTouchMove\)/, "and the listeners are cleaned up");
 });
