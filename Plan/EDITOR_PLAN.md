@@ -302,6 +302,11 @@ the owner approves an item before it starts.
 
 - Designs and Elements read the real design library; Upload stores its images; Image Create generates and
   inserts an image.
+- **Through the R2 asset service (owner, 2026-11-22; `Plan/PLAN.md` §12.1):** Designs and Elements read
+  `GET /api/assets/designs` and `/elements`, whose JSON the Worker builds from the folders in R2 and a small
+  `meta.json` per asset (name, category, tags). The `pending-r2-endpoint` placeholder in
+  `lib/editor-design-library.ts` is replaced by that response. A design's layers stay individually selectable.
+  Uploaded photos are private: they go to R2 through the Worker and come back only to their owner.
 - Acceptance: a design added from the sidebar survives a reload (once E1 lands) and appears in the print
   bundle.
 
@@ -496,15 +501,18 @@ the owner approves an item before it starts.
 - **In R2:** follows the folder pattern of `Doc/R2-STORAGE.md`:
   - `fonts/<font-slug>/<style>.woff2` (for example `regular`, `bold`, `italic`), woff2 only, with a version in
     the file name when a font is replaced so a cached copy is never served stale.
-  - `fonts/manifest.json` lists each font: slug, display name, shelf, its files by weight and style, the scripts
-    it covers (Latin, Myanmar), the licence name and link, and whether it is on. A bad entry is skipped, not
-    fatal (the same rule as `brushes.json`). For now the manifest is the source of truth and the font list stays in R2
-    (owner decision, 2026-11-22, D13); it is expected to move into the database later; `Doc/R2-STORAGE.md` gains a "Fonts" section when this is built.
-  - The base address comes from the same public R2 address the mockups use, never hard-coded, so a later move
-    to AWS S3 changes one setting.
+  - The font list is **built by the R2 asset service** (`Plan/PLAN.md` §12.1, owner decision 2026-11-22): the Worker
+    reads the font folders and a small `meta.json` per font (display name, shelf, files by weight and style, the
+    scripts it covers, the licence name and link, whether it is on) and returns `GET /api/assets/fonts`. The JSON has
+    the shape `parseEditorFontManifest` already accepts, so the editor changes only the address it reads from. A
+    bad entry is skipped and listed as an issue the admin can see, as for the brush tips. A hand-edited
+    `fonts/manifest.json`, if one exists, is still honoured while the shop moves over. The font list is expected to
+    move into the database later (D13).
+  - The base address of the font files comes from the same public R2 address the mockups use, never hard-coded, so a
+    later move to AWS S3 changes one setting.
   - A browser only uses a font served from another address if R2 allows that site with an
-    `Access-Control-Allow-Origin` header, so the bucket needs a CORS rule for the site (`Doc/R2-STORAGE.md`
-    §7 covers CORS; it is not needed for fonts today).
+    `Access-Control-Allow-Origin` header, so the bucket needs a CORS rule for the site (`Doc/R2-STORAGE.md` §7);
+    that is the price of serving fonts from the public bucket address (decision R2-1 in `Plan/PLAN.md` §12.1).
   - Myanmar fonts are large: load one only when a layer uses it, and split Latin and Myanmar with a
     `unicode-range` if a file is big.
 - **Export (a dependency of E16):** the design download draws the SVG through an `<img>`, which does not load
@@ -645,10 +653,10 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 - **Wire the brush pack:** the Brush box builds its gallery from `brushes.json` (a bad row is skipped, not
   fatal), shelved by `group`, with PNG stamp tips tinted to the brush colour and SVG vector tips.
 - **Where the tips live (owner, 2026-11-22):** the owner finds the tips and puts them in R2, as with the fonts.
-  The `brushes.json` contract in `public/brushes/README.md` then applies to a `brushes/` folder in R2 and its
-  manifest (`brushes/brushes.json`), read from the same public R2 address as the fonts and mockups; the repo
-  folder stays a template. The R2 CORS rule covers it. A `npm run` pre-upload check like the fonts one is
-  worth having.
+  The `brushes.json` contract in `public/brushes/README.md` then applies to a `brushes/` folder in R2. The R2 asset
+  service (`Plan/PLAN.md` §12.1) builds the list the Brush box reads, `GET /api/assets/brushes`, from that folder
+  and the `brushes.json` the shop wrote; the repo folder stays a template. The R2 CORS rule covers the tip files.
+  The pre-upload check for brushes uses the same builder as the fonts check.
 - **A starter set:** Ink (pen, marker), Dry media (chalk, charcoal, pencil), Airbrush, Splatter, Texture (grain,
   sponge) and Shape (stars, leaves), found and uploaded by the owner; each licence is checked before a tip is
   switched on.
@@ -775,7 +783,7 @@ rather than in the Tools bar.
 | D10 | Zawgyi: **resolved 2026-11-22** — Unicode only, Zawgyi is not supported. Burmese fonts: **confirmed 2026-11-22** — a short list of open-licence Unicode fonts, each licence checked, files put in R2 by the shop (E17) | — |
 | D11 | How is the text bend built? (E19) | **Resolved 2026-11-22 (owner delegated the choice):** outline warp — HarfBuzz shapes the text, the glyph outlines are bent and painted as one path everywhere; see E19 |
 | D12 | Who supplies the starter brush tips? (E20) | **Resolved 2026-11-22:** the owner finds them and puts them in R2; each licence is checked |
-| D13 | Until the database exists, where does the font list live? (E17) | **Resolved 2026-11-22:** `fonts/manifest.json` in R2 for now; it is expected to move into the database later |
+| D13 | Until the database exists, where does the font list live? (E17) | **Resolved 2026-11-22, then refined the same day:** in R2. The Worker builds the JSON from the folders and each font's `meta.json` (`Plan/PLAN.md` §12.1); it is expected to move into the database later |
 | D14 | How does the bend get a font file HarfBuzz can read? (E19) | Add an optional `outline` field per manifest style naming a `.ttf` or `.otf` next to the woff2; the loader still serves the woff2. The alternative, decoding woff2 in the browser, adds a decoder to the download |
 | D15 | Does Download leave the Tools bar too and sit in the header next to Save and Buy? (E22) | Yes: the header already holds the actions that finish a design, and the Tools bar then holds tools only |
 
@@ -799,6 +807,7 @@ rather than in the Tools bar.
 13. The text bend is built as an outline warp (E19); the owner left the choice to the plan author. Whether D14 (a `.ttf`/`.otf` file beside each woff2) is accepted is still to be confirmed.
 14. The brush tips are found and uploaded to R2 by the owner (E20, D12).
 15. Flip does not belong in the Tools bar; it moves into the Adjustments panel. The Adjustments panel should be more complete, tighter and good to look at (E22, owner request, 2026-11-22). E22 is a proposal; the owner reviews a visual mock-up first.
+16. Files in R2 are read through a Worker that turns them into JSON, not by the browser directly (owner, 2026-11-22). The design is `Plan/PLAN.md` §12.1; E10, E17 and E20 use it.
 
 ## 7. Verification and change policy
 
