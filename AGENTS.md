@@ -416,6 +416,19 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Print rules: margins and thin lines (`apps/web/src/lib/print-quality.ts`)
+- `PRINT_METHOD_RULES` is one table per method: `edgeMarginCm`, `printsWhiteInk`, `minStrokeMm`
+  (DTF 0.2 mm, Sublimation 0.3 mm). These are the shop's starting defaults pending the press's tolerances.
+- `AdminDesignLayer.strokeWidth` is in **artwork units**; `strokePrintMm(width, unitsPerCm, scale)` converts
+  it, and `layerStrokeMm` reads a layer. A layer with no stroke (or 0) is never judged, and the rule needs a
+  known print method — an order without one keeps the plain checks.
+- The editor's live readout uses a **different** scale: `editorStrokePrintMm` (in `editor-image-ppi.ts`)
+  converts artwork units → print px (`PRINT_PX_PER_UNIT` 4.5) → mm at `PRINT_DPI` 300. Using `unitsPerCm`
+  there gives a number ~26x too large.
+- The panel takes the **smaller** of the layer's x/y scale, because a line thins on the short axis, and it
+  warns against `STRICTEST_MIN_STROKE_MM` (0.3) until the editor knows the run.
+- Scaling down is how a hairline reaches the press: 18 units is 6.9 mm at 1x and 0.34 mm at 0.05x.
+
 ## Contact inbox (`apps/web/src/lib/contact-messages.ts`, `components/admin/AdminMessages.tsx`)
 - `/contact` records a message in `AdminDemoData.contactMessages`; the form shows the reference and says it
   is with the shop. The mailto button is still there, but it is no longer the only path.

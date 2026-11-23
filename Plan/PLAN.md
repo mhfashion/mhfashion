@@ -1213,7 +1213,13 @@ proposal, not an approved order.
    three ways as before (sheet banner, `quality` in the manifest, README lines), and an order whose
    method the shop has not defined keeps only the plain checks; the seeded 26 orders gain no warnings.
    The margins are the shop's **starting defaults**, in one table, pending the press confirming its
-   tolerances; a thin-line rule waits for the layer model to carry a stroke width.
+   tolerances.
+   **Thin-line rule shipped 2026-11-22:** the layer model now carries `strokeWidth` (artwork units), so
+   `checkDesignQuality` reports `line-too-thin` when a painted line prints under the method's minimum —
+   DTF 0.2 mm, sublimation 0.3 mm, one table with the margins. The editor shows the same number live in
+   the Shape panel ("Line is 0.4 mm at print size"), using the strictest minimum until the run is known,
+   because the line thins when the layer is scaled down — that is how a hairline reaches the press.
+   The seeded orders gained no warning: their backdrop frame is 2 mm.
    **Still open:** a low-resolution photo warning
    (the order layer model stores no pixel size, so the editor's save path must carry it — owner
    approval), and ~~opening the print-size export on a phone~~ —

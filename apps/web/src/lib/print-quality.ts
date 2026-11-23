@@ -9,7 +9,7 @@ import type { AdminDesignLayer, AdminOrder, AdminOrderDesign } from "./admin-dem
 export type PrintQualityLevel = "error" | "warning";
 
 export type PrintQualityIssue = {
-  code: "blank-design" | "outside-print-area" | "tiny-artwork" | "edge-too-tight" | "no-white-ink";
+  code: "blank-design" | "outside-print-area" | "tiny-artwork" | "edge-too-tight" | "no-white-ink" | "line-too-thin";
   level: PrintQualityLevel;
   design: string;
   layer?: string;
@@ -27,10 +27,39 @@ export type PrintMethod = "DTF" | "Sublimation";
  * The margins below are the shop's starting defaults, kept here so the owner can change them in one
  * place once the press confirms its tolerances.
  */
-export const PRINT_METHOD_RULES: Record<PrintMethod, { edgeMarginCm: number; printsWhiteInk: boolean }> = {
-  DTF: { edgeMarginCm: 0.1, printsWhiteInk: true },
-  Sublimation: { edgeMarginCm: 0.3, printsWhiteInk: false },
+export const PRINT_METHOD_RULES: Record<PrintMethod, {
+  edgeMarginCm: number;
+  printsWhiteInk: boolean;
+  /**
+   * Thinnest line the press can hold. Under this a stroke breaks up or fades on the garment, so the
+   * desk is asked to thicken it or fill the shape. Starting defaults, like the margins above.
+   */
+  minStrokeMm: number;
+}> = {
+  DTF: { edgeMarginCm: 0.1, printsWhiteInk: true, minStrokeMm: 0.2 },
+  Sublimation: { edgeMarginCm: 0.3, printsWhiteInk: false, minStrokeMm: 0.3 },
 };
+
+/** The strictest line the press holds, used where the print method is not known yet (the editor). */
+export const STRICTEST_MIN_STROKE_MM = Math.max(...Object.values(PRINT_METHOD_RULES).map((rules) => rules.minStrokeMm));
+
+/**
+ * A stroke's printed width in millimetres. Scaling a layer down shrinks its line with it, which is
+ * how a hairline reaches the press: the shape was drawn thick and then dragged small.
+ */
+export function strokePrintMm(strokeWidthUnits: number, unitsPerCm: number, scale = 1): number {
+  const units = unitsPerCm > 0 ? unitsPerCm : 10;
+  const factor = scale > 0 ? scale : 1;
+  return Math.round(((strokeWidthUnits * factor) / units) * 10 * 100) / 100;
+}
+
+/** A layer's painted line width in millimetres; `null` when the layer paints no line. */
+export function layerStrokeMm(layer: AdminDesignLayer, unitsPerCm: number): number | null {
+  const units = unitsPerCm > 0 ? unitsPerCm : 10;
+  const stroke = layer.strokeWidth;
+  if (typeof stroke !== "number" || !(stroke > 0)) return null;
+  return Math.round((stroke / units) * 10 * 100) / 100;
+}
 
 export function printMethodOf(value: unknown): PrintMethod | null {
   const text = typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -126,6 +155,18 @@ export function checkDesignQuality(design: AdminOrderDesign, method: PrintMethod
         layer: layer.name,
         message: `${layer.name} is ${round1(box.width)} × ${round1(box.height)} cm, too small to print cleanly.`,
       });
+    }
+    if (rules) {
+      const strokeMm = layerStrokeMm(layer, design.unitsPerCm);
+      if (strokeMm !== null && strokeMm < rules.minStrokeMm) {
+        issues.push({
+          code: "line-too-thin",
+          level: "warning",
+          design: design.fileName,
+          layer: layer.name,
+          message: `${layer.name} draws a ${strokeMm} mm line; ${method} needs ${rules.minStrokeMm} mm, so thicken the line or fill the shape.`,
+        });
+      }
     }
     const outside = box.left < -EDGE_TOLERANCE_CM
       || box.top < -EDGE_TOLERANCE_CM

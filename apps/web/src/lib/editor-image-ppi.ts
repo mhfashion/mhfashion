@@ -14,6 +14,12 @@ export type ImagePrintQuality = { ppi: number; level: ImagePrintLevel };
 /** Placeholders from the print desk: 150 and 100 ppi. */
 export const IMAGE_PRINT_THRESHOLDS = { low: 150, veryLow: 100 } as const;
 
+/** A vector stroke's width on the garment, in millimetres, at the print canvas scale. */
+export function editorStrokePrintMm(strokeWidthUnits: number, scale = 1): number {
+  const factor = Math.abs(scale) || 1;
+  return Math.round(strokeWidthUnits * factor * PRINT_PX_PER_UNIT * (25.4 / PRINT_DPI) * 100) / 100;
+}
+
 export const IMAGE_PRINT_LEVEL_LABEL: Record<ImagePrintLevel, string> = {
   good: "good",
   low: "low",

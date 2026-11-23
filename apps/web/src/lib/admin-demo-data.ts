@@ -77,6 +77,11 @@ export type AdminDesignLayer = {
   rotation: number;
   scale: number;
   text?: string;
+  /**
+   * Thinnest painted stroke on a shape layer, in artwork units (divide by `unitsPerCm` for
+   * centimetres). Absent for text and images, and for a shape that is only filled.
+   */
+  strokeWidth?: number;
 };
 
 export type AdminDesignMockup = {
@@ -307,7 +312,8 @@ export function seedOrderDesign(
   const width = printWidthCm * unitsPerCm;
   const height = printHeightCm * unitsPerCm;
   const layers: AdminDesignLayer[] = [
-    { name: "Backdrop", kind: "shape", x: width * 0.2, y: height * 0.1, width: width * 0.6, height: height * 0.44, rotation: 0, scale: 1 },
+    // The seeded backdrop is drawn with a 2 mm frame, so a saved design exercises the stroke path.
+    { name: "Backdrop", kind: "shape", x: width * 0.2, y: height * 0.1, width: width * 0.6, height: height * 0.44, rotation: 0, scale: 1, strokeWidth: 2 * unitsPerCm },
     { name: "Title", kind: "text", text: name, x: width * 0.08, y: height * 0.62, width: width * 0.84, height: height * 0.14, rotation: 0, scale: 1 },
     { name: "Wordmark", kind: "text", text: "MH FASHION", x: width * 0.18, y: height * 0.82, width: width * 0.64, height: height * 0.07, rotation: 0, scale: 1 },
   ];

@@ -27,6 +27,7 @@ function loadModule(relativePath, cache = new Map()) {
 }
 
 const quality = loadModule("apps/web/src/lib/print-quality.ts");
+const admin = loadModule("apps/web/src/lib/admin-demo-data.ts");
 const print = loadModule("apps/web/src/lib/order-print.ts");
 
 /** A design whose layers are all inside a 30 x 40 cm print area. */
@@ -306,4 +307,52 @@ test("a method the shop has not defined falls back to the plain checks", () => {
   });
   const issues = quality.orderQualityIssues(order([{ ...line(tight), printMethod: "Screen Print" }]));
   assert.deepEqual(issues, []);
+});
+
+test("a line thinner than the press holds is named with its width", () => {
+  const thin = design({ layers: [{ name: "Hairline", kind: "shape", x: 100, y: 100, width: 100, height: 100, rotation: 0, scale: 1, strokeWidth: 0.1 }] });
+  const dtf = quality.checkDesignQuality(thin, "DTF");
+  const line = dtf.find((issue) => issue.code === "line-too-thin");
+  assert.ok(line, "0.1 units is 0.1 mm here, under the 0.2 mm DTF line");
+  assert.equal(line.level, "warning", "a thin line warns; it does not block the press");
+  assert.equal(line.layer, "Hairline");
+  assert.match(line.message, /0\.1 mm line; DTF needs 0\.2 mm/, "the message carries both numbers");
+  assert.match(line.message, /thicken the line or fill the shape/, "the message names the fix");
+
+  const sublimation = quality.checkDesignQuality(thin, "Sublimation").find((issue) => issue.code === "line-too-thin");
+  assert.match(sublimation.message, /Sublimation needs 0\.3 mm/, "sublimation holds a thinner line than DTF");
+});
+
+test("a line the press can hold is silent", () => {
+  const thick = design({ layers: [{ name: "Border", kind: "shape", x: 100, y: 100, width: 100, height: 100, rotation: 0, scale: 1, strokeWidth: 20 }] });
+  assert.equal(quality.checkDesignQuality(thick, "DTF").some((issue) => issue.code === "line-too-thin"), false, "20 mm needs no warning");
+  assert.equal(quality.checkDesignQuality(thick, "Sublimation").some((issue) => issue.code === "line-too-thin"), false);
+});
+
+test("only a painted line is judged, and only when the method is known", () => {
+  const filled = design({ layers: [{ name: "Block", kind: "shape", x: 100, y: 100, width: 100, height: 100, rotation: 0, scale: 1 }] });
+  assert.equal(quality.checkDesignQuality(filled, "DTF").length, 0, "a filled shape paints no line");
+  const zero = design({ layers: [{ name: "Block", kind: "shape", x: 100, y: 100, width: 100, height: 100, rotation: 0, scale: 1, strokeWidth: 0 }] });
+  assert.equal(quality.checkDesignQuality(zero, "DTF").some((issue) => issue.code === "line-too-thin"), false, "a zero stroke paints nothing");
+  const text = design({ layers: [{ name: "Title", kind: "text", text: "MH", x: 100, y: 100, width: 100, height: 100, rotation: 0, scale: 1, strokeWidth: 1 }] });
+  assert.equal(quality.checkDesignQuality(text, "DTF").some((issue) => issue.code === "line-too-thin"), false, "text is measured by its glyphs, not a stroke");
+  const thin = design({ layers: [{ name: "Hairline", kind: "shape", x: 100, y: 100, width: 100, height: 100, rotation: 0, scale: 1, strokeWidth: 0.1 }] });
+  assert.equal(quality.checkDesignQuality(thin, null).some((issue) => issue.code === "line-too-thin"), false, "no method, no line rule");
+});
+
+test("the printed width follows the layer scale, which is how a hairline reaches the press", () => {
+  assert.equal(quality.strokePrintMm(18, 10), 18, "18 units at 10 units/cm is 1.8 cm, so 18 mm");
+  assert.equal(quality.strokePrintMm(18, 10, 0.1), 1.8, "dragged down to a tenth, the same line is 1.8 mm");
+  assert.equal(quality.strokePrintMm(18, 0, 1), 18, "a broken units/cm falls back to 10");
+  assert.equal(quality.STRICTEST_MIN_STROKE_MM, 0.3, "the editor holds the strictest method until it knows the run");
+});
+
+test("the seeded orders gain no new warning from the line rule", () => {
+  const seeded = admin.createAdminDemoData(Date.UTC(2026, 10, 21, 9));
+  for (const order of seeded.orders) {
+    for (const item of order.items) {
+      const issues = quality.checkDesignQuality(item.design, quality.printMethodOf(item.printMethod));
+      assert.equal(issues.some((issue) => issue.code === "line-too-thin"), false, `${item.design.fileName} was already clean`);
+    }
+  }
 });

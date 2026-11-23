@@ -87,3 +87,21 @@ test("uploads keep the photo's pixel size and the editor reports it", () => {
   assert.match(canvasSource, /imagePrintQuality=\{selectedLayer \? imagePrintQualityById\[selectedLayer\.id\] \?\? null : null\}/);
   assert.match(canvasSource, /print quality dropped to \$\{after\.ppi\} ppi/);
 });
+
+test("a stroke's printed width is millimetres on the garment, and scaling shrinks it", () => {
+  // 4.5 print px per unit at 300 dpi: 1 unit is 4.5/300 inch.
+  assert.equal(ppi.editorStrokePrintMm(1), 0.38, "1 unit prints 0.38 mm");
+  assert.equal(ppi.editorStrokePrintMm(18), 6.86, "an 18-unit line is 6.86 mm");
+  assert.equal(ppi.editorStrokePrintMm(18, 0.05), 0.34, "dragged down to a twentieth, the same line is a hairline");
+  assert.equal(ppi.editorStrokePrintMm(18, -0.5), 3.43, "a flipped layer still has a width");
+  assert.equal(ppi.editorStrokePrintMm(18, 0), 6.86, "a zero scale falls back to 1");
+});
+
+test("the shape panel shows the line's printed width and warns under the press minimum", () => {
+  const panel = readFileSync(path.join(__dirname, "..", "apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
+  assert.match(panel, /data-stroke-print-mm=\{printed\}/, "the readout carries its millimetres for tests");
+  assert.match(panel, /editorStrokePrintMm\(shapeStyle\.strokeWidth, scale\)/, "the width is converted at the editor print scale");
+  assert.match(panel, /Math\.min\(Math\.abs\(placement\?\.scale\.x \?\? 1\), Math\.abs\(placement\?\.scale\.y \?\? 1\)\)/, "the smaller scale decides, because the line thins on the short axis");
+  assert.match(panel, /printed < STRICTEST_MIN_STROKE_MM/, "the warning uses the strictest press rule until the method is known");
+  assert.match(panel, /thicken it or fill the shape/, "the warning names the fix");
+});

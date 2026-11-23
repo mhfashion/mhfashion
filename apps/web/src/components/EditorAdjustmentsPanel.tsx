@@ -6,7 +6,8 @@ import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrus
 import { createEditorShapePaths, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
-import { IMAGE_PRINT_LEVEL_LABEL, type ImagePrintQuality } from "@/lib/editor-image-ppi";
+import { editorStrokePrintMm, IMAGE_PRINT_LEVEL_LABEL, type ImagePrintQuality } from "@/lib/editor-image-ppi";
+import { STRICTEST_MIN_STROKE_MM } from "@/lib/print-quality";
 import { EditorTextArtwork } from "@/components/EditorLayerPreview";
 import { useEditorFontLibrary } from "@/lib/editor-font-library";
 
@@ -540,6 +541,22 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
               <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Stroke</span><input aria-label="Shape stroke color" type="color" value={shapeStyle.stroke} onChange={(event) => onUpdateShapeStyle({ stroke: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" /></div>
               <Swatches value={shapeStyle.stroke} ariaLabel="Shape stroke swatch" onPick={(strokeColor) => onUpdateShapeStyle({ stroke: strokeColor })} />
               <RangeField label="Stroke width" value={shapeStyle.strokeWidth} min={0} max={60} suffix="px" ariaLabel="Shape stroke width" onChange={(strokeWidth) => onUpdateShapeStyle({ strokeWidth })} />
+              {shapeStyle.strokeWidth > 0 && (() => {
+                const scale = Math.min(Math.abs(placement?.scale.x ?? 1), Math.abs(placement?.scale.y ?? 1)) || 1;
+                const printed = editorStrokePrintMm(shapeStyle.strokeWidth, scale);
+                const thin = printed < STRICTEST_MIN_STROKE_MM;
+                return (
+                  <p
+                    data-stroke-print-mm={printed}
+                    aria-label={`Line at print size ${printed} millimetres${thin ? ", thinner than the press holds" : ""}`}
+                    className={`rounded-lg px-2 py-1.5 text-[10px] font-semibold ${thin ? "bg-[#fff6f6] text-[#c9424a]" : "bg-bg/60 text-text-muted"}`}
+                  >
+                    {thin
+                      ? `Line is ${printed} mm at print size; the press needs ${STRICTEST_MIN_STROKE_MM} mm, so thicken it or fill the shape.`
+                      : `Line is ${printed} mm at print size.`}
+                  </p>
+                );
+              })()}
               <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Line style</span><div role="group" aria-label="Shape line style" className="flex gap-1">{EDITOR_SHAPE_LINE_STYLES.map((style) => <button key={style} type="button" aria-label={`Shape line style ${style}`} aria-pressed={shapeStyle.strokeStyle === style} onClick={() => onUpdateShapeStyle({ strokeStyle: style })} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{style}</button>)}</div></div>
               <RangeField label="Corner radius" value={shapeStyle.cornerRadius} min={0} max={200} suffix="u" ariaLabel="Shape corner radius" onChange={(cornerRadius) => onUpdateShapeStyle({ cornerRadius })} />
               <div className="rounded-lg border border-border/70 bg-bg/60 p-2">
