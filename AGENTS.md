@@ -355,6 +355,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `tests/storefront-e2e.cjs` asserts the six issues on an empty form before it fills the form, then
   keeps the full cart -> order -> account path.
 
+## Admin forms and the hydration snapshot (`apps/web/src/lib/admin-demo-store.ts`)
+- `useAdminDemoData` is `useSyncExternalStore(subscribe, readAdminDemoData, readSeedSnapshot)`, so the
+  first client render (hydration) sees `createAdminDemoData()`, not this browser's saved data. A
+  `useState(data.settings)` seeded from that render pins the **seed** values forever, and the next Save
+  writes them back over what was stored. `AdminSettings` now keeps a `draft` that starts `null`
+  (`const form = draft ?? data.settings`) and clears on save/reset. Verified in Chromium: save ->
+  reload shows the saved name and rate, a second save of another field no longer reverts them, and
+  "Reset demo data" returns the seed values.
+- Any other admin form that needs to show stored values must derive them from `data`, not seed state
+  from it on mount.
+
 ## Press sheet on a phone (`apps/web/src/lib/order-print.ts`)
 - `openPrintableDocument` uses `window.open("", "_blank")` + `document.write`; a blocked popup falls back
   to downloading the HTML. Measured in Chromium at 390x844: a real click opens the tab and the sheet has

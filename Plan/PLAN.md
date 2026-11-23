@@ -1147,6 +1147,12 @@ proposal, not an approved order.
     run under `node --test`, and `tests/storefront-e2e.cjs` drives the production build over CDP at
     1440x900 and 390x844 with touch. **Still open:** real-device checks on a physical Android and iPhone
     (also editor plan E2), and tests for the admin modules that only exist as demo data.
+    **Admin sweep 2026-11-22:** all twelve admin routes were loaded at 1440x900 and 390x844 touch —
+    no console error, no sideways scroll, a heading on every page. The sweep found one real defect:
+    the Settings form seeded its state from the hydration snapshot (the seed data), so a saved store
+    name or USD rate disappeared on reload and the next Save wrote the seed values back over it. The
+    form now follows the stored settings until the admin types, and clearing it on save/reset keeps
+    "Reset demo data" working.
     **Storefront pages built 2026-11-21:** every footer link resolves — `/about`, `/faq`, `/shipping`,
     `/returns`, `/size-guide`, `/terms`, `/privacy`, `/cookie-policy`, `/products` and `/contact` are
     new pages; `/best-sellers` redirects to the one ranked list at `/popular`.

@@ -24,7 +24,11 @@ const EMPTY_MEMBER: AdminTeamDraft = { name: "", email: "", role: "Post Admin", 
 export default function AdminSettings() {
   const router = useRouter();
   const data = useAdminDemoData();
-  const [form, setForm] = useState<AdminSettings>(data.settings);
+  // The store snapshot is the seed data on the hydration render and this browser's saved settings a
+  // moment later, so the form follows `data.settings` until the admin types. Seeding a useState with
+  // `data.settings` pinned the seed values, and the next Save wrote them back over the saved ones.
+  const [draft, setDraft] = useState<AdminSettings | null>(null);
+  const form = draft ?? data.settings;
   const [saved, setSaved] = useState(false);
   const [settingsErrors, setSettingsErrors] = useState<string[]>([]);
   const [memberId, setMemberId] = useState<string | null>(null);
@@ -34,7 +38,7 @@ export default function AdminSettings() {
   const [confirmReset, setConfirmReset] = useState(false);
 
   function update<K extends keyof AdminSettings>(key: K, value: AdminSettings[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
+    setDraft((current) => ({ ...(current ?? data.settings), [key]: value }));
     setSaved(false);
   }
 
@@ -53,6 +57,7 @@ export default function AdminSettings() {
       usdRateKs: Math.round(Number(form.usdRateKs)),
       lowStockThreshold: Math.round(Number(form.lowStockThreshold)),
     }));
+    setDraft(null);
     setSaved(true);
   }
 
@@ -120,7 +125,7 @@ export default function AdminSettings() {
     }
     resetAdminDemoData();
     setConfirmReset(false);
-    setForm(data.settings);
+    setDraft(null);
     setSaved(false);
   }
 
