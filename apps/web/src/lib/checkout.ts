@@ -55,6 +55,22 @@ function digitsOnly(phone: string): string {
   return phone.replace(/[^\d]/g, "");
 }
 
+export type CheckoutAddressIssue = { [K in keyof CheckoutAddress | "note"]?: string };
+
+/** Per-field messages, so a field can point at its own problem instead of only the summary list. */
+export function checkoutAddressIssues(address: CheckoutAddress, note?: string): CheckoutAddressIssue {
+  const issues: CheckoutAddressIssue = {};
+  if (!address.name.trim()) issues.name = "Enter the recipient's name.";
+  const phoneDigits = digitsOnly(address.phone);
+  if (!phoneDigits) issues.phone = "Enter a phone number — the courier calls it.";
+  else if (phoneDigits.length < 7 || phoneDigits.length > 15) issues.phone = "That phone number does not look right.";
+  if (!address.address.trim()) issues.address = "Enter the delivery address.";
+  if (!address.township.trim()) issues.township = "Enter the township.";
+  if (!address.city.trim()) issues.city = "Choose the city or region.";
+  if ((note ?? "").length > 500) issues.note = "Keep the note under 500 characters.";
+  return issues;
+}
+
 export function validateCheckout(draft: CheckoutDraft): string[] {
   const issues: string[] = [];
   if (!draft.idempotencyKey.trim()) issues.push("The checkout is missing its request key — reload the page and try again.");
@@ -64,15 +80,12 @@ export function validateCheckout(draft: CheckoutDraft): string[] {
     const price = item.unitPriceKs ?? item.priceMinKs;
     if (!Number.isFinite(price) || price <= 0) issues.push(`${item.name}: it has no price for this combination yet.`);
   }
-  if (!draft.address.name.trim()) issues.push("Enter the recipient's name.");
-  const phoneDigits = digitsOnly(draft.address.phone);
-  if (!phoneDigits) issues.push("Enter a phone number — the courier calls it.");
-  else if (phoneDigits.length < 7 || phoneDigits.length > 15) issues.push("That phone number does not look right.");
-  if (!draft.address.address.trim()) issues.push("Enter the delivery address.");
-  if (!draft.address.township.trim()) issues.push("Enter the township.");
-  if (!draft.address.city.trim()) issues.push("Choose the city or region.");
+  const fields = checkoutAddressIssues(draft.address, draft.note);
+  for (const key of ["name", "phone", "address", "township", "city"] as const) {
+    if (fields[key]) issues.push(fields[key]);
+  }
   if (!CHECKOUT_PAYMENTS.some((method) => method.id === draft.payment)) issues.push("Choose how you want to pay.");
-  if ((draft.note ?? "").length > 500) issues.push("Keep the note under 500 characters.");
+  if (fields.note) issues.push(fields.note);
   return issues;
 }
 

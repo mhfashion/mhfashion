@@ -7,7 +7,7 @@ import { useCurrency } from "@/lib/currency-context";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import type { AdminOrder } from "@/lib/admin-demo-data";
 import {
-  CHECKOUT_CITIES, CHECKOUT_PAYMENTS, EMPTY_ADDRESS, applyPaymentStatus, checkoutSubtotalKs, placeOrder,
+  CHECKOUT_CITIES, CHECKOUT_PAYMENTS, EMPTY_ADDRESS, applyPaymentStatus, checkoutAddressIssues, checkoutSubtotalKs, placeOrder,
   validateCheckout,
   providerIdFor, type CheckoutAddress, type CheckoutDraft, type CheckoutPayment,
 } from "@/lib/checkout";
@@ -227,17 +227,28 @@ export default function CheckoutClient() {
     );
   }
 
+  // Field problems only appear once a submit was attempted, and each one names its own field to a
+  // screen reader instead of leaving the shopper to match the summary list against the inputs.
+  const fieldIssues = issues.length ? checkoutAddressIssues(address, note) : {};
+  const problemFor = (key: keyof CheckoutAddress) => fieldIssues[key];
+  const problemText = (key: keyof CheckoutAddress) => (
+    problemFor(key) ? <span id={`checkout-${key}-problem`} className="mt-1 block text-[9px] font-semibold text-red-400">{problemFor(key)}</span> : null
+  );
+
   const field = (label: string, key: keyof CheckoutAddress, extra?: { hint?: string; type?: string; inputMode?: "text" | "tel" }) => (
     <label className="block">
       <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">{label}</span>
       <input
         aria-label={label}
+        aria-invalid={problemFor(key) ? true : undefined}
+        aria-describedby={problemFor(key) ? `checkout-${key}-problem` : undefined}
         type={extra?.type ?? "text"}
         inputMode={extra?.inputMode}
         value={address[key]}
         onChange={(event) => setAddress({ ...address, [key]: event.target.value })}
         className="mt-1 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-xs font-semibold outline-none focus:border-accent"
       />
+      {problemText(key)}
       {extra?.hint ? <span className="mt-1 block text-[9px] text-text-muted">{extra.hint}</span> : null}
     </label>
   );
@@ -274,6 +285,8 @@ export default function CheckoutClient() {
                   <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">City / region</span>
                   <select
                     aria-label="City or region"
+                    aria-invalid={problemFor("city") ? true : undefined}
+                    aria-describedby={problemFor("city") ? "checkout-city-problem" : undefined}
                     value={address.city}
                     onChange={(event) => setAddress({ ...address, city: event.target.value })}
                     className="mt-1 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-xs font-semibold outline-none focus:border-accent"
@@ -281,6 +294,7 @@ export default function CheckoutClient() {
                     <option value="">Choose…</option>
                     {CHECKOUT_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
                   </select>
+                  {problemText("city")}
                 </label>
               </div>
               {savedAddress ? (
@@ -299,11 +313,14 @@ export default function CheckoutClient() {
             <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Note for the print desk (optional)</span>
             <textarea
               aria-label="Order note"
+              aria-invalid={fieldIssues.note ? true : undefined}
+              aria-describedby={fieldIssues.note ? "checkout-note-problem" : undefined}
               value={note}
               onChange={(event) => setNote(event.target.value)}
               rows={2}
               className="mt-1 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-xs outline-none focus:border-accent"
             />
+            {fieldIssues.note ? <span id="checkout-note-problem" className="mt-1 block text-[9px] font-semibold text-red-400">{fieldIssues.note}</span> : null}
           </label>
         </div>
 

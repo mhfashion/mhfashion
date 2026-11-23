@@ -285,6 +285,25 @@ async function main() {
     for (const [label, pattern] of [["name", /recipient's name/], ["phone", /phone number/], ["address", /delivery address/], ["township", /township/i], ["city", /city or region/i], ["terms", /Accept the terms/]]) {
       assert.ok(emptyIssues.some((issue) => pattern.test(issue)), `the empty form reports the missing ${label}: ${JSON.stringify(emptyIssues)}`);
     }
+    // The summary is not enough on its own: each field must point at its own problem.
+    const fieldProblems = await evaluate(() => {
+      const read = (label) => {
+        const field = document.querySelector(`[aria-label="${label}"]`);
+        const described = field?.getAttribute("aria-describedby");
+        return {
+          invalid: field?.getAttribute("aria-invalid"),
+          text: described ? document.getElementById(described)?.textContent?.trim() ?? "" : "",
+        };
+      };
+      return {
+        name: read("Full name"), phone: read("Phone"), address: read("Address"),
+        township: read("Township"), city: read("City or region"),
+      };
+    });
+    for (const [label, pattern] of [["name", /recipient's name/], ["phone", /phone number/], ["address", /delivery address/], ["township", /township/i], ["city", /city or region/i]]) {
+      assert.equal(fieldProblems[label].invalid, "true", `the ${label} field is marked invalid`);
+      assert.match(fieldProblems[label].text, pattern, `the ${label} field describes its problem: ${JSON.stringify(fieldProblems[label])}`);
+    }
     const filled = await fillCheckout();
     assert.ok(Object.values(filled).every(Boolean), `checkout fields: ${JSON.stringify(filled)}`);
     await pause(400);

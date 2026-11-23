@@ -652,6 +652,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Checkout validation (`apps/web/src/lib/checkout.ts`, `CheckoutClient.tsx`)
+- `checkoutAddressIssues(address, note)` returns one message per field (`name` / `phone` / `address` /
+  `township` / `city` / `note`); `validateCheckout` builds its summary list from those same messages, so
+  the summary and the inline problems cannot drift apart. Do not re-derive a rule in the component.
+- The checkout only shows field problems after a submit attempt (`issues.length`), and each field gets
+  `aria-invalid` plus `aria-describedby="checkout-<field>-problem"`. The summary `role="alert"` alone
+  left a screen-reader user unable to tell which input was wrong.
+
 ## Editor draft restore (`apps/web/src/lib/design-draft.ts`, `EditorCanvas.tsx`)
 - The draft payload is `{ layers, placement }`; `placement[id] = { offset, scale, rotation }`. `readDesignDraftSnapshot()` reads it, `saveDesignDraft(layers, placement)` writes it.
 - The editor restores the draft in a **post-mount effect**, not a state initialiser: the server render and the first client render must stay identical or hydration mismatches. That is why the effect carries `// eslint-disable-next-line react-hooks/set-state-in-effect`.

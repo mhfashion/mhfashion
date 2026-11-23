@@ -115,6 +115,23 @@ test("validation names every missing field and nothing is written", () => {
   assert.match(checkout.validateCheckout(draft({ items: [cartItem({ quantity: 0 })] })).join("\n"), /quantity must be at least 1/);
   assert.match(checkout.validateCheckout(draft({ items: [cartItem({ unitPriceKs: 0, priceMinKs: 0 })] })).join("\n"), /no price for this combination/);
   assert.match(checkout.validateCheckout(draft({ payment: "Cash on Delivery" })).join("\n"), /how you want to pay/);
+
+  // Each field carries its own message, so the checkout can point a field at its problem.
+  const fieldIssues = checkout.checkoutAddressIssues({ name: "", phone: "123", address: "", township: "", city: "" }, "x".repeat(501));
+  assert.match(fieldIssues.name, /recipient's name/);
+  assert.match(fieldIssues.phone, /does not look right/);
+  assert.match(fieldIssues.address, /delivery address/);
+  assert.match(fieldIssues.township, /township/);
+  assert.match(fieldIssues.city, /city or region/);
+  assert.match(fieldIssues.note, /under 500 characters/);
+  assert.deepEqual(checkout.checkoutAddressIssues({ name: "A", phone: "09123456789", address: "B", township: "C", city: "Yangon" }), {},
+    "a filled address has no field problems");
+  // The summary list is built from those same messages, so the two cannot drift apart.
+  const blank = { name: "", phone: "123", address: "", township: "", city: "" };
+  const summary = checkout.validateCheckout(draft({ address: blank, note: "x".repeat(501) }));
+  for (const message of Object.values(checkout.checkoutAddressIssues(blank, "x".repeat(501)))) {
+    assert.ok(summary.includes(message), `summary carries ${message}`);
+  }
   assert.match(checkout.validateCheckout(draft({ note: "x".repeat(501) })).join("\n"), /under 500 characters/);
   assert.match(checkout.validateCheckout(draft({ idempotencyKey: "" })).join("\n"), /request key/);
 });
