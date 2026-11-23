@@ -356,3 +356,118 @@ test("the seeded orders gain no new warning from the line rule", () => {
     }
   }
 });
+
+// --- Photo resolution (Plan P1-6, the last check in the list) -----------------------------------
+
+function photoLayer(overrides = {}) {
+  return { name: "Team photo", kind: "image", x: 100, y: 100, width: 300, height: 200, rotation: 0, scale: 1, ...overrides };
+}
+function photoDesign(layer, overrides = {}) {
+  return {
+    fileName: "team-photo.svg",
+    ink: "#111111",
+    printWidthCm: 38.1,
+    printHeightCm: 45.72,
+    unitsPerCm: 10,
+    layers: [layer],
+    ...overrides,
+  };
+}
+
+test("a photo's printed resolution is its pixels over the inches it covers", () => {
+  // 300 x 200 units at 10 units/cm is 30 x 20 cm = 11.81 x 7.87 in.
+  assert.equal(quality.layerPhotoPpi(photoLayer({ pixelWidth: 1181, pixelHeight: 787 }), 10), 100);
+  assert.equal(quality.layerPhotoPpi(photoLayer({ pixelWidth: 3543, pixelHeight: 2362 }), 10), 300);
+});
+
+test("the weaker axis decides, so a photo stretched sideways is reported honestly", () => {
+  // Wide pixels but a short height: 200 units = 7.87 in, so 787 px is 100 ppi even though the width is 300.
+  assert.equal(quality.layerPhotoPpi(photoLayer({ pixelWidth: 3543, pixelHeight: 787 }), 10), 100);
+});
+
+test("scaling the layer down raises the resolution, and up lowers it", () => {
+  const layer = photoLayer({ pixelWidth: 1181, pixelHeight: 787 });
+  assert.equal(quality.layerPhotoPpi({ ...layer, scale: 0.5 }, 10), 200, "half the print size, twice the ppi");
+  assert.equal(quality.layerPhotoPpi({ ...layer, scale: 2 }, 10), 50);
+});
+
+test("a photo with no recorded pixels, or a zero-size box, has no ppi", () => {
+  assert.equal(quality.layerPhotoPpi(photoLayer(), 10), null, "vector artwork carries no pixel size");
+  assert.equal(quality.layerPhotoPpi(photoLayer({ pixelWidth: 0, pixelHeight: 0 }), 10), null);
+  assert.equal(quality.layerPhotoPpi(photoLayer({ pixelWidth: 1000, pixelHeight: 1000, width: 0 }), 10), null);
+  assert.equal(quality.layerPhotoPpi(photoLayer({ pixelWidth: 1181, pixelHeight: 787 }), 0), 100, "a broken units/cm falls back to 10");
+});
+
+test("a soft photo is a warning on the press sheet, naming the numbers and the fix", () => {
+  const issues = quality.checkDesignQuality(photoDesign(photoLayer({ pixelWidth: 600, pixelHeight: 400 })), "DTF");
+  const soft = issues.filter((issue) => issue.code === "photo-too-soft");
+  assert.equal(soft.length, 1);
+  assert.equal(soft[0].level, "warning", "a soft photo prints, badly; it is not a blocker");
+  assert.equal(soft[0].layer, "Team photo");
+  assert.match(soft[0].message, /51 ppi at 30 × 20 cm/);
+  assert.match(soft[0].message, /DTF wants 150 ppi/);
+  assert.match(soft[0].message, /larger image or print it smaller/, "the desk is told what to do");
+});
+
+test("a sharp photo raises nothing", () => {
+  const issues = quality.checkDesignQuality(photoDesign(photoLayer({ pixelWidth: 3543, pixelHeight: 2362 })), "DTF");
+  assert.equal(issues.some((issue) => issue.code === "photo-too-soft"), false);
+});
+
+test("sublimation asks for more than DTF, so a 180 ppi photo passes one and not the other", () => {
+  const layer = photoLayer({ pixelWidth: 2126, pixelHeight: 1417 });
+  assert.equal(quality.layerPhotoPpi(layer, 10), 180);
+  assert.equal(quality.checkDesignQuality(photoDesign(layer), "DTF").some((issue) => issue.code === "photo-too-soft"), false);
+  const sublimation = quality.checkDesignQuality(photoDesign(layer), "Sublimation").filter((issue) => issue.code === "photo-too-soft");
+  assert.equal(sublimation.length, 1);
+  assert.match(sublimation[0].message, /Sublimation wants 200 ppi/);
+});
+
+test("an order whose method is unknown still catches a photo that cannot print anywhere", () => {
+  const soft = quality.checkDesignQuality(photoDesign(photoLayer({ pixelWidth: 600, pixelHeight: 400 })));
+  const issue = soft.find((entry) => entry.code === "photo-too-soft");
+  assert.ok(issue, "no method is not a reason to let a 51 ppi photo through");
+  assert.match(issue.message, /the press wants 150 ppi/, "the floor every method can hold");
+  const sharp = quality.checkDesignQuality(photoDesign(photoLayer({ pixelWidth: 3543, pixelHeight: 2362 })));
+  assert.equal(sharp.some((entry) => entry.code === "photo-too-soft"), false, "and a sharp photo stays quiet");
+});
+
+test("the seeded orders gain no new warning from the photo rule", () => {
+  const seeded = admin.createAdminDemoData(Date.UTC(2026, 10, 21, 9));
+  for (const order of seeded.orders) {
+    for (const item of order.items) {
+      const issues = quality.checkDesignQuality(item.design, quality.printMethodOf(item.printMethod));
+      assert.equal(issues.some((issue) => issue.code === "photo-too-soft"), false, `${item.design.fileName} was already clean`);
+    }
+  }
+});
+
+test("the press reads the soft-photo warning the same three ways as every other check", () => {
+  const design = photoDesign(photoLayer({ pixelWidth: 600, pixelHeight: 400 }));
+  const issues = quality.checkDesignQuality(design, "DTF");
+  const readme = quality.qualityReadmeLines(issues).join("\n");
+  assert.match(readme, /photo-too-soft|pp|larger image/, "the archive README carries it");
+  const sheet = quality.qualitySheetHtml(issues);
+  assert.match(sheet, /larger image/, "and so does the press sheet banner");
+  assert.match(quality.qualitySummaryLine(issues), /warning/, "the summary counts it");
+});
+
+test("the editor warns on a soft photo and says what to do", () => {
+  const ppi = loadModule("apps/web/src/lib/editor-image-ppi.ts");
+  const qualityOf = ppi.imagePrintQuality({ width: 300, height: 200, sourceWidth: 600, sourceHeight: 400 });
+  assert.deepEqual(qualityOf, { ppi: 133, level: "low" }, "the editor uses its own two thresholds");
+  assert.equal(ppi.imagePrintQuality({ width: 300, height: 200, sourceWidth: 300, sourceHeight: 200 }).level, "very-low");
+  assert.equal(ppi.imagePrintLevel(120), "low");
+  assert.equal(ppi.imagePrintLevel(300), "good");
+  const panel = readFileSync(path.join(ROOT, "apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
+  assert.match(panel, /the press wants \$\{IMAGE_PRINT_THRESHOLDS\.low\} ppi/, "the readout names the floor");
+  assert.match(panel, /use a larger image or make this one smaller/, "and the fix");
+});
+
+test("the order layer model can carry a photo's pixels, and the editor records them at import", () => {
+  const model = readFileSync(path.join(ROOT, "apps/web/src/lib/admin-demo-data.ts"), "utf8");
+  assert.match(model, /pixelWidth\?: number;/, "a saved design can carry the source pixels");
+  assert.match(model, /pixelHeight\?: number;/);
+  const canvas = readFileSync(path.join(ROOT, "apps/web/src/components/EditorCanvas.tsx"), "utf8");
+  assert.match(canvas, /sourceWidth: compressed\.width/, "the editor keeps the photo's own size at import");
+});

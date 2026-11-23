@@ -416,6 +416,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Photo resolution (press + editor)
+- `layerPhotoPpi` (`lib/print-quality.ts`) = the photo's own pixels over the inches the layer covers,
+  lower axis winning, `scale` applied. `null` when the layer has no `pixelWidth`/`pixelHeight`, so
+  vector layers stay silent.
+- The layer model (`AdminDesignLayer`) now carries `pixelWidth`/`pixelHeight`. The editor records them
+  at import as `sourceWidth`/`sourceHeight` (`EditorImageContent`), and the disabled Save box means
+  nothing copies them into an order yet — a future save path must do that.
+- Floors: `PRINT_METHOD_RULES.minPhotoPpi` (DTF 150, sublimation 200); an order with no method is
+  checked at `DEFAULT_MIN_PHOTO_PPI` (the DTF floor) rather than skipped.
+- The editor's own readout is `editor-image-ppi.ts` (300 dpi reference, 4.5 print px per artwork unit,
+  thresholds 150/100). Keep the two in step: the editor reports, the press sheet warns.
+
 ## Guide posts → products (`apps/web/src/lib/guide-products.ts`)
 - A guide post's links live in `guide_posts.product_links` (jsonb) and are normalised on read by
   `normalizeGuideProductLinks`, so a hand-edited row cannot break a page: strings are accepted as bare

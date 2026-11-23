@@ -82,6 +82,12 @@ export type AdminDesignLayer = {
    * centimetres). Absent for text and images, and for a shape that is only filled.
    */
   strokeWidth?: number;
+  /**
+   * The photo's own pixel size, for an `image` layer. The editor records it at import; a design saved
+   * without it (vector artwork, or an older draft) simply carries no photo check.
+   */
+  pixelWidth?: number;
+  pixelHeight?: number;
 };
 
 export type AdminDesignMockup = {

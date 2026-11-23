@@ -9,7 +9,7 @@ import type { AdminDesignLayer, AdminOrder, AdminOrderDesign } from "./admin-dem
 export type PrintQualityLevel = "error" | "warning";
 
 export type PrintQualityIssue = {
-  code: "blank-design" | "outside-print-area" | "tiny-artwork" | "edge-too-tight" | "no-white-ink" | "line-too-thin";
+  code: "blank-design" | "outside-print-area" | "tiny-artwork" | "edge-too-tight" | "no-white-ink" | "line-too-thin" | "photo-too-soft";
   level: PrintQualityLevel;
   design: string;
   layer?: string;
@@ -35,13 +35,26 @@ export const PRINT_METHOD_RULES: Record<PrintMethod, {
    * desk is asked to thicken it or fill the shape. Starting defaults, like the margins above.
    */
   minStrokeMm: number;
+  /**
+   * Fewest pixels per inch a photo may have at the size it is printed. A photo is the one layer whose
+   * sharpness comes from its pixels, so stretching a phone snapshot across a 30 cm print looks soft no
+   * matter how good the printer is. DTF holds 150; sublimation dyes into the weave and needs 200.
+   */
+  minPhotoPpi: number;
 }> = {
-  DTF: { edgeMarginCm: 0.1, printsWhiteInk: true, minStrokeMm: 0.2 },
-  Sublimation: { edgeMarginCm: 0.3, printsWhiteInk: false, minStrokeMm: 0.3 },
+  DTF: { edgeMarginCm: 0.1, printsWhiteInk: true, minStrokeMm: 0.2, minPhotoPpi: 150 },
+  Sublimation: { edgeMarginCm: 0.3, printsWhiteInk: false, minStrokeMm: 0.3, minPhotoPpi: 200 },
 };
 
 /** The strictest line the press holds, used where the print method is not known yet (the editor). */
 export const STRICTEST_MIN_STROKE_MM = Math.max(...Object.values(PRINT_METHOD_RULES).map((rules) => rules.minStrokeMm));
+
+/**
+ * Where a photo is checked when the order does not say how it prints. The gentler threshold, because
+ * the DTF rule is the floor every method can hold; a run that turns out to be sublimation is still
+ * caught by the 200 ppi rule on the sheet.
+ */
+export const DEFAULT_MIN_PHOTO_PPI = PRINT_METHOD_RULES.DTF.minPhotoPpi;
 
 /**
  * A stroke's printed width in millimetres. Scaling a layer down shrinks its line with it, which is
@@ -126,6 +139,23 @@ export function layerBoxCm(layer: AdminDesignLayer, unitsPerCm: number): LayerBo
   };
 }
 
+/**
+ * A photo layer's effective resolution at the size it is printed: its own pixels over the inches the
+ * layer covers. The lower of the two axes wins, because a photo stretched on one axis is limited by
+ * that axis. `null` for a layer with no pixel size recorded (vector artwork, or a design saved before
+ * the editor carried it) — no number is better than a guessed one.
+ */
+export function layerPhotoPpi(layer: AdminDesignLayer, unitsPerCm: number): number | null {
+  const { pixelWidth, pixelHeight } = layer;
+  if (!pixelWidth || !pixelHeight || pixelWidth <= 0 || pixelHeight <= 0) return null;
+  const units = unitsPerCm > 0 ? unitsPerCm : 10;
+  const scale = layer.scale > 0 ? layer.scale : 1;
+  const widthInches = ((layer.width * scale) / units) / 2.54;
+  const heightInches = ((layer.height * scale) / units) / 2.54;
+  if (!(widthInches > 0) || !(heightInches > 0)) return null;
+  return Math.round(Math.min(pixelWidth / widthInches, pixelHeight / heightInches));
+}
+
 export function checkDesignQuality(design: AdminOrderDesign, method: PrintMethod | null = null): PrintQualityIssue[] {
   if (design.layers.length === 0) {
     return [{
@@ -155,6 +185,19 @@ export function checkDesignQuality(design: AdminOrderDesign, method: PrintMethod
         layer: layer.name,
         message: `${layer.name} is ${round1(box.width)} × ${round1(box.height)} cm, too small to print cleanly.`,
       });
+    }
+    const ppi = layerPhotoPpi(layer, design.unitsPerCm);
+    if (ppi !== null) {
+      const minimum = rules ? rules.minPhotoPpi : DEFAULT_MIN_PHOTO_PPI;
+      if (ppi < minimum) {
+        issues.push({
+          code: "photo-too-soft",
+          level: "warning",
+          design: design.fileName,
+          layer: layer.name,
+          message: `${layer.name} is ${ppi} ppi at ${round1(box.width)} × ${round1(box.height)} cm; ${method ?? "the press"} wants ${minimum} ppi, so use a larger image or print it smaller.`,
+        });
+      }
     }
     if (rules) {
       const strokeMm = layerStrokeMm(layer, design.unitsPerCm);

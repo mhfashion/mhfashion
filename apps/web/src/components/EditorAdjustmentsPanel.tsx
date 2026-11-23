@@ -6,7 +6,7 @@ import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrus
 import { createEditorShapePaths, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
-import { editorStrokePrintMm, IMAGE_PRINT_LEVEL_LABEL, type ImagePrintQuality } from "@/lib/editor-image-ppi";
+import { editorStrokePrintMm, IMAGE_PRINT_LEVEL_LABEL, IMAGE_PRINT_THRESHOLDS, type ImagePrintQuality } from "@/lib/editor-image-ppi";
 import { STRICTEST_MIN_STROKE_MM } from "@/lib/print-quality";
 import { EditorTextArtwork } from "@/components/EditorLayerPreview";
 import { useEditorFontLibrary } from "@/lib/editor-font-library";
@@ -585,6 +585,9 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
           {image && imagePrintQuality && (
             <p data-print-quality={imagePrintQuality.level} aria-label={`Print quality ${imagePrintQuality.ppi} ppi, ${IMAGE_PRINT_LEVEL_LABEL[imagePrintQuality.level]}`} className={`rounded-xl px-3 py-2 text-[11px] font-semibold ${PRINT_LEVEL_CLASS[imagePrintQuality.level]}`}>
               Print quality: {imagePrintQuality.ppi} ppi · {IMAGE_PRINT_LEVEL_LABEL[imagePrintQuality.level]}
+              {imagePrintQuality.level === "good"
+                ? ""
+                : ` — the press wants ${IMAGE_PRINT_THRESHOLDS.low} ppi, so use a larger image or make this one smaller.`}
             </p>
           )}
           {image && <Section title="Photo" open={openSection === "Photo"} onToggle={() => toggleSection("Photo")}>

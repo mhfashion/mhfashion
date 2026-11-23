@@ -1220,9 +1220,24 @@ proposal, not an approved order.
    the Shape panel ("Line is 0.4 mm at print size"), using the strictest minimum until the run is known,
    because the line thins when the layer is scaled down — that is how a hairline reaches the press.
    The seeded orders gained no warning: their backdrop frame is 2 mm.
-   **Still open:** a low-resolution photo warning
-   (the order layer model stores no pixel size, so the editor's save path must carry it — owner
-   approval), and ~~opening the print-size export on a phone~~ —
+   **Low-resolution photo warning shipped 2026-11-22:** the press-side rule now exists —
+   `layerPhotoPpi` reads a photo layer's own pixels (`pixelWidth`/`pixelHeight`, added to
+   `AdminDesignLayer`) over the inches it covers, the lower axis winning, and
+   `checkDesignQuality` reports `photo-too-soft` under the method's floor
+   (`PRINT_METHOD_RULES.minPhotoPpi`: DTF 150, sublimation 200). An order that does not say how it
+   prints is still checked at the DTF floor (`DEFAULT_MIN_PHOTO_PPI`), so a 51 ppi photo cannot pass
+   just because the method is blank. The message names the ppi, the printed size and the fix ("use a
+   larger image or print it smaller"), and it reaches the press the same three ways as every other
+   check. The editor's readout (`editor-image-ppi.ts`, already live on the layer row and in the
+   Adjustments panel) now also says what to do: "the press wants 150 ppi, so use a larger image or
+   make this one smaller". Verified in Chromium by importing a real 200 × 150 px PNG through the
+   Upload section: the layer row showed "17 ppi · very low" and the panel read
+   "Print quality: 17 ppi · very low — the press wants 150 ppi, so use a larger image or make this one
+   smaller." `tests/print-quality.test.cjs` covers the ppi maths, both method floors, the unknown
+   method, the three press outputs and the seeded orders staying clean.
+   **Still open:** the editor's Save box is disabled, so no design reaches an order yet; when that
+   path lands it must copy `sourceWidth`/`sourceHeight` into the saved layer's
+   `pixelWidth`/`pixelHeight`, or the press check stays silent. Also ~~opening the print-size export on a phone~~ —
    **checked 2026-11-22:** the press sheet opens in its own tab on a phone (`window.open` returns a
    window, a real click keeps the popup allowed), carries a viewport meta, a `@media (max-width: 640px)`
    stack and a "Print this sheet" button, and at 390x844 `scrollWidth === clientWidth` (390) with the
