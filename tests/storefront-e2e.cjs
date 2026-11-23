@@ -273,6 +273,10 @@ async function main() {
     // page: navigating to the URL already on screen would not remount the cart provider.
     await visit("/", "header");
     await seedCart();
+    // The badge is a picture; the button has to carry the count for a screen reader.
+    await visit("/", "header");
+    const cartName = await evaluate(() => document.querySelector('[aria-label^="Cart"]')?.getAttribute("aria-label") ?? "");
+    assert.match(String(cartName), /Cart, 2 in the cart/, `the cart button names its count: ${cartName}`);
     await resetCheckout();
     await visit("/checkout", "[data-checkout-line]");
     // An empty form must name every missing field in one pass, not just the first one it notices.
@@ -309,6 +313,10 @@ async function main() {
     await pause(400);
     const confirmation = await placeOrder();
     assert.match(String(confirmation), /Order #MH\d+ placed/, `checkout confirmation: ${confirmation}`);
+    // The submit button is gone with the form, so the confirmation has to take focus or the
+    // customer is left at the top of the page with no idea whether the order went through.
+    const focusedAfterOrder = await evaluate(() => document.activeElement?.textContent?.trim() ?? "");
+    assert.match(focusedAfterOrder, /Order #MH\d+/, `focus lands on the confirmation: ${focusedAfterOrder}`);
 
     await visit("/account", "main");
     const dashboard = await evaluate(() => {

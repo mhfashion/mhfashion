@@ -297,7 +297,7 @@ export default function EditorToolsBar({
           {collapsed ? <ChevronUp size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}
         </button>
         {notice && <span aria-hidden="true" className="absolute bottom-full left-1/2 mb-2 max-w-[calc(100vw-24px)] -translate-x-1/2 rounded-lg bg-text-primary px-2 py-1 text-[10px] leading-tight text-bg-surface shadow-lg">{notice}</span>}
-        <span className="sr-only" role="status" aria-live="polite">{notice}</span>
+        <span data-editor-notice className="sr-only" role="status" aria-live="polite">{notice}</span>
       </section>
     </div>
   );

@@ -11,6 +11,7 @@ import {
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
 import { useI18n } from "@/lib/i18n";
+import { useWishlist } from "@/lib/wishlist-context";
 import NotificationBell from "./NotificationBell";
 import { CurrencyIcon, FlagIcon, LANGUAGE_LABEL } from "./SwitcherIcons";
 
@@ -79,6 +80,7 @@ export default function MobileNav() {
   const { theme, toggleTheme } = useTheme();
   const { currency, toggleCurrency } = useCurrency();
   const { locale, setLocale, t } = useI18n();
+  const { count: wishlistCount } = useWishlist();
   const close = () => setOpen(false);
 
   return (
@@ -152,6 +154,7 @@ export default function MobileNav() {
             className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40"
           >
             <Heart size={15} /> {t("actions.wishlist")}
+            {wishlistCount ? <span className="text-text-muted">· {wishlistCount}</span> : null}
           </a>
           <button
             onClick={toggleCurrency}

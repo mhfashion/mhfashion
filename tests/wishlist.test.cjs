@@ -79,7 +79,9 @@ test("the heart on a product card and the header are wired to the store", () => 
   assert.ok(!/setFavorited/.test(card), "the heart must not keep a private state that the saved page cannot see");
 
   const header = read("apps/web/src/components/HeaderActions.tsx");
-  assert.match(header, /href="\/wishlist" aria-label=\{t\("actions\.wishlist"\)\} data-header-wishlist/);
+  // The header heart names how many pieces are saved, so the count is not a picture only.
+  assert.match(header, /href="\/wishlist" aria-label=\{wishlistCount \? `\$\{t\("actions\.wishlist"\)\}, \$\{wishlistCount\}/);
+  assert.match(header, /data-header-wishlist/);
   assert.match(header, /data-wishlist-count/);
   assert.match(read("apps/web/src/components/MobileNav.tsx"), /href="\/wishlist"/);
 });

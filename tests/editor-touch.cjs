@@ -759,7 +759,8 @@ async function main() {
     }
     await pause(700);
     assert.equal(await strokes(), before, "the reload paints the same artwork");
-    const notice = await evaluate(() => document.querySelector('[role="status"][aria-live="polite"]')?.textContent ?? "");
+    // The header carries its own cart status region, so read the editor's notice by its own marker.
+    const notice = await evaluate(() => document.querySelector('[data-editor-notice]')?.textContent ?? "");
     assert.match(notice, /Restored the design from your last visit/);
     console.log("PASS draft restore: a reload brings the artwork back and says so");
   }
@@ -879,7 +880,7 @@ async function main() {
     });
     await clickMouse('button[aria-label="Add layer"]');
     await pause(900);
-    const notice = await evaluate(() => document.querySelector('[role="status"]')?.textContent?.trim() ?? "");
+    const notice = await evaluate(() => document.querySelector('[data-editor-notice]')?.textContent?.trim() ?? "");
     assert.match(notice, /not saving your design/i, "a refused draft write is announced, not swallowed");
     await evaluate(() => {
       window.__restoreSetItem?.();
@@ -1142,7 +1143,7 @@ async function main() {
     await drag({ x: emptyCanvas.x + 30, y: emptyCanvas.y + 60 }, { x: emptyCanvas.x + 110, y: emptyCanvas.y + 60 });
     assert.equal(await painted(), 0, "no stroke lands without a layer");
     assert.equal(
-      await evaluate(() => document.querySelector('[data-testid="editor-tools-bar"] [role="status"]')?.textContent ?? ""),
+      await evaluate(() => document.querySelector('[data-testid="editor-tools-bar"] [data-editor-notice]')?.textContent ?? ""),
       "Add a layer before drawing.",
       "a stroke with no layer says what to do",
     );

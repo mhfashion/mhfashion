@@ -52,6 +52,7 @@ export default function CheckoutClient() {
   const [submittedOrder, setSubmittedOrder] = useState<AdminOrder | null>(null);
   const [message, setMessage] = useState("");
   const submittingRef = useRef(false);
+  const confirmationRef = useRef<HTMLHeadingElement>(null);
 
   // A customer who already gave us an address does not type it again: the saved one fills the form,
   // and the newest order on this device covers the case where nothing was saved yet.
@@ -71,6 +72,10 @@ export default function CheckoutClient() {
   // current stage rather than the one captured at submit time.
   const storedOrder = idempotencyKey ? data.orders.find((entry) => entry.checkoutKey === idempotencyKey) ?? null : null;
   const order = storedOrder ?? submittedOrder;
+
+  useEffect(() => {
+    if (order) confirmationRef.current?.focus();
+  }, [order]);
 
   function submit() {
     if (submittingRef.current) return;
@@ -166,11 +171,13 @@ export default function CheckoutClient() {
   }
 
   if (order) {
+    // The submit button disappears with the form, so focus would fall back to the page top; the
+    // heading takes it and the order result is read out from there.
     return (
       <section className="mx-auto max-w-[720px]">
         <div data-checkout-confirmation className="rounded-2xl border border-border bg-bg-surface p-6 shadow-sm sm:p-8">
           <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-accent/10 text-accent"><Check size={22} /></span>
-          <h2 className="mt-4 text-xl font-black sm:text-2xl">Order {order.id} {order.stage === "Pending Payment" ? "placed" : "confirmed"}</h2>
+          <h2 ref={confirmationRef} tabIndex={-1} className="mt-4 text-xl font-black outline-none sm:text-2xl">Order {order.id} {order.stage === "Pending Payment" ? "placed" : "confirmed"}</h2>
           <p data-checkout-status className="mt-1 text-xs font-semibold text-text-secondary">Status: {order.stage}</p>
           <p className="mt-3 text-xs text-text-muted">
             {order.stage === "Pending Payment"

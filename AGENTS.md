@@ -652,6 +652,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Status announcements (`HeaderActions.tsx`, `CheckoutClient.tsx`, `EditorToolsBar.tsx`)
+- The cart badge is a picture of a number, so the header cart button names its count
+  (`Cart, 2 in the cart`) and a `role="status"` sr-only line announces the change. The wishlist link
+  does the same (`Wishlist, 3 saved to the wishlist`). Both need the `actions.cartItems` /
+  `actions.wishlistItems` keys in **both** locales.
+- Placing an order swaps the form for the confirmation, so the heading takes focus
+  (`tabIndex={-1}` + ref effect on `order`); without it focus falls to the page top and nothing is said.
+- The editor's own live region carries `data-editor-notice`. Tests must select it by that marker:
+  a bare `[role="status"]` query now matches the header cart region first and reads `""`.
+
 ## Checkout validation (`apps/web/src/lib/checkout.ts`, `CheckoutClient.tsx`)
 - `checkoutAddressIssues(address, note)` returns one message per field (`name` / `phone` / `address` /
   `township` / `city` / `note`); `validateCheckout` builds its summary list from those same messages, so

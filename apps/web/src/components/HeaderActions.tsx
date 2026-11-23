@@ -120,7 +120,7 @@ export default function HeaderActions() {
         </button>
         <NotificationBell />
 
-        <a href="/wishlist" aria-label={t("actions.wishlist")} data-header-wishlist className="relative">
+        <a href="/wishlist" aria-label={wishlistCount ? `${t("actions.wishlist")}, ${wishlistCount} ${t("actions.wishlistItems")}` : t("actions.wishlist")} data-header-wishlist className="relative">
           <Heart size={18} />
           {wishlistCount > 0 ? (
             <span data-wishlist-count className="absolute -right-1.5 -top-1.5 min-w-[14px] rounded-full bg-accent px-1 text-center text-[9px] font-bold leading-[14px] text-accent-foreground">{wishlistCount}</span>
@@ -152,7 +152,7 @@ export default function HeaderActions() {
         </a>
 
         <div ref={cartRef} className="relative">
-          <button type="button" onClick={() => setCartOpen((open) => !open)} aria-label={t("actions.cart")} className="relative">
+          <button type="button" onClick={() => setCartOpen((open) => !open)} aria-label={itemCount ? `${t("actions.cart")}, ${itemCount} ${t("actions.cartItems")}` : t("actions.cart")} className="relative">
           <ShoppingCart size={18} />
           {itemCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">
@@ -162,6 +162,10 @@ export default function HeaderActions() {
           </button>
           {cartOpen && <CartBox onClose={() => setCartOpen(false)} />}
         </div>
+        {/* The badge is a picture of a number; this is what a screen reader hears when it changes. */}
+        <span className="sr-only" role="status" aria-live="polite">
+          {itemCount ? `${itemCount} ${t("actions.cartItems")}` : ""}
+        </span>
 
         <a href="/account" aria-label={t("actions.account")}>
           <User size={18} />
