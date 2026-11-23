@@ -1187,7 +1187,8 @@ proposal, not an approved order.
     run under `node --test`, and `tests/storefront-e2e.cjs` drives the production build over CDP at
     1440x900 and 390x844 with touch. **Still open:** real-device checks on a physical Android and iPhone
     (also editor plan E2), and tests for the admin modules that only exist as demo data.
-    **Admin sweep 2026-11-22:** all twelve admin routes were loaded at 1440x900 and 390x844 touch —
+    **Admin sweep 2026-11-22:** all twelve admin routes (thirteen with Brushes) were loaded at 1440x900 and
+    390x844 touch —
     no console error, no sideways scroll, a heading on every page. The sweep found one real defect:
     the Settings form seeded its state from the hydration snapshot (the seed data), so a saved store
     name or USD rate disappeared on reload and the next Save wrote the seed values back over it. The
@@ -1230,7 +1231,18 @@ proposal, not an approved order.
 
 11. **Posts ↔ Product relationship** as a data model (how a T-shirt post relates to
     Product → Style → Color and to fixed-design products). The Nyein brief is still pending.
-12. **Admin modules not yet built:** Brush Management only.
+12. ~~**Admin modules not yet built:** Brush Management only.~~ **Brush Management shipped 2026-11-22:**
+    `/admin/brushes` lists the brushes the editor picker will offer. Each brush carries the id that is also
+    its bucket folder (`brushes/<id>/texture.png`, shown on every row because R2 is not connected), a name,
+    one of five shelves, a round or square tip, size, spacing, opacity and softness, and an on/off switch;
+    the list order is the picker order. An id must be lowercase words joined by -, and it cannot change once
+    the brush exists (the texture lives in that folder); a duplicate id, a missing name or a number outside
+    its range is refused with the reason, in one pass. A saved brush that cannot be drawn with is dropped on
+    read and a missing number takes the editor default. A small SVG sample shows the tip, opacity and
+    softness, the table becomes cards on a phone, and delete asks twice. Verified in Chromium at 1440x900
+    and 390x844 touch: add, duplicate refusal, switch off, move up, edit (id locked), delete, and 390/390
+    with no sideways scroll; `tests/admin-brushes.test.cjs` covers the seed, the read repair, every
+    validation rule, upsert/remove/toggle/move and the module registration.
     **Pricing Management (web grid + phone cards), Attribute Management, the Delivery Settlement
     Report and Loyalty rules shipped 2026-11-21** (4.5.1, §9, §16); Brush Management stays blocked on
     the editor. `/admin/loyalty` holds the §9 economy (300 daily that expire after 24h, 100 per AI

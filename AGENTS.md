@@ -391,6 +391,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   and the legacy single `manifest.json` (old audit, plus a note that the service wants `meta.json`).
 - The script exits 1 on any issue and 0 otherwise; large files stay a warning, as before.
 
+## Brush management (`apps/web/src/components/admin/AdminBrushes.tsx`, `lib/admin-brushes.ts`)
+- A brush id is its bucket folder (`brushes/<id>/texture.png`) and cannot change after creation, so the
+  drawer disables the id field while editing. `validateBrushDraft` reports every problem in one pass.
+- `normalizeBrushes` in `admin-demo-data.ts` (not in `admin-brushes.ts`, which imports the types) repairs a
+  saved list on read: a bad id, an empty name or a duplicate is dropped, and out-of-range numbers clamp.
+- Button labels use the brush **name** (`Remove Ink · round`), not the id — a CDP probe that clicks
+  `Remove ink-round` silently does nothing.
+
 ## Admin forms and the hydration snapshot (`apps/web/src/lib/admin-demo-store.ts`)
 - `useAdminDemoData` is `useSyncExternalStore(subscribe, readAdminDemoData, readSeedSnapshot)`, so the
   first client render (hydration) sees `createAdminDemoData()`, not this browser's saved data. A
