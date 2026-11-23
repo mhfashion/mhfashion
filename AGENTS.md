@@ -416,6 +416,22 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Pinch to zoom (`apps/web/src/lib/editor-pinch.ts`)
+- The workspace is drawn `translate(pan) scale(zoom)` about a transform origin that is **top centre on
+  a phone** (`origin-top`) and centre on a desktop. A local point L lands at
+  `E + O + pan + (L - O) * zoom`, so any pan term that ignores the origin drifts by `O * Δzoom`.
+- `pinchView(start, fingers)` keeps the local point that was under the gesture's **start** midpoint
+  under the current midpoint: `pan = pan0 + (F1 - F0) + anchor0 * (1 - z1/z0) + O * (z1 - z0)`. Drop
+  the `(F1 - F0)` term and a two-finger drag stops panning; drop the `O` term and the box slides
+  sideways (146 px on a 390-wide phone at 2×).
+- Zoom is clamped to `EDITOR_ZOOM_MIN` 0.25 / `EDITOR_ZOOM_MAX` 3, the same bounds as the + / - buttons.
+- The listeners are bound once in the wheel effect, so they read `zoomRef`/`panRef`; a stale closure
+  makes every gesture start from the initial view.
+- `touchstart` is passive (one finger must still scroll and draw) and `touchmove` calls
+  `preventDefault` only while a pinch is live. The handler bails when `panStartRef`,
+  `activeNodeDragRef`, `activeArtworkStrokeRef` or `activeShapeDragRef` is set, so a second finger
+  never hijacks a drag.
+
 ## Photo resolution (press + editor)
 - `layerPhotoPpi` (`lib/print-quality.ts`) = the photo's own pixels over the inches the layer covers,
   lower axis winning, `scale` applied. `null` when the layer has no `pixelWidth`/`pixelHeight`, so

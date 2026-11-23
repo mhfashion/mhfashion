@@ -6,6 +6,7 @@ import MockupArtwork from "@/components/MockupArtwork";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
 import { GradientPreview } from "@/components/EditorLayerPreview";
 import EditorToolsBar, { type EditorTool } from "@/components/EditorToolsBar";
+import { pinchFrameFrom, pinchView, type PinchFrame } from "@/lib/editor-pinch";
 import EditorDesignExport from "@/components/EditorDesignExport";
 import { downloadDesignPng, downloadDesignSvg, designExportDocument, serializeArtworkSvg, type DesignExportOutcome } from "@/lib/design-export";
 import EditorEditSidebar from "@/components/EditorEditSidebar";
@@ -162,6 +163,16 @@ function editorToolCursor(tool: EditorTool) {
 }
 
 type PanStart = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
+
+const touchDistance = (touches: TouchList) => {
+  const [first, second] = [touches[0], touches[1]];
+  return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+};
+
+const touchMidpoint = (touches: TouchList) => ({
+  x: (touches[0].clientX + touches[1].clientX) / 2,
+  y: (touches[0].clientY + touches[1].clientY) / 2,
+});
 type MockupSide = "Front Mockup" | "Back Mockup";
 type WorkspaceNode = "Print canvas" | MockupSide;
 type Point = { x: number; y: number };
@@ -556,6 +567,15 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [spaceHeld, setSpaceHeld] = useState(false);
+  // The pinch handlers are bound once, so they read the live view through refs instead of a stale closure.
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+  useEffect(() => {
+    panRef.current = pan;
+  }, [pan]);
   const [isPanning, setIsPanning] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [touchPanEnabled, setTouchPanEnabled] = useState(false);
@@ -907,6 +927,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const panStartRef = useRef<PanStart | null>(null);
   const panGestureRef = useRef(false);
+  const pinchStartRef = useRef<PinchFrame | null>(null);
   const activeNodeDragRef = useRef<ActiveNodeDrag | null>(null);
   const activeArtworkStrokeRef = useRef<ActiveArtworkStroke | null>(null);
   const activeShapeDragRef = useRef<ActiveShapeDrag | null>(null);
@@ -1123,11 +1144,60 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       activeArtworkStrokeRef.current = null;
     };
 
+    // Pinch to zoom, and drag with both fingers while pinching. A phone has no wheel and no Space
+    // bar, so before this the only way to zoom was the + / - buttons. `pinchView` keeps the artwork
+    // that was under the midpoint under it as the fingers spread and move.
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 2) return;
+      const workspace = workspaceRef.current;
+      if (!workspace) return;
+      // A layer drag or a stroke owns the first finger; a second finger must not hijack it.
+      if (panStartRef.current || activeNodeDragRef.current || activeArtworkStrokeRef.current || activeShapeDragRef.current) return;
+      const rect = workspace.getBoundingClientRect();
+      const distance = touchDistance(event.touches);
+      if (!(distance > 0)) return;
+      const [originX, originY] = getComputedStyle(workspace).transformOrigin.split(" ").map((value) => parseFloat(value) || 0);
+      const midpoint = touchMidpoint(event.touches);
+      pinchStartRef.current = pinchFrameFrom(
+        { zoom: zoomRef.current, panX: panRef.current.x, panY: panRef.current.y },
+        { left: rect.left, top: rect.top },
+        { x: originX, y: originY },
+        { distance, midpointX: midpoint.x, midpointY: midpoint.y },
+      );
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      const start = pinchStartRef.current;
+      if (!start) return;
+      if (event.touches.length !== 2) {
+        pinchStartRef.current = null;
+        return;
+      }
+      // The page must not scroll or zoom under the fingers.
+      event.preventDefault();
+      const midpoint = touchMidpoint(event.touches);
+      const view = pinchView(start, { distance: touchDistance(event.touches), midpointX: midpoint.x, midpointY: midpoint.y });
+      setZoom(view.zoom);
+      setPan({ x: view.panX, y: view.panY });
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length < 2) pinchStartRef.current = null;
+    };
+
+    viewport.addEventListener("touchstart", handleTouchStart, { passive: true });
+    viewport.addEventListener("touchmove", handleTouchMove, { passive: false });
+    viewport.addEventListener("touchend", handleTouchEnd);
+    viewport.addEventListener("touchcancel", handleTouchEnd);
     viewport.addEventListener("wheel", handleViewportWheel, { passive: false });
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
     window.addEventListener("blur", handleWindowBlur);
     return () => {
+      viewport.removeEventListener("touchstart", handleTouchStart);
+      viewport.removeEventListener("touchmove", handleTouchMove);
+      viewport.removeEventListener("touchend", handleTouchEnd);
+      viewport.removeEventListener("touchcancel", handleTouchEnd);
       viewport.removeEventListener("wheel", handleViewportWheel);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
