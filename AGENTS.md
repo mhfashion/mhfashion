@@ -416,6 +416,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Asset issues route (`app/api/assets/issues/route.ts`)
+- The static `issues` segment wins over `[kind]`, so `/api/assets/issues` is not read as a kind; a kind
+  named "issues" would be shadowed (no such kind exists).
+- The report is built only from the snapshots the rebuild wrote — never from the bucket directly — and
+  carries no timestamp of its own so an unchanged bucket can answer 304.
+- `tests/asset-routes.test.cjs` covers the report, the "no snapshot" and "no bucket" wording, and the
+  304/changed-etag pair.
+
 ## Admin forms and the hydration snapshot (`apps/web/src/lib/admin-demo-store.ts`)
 - `useAdminDemoData` is `useSyncExternalStore(subscribe, readAdminDemoData, readSeedSnapshot)`, so the
   first client render (hydration) sees `createAdminDemoData()`, not this browser's saved data. A

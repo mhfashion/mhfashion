@@ -95,6 +95,66 @@ export async function catalogueResponse(
   return result;
 }
 
+export type AssetIssuesKindReport = {
+  kind: AssetCatalogueKind;
+  /** How many usable items the last snapshot holds. */
+  items: number;
+  builtAt: string | null;
+  issues: AssetCatalogueIssue[];
+};
+
+/**
+ * No timestamp of its own: each kind already carries when its snapshot was built, and a body that
+ * changes on every request could never answer 304.
+ */
+export type AssetIssuesReport = {
+  version: 1;
+  kinds: AssetIssuesKindReport[];
+  summary: { kinds: number; items: number; issues: number };
+};
+
+/**
+ * Plan §12.1 part 10: what the shop could not use, read from the snapshots the rebuild already wrote.
+ * Nothing is listed here that the catalogue does not already know, so this view cannot drift from what
+ * the editor is served.
+ */
+export async function issuesResponse(
+  store: AssetStore | null,
+  ifNoneMatch: string | null,
+): Promise<AssetRouteResult> {
+  const kinds: AssetIssuesKindReport[] = [];
+  for (const kind of ASSET_CATALOGUE_KINDS) {
+    const stored = store ? await readAssetCatalogue(store, kind) : null;
+    if (stored) {
+      kinds.push({ kind, items: stored.items.length, builtAt: stored.generatedAt, issues: stored.issues });
+    } else {
+      kinds.push({
+        kind,
+        items: 0,
+        builtAt: null,
+        issues: [{
+          key: catalogueSnapshotKey(kind),
+          reason: store ? "no snapshot has been built yet" : "the asset bucket is not bound in this environment",
+        }],
+      });
+    }
+  }
+  const report: AssetIssuesReport = {
+    version: 1,
+    kinds,
+    summary: {
+      kinds: kinds.length,
+      items: kinds.reduce((total, entry) => total + entry.items, 0),
+      issues: kinds.reduce((total, entry) => total + entry.issues.length, 0),
+    },
+  };
+  const result = jsonResult(200, report);
+  if (etagMatches(ifNoneMatch, result.headers.etag)) {
+    return { status: 304, headers: result.headers, body: "" };
+  }
+  return result;
+}
+
 export async function mockupResponse(
   store: AssetStore | null,
   slug: string,

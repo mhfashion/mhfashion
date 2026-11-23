@@ -126,3 +126,56 @@ test("the etag follows the body", () => {
   assert.notEqual(routes.bodyEtag("abc"), routes.bodyEtag("abd"));
   assert.match(routes.bodyEtag(""), /^"[0-9a-f]{8}"$/);
 });
+
+test("the issues route lists every kind, with the problems the snapshot carries", async () => {
+  const store = storeLib.createMemoryAssetStore({
+    ...fontBucket(),
+    "elements/orphan/arrow.svg": "<svg/>",
+  });
+  await catalogue.writeAssetCatalogue(store, "fonts", new Date(Date.UTC(2026, 10, 22, 3, 0)));
+  await catalogue.writeAssetCatalogue(store, "elements", new Date(Date.UTC(2026, 10, 22, 3, 0)));
+  const result = await routes.issuesResponse(store, null);
+  assert.equal(result.status, 200);
+  const report = JSON.parse(result.body);
+  assert.equal(report.version, 1);
+  assert.deepEqual(report.kinds.map((entry) => entry.kind), ["fonts", "designs", "elements", "brushes", "text-styles", "mockups"]);
+  const fonts = report.kinds.find((entry) => entry.kind === "fonts");
+  assert.equal(fonts.items, 1);
+  assert.equal(fonts.builtAt, "2026-11-22T03:00:00.000Z");
+  assert.deepEqual(fonts.issues, []);
+  const elements = report.kinds.find((entry) => entry.kind === "elements");
+  assert.equal(elements.items, 0);
+  assert.equal(elements.issues.length, 1);
+  assert.match(elements.issues[0].reason, /meta\.json/);
+  assert.deepEqual(report.summary, { kinds: 6, items: 1, issues: 5 });
+  assert.equal(result.headers["cache-control"], "public, max-age=60, stale-while-revalidate=600");
+});
+
+test("a kind with no snapshot says so instead of pretending the kind is empty", async () => {
+  const store = await storeWith("fonts", fontBucket());
+  const report = JSON.parse((await routes.issuesResponse(store, null)).body);
+  const designs = report.kinds.find((entry) => entry.kind === "designs");
+  assert.equal(designs.builtAt, null);
+  assert.deepEqual(designs.issues, [{ key: "catalog/designs.json", reason: "no snapshot has been built yet" }]);
+});
+
+test("without a bound bucket every kind reports the missing binding", async () => {
+  const report = JSON.parse((await routes.issuesResponse(null, null)).body);
+  assert.deepEqual(report.summary, { kinds: 6, items: 0, issues: 6 });
+  for (const entry of report.kinds) {
+    assert.deepEqual(entry.issues, [{ key: `catalog/${entry.kind}.json`, reason: "the asset bucket is not bound in this environment" }]);
+  }
+});
+
+test("the issues route answers 304 for its own etag and a different one when the bucket changes", async () => {
+  const store = await storeWith("fonts", fontBucket());
+  const first = await routes.issuesResponse(store, null);
+  const revalidated = await routes.issuesResponse(store, first.headers.etag);
+  assert.equal(revalidated.status, 304);
+  assert.equal(revalidated.body, "");
+
+  await catalogue.writeAssetCatalogue(store, "elements");
+  const changed = await routes.issuesResponse(store, first.headers.etag);
+  assert.equal(changed.status, 200);
+  assert.notEqual(changed.headers.etag, first.headers.etag);
+});

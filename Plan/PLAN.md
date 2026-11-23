@@ -602,10 +602,19 @@ folder: a folder with `meta.json` per font is checked with exactly the rules the
 file it names but does not hold fails), the legacy single `manifest.json` layout still gets the old audit
 plus a note that the service wants `meta.json`, and an unknown folder is refused instead of crashing.
 `tests/asset-rebuild.test.cjs` (3 tests) and `tests/check-font-manifest.test.cjs` (5 tests) cover both.
+**Issues route shipped 2026-11-22 (part 10, read half):** `GET /api/assets/issues` answers one report for
+every kind — how many items the last snapshot holds, when it was built, and every issue it recorded (a
+folder with no `meta.json`, a file the meta names but the bucket does not hold). It reads the snapshots
+the rebuild already wrote, so it cannot drift from what the editor is served; a kind with no snapshot
+says "no snapshot has been built yet" and an unbound bucket says so per kind, instead of pretending the
+kind is empty. The body carries no timestamp of its own (each kind carries `builtAt`), so a revalidation
+can answer 304, and the route keeps the same 60-second cache. The static `issues` segment wins over
+`[kind]`, and `/api/assets/fonts` still answers (checked on a running server: issues 200 with six kinds,
+fonts 200, mockups 404 without a bucket, revalidate 304).
 **Still to build:** the R2 binding in `wrangler.jsonc` (needs the bucket name), the scheduled trigger that
 calls `rebuildAssetCatalogues` (the Worker entry needs a `scheduled` export first), the editor reading
 `/api/assets/fonts` instead of the public manifest URL (only once the binding exists, or production would
-lose the fonts it loads today), and the admin writes and the issues route (after Supabase Auth).
+lose the fonts it loads today), and the admin writes (after Supabase Auth).
 
 **Rollout.**
 1. Read-only service for fonts, brushes, designs and elements, with hand uploads and the scheduled rebuild.
