@@ -382,6 +382,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The editor still reads the public manifest URL. Do not point it at `/api/assets/fonts` until
   `wrangler.jsonc` has the binding, or production loses the fonts it loads today.
 
+## Asset rebuild and the font check script
+- `rebuildAssetCatalogues(store, now, log)` (`lib/asset-catalogue-rebuild.ts`) is the one pass a cron
+  trigger, an admin rescan and a test share; it writes only changed snapshots and logs one line per kind.
+- `scripts/check-font-manifest.cjs` now loads `asset-store`/`asset-catalogue` through
+  `tests/helpers/load-ts-module.cjs` and builds the same catalogue the Worker would, so a local check and
+  production agree. It keeps two modes: `fonts/<slug>/meta.json` (builder rules, strict file existence)
+  and the legacy single `manifest.json` (old audit, plus a note that the service wants `meta.json`).
+- The script exits 1 on any issue and 0 otherwise; large files stay a warning, as before.
+
 ## Admin forms and the hydration snapshot (`apps/web/src/lib/admin-demo-store.ts`)
 - `useAdminDemoData` is `useSyncExternalStore(subscribe, readAdminDemoData, readSeedSnapshot)`, so the
   first client render (hydration) sees `createAdminDemoData()`, not this browser's saved data. A

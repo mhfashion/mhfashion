@@ -594,10 +594,18 @@ is not bound, so the editor keeps its system fonts and nothing crashes. Routes:
 empty-snapshot answers, the mockup 404/400 and the kind allow-list. Checked live on `next start`: fonts
 200 with the cache header and an `ETag`, the same request with `If-None-Match` 304, an unknown kind 404, a
 missing mockup 404.
-**Still to build:** the R2 binding in `wrangler.jsonc` (needs the bucket name), the editor reading
+**Rebuild and the check script built 2026-11-22 (parts 5 and 13).** `lib/asset-catalogue-rebuild.ts`
+runs one pass over all six kinds, writes only the snapshots that changed and logs one line per kind
+(`assets: fonts rebuilt, 1 item, 0 issues`), which is the observability in part 12. A second pass over an
+unchanged bucket writes nothing. `scripts/check-font-manifest.cjs` is now the same builder over a local
+folder: a folder with `meta.json` per font is checked with exactly the rules the Worker applies (and a
+file it names but does not hold fails), the legacy single `manifest.json` layout still gets the old audit
+plus a note that the service wants `meta.json`, and an unknown folder is refused instead of crashing.
+`tests/asset-rebuild.test.cjs` (3 tests) and `tests/check-font-manifest.test.cjs` (5 tests) cover both.
+**Still to build:** the R2 binding in `wrangler.jsonc` (needs the bucket name), the scheduled trigger that
+calls `rebuildAssetCatalogues` (the Worker entry needs a `scheduled` export first), the editor reading
 `/api/assets/fonts` instead of the public manifest URL (only once the binding exists, or production would
-lose the fonts it loads today), the scheduled rebuild, the admin writes and the issues route, and
-rewiring `scripts/check-font-manifest.cjs` onto the builder.
+lose the fonts it loads today), and the admin writes and the issues route (after Supabase Auth).
 
 **Rollout.**
 1. Read-only service for fonts, brushes, designs and elements, with hand uploads and the scheduled rebuild.
