@@ -567,6 +567,23 @@ address from it. This replaces the earlier "future private serving contract" (`/
     check the allow-list, the headers and the caching. `scripts/check-font-manifest.cjs` becomes a thin wrapper over
     the same builder, so what the shop checks before an upload is what the Worker will accept.
 
+**Built 2026-11-22 (the pure core of parts 2, 3, 4, 11 and 13).**
+`lib/asset-store.ts` holds the `AssetStore` interface (`list` with a cursor, `get`, `put`, `delete`), the
+allow-list of key prefixes, `isSafeAssetKey` (refuses a scheme, an absolute path, `..`, a backslash, an
+empty segment, an unknown prefix and a key over 512 characters) and `createMemoryAssetStore` with a
+small `pageSize` so a listing has to follow the cursor.
+`lib/asset-catalogue.ts` holds one pure builder per kind — fonts through the editor's own
+`parseEditorFontManifest`, designs/elements/brushes/text-styles through one folder shape, mockups as the
+looks that exist — each returning `{ version, kind, generatedAt, items, issues }`. A bad entry is skipped
+and named in `issues` (broken or missing `meta.json`, a file the bucket does not hold, a duplicate slug,
+an unsafe key); `writeAssetCatalogue` stores `catalog/<kind>.json` and writes nothing when only
+`generatedAt` would change.
+`tests/asset-catalogue.test.cjs` (15 tests) covers every case part 13 lists, including a listing longer
+than one page.
+**Still to build:** the R2 binding in `wrangler.jsonc`, the read routes, the cache headers and `ETag`, the
+scheduled rebuild, the admin writes and the issues route, and rewiring `scripts/check-font-manifest.cjs`
+onto the builder.
+
 **Rollout.**
 1. Read-only service for fonts, brushes, designs and elements, with hand uploads and the scheduled rebuild.
 2. The mockups listing, which ends the probing for missing looks.

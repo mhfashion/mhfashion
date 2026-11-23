@@ -355,6 +355,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `tests/storefront-e2e.cjs` asserts the six issues on an empty form before it fills the form, then
   keeps the full cart -> order -> account path.
 
+## Asset service core (`apps/web/src/lib/asset-store.ts`, `asset-catalogue.ts`)
+- The browser never lists R2 itself: a Worker reads the bucket through `AssetStore` and serves one JSON
+  snapshot per kind. `createMemoryAssetStore` is the test implementation (it takes `pageSize`, so a
+  listing that forgets to follow `cursor` fails in tests).
+- `isSafeAssetKey` is the single gate: allow-listed prefix, no scheme, no leading slash, no `..` segment,
+  no backslash, no `//`, no trailing slash, at most 512 characters. The memory store asserts it on
+  `get`/`put`/`delete`, and the builders report an unsafe key in `issues` instead of using it.
+- Fonts go through `parseEditorFontManifest`, so the bucket, the picker and the check script share one
+  definition of a usable font. Every other kind uses `meta.json` with `slug`, `name` and optional `files`.
+- A folder with files but no `meta.json` is reported once as `"meta.json is missing"`; a key that is
+  already unsafe does not also mark its folder incomplete.
+- `writeAssetCatalogue` compares everything except `generatedAt`, so a quiet folder is not rewritten
+  (and the object's cache is not churned).
+
 ## Admin forms and the hydration snapshot (`apps/web/src/lib/admin-demo-store.ts`)
 - `useAdminDemoData` is `useSyncExternalStore(subscribe, readAdminDemoData, readSeedSnapshot)`, so the
   first client render (hydration) sees `createAdminDemoData()`, not this browser's saved data. A
