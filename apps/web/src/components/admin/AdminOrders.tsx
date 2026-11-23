@@ -19,6 +19,7 @@ import { downloadDeliveryJson } from "@/lib/delivery";
 import {
   decideRefund, pendingRefundRequests, refundReasonLabel, type AdminOrderRefundRequest,
 } from "@/lib/order-refunds";
+import { stockStatus, syncStockWithStage } from "@/lib/stock-movement";
 import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
   adminDayKey, adminDayLabel, adminTodayKey, buildMockupDiagramSvg, designLayerSize,
@@ -118,7 +119,7 @@ export default function AdminOrders() {
       if (!target) return current;
       const result = decideRefund(target, request.id, decision, getDemoAdminSession()?.name ?? "Admin", new Date().toISOString(), refundReply);
       if (result.issues.length) return current;
-      return replaceOrder(current, result.order);
+      return syncStockWithStage(replaceOrder(current, result.order), order.id);
     });
     setRefundReply("");
   }
@@ -126,11 +127,11 @@ export default function AdminOrders() {
   function advance(order: AdminOrder) {
     const next = nextOrderStage(order.stage);
     if (!next) return;
-    updateAdminData((current) => setOrderStage(current, order.id, next));
+    updateAdminData((current) => syncStockWithStage(setOrderStage(current, order.id, next), order.id));
   }
 
   function moveTo(order: AdminOrder, stage: AdminOrderStage) {
-    updateAdminData((current) => setOrderStage(current, order.id, stage));
+    updateAdminData((current) => syncStockWithStage(setOrderStage(current, order.id, stage), order.id));
   }
 
   function saveNote(order: AdminOrder) {
@@ -337,6 +338,18 @@ export default function AdminOrders() {
                 <div><dt className="text-[#87909b]">Order total</dt><dd className="font-semibold text-[#394250]">{formatKs(orderTotalKs(selected))}</dd></div>
                 <div><dt className="text-[#87909b]">Press sheet</dt><dd className="font-semibold text-[#394250]">{pressSheetLabel(selected)}</dd></div>
               </dl>
+              {stockStatus(selected) !== "none" ? (
+                <p data-order-stock={stockStatus(selected)} className="mt-2 border-t border-[#edf0f3] pt-2 text-[9px] text-[#87909b]">
+                  {stockStatus(selected) === "taken" ? (
+                    <>
+                      Stock deducted · {(selected.stockTaken ?? []).map((line) => `${line.size} ×${line.quantity}`).join(", ") || "nothing left to take"}
+                      {selected.stockShortfall?.length
+                        ? ` · short ${selected.stockShortfall.map((line) => `${line.size} ×${line.wanted - line.available}`).join(", ")} — restock before printing`
+                        : ""}
+                    </>
+                  ) : "Stock put back · the pieces returned to inventory"}
+                </p>
+              ) : null}
             </div>
 
             {selected.refundRequests?.length ? (

@@ -694,7 +694,10 @@ catalog-facing items.
 2. **Deploy:** keep the current rule — every push to `main` deploys. No staging branch for now, so
    directive 5 stands unchanged.
 3. **Inventory:** raw (blank) garment stock, as assumed in §16. It does **not** cap sellable
-   quantity, so no stock decrement on sale.
+   quantity, so no stock decrement on sale — this stays the **default** (2026-11-22: the rule exists in
+   `lib/stock-movement.ts` behind `settings.deductStockOnSale`, which ships **off**; switching it on makes
+   a paid order consume its pieces and a refund or cancellation put them back, once each, with a shortage
+   recorded on the order instead of being hidden by a clamp at zero).
 4. **Takedown:** a paid order for a taken-down design is **not** stopped; it is produced and
    delivered. See §8.1.
 5. **Pricing Management (4.5.1):** spec approved as written; design the **Web grid first**, then

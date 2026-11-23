@@ -174,6 +174,13 @@ export type AdminOrder = {
   reprints?: AdminOrderReprint[];
   /** Refund requests the customer raised from their account, oldest first. */
   refundRequests?: AdminOrderRefundRequest[];
+  /** When a paid order took its pieces out of stock, and what it actually took. */
+  stockConsumedAt?: string;
+  stockTaken?: { productId: string; size: string; quantity: number }[];
+  /** Pieces the sale could not cover; the desk restocks rather than the clamp hiding it. */
+  stockShortfall?: { productId: string; size: string; wanted: number; available: number }[];
+  /** When a refund or cancellation gave the pieces back. */
+  stockRestoredAt?: string;
 };
 
 const DESIGN_INKS = ["#2f7d32", "#c08a2e", "#203459", "#b83219", "#4b3f8f", "#1f7a6d", "#8a1f5c", "#33413a"];
@@ -491,6 +498,12 @@ export type AdminSettings = {
   usdRateKs: number;
   lowStockThreshold: number;
   orderNoteTemplate: string;
+  /**
+   * Owner decision 2026-11-21: Inventory is blank-garment stock and does not cap sales, so a sale does
+   * not move it by default. Switching this on makes a paid order consume its pieces and a refund put
+   * them back (`lib/stock-movement.ts`).
+   */
+  deductStockOnSale: boolean;
 };
 
 /**
@@ -2015,6 +2028,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
       usdRateKs: 4300,
       lowStockThreshold: 12,
       orderNoteTemplate: "Checked by the print desk before hand-off.",
+      deductStockOnSale: false,
     },
   };
 }
@@ -2060,6 +2074,9 @@ export function readAdminDemoData(): AdminDemoData {
             parsed.loyaltyLedger,
             parsed.loyalty?.rules ?? createSeedLoyalty().rules,
           ),
+          // Settings saved before a field existed take the seed value for it, so an older store cannot
+          // read `deductStockOnSale` as undefined and quietly skip the rule.
+          settings: { ...createAdminDemoData().settings, ...(parsed.settings ?? {}) },
           jerseyStyles: Array.isArray(parsed.jerseyStyles) && parsed.jerseyStyles.length
             ? parsed.jerseyStyles
             : createSeedJerseyStyles(Date.now()),

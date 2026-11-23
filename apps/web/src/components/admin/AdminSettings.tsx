@@ -168,6 +168,17 @@ export default function AdminSettings() {
               <AdminField label="Low-stock threshold" hint="Inventory flags rows at or below this">
                 <AdminInput value={String(form.lowStockThreshold)} onChange={(event) => update("lowStockThreshold", Number(event.target.value) || 0)} inputMode="numeric" aria-label="Low stock threshold" />
               </AdminField>
+              <AdminField label="Stock follows a sale" hint="Off: Inventory is blank-garment stock and sales leave it alone. On: a paid order takes its pieces and a refund puts them back.">
+                <label className="flex items-center gap-2 text-[11px] font-semibold">
+                  <input
+                    type="checkbox"
+                    aria-label="Deduct stock on sale"
+                    checked={form.deductStockOnSale}
+                    onChange={(event) => update("deductStockOnSale", event.target.checked)}
+                  />
+                  Deduct the pieces of a paid order
+                </label>
+              </AdminField>
             </div>
             <AdminField label="Default print desk note">
               <AdminTextarea value={form.orderNoteTemplate} onChange={(event) => update("orderNoteTemplate", event.target.value)} rows={2} aria-label="Default order note" />

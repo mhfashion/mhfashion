@@ -5,6 +5,7 @@ import type { CartItem } from "@/lib/cart-items";
 import { type AdminDemoData, type AdminOrder, type AdminOrderItem, type AdminPaymentMethod } from "@/lib/admin-demo-data";
 import { applyPaymentEvent, orderAmountKs, type PaymentEvent, type PaymentProviderId, type PaymentStatus } from "@/lib/payments";
 import { awardPurchase, reversePurchase } from "@/lib/loyalty-ledger";
+import { syncStockWithStage } from "@/lib/stock-movement";
 
 /** Plan §8: Visa plus the three wallets. There is no cash on delivery. */
 export const CHECKOUT_PAYMENTS: { id: CheckoutPayment; label: string; hint: string }[] = [
@@ -179,9 +180,10 @@ export function applyPaymentStatus(
     : result.order.stage === "Pending Payment"
       ? data.loyaltyLedger ?? []
       : awardPurchase(data.loyaltyLedger ?? [], result.order, data.loyalty.rules, event.occurredAt).ledger;
+  const next = syncStockWithStage({ ...data, orders, loyaltyLedger: ledger }, result.order.id, event.occurredAt);
   return {
-    data: { ...data, orders, loyaltyLedger: ledger },
-    order: result.order,
+    data: next,
+    order: next.orders.find((entry) => entry.id === result.order.id) ?? result.order,
     issues: result.issues,
   };
 }

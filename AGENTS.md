@@ -416,6 +416,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Stock and sales (`apps/web/src/lib/stock-movement.ts`)
+- The owner's decision (2026-11-21) is that Inventory is **blank-garment stock** and does not cap sales, so
+  a sale leaves it alone. `settings.deductStockOnSale` ships **false** and `syncStockWithStage` returns the
+  data untouched when it is off — do not "fix" that by defaulting it on.
+- When it is on, `consumeStock` stamps `stockConsumedAt` + `stockTaken` on the order and `restoreStock` clears
+  the stamp, so a replayed payment cannot take twice and a re-payment after a refund takes again. Stock is
+  clamped at 0 and the gap is recorded in `stockShortfall` ("restock before printing"), never hidden.
+- `applyPaymentStatus` (checkout), the admin drawer's advance/cancel and the approved-refund path all call
+  `syncStockWithStage`, so no path can move the stage without the rule seeing it.
+- Seeded orders do not consume stock (they were seeded, not sold), so a fresh demo store keeps the seed
+  quantities even with the switch on.
+
 ## Customer points (`apps/web/src/lib/loyalty-ledger.ts`)
 - `data.loyalty` is the **economy** (daily grant, expiry, per-piece rate, tiers, milestones); `data.loyaltyLedger`
   is the shopper's events. Never store a running total — expiry, refunds and corrections need the entries.
