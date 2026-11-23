@@ -1359,7 +1359,15 @@ proposal, not an approved order.
     as UTC ISO strings and every admin screen and printable document shows them in `Asia/Yangon`
     (`YANGON_TIME_ZONE`), so the device clock cannot change an hour or move an order to another day.
 15. **Mobile app decision:** PWA first vs React Native. The editor cannot be ported to React
-    Native directly.
+    Native directly, so **the PWA is what shipped 2026-11-22**: `app/manifest.ts` (standalone, 192/512
+    icons plus a maskable tile drawn as real PNGs), `public/sw.js`, an install prompt that only appears
+    where Chrome offers it (`PwaInstall`), and an offline page. The rule the worker keeps is that a shop
+    page may come from the cache but **the editor and the admin never do** (`/admin`, `/create`, `/api`,
+    `/auth`, `/checkout`, `/account` go to the network and fall back to the offline page, never to a
+    cached copy). Verified in a clean Chromium profile with the HTTP cache disabled and the server
+    stopped: an unvisited page, `/create` and `/admin` show "You are offline"; `/faq`, opened online
+    first, opens in full; nothing under `/create` is ever written to a cache. `tests/pwa.test.cjs`.
+    Still open: an app-store build (Capacitor/Tauri) if the owner wants one, and a push channel.
 16. **Customer notification channel** (13, owner decision 5).
 
 **Assumption — Inventory:** the Inventory module (stock per product × size) means **blank garment

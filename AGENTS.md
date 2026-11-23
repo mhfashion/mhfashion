@@ -416,6 +416,24 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## PWA (`apps/web/src/app/manifest.ts`, `public/sw.js`, `components/PwaInstall.tsx`)
+- Icons are generated PNGs (dark tile, lime "MH"), not SVG: Chrome's install check wants a 192 and a 512,
+  and Android crops a separate `maskable` tile. Regenerate with the same bar geometry if the brand changes.
+- The service worker is a plain `public/sw.js` (no bundling). **Its fetch handler is the contract:**
+  `GET` only, same-origin only, no range requests; `/admin`, `/create`, `/api`, `/auth`, `/checkout`,
+  `/account` are never written to a cache. Those navigations still get the offline page on failure, so the
+  customer never sees the browser's error screen, but they are never answered *from* the cache.
+- Navigations are network-first (cache the HTML on success) and fall back to `/offline`; `offlineResponse()`
+  returns a self-contained inline HTML page if that cache entry is missing — returning `undefined` from
+  `respondWith` is what puts Chrome's "This page couldn't load" in front of the customer.
+- `app/offline/page.tsx` deliberately has **no Header/dock/icons**: their client chunks may not be cached,
+  and a missing chunk turns the page into an error screen. Keep it plain markup.
+- `VERSION` in `sw.js` names the caches and is what throws old ones away on activate; bump it when a
+  cached asset must not survive an update (the offline page did, so it went v1 → v3).
+- Testing offline needs a *real* outage: `Network.emulateNetworkConditions({offline:true})` does not block
+  the worker's own fetches, and Chrome's HTTP cache will happily serve the page anyway. Stop the server,
+  and set `Network.setCacheDisabled(true)` so only the SW cache can answer.
+
 ## Print rules: margins and thin lines (`apps/web/src/lib/print-quality.ts`)
 - `PRINT_METHOD_RULES` is one table per method: `edgeMarginCm`, `printsWhiteInk`, `minStrokeMm`
   (DTF 0.2 mm, Sublimation 0.3 mm). These are the shop's starting defaults pending the press's tolerances.
