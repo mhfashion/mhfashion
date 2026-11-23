@@ -210,3 +210,100 @@ test("a layer name cannot inject markup into the sheet or the README", () => {
   assert.doesNotMatch(sheet, /<script>alert\(1\)<\/script>/);
   assert.match(sheet, /&lt;script&gt;/);
 });
+
+// Plan P1-6: DTF and Sublimation do not hold the same artwork.
+
+test("the method rules are readable and the method name is normalised", () => {
+  assert.deepEqual(quality.printMethodOf("DTF"), "DTF");
+  assert.deepEqual(quality.printMethodOf(" dtf "), "DTF");
+  assert.deepEqual(quality.printMethodOf("Sublimation"), "Sublimation");
+  assert.deepEqual(quality.printMethodOf("sublimation"), "Sublimation");
+  assert.deepEqual(quality.printMethodOf("Screen"), null);
+  assert.deepEqual(quality.printMethodOf(undefined), null);
+  assert.equal(quality.PRINT_METHOD_RULES.DTF.printsWhiteInk, true);
+  assert.equal(quality.PRINT_METHOD_RULES.Sublimation.printsWhiteInk, false);
+  assert.ok(quality.PRINT_METHOD_RULES.Sublimation.edgeMarginCm > quality.PRINT_METHOD_RULES.DTF.edgeMarginCm);
+});
+
+test("white ink is recognised in every form the design can store", () => {
+  for (const ink of ["#fff", "#ffffff", "#FFFFFF", " white ", "white", "rgb(255, 255, 255)", "rgba(255,255,255,0.9)", "#fefefe", "rgb(254,254,254)", "#ffffff00"]) {
+    assert.equal(quality.inkIsWhite(ink), true, ink);
+  }
+  for (const ink of ["#111111", "#f0f0f0", "rgb(249,249,249)", "navy", ""]) {
+    assert.equal(quality.inkIsWhite(ink), false, ink);
+  }
+});
+
+test("sublimation refuses white artwork, DTF prints it", () => {
+  const white = design({ ink: "#ffffff" });
+  const onSublimation = quality.checkDesignQuality(white, "Sublimation");
+  assert.deepEqual(onSublimation.map((issue) => issue.code), ["no-white-ink"]);
+  assert.equal(onSublimation[0].level, "warning");
+  assert.match(onSublimation[0].message, /prints no white ink, so it comes out in the garment colour/);
+  assert.match(onSublimation[0].message, /switch the method to DTF/);
+  assert.deepEqual(quality.checkDesignQuality(white, "DTF"), []);
+  assert.deepEqual(quality.checkDesignQuality(white), []);
+});
+
+test("artwork inside the print area can still be too close to the edge for the method", () => {
+  // 0.04 cm from the left edge (0.4 artwork units): inside, but inside neither method's margin.
+  const tight = design({
+    layers: [{ name: "Logo", kind: "shape", x: 0.4, y: 100, width: 100, height: 100, rotation: 0, scale: 1 }],
+  });
+  const dtf = quality.checkDesignQuality(tight, "DTF");
+  assert.deepEqual(dtf.map((issue) => issue.code), ["edge-too-tight"]);
+  assert.match(dtf[0].message, /comes within 0 cm of the print edge; DTF wants 0.1 cm/);
+
+  const sublimation = quality.checkDesignQuality(tight, "Sublimation");
+  assert.deepEqual(sublimation.map((issue) => issue.code), ["edge-too-tight"]);
+  assert.match(sublimation[0].message, /Sublimation wants 0.3 cm/);
+
+  // 2 mm inside the left edge (2 artwork units): fine for DTF, still too tight for sublimation.
+  const close = design({
+    layers: [{ name: "Logo", kind: "shape", x: 2, y: 100, width: 100, height: 100, rotation: 0, scale: 1 }],
+  });
+  assert.deepEqual(quality.checkDesignQuality(close, "DTF"), []);
+  assert.deepEqual(quality.checkDesignQuality(close, "Sublimation").map((issue) => issue.code), ["edge-too-tight"]);
+
+  // Comfortably inside: no warning from either method.
+  const safe = design({
+    layers: [{ name: "Logo", kind: "shape", x: 100, y: 100, width: 100, height: 100, rotation: 0, scale: 1 }],
+  });
+  assert.deepEqual(quality.checkDesignQuality(safe, "Sublimation"), []);
+});
+
+test("artwork past the print area is an error, not an edge warning", () => {
+  const outside = design({
+    layers: [{ name: "Logo", kind: "shape", x: -60, y: 100, width: 100, height: 100, rotation: 0, scale: 1 }],
+  });
+  const codes = quality.checkDesignQuality(outside, "Sublimation").map((issue) => issue.code);
+  assert.deepEqual(codes, ["outside-print-area"]);
+});
+
+test("an order line carries its method into the quality list, sheet and README", () => {
+  const white = design({ ink: "#ffffff" });
+  const sublimationLine = { ...line(white), printMethod: "Sublimation" };
+  const issues = quality.orderQualityIssues(order([sublimationLine]));
+  assert.deepEqual(issues.map((issue) => issue.code), ["no-white-ink"]);
+  assert.match(quality.qualitySummaryLine(issues), /Quality check: 1 warning\./);
+
+  const sheet = print.buildOrderPrintSheetHtml(order([sublimationLine]));
+  assert.match(sheet, /<section class="quality">/);
+  assert.match(sheet, /prints no white ink/);
+
+  const readme = print.orderManifest(order([sublimationLine]));
+  assert.equal(readme.quality[0].code, "no-white-ink");
+
+  const dtfLine = { ...line(white), printMethod: "DTF" };
+  assert.deepEqual(quality.orderQualityIssues(order([dtfLine])), []);
+  const noMethod = line(white);
+  assert.deepEqual(quality.orderQualityIssues(order([noMethod])), []);
+});
+
+test("a method the shop has not defined falls back to the plain checks", () => {
+  const tight = design({
+    layers: [{ name: "Logo", kind: "shape", x: 0.4, y: 100, width: 100, height: 100, rotation: 0, scale: 1 }],
+  });
+  const issues = quality.orderQualityIssues(order([{ ...line(tight), printMethod: "Screen Print" }]));
+  assert.deepEqual(issues, []);
+});

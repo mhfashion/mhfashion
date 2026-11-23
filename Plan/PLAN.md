@@ -1160,9 +1160,21 @@ proposal, not an approved order.
    rotation is measured on the layer's real corner box) and a sliver of artwork under 3 mm or 0.2 cm²
    (warning). The list reaches the press three ways: a `Quality check` section in the archive README,
    `quality` in `manifest.json`, and a banner on the press sheet; `tests/print-quality.test.cjs` covers
-   the geometry, the thresholds and all three outputs. **Still open:** a low-resolution photo warning
+   the geometry, the thresholds and all three outputs.
+   **DTF vs Sublimation rules shipped 2026-11-22:** `lib/print-quality.ts` now reads the line's print
+   method (`printMethodOf`, case- and space-tolerant) and applies `PRINT_METHOD_RULES`: DTF prints a
+   white underlayer and holds a 1 mm edge margin; Sublimation prints **no white ink** (so a white design
+   takes the garment colour — a warning that names the fix, "switch the method to DTF") and needs a 3 mm
+   edge margin because the dye wicks. `inkIsWhite` reads `#fff`, `white`, `rgb()` and near-white hex
+   alike. A layer inside the print area but inside the margin reports `edge-too-tight`; a layer past the
+   edge is still the blocking `outside-print-area`, never both. The warnings reach the press the same
+   three ways as before (sheet banner, `quality` in the manifest, README lines), and an order whose
+   method the shop has not defined keeps only the plain checks; the seeded 26 orders gain no warnings.
+   The margins are the shop's **starting defaults**, in one table, pending the press confirming its
+   tolerances; a thin-line rule waits for the layer model to carry a stroke width.
+   **Still open:** a low-resolution photo warning
    (the order layer model stores no pixel size, so the editor's save path must carry it — owner
-   approval), DTF vs Sublimation colour/bleed rules, and ~~opening the print-size export on a phone~~ —
+   approval), and ~~opening the print-size export on a phone~~ —
    **checked 2026-11-22:** the press sheet opens in its own tab on a phone (`window.open` returns a
    window, a real click keeps the popup allowed), carries a viewport meta, a `@media (max-width: 640px)`
    stack and a "Print this sheet" button, and at 390x844 `scrollWidth === clientWidth` (390) with the

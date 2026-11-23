@@ -9,12 +9,46 @@ import type { AdminDesignLayer, AdminOrder, AdminOrderDesign } from "./admin-dem
 export type PrintQualityLevel = "error" | "warning";
 
 export type PrintQualityIssue = {
-  code: "blank-design" | "outside-print-area" | "tiny-artwork";
+  code: "blank-design" | "outside-print-area" | "tiny-artwork" | "edge-too-tight" | "no-white-ink";
   level: PrintQualityLevel;
   design: string;
   layer?: string;
   message: string;
 };
+
+export type PrintMethod = "DTF" | "Sublimation";
+
+/**
+ * Plan P1-6: the print method decides what the press can hold, so the same artwork is checked
+ * differently on a DTF sheet and on a sublimation run.
+ * - DTF prints a white underlayer and holds a hard edge, so artwork may run close to the edge.
+ * - Sublimation dyes the polyester and prints no white ink: white artwork takes the fabric colour, and
+ *   an edge-to-edge print needs bleed because the dye wicks.
+ * The margins below are the shop's starting defaults, kept here so the owner can change them in one
+ * place once the press confirms its tolerances.
+ */
+export const PRINT_METHOD_RULES: Record<PrintMethod, { edgeMarginCm: number; printsWhiteInk: boolean }> = {
+  DTF: { edgeMarginCm: 0.1, printsWhiteInk: true },
+  Sublimation: { edgeMarginCm: 0.3, printsWhiteInk: false },
+};
+
+export function printMethodOf(value: unknown): PrintMethod | null {
+  const text = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (text === "dtf") return "DTF";
+  if (text === "sublimation") return "Sublimation";
+  return null;
+}
+
+/** `#fff`, `white` and `rgb(255,255,255)` all mean no ink at all; so does a near-white. */
+export function inkIsWhite(ink: string): boolean {
+  const value = ink.trim().toLowerCase();
+  if (value === "white" || value === "#fff") return true;
+  const hex = /^#([0-9a-f]{6})(?:[0-9a-f]{2})?$/.exec(value);
+  if (hex) return [0, 2, 4].every((index) => parseInt(hex[1].slice(index, index + 2), 16) >= 250);
+  const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(value);
+  if (rgb) return Number(rgb[1]) >= 250 && Number(rgb[2]) >= 250 && Number(rgb[3]) >= 250;
+  return false;
+}
 
 /**
  * A 5 mm wordmark prints fine, so "tiny" means a sliver: under 3 mm on a side, or under 0.2 cm²
@@ -63,7 +97,7 @@ export function layerBoxCm(layer: AdminDesignLayer, unitsPerCm: number): LayerBo
   };
 }
 
-export function checkDesignQuality(design: AdminOrderDesign): PrintQualityIssue[] {
+export function checkDesignQuality(design: AdminOrderDesign, method: PrintMethod | null = null): PrintQualityIssue[] {
   if (design.layers.length === 0) {
     return [{
       code: "blank-design",
@@ -73,6 +107,15 @@ export function checkDesignQuality(design: AdminOrderDesign): PrintQualityIssue[
     }];
   }
   const issues: PrintQualityIssue[] = [];
+  const rules = method ? PRINT_METHOD_RULES[method] : null;
+  if (rules && !rules.printsWhiteInk && inkIsWhite(design.ink)) {
+    issues.push({
+      code: "no-white-ink",
+      level: "warning",
+      design: design.fileName,
+      message: `${design.fileName} is white and ${method} prints no white ink, so it comes out in the garment colour. Pick a darker ink or switch the method to DTF.`,
+    });
+  }
   for (const layer of design.layers) {
     const box = layerBoxCm(layer, design.unitsPerCm);
     if (Math.min(box.width, box.height) < TINY_SIDE_CM || box.width * box.height < TINY_AREA_CM2) {
@@ -88,6 +131,20 @@ export function checkDesignQuality(design: AdminOrderDesign): PrintQualityIssue[
       || box.top < -EDGE_TOLERANCE_CM
       || box.right > design.printWidthCm + EDGE_TOLERANCE_CM
       || box.bottom > design.printHeightCm + EDGE_TOLERANCE_CM;
+    if (!outside && rules) {
+      const margin = rules.edgeMarginCm;
+      const gaps = [box.left, box.top, design.printWidthCm - box.right, design.printHeightCm - box.bottom];
+      const closest = Math.min(...gaps);
+      if (closest < margin) {
+        issues.push({
+          code: "edge-too-tight",
+          level: "warning",
+          design: design.fileName,
+          layer: layer.name,
+          message: `${layer.name} comes within ${Math.max(0, round1(closest))} cm of the print edge; ${method} wants ${margin} cm so the fabric edge does not eat it.`,
+        });
+      }
+    }
     if (outside) {
       issues.push({
         code: "outside-print-area",
@@ -109,7 +166,7 @@ export function orderQualityIssues(order: Pick<AdminOrder, "items">): PrintQuali
     const design = item.design;
     if (!design || seen.has(design.fileName)) continue;
     seen.add(design.fileName);
-    issues.push(...checkDesignQuality(design));
+    issues.push(...checkDesignQuality(design, printMethodOf(item.printMethod)));
   }
   return issues;
 }

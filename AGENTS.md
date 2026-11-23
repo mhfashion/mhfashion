@@ -399,6 +399,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Button labels use the brush **name** (`Remove Ink · round`), not the id — a CDP probe that clicks
   `Remove ink-round` silently does nothing.
 
+## Print method rules (`apps/web/src/lib/print-quality.ts`)
+- `checkDesignQuality(design, method)` takes the order line's `printMethod` through `printMethodOf`;
+  without a method it runs only the plain checks, so old orders and unknown methods never gain warnings.
+- `PRINT_METHOD_RULES` is the one place the tolerances live: DTF 0.1 cm edge margin and white ink yes,
+  Sublimation 0.3 cm and white ink no. They are starting defaults, not measured press limits.
+- A layer inside the print area but inside the margin is `edge-too-tight` (warning); a layer past the
+  edge stays `outside-print-area` (error) and never reports both.
+- Layer positions are artwork units: at `unitsPerCm = 10`, `x: 2` is 2 mm from the edge, not 2 cm.
+
 ## CSV export (`apps/web/src/lib/admin-csv.ts`)
 - Every text cell is neutralised against spreadsheet formula injection (`=`, `+`, `-`, `@`, tab, CR get
   a leading apostrophe), because the orders export carries customer-typed names, emails and item names.
