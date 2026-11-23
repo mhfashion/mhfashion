@@ -504,10 +504,87 @@ photo serves M and XL. The lookup walks from the most specific key down to `defa
 `webp`, `png` then `jpg`; a look with no file falls back to `default` and then to the catalog image.
 The two sets are separate on purpose: a 4:5 catalogue photo does not fit the square editor panel.
 
-Future private serving contract (not implemented): `GET /api/editor/fonts`,
-`GET /api/editor/text-styles`, and allow-listed `GET /api/editor/assets/[...assetKey]`
-to read licensed font, text-style preview, and mockup objects through an R2
-binding. No editor product-catalog API is defined.
+### 12.1 R2 asset service — a Worker reads R2 and returns JSON  *(owner decision, 2026-11-22; not built)*
+
+**Rule.** The browser never lists, parses or hunts for files in R2 by itself. The site's own Worker reads the
+bucket through an R2 binding, turns what is in it into JSON, and the app calls that JSON and builds every file
+address from it. This replaces the earlier "future private serving contract" (`/api/editor/fonts`,
+`/api/editor/text-styles`, `/api/editor/assets/[...assetKey]`): the routes below take their place.
+
+**Today (checked in the code, 2026-11-22).**
+- `apps/web/wrangler.jsonc` has no `r2_buckets` entry (it is a comment), and the only API routes are the payment
+  routes.
+- The editor fetches `${NEXT_PUBLIC_R2_PUBLIC_URL}/fonts/manifest.json` straight from the browser
+  (`lib/editor-font-library.ts`) and builds file addresses with `fontFileUrl(base, file)`.
+- Product pages try candidate mockup addresses one after another, so a missing look costs a failed request.
+- The editor's Designs and Elements library is a placeholder (`DESIGN_LIBRARY_STATUS = "pending-r2-endpoint"`),
+  and T-shirt post artwork is a data URL in the demo store.
+
+**Parts.**
+1. **Binding.** Add `r2_buckets: [{ binding: "MH_FASHION_ASSETS", bucket_name: "mh-fashion-assets" }]` to
+   `wrangler.jsonc`; route handlers reach it through the Cloudflare context; local development uses the local R2
+   simulation with a small fixture bucket.
+2. **`AssetStore` interface** (`list(prefix, cursor)`, `get(key)`, `put(key, body, meta)`, `delete(key)`). The
+   R2 binding is the implementation today; an S3 implementation can follow if the site moves to AWS (owner
+   decision, 2026-11-21: keep R2 access portable). Nothing else in the app touches the binding.
+3. **Catalogue builders**, one pure function per kind: fonts, designs, elements, brushes, text styles and mockups.
+   Each reads the folders for its kind plus a small `meta.json` beside each asset, validates it with the same
+   rules the app already uses (for fonts `parseEditorFontManifest`, the bucket-relative `.woff2` rule and the
+   optional `outline` file from editor decision D14), and returns `{ version, generatedAt, items, issues }`.
+   A bad entry is skipped and listed in `issues` with its key and the reason; it never breaks the list.
+4. **Snapshots.** A builder writes its result to `catalog/<kind>.json` in the bucket, and every reader fetches that
+   one object. A live scan would list the folder and read one `meta.json` per asset, and a Worker request may
+   make only a limited number of subrequests (the limit depends on the plan; to be checked), so the snapshot is
+   required rather than an optimisation. A builder writes only when the result changed.
+5. **When a snapshot is rebuilt:** (a) at once after any admin upload or delete that goes through the Worker;
+   (b) on a scheduled trigger every few minutes, which picks up files the shop dropped into R2 by hand, as it does
+   for fonts and brush tips today; (c) from an admin "Rescan" button.
+6. **Read routes** (public, cacheable): `GET /api/assets/fonts`, `/designs`, `/elements`, `/brushes`,
+   `/text-styles`, and `GET /api/assets/mockups/<product-slug>`, which lists the looks that really exist so the
+   page picks the right file without probing. For fonts the JSON has the shape `parseEditorFontManifest` already
+   accepts, so the editor changes only the address it reads from.
+7. **File serving** (decision R2-1): public, non-sensitive files (fonts, mockups, designs, elements, brushes)
+   keep being served from the bucket's public address (`NEXT_PUBLIC_R2_PUBLIC_URL`), cached by the CDN, and the
+   bucket carries a CORS rule for the site because fonts are used across addresses. Private files (saved designs,
+   customer uploads, press bundles, licence documents) are never public: they are read only through the Worker,
+   which checks who is asking.
+8. **Admin writes** (after Supabase Auth, P0): `PUT /api/admin/assets` takes the file and its fields, checks the
+   type and size for its kind, generates the key (a key is never typed), writes the file and its `meta.json`
+   through the binding, and rebuilds the snapshot. SVG is cleaned first (scripts, event attributes and external
+   references removed). Until Auth exists these routes are not enabled; the shop uploads by hand and the
+   scheduled trigger picks the files up. The browser needs no R2 keys and no upload CORS rule.
+9. **Caching.** JSON: `Cache-Control: public, max-age=60, stale-while-revalidate=600` with an `ETag`, and the
+   cached copy is dropped when a snapshot is rebuilt. Files: versioned file names, `immutable`.
+10. **Issues panel.** `GET /api/admin/assets/issues` (admin only) lists every skipped entry with the reason
+    ("font padauk: outline file missing"), so the shop sees why something does not appear.
+11. **Security.** Every route works from an allow-list of key prefixes; `..`, absolute addresses and full URLs are
+    refused (the font loader already refuses them); the content type comes from the object, never from the
+    request; each kind has a size ceiling; write routes are rate limited; private prefixes have no listing route.
+12. **Observability.** Each rebuild logs the kind, the item count and the issue count through the Workers
+    logging that `wrangler.jsonc` already enables.
+13. **Tests.** The builders are pure and tested against an in-memory `AssetStore`: a valid asset, a missing
+    `meta.json`, a missing file, a duplicate slug, an unsafe key and a listing longer than one page. Route tests
+    check the allow-list, the headers and the caching. `scripts/check-font-manifest.cjs` becomes a thin wrapper over
+    the same builder, so what the shop checks before an upload is what the Worker will accept.
+
+**Rollout.**
+1. Read-only service for fonts, brushes, designs and elements, with hand uploads and the scheduled rebuild.
+2. The mockups listing, which ends the probing for missing looks.
+3. Admin writes and the issues panel, after Supabase Auth.
+4. Private files: saved designs, customer uploads and press bundles (editor E1, order hand-off), through the Worker
+   with authorisation.
+5. An S3 `AssetStore` only if the site moves to AWS.
+
+**Decisions.**
+
+| # | Question | Recommendation |
+|---|---|---|
+| R2-1 | Are public files served by the bucket's own address or through the Worker? | Public files from the bucket address with a CORS rule for the site; the Worker for the JSON and for every private file |
+| R2-2 | How often does the scheduled rebuild run? | Every five minutes, plus the admin "Rescan" button for an immediate refresh |
+| R2-3 | Where does an asset's description (`meta.json`) live? | Beside the asset in R2 for now; it moves into the database with the rest of the admin data |
+
+**Depends on:** the R2 binding in `wrangler.jsonc`, a scheduled-trigger entry, and Supabase Auth with a server-side
+admin check for the write and issues routes.
 
 Naming: lowercase, hyphens; UUIDs for system-generated assets, slugs for
 catalog-facing items.
@@ -523,7 +600,7 @@ catalog-facing items.
   `/privacy` and `/cookie-policy` render from `lib/storefront-info.ts` with a visible "draft for legal
   review" banner. The Myanmar-specific clauses still need a lawyer's review.
 - Private R2 connection and uploads for Elements, licensed fonts, text-style
-  previews, and mockup assets remain deferred. The editor uses its local
+  previews, and mockup assets remain deferred (the Worker-and-JSON design is in section 12.1). The editor uses its local
   Elements catalog and browser/system font fallbacks; the storefront continues
   to use its existing Supabase product data. Product, editor and 3D mockups are
   read from the public bucket, but **uploading them is admin-only and not built
@@ -871,6 +948,7 @@ browser-local demo data (section 16 P0).
   verified at 390 and 320 px). Attribute Management followed: `/admin/attributes` edits the chain
   order, labels, options and on/off state with guards that refuse to orphan a price row; the chain
   drives the pricing grid's labels and column order and the vocabulary a new post starts from.
+- 2026-11-22: Added §12.1, the R2 asset service: a Worker reads R2 through a binding and returns JSON catalogues (fonts, designs, elements, brushes, mockups), with snapshots, scheduled rebuilds, admin writes after Auth, private files only through the Worker, and an S3-ready store interface. Replaces the earlier future serving contract.
 
 
 
