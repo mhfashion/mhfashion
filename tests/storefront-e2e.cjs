@@ -446,6 +446,91 @@ async function main() {
     assert.deepEqual(unmarked, [], "every header control shows focus");
     console.log("PASS keyboard: the skip link leaves the header and every header control shows focus");
 
+    // The cart popover: the button must state whether the panel is open, and Escape must close it and
+    // hand the focus back instead of leaving a keyboard user inside a panel with no way out.
+    await visit("/", "header");
+    const cartClosed = await evaluate(() => document.querySelector('[aria-label^="Cart"]')?.getAttribute("aria-expanded"));
+    assert.equal(cartClosed, "false", "the cart button says the panel is closed");
+    await evaluate(() => { document.querySelector('[aria-label^="Cart"]').click(); return true; });
+    await pause(400);
+    const cartOpen = await evaluate(() => ({
+      expanded: document.querySelector('[aria-label^="Cart"]')?.getAttribute("aria-expanded"),
+      panel: Boolean(document.getElementById("header-cart-panel")),
+      dialog: document.getElementById("header-cart-panel")?.getAttribute("role"),
+    }));
+    assert.equal(cartOpen.expanded, "true", "the cart button says the panel is open");
+    assert.equal(cartOpen.panel, true, "the panel is rendered");
+    assert.equal(cartOpen.dialog, "dialog", "the panel is announced as a dialog");
+    await key("Escape", "Escape", 27);
+    await pause(300);
+    const cartAfterEscape = await evaluate(() => ({
+      expanded: document.querySelector('[aria-label^="Cart"]')?.getAttribute("aria-expanded"),
+      panel: Boolean(document.getElementById("header-cart-panel")),
+      focusOnButton: (document.activeElement?.getAttribute("aria-label") ?? "").startsWith("Cart"),
+    }));
+    assert.equal(cartAfterEscape.expanded, "false", "Escape closes the cart panel");
+    assert.equal(cartAfterEscape.panel, false, "the closed panel leaves the DOM");
+    assert.equal(cartAfterEscape.focusOnButton, true, "Escape returns the focus to the cart button");
+    console.log("PASS cart popover: aria-expanded tracks the panel and Escape closes it");
+
+
+    // ---------- phone drawer ----------
+    // The drawer is always in the DOM so it can slide; while it is closed its links must be out of
+    // reach, and while it is open Escape must close it and give the focus back.
+    await viewport(390, 844, true);
+    await visit("/", "header");
+    const drawerClosed = await evaluate(() => {
+      const toggle = document.querySelector('button[aria-controls="mobile-menu"]');
+      const drawer = document.getElementById("mobile-menu");
+      return {
+        expanded: toggle?.getAttribute("aria-expanded"),
+        inert: drawer?.hasAttribute("inert"),
+        focusable: drawer ? [...drawer.querySelectorAll("a[href], button")].filter((node) => node.offsetParent !== null).length : -1,
+      };
+    });
+    assert.equal(drawerClosed.expanded, "false", "the menu button says the drawer is closed");
+    assert.equal(drawerClosed.inert, true, "the closed drawer is inert");
+
+    await evaluate(() => { document.querySelector('button[aria-controls="mobile-menu"]').click(); return true; });
+    await pause(400);
+    const drawerOpen = await evaluate(() => {
+      const toggle = document.querySelector('button[aria-controls="mobile-menu"]');
+      const drawer = document.getElementById("mobile-menu");
+      return {
+        expanded: toggle?.getAttribute("aria-expanded"),
+        inert: drawer?.hasAttribute("inert"),
+        focusInside: Boolean(drawer && drawer.contains(document.activeElement)),
+        links: drawer ? drawer.querySelectorAll("a[href]").length : 0,
+      };
+    });
+    assert.equal(drawerOpen.expanded, "true", "the menu button says the drawer is open");
+    assert.equal(drawerOpen.inert, false, "the open drawer is reachable");
+    assert.ok(drawerOpen.focusable !== 0, "the open drawer holds its links");
+    assert.equal(drawerOpen.focusInside, true, "opening the drawer moves the focus into it");
+
+    // Tab from the last control wraps back to the first, so the focus never lands on the page behind.
+    const wrapped = await evaluate(async () => {
+      const drawer = document.getElementById("mobile-menu");
+      const focusable = [...drawer.querySelectorAll('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+        .filter((node) => node.offsetParent !== null);
+      focusable[focusable.length - 1].focus();
+      return { last: document.activeElement?.textContent?.trim().slice(0, 20) ?? "", first: focusable[0].textContent.trim().slice(0, 20) };
+    });
+    await key("Tab", "Tab", 9);
+    const wrappedTo = await evaluate(() => document.activeElement?.textContent?.trim().slice(0, 20) ?? "");
+    assert.equal(wrappedTo, wrapped.first, `Tab wraps inside the drawer: ${JSON.stringify({ wrapped, wrappedTo })}`);
+
+    await key("Escape", "Escape", 27);
+    await pause(300);
+    const afterEscape = await evaluate(() => ({
+      expanded: document.querySelector('button[aria-controls="mobile-menu"]')?.getAttribute("aria-expanded"),
+      inert: document.getElementById("mobile-menu")?.hasAttribute("inert"),
+      focusOnToggle: document.activeElement?.getAttribute("aria-controls") === "mobile-menu",
+    }));
+    assert.equal(afterEscape.expanded, "false", "Escape closes the drawer");
+    assert.equal(afterEscape.inert, true, "the closed drawer is inert again");
+    assert.equal(afterEscape.focusOnToggle, true, "Escape returns the focus to the menu button");
+    console.log("PASS phone drawer: closed drawer is inert, Escape closes it and returns the focus");
     // ---------- phone ----------
     await viewport(390, 844, true);
     await visit("/", "header");

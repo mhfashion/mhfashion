@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Menu,
   Search,
@@ -77,11 +77,44 @@ function LinkRow({
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const { theme, toggleTheme } = useTheme();
   const { currency, toggleCurrency } = useCurrency();
   const { locale, setLocale, t } = useI18n();
   const { count: wishlistCount } = useWishlist();
   const close = () => setOpen(false);
+
+  // The drawer stays in the DOM so it can slide, which would leave its links in the tab order while
+  // it is off-screen. Escape closes it, focus moves into it on open, and Tab wraps inside it.
+  useEffect(() => {
+    if (!open) return;
+    const drawer = drawerRef.current;
+    drawer?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Tab" || !drawer) return;
+      const focusable = [...drawer.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+        .filter((element) => element.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   return (
     <>
@@ -89,7 +122,13 @@ export default function MobileNav() {
           drawer/backdrop directly beneath it. */}
       <div className="relative flex md:hidden items-center justify-between h-14 px-4 border-b border-border bg-bg sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
-          <button onClick={() => setOpen((o) => !o)} aria-label={t("actions.toggleMenu")}>
+          <button
+            ref={menuButtonRef}
+            onClick={() => setOpen((o) => !o)}
+            aria-label={t("actions.toggleMenu")}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+          >
             <Menu size={20} />
           </button>
           <span className="font-bold text-sm">
@@ -116,7 +155,11 @@ export default function MobileNav() {
       {/* Side drawer — slides in from the left, sits below the header,
           does NOT cover the full screen; scrollable (drag up/down). */}
       <div
-        className={`fixed left-0 bottom-0 top-14 z-40 w-[82%] max-w-xs bg-bg border-r border-border md:hidden
+        ref={drawerRef}
+        id="mobile-menu"
+        tabIndex={-1}
+        inert={!open}
+        className={`fixed left-0 bottom-0 top-14 z-40 w-[82%] max-w-xs bg-bg border-r border-border outline-none md:hidden
           transition-transform duration-300 ease-out overflow-y-auto
           ${open ? "translate-x-0" : "-translate-x-full"}`}
       >

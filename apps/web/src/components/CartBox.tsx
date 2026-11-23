@@ -13,7 +13,12 @@ export default function CartBox({ onClose }: { onClose: () => void }) {
   const subtotal = cartSubtotal(items);
 
   return (
-    <div className="absolute right-0 top-full z-[70] mt-3 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-bg-surface shadow-2xl">
+    <div
+      id="header-cart-panel"
+      role="dialog"
+      aria-label={t("cart.title")}
+      className="absolute right-0 top-full z-[70] mt-3 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-bg-surface shadow-2xl"
+    >
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div><h2 className="text-sm font-black">{t("cart.title")}</h2><p className="mt-0.5 text-[10px] text-text-muted">{itemCount} {itemCount === 1 ? t("cart.item") : t("cart.items")}</p></div>
         <button type="button" onClick={onClose} aria-label="Close cart" className="rounded-full p-1 text-text-muted hover:bg-bg"><X size={15} /></button>

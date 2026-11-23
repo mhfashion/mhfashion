@@ -40,6 +40,7 @@ export default function HeaderActions() {
   const [cartOpen, setCartOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const cartRef = useRef<HTMLDivElement>(null);
+  const cartButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -53,6 +54,22 @@ export default function HeaderActions() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // A popover that only closes on a click leaves a keyboard user stuck in it; Escape returns them to
+  // the button that opened it.
+  useEffect(() => {
+    if (!cartOpen && !searchOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (cartOpen) {
+        setCartOpen(false);
+        cartButtonRef.current?.focus();
+      }
+      if (searchOpen) setSearchOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [cartOpen, searchOpen]);
 
   return (
     <div className="flex items-center gap-3">
@@ -152,7 +169,15 @@ export default function HeaderActions() {
         </a>
 
         <div ref={cartRef} className="relative">
-          <button type="button" onClick={() => setCartOpen((open) => !open)} aria-label={itemCount ? `${t("actions.cart")}, ${itemCount} ${t("actions.cartItems")}` : t("actions.cart")} className="relative">
+          <button
+            ref={cartButtonRef}
+            type="button"
+            onClick={() => setCartOpen((open) => !open)}
+            aria-label={itemCount ? `${t("actions.cart")}, ${itemCount} ${t("actions.cartItems")}` : t("actions.cart")}
+            aria-expanded={cartOpen}
+            aria-controls="header-cart-panel"
+            className="relative"
+          >
           <ShoppingCart size={18} />
           {itemCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">

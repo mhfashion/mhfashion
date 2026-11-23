@@ -663,6 +663,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   programmatic `.focus()` does not reliably set Chrome's keyboard modality and so misses `:focus-visible`.
   The skip link is the first Tab stop, so the header walk has to skip that one state before collecting.
 
+## Drawer and popover keyboard behaviour (`MobileNav.tsx`, `HeaderActions.tsx`, `CartBox.tsx`)
+- The phone drawer is always mounted so it can slide, so a closed drawer is marked `inert`: without it
+  the off-screen links stayed in the tab order and screen readers read a menu that was not open.
+- The hamburger carries `aria-expanded` + `aria-controls="mobile-menu"`; opening focuses the drawer
+  (`tabIndex={-1}`), Escape closes it and returns the focus to the hamburger, and Tab wraps between the
+  drawer's first and last visible control (filtered by `offsetParent !== null`, because the drawer also
+  holds `md:hidden` rows).
+- The cart popover (`#header-cart-panel`, `role="dialog"`) is opened from a button with
+  `aria-expanded` + `aria-controls`; Escape closes it and focuses the button again. It only closed on a
+  click outside before, which left a keyboard user with no way out.
+- `tests/storefront-e2e.cjs` asserts all of this with real CDP key events at 390x844 and 1440x900.
+
 ## Status announcements (`HeaderActions.tsx`, `CheckoutClient.tsx`, `EditorToolsBar.tsx`)
 - The cart badge is a picture of a number, so the header cart button names its count
   (`Cart, 2 in the cart`) and a `role="status"` sr-only line announces the change. The wishlist link
