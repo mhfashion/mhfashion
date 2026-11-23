@@ -3141,6 +3141,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           onRemoveMask={deleteLayerMask}
           onSelectMask={() => setSelectedTarget("mask")}
           onClearErasures={clearErasures}
+          onFlip={flipSelectedLayers}
           placement={selectedLayer ? {
             offset: canvasLayerTransforms[selectedLayer.id] ?? { x: 0, y: 0 },
             scale: canvasLayerScales[selectedLayer.id] ?? { x: 1, y: 1 },
@@ -3206,8 +3207,6 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
         onBackgroundColorChange={setBackgroundColor}
         onUndo={undoCanvasAction}
         onRedo={redoCanvasAction}
-        canFlip={selectedLayerIds.length > 0}
-        onFlip={flipSelectedLayers}
         canDownload={layers.some((layer) => layer.visible)}
         onDownload={(format: "png" | "svg") => void downloadDesign(format)}
         onSwapColors={() => {

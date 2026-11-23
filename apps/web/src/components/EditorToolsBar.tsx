@@ -10,8 +10,6 @@ import {
   Diamond,
   Download,
   Eraser,
-  FlipHorizontal2,
-  FlipVertical2,
   Hexagon,
   Hand,
   Minus,
@@ -41,7 +39,6 @@ type Props = {
   backgroundColor: string;
   selectedShape: EditorShapePreset;
   drawingToolsDisabled?: boolean;
-  canFlip?: boolean;
   canDownload?: boolean;
   onSelect: (tool: EditorTool) => void;
   onSelectShape: (shape: EditorShapePreset) => void;
@@ -49,7 +46,6 @@ type Props = {
   onBackgroundColorChange: (color: string) => void;
   onUndo: () => void;
   onRedo: () => void;
-  onFlip?: (axis: "horizontal" | "vertical") => void;
   onDownload?: (format: "png" | "svg") => void;
   onSwapColors: () => void;
   onToggleCollapsed: () => void;
@@ -90,7 +86,6 @@ export default function EditorToolsBar({
   backgroundColor,
   selectedShape,
   drawingToolsDisabled = false,
-  canFlip = false,
   canDownload = false,
   onSelect,
   onSelectShape,
@@ -98,7 +93,6 @@ export default function EditorToolsBar({
   onBackgroundColorChange,
   onUndo,
   onRedo,
-  onFlip,
   onDownload,
   onSwapColors,
   onToggleCollapsed,
@@ -235,26 +229,6 @@ export default function EditorToolsBar({
               </button>
             </div>
             <span className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
-            <button
-              type="button"
-              aria-label="Flip horizontal"
-              title="Flip horizontal"
-              onClick={() => onFlip?.("horizontal")}
-              disabled={!canFlip}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-text-secondary outline-none transition-colors hover:bg-bg hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35"
-            >
-              <FlipHorizontal2 size={14} strokeWidth={1.9} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label="Flip vertical"
-              title="Flip vertical"
-              onClick={() => onFlip?.("vertical")}
-              disabled={!canFlip}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-text-secondary outline-none transition-colors hover:bg-bg hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35"
-            >
-              <FlipVertical2 size={14} strokeWidth={1.9} aria-hidden="true" />
-            </button>
             <span className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
             <button
               type="button"

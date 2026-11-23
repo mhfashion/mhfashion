@@ -11,6 +11,7 @@ const layers = loadModule("apps/web/src/lib/editor-layers.ts");
 const toolsBar = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorToolsBar.tsx"), "utf8");
 const canvas = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorCanvas.tsx"), "utf8");
 const panel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayersPanel.tsx"), "utf8");
+const adjustments = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
 
 const close = (a, b, label) => assert.ok(Math.abs(a - b) < 1e-6, `${label}: ${a} != ${b}`);
 const box = { x: 100, y: 200, width: 200, height: 100 };
@@ -74,19 +75,23 @@ test("a multi-layer selection flips as one picture, not in place", () => {
   close(flippedRight.pivot.x + flippedRight.offset.x, 300, "right layer moves to the left");
 });
 
-test("Flip is offered in the tools bar and mirrors the layer, not a copy of it", () => {
-  assert.match(toolsBar, /aria-label="Flip horizontal"/);
-  assert.match(toolsBar, /aria-label="Flip vertical"/);
-  assert.match(toolsBar, /onClick=\{\(\) => onFlip\?\.\("horizontal"\)\}/);
-  assert.match(toolsBar, /onClick=\{\(\) => onFlip\?\.\("vertical"\)\}/);
-  assert.match(toolsBar, /disabled=\{!canFlip\}/);
+test("Flip lives in the Adjustments panel and mirrors the layer, not a copy of it", () => {
+  // Owner decision 2026-11-22: Flip left the Tools bar for the Adjustments panel.
+  assert.doesNotMatch(toolsBar, /Flip horizontal|Flip vertical|canFlip|onFlip/);
+  assert.match(adjustments, /aria-label="Flip horizontal"/);
+  assert.match(adjustments, /aria-label="Flip vertical"/);
+  assert.match(adjustments, /onClick=\{\(\) => onFlip\("horizontal"\)\}/);
+  assert.match(adjustments, /onClick=\{\(\) => onFlip\("vertical"\)\}/);
+  // A locked layer cannot be flipped, so the buttons are disabled with it.
+  assert.match(adjustments, /aria-label="Flip horizontal"[\s\S]{0,200}disabled=\{selectedLayer\.locked\}/);
+  assert.match(adjustments, /<span className="text-\[10px\] text-text-secondary">Flip<\/span>/);
 
   assert.match(canvas, /import \{ flipLayerPlacement, /);
   assert.match(canvas, /const flipSelectedLayers = \(axis: "horizontal" \| "vertical"\) => \{/);
   // The linked set moves together, and a locked layer is never mirrored.
   assert.match(canvas, /flipSelectedLayers[\s\S]{0,400}resolveLinkedLayerIds\(selectedLayerIds\)\.filter\(\(id\) => !layers\.find\(\(layer\) => layer\.id === id\)\?\.locked\)/);
-  assert.match(canvas, /canFlip=\{selectedLayerIds\.length > 0\}/);
   assert.match(canvas, /onFlip=\{flipSelectedLayers\}/);
+  assert.doesNotMatch(canvas, /canFlip=/);
   // No separate flip flag: the renderer already composes the scale, so the sign does the work.
   assert.doesNotMatch(canvas, /layerFlips/);
 });

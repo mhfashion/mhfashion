@@ -416,6 +416,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Flip lives in the Adjustments panel (`EditorAdjustmentsPanel.tsx`)
+- Owner decision 2026-11-22: Flip is not in the Tools bar. The two buttons sit at the top of the panel's
+  **Appearance** section and keep the `Flip horizontal` / `Flip vertical` labels the tests find them by;
+  they are disabled while the layer is locked, matching the guard in `flipSelectedLayers`.
+- `EditorCanvas` passes `onFlip={flipSelectedLayers}` to the panel, not to the tools bar; the bar no longer
+  has `canFlip`/`onFlip` props.
+- To reach the buttons in a browser probe: "Expand Layers panel" → "Open Adjustments panel" → the
+  "Appearance" section header. Clicking Flip sets the tools-bar status line ("Flipped horizontally"), which
+  is the cheapest end-to-end proof; an empty layer returns early, so the status stays empty.
+
 ## Asset issues route (`app/api/assets/issues/route.ts`)
 - The static `issues` segment wins over `[kind]`, so `/api/assets/issues` is not read as a kind; a kind
   named "issues" would be shadowed (no such kind exists).

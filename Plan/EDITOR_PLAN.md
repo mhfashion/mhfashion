@@ -757,8 +757,11 @@ rather than in the Tools bar.
   before any code. Then the shared controls (row, slider with number, colour field, dropdown, segmented) are
   built once and the sections move onto them one at a time. E21 reuses these controls, so E22 comes first or
   together with it.
-- **Tools bar after the change:** Flip leaves it. Download also sits there today; whether Download moves to the
-  header next to Save and Buy is the owner's call (decision D15).
+- **Tools bar after the change:** Flip leaves it. **Flip moved 2026-11-22** (the owner had already decided it, so
+  it did not wait for the mock-up): both buttons now sit at the top of the panel's Appearance section, keep their
+  `Flip horizontal` / `Flip vertical` labels, and are disabled while the layer is locked. The rest of E22 still
+  waits for the mock-up. Download also sits in the Tools bar today; whether Download moves to the header next to
+  Save and Buy is the owner's call (decision D15).
 - **Contracts:** the panel keeps the existing `aria-label` strings the tests rely on, keeps the Undo and Redo
   behaviour unchanged, and keeps the Layers and Adjustments boxes from overlapping.
 - Acceptance: a selected layer of each kind shows its Arrange section; typing a width in centimetres resizes the
@@ -806,7 +809,7 @@ rather than in the Tools bar.
 12. The Burmese font approach is confirmed: a short list of open-licence Unicode fonts, licences checked, files put in R2 by the shop (owner, 2026-11-22).
 13. The text bend is built as an outline warp (E19); the owner left the choice to the plan author. Whether D14 (a `.ttf`/`.otf` file beside each woff2) is accepted is still to be confirmed.
 14. The brush tips are found and uploaded to R2 by the owner (E20, D12).
-15. Flip does not belong in the Tools bar; it moves into the Adjustments panel. The Adjustments panel should be more complete, tighter and good to look at (E22, owner request, 2026-11-22). E22 is a proposal; the owner reviews a visual mock-up first.
+15. Flip does not belong in the Tools bar; it moves into the Adjustments panel — **done 2026-11-22**. The Adjustments panel should be more complete, tighter and good to look at (E22, owner request, 2026-11-22). E22 is a proposal; the owner reviews a visual mock-up first.
 16. Files in R2 are read through a Worker that turns them into JSON, not by the browser directly (owner, 2026-11-22). The design is `Plan/PLAN.md` §12.1; E10, E17 and E20 use it.
 
 ## 7. Verification and change policy
