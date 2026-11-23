@@ -399,6 +399,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Button labels use the brush **name** (`Remove Ink · round`), not the id — a CDP probe that clicks
   `Remove ink-round` silently does nothing.
 
+## CSV export (`apps/web/src/lib/admin-csv.ts`)
+- Every text cell is neutralised against spreadsheet formula injection (`=`, `+`, `-`, `@`, tab, CR get
+  a leading apostrophe), because the orders export carries customer-typed names, emails and item names.
+  A plain number (`-5`) and a phone number (`+95 9 …`) are left readable on purpose.
+- Cells containing `"`, `,`, CR/LF or `'` are quoted and inner quotes doubled. `downloadCsv` writes a
+  UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
+  the bytes, not the string.
+
 ## Admin forms and the hydration snapshot (`apps/web/src/lib/admin-demo-store.ts`)
 - `useAdminDemoData` is `useSyncExternalStore(subscribe, readAdminDemoData, readSeedSnapshot)`, so the
   first client render (hydration) sees `createAdminDemoData()`, not this browser's saved data. A

@@ -1174,6 +1174,14 @@ proposal, not an approved order.
    ever inlined (or set through `dangerouslySetInnerHTML`), strip `<script>`, event attributes and
    `javascript:` URLs first. The only unsafe path left is a person opening a downloaded SVG in a
    browser, which is outside the app.
+   **The same rule for spreadsheets, fixed 2026-11-22:** the orders and reports CSV exports carry
+   customer-typed text (name, email, item names), and a cell starting with `=`, `+`, `-`, `@`, a tab or
+   a carriage return is run as a formula by Excel, Numbers and Google Sheets. `lib/admin-csv.ts` now
+   prefixes such a text cell with an apostrophe so it opens as text, while a real number (`-5`) and a
+   phone number (`+95 9 123 456`) are left readable. Checked in Chromium: an order whose customer name
+   is `=HYPERLINK("http://evil.example","Invoice")`, whose email starts with `+cmd|` and whose item is
+   `@SUM(1+1)` exports inert, and ordinary rows are unchanged. `tests/admin-csv.test.cjs` covers the
+   quoting rules, the inert cells, the numbers that must stay numbers, and the BOM Excel needs.
 8. ~~**Design takedown handling** per 8.1~~ — **done 2026-11-21**: Designs → Takedown records the
    claimant and note, hides the design, and leaves paid orders untouched (owner answer).
    **Claim channel built 2026-11-21:** `/contact` (see 8.1) is linked from the Terms, the Guide and
