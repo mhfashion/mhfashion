@@ -369,6 +369,19 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `writeAssetCatalogue` compares everything except `generatedAt`, so a quiet folder is not rewritten
   (and the object's cache is not churned).
 
+## Asset routes (`apps/web/src/lib/asset-routes.ts`, `asset-store-r2.ts`)
+- `catalogueResponse` / `mockupResponse` return `{ status, headers, body }`, so the Next route stays a
+  thin adapter and the cache contract is tested without a server.
+- `Cache-Control: public, max-age=60, stale-while-revalidate=600` and an FNV-1a `ETag` over the body;
+  `If-None-Match` accepts a weak (`W/`) value, a list and `*`. A 304 carries the same headers and no body.
+- Fonts answer `{ fonts, skipped }` (what `parseEditorFontManifest` takes); other kinds answer the
+  catalogue itself; `mockups/<slug>` answers `{ slug, files }`, `404 no_mockups`, `400 invalid_slug`.
+- `resolveAssetStore()` reads the `MH_FASHION_ASSETS` binding via `getCloudflareContext({ async: true })`
+  and returns `null` outside Workers. A null store answers 200 with an empty catalogue whose issue says
+  the bucket is not bound — never a 5xx, so the editor falls back to its system fonts.
+- The editor still reads the public manifest URL. Do not point it at `/api/assets/fonts` until
+  `wrangler.jsonc` has the binding, or production loses the fonts it loads today.
+
 ## Admin forms and the hydration snapshot (`apps/web/src/lib/admin-demo-store.ts`)
 - `useAdminDemoData` is `useSyncExternalStore(subscribe, readAdminDemoData, readSeedSnapshot)`, so the
   first client render (hydration) sees `createAdminDemoData()`, not this browser's saved data. A

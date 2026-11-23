@@ -580,9 +580,24 @@ an unsafe key); `writeAssetCatalogue` stores `catalog/<kind>.json` and writes no
 `generatedAt` would change.
 `tests/asset-catalogue.test.cjs` (15 tests) covers every case part 13 lists, including a listing longer
 than one page.
-**Still to build:** the R2 binding in `wrangler.jsonc`, the read routes, the cache headers and `ETag`, the
-scheduled rebuild, the admin writes and the issues route, and rewiring `scripts/check-font-manifest.cjs`
-onto the builder.
+**Read routes built 2026-11-22 (parts 6 and 9).** `lib/asset-routes.ts` shapes the answer and owns the
+cache contract: `Cache-Control: public, max-age=60, stale-while-revalidate=600`, an `ETag` over the body,
+and a `304` for a matching `If-None-Match` (a weak or listed value matches too). Fonts answer as
+`{ fonts, skipped }`, the shape `parseEditorFontManifest` already accepts; every other kind answers the
+catalogue itself; `mockups/<slug>` answers one product's files, `404 no_mockups` when there are none and
+`400 invalid_slug` for an impossible slug. `lib/asset-store-r2.ts` implements `AssetStore` over the
+`MH_FASHION_ASSETS` binding through `getCloudflareContext`, and returns `null` when the binding is absent
+(local `next start`, tests) — the route then answers an empty catalogue whose single issue says the bucket
+is not bound, so the editor keeps its system fonts and nothing crashes. Routes:
+`app/api/assets/[kind]/route.ts`, `app/api/assets/mockups/[slug]/route.ts`.
+`tests/asset-routes.test.cjs` (10 tests) covers the shapes, the headers, the 304 paths, the unbound and
+empty-snapshot answers, the mockup 404/400 and the kind allow-list. Checked live on `next start`: fonts
+200 with the cache header and an `ETag`, the same request with `If-None-Match` 304, an unknown kind 404, a
+missing mockup 404.
+**Still to build:** the R2 binding in `wrangler.jsonc` (needs the bucket name), the editor reading
+`/api/assets/fonts` instead of the public manifest URL (only once the binding exists, or production would
+lose the fonts it loads today), the scheduled rebuild, the admin writes and the issues route, and
+rewiring `scripts/check-font-manifest.cjs` onto the builder.
 
 **Rollout.**
 1. Read-only service for fonts, brushes, designs and elements, with hand uploads and the scheduled rebuild.
