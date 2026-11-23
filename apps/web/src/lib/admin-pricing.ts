@@ -11,7 +11,7 @@ import {
   type AdminTshirtPost,
   type AdminTshirtPostAttributeKey,
 } from "@/lib/admin-demo-data";
-import { attributeChain } from "@/lib/admin-attributes";
+import { attributeChain, cascadeRules } from "@/lib/admin-attributes";
 import {
   combinationsFor,
   rowKey,
@@ -97,7 +97,7 @@ export function scopeAttributes(data: AdminDemoData, scope: PricingScope): Prici
 }
 
 export function scopeRows(data: AdminDemoData, scope: PricingScope): PricingRow[] {
-  return combinationsFor(scopeAttributes(data, scope));
+  return combinationsFor(scopeAttributes(data, scope), cascadeRules(data));
 }
 
 export function scopeLabel(data: AdminDemoData, scope: PricingScope): string {

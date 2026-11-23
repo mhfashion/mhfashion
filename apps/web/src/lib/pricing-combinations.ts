@@ -2,7 +2,7 @@
 // size or a base price with deltas. Everything here is pure so the grid, the CSV round-trip and
 // the tests share one definition of "valid combination" and "valid price".
 
-import { fabricTypeOptions, knitStructureOptions } from "@/lib/editor-attributes";
+import { DEFAULT_CASCADE_RULES, cascadeAllows, type AttributeCascadeRule } from "@/lib/attribute-rules";
 
 export type PricingAttribute = { key: string; label: string; options: readonly string[] };
 export type PricingOptions = Record<string, string>;
@@ -36,13 +36,15 @@ export function formatPriceInput(value: number | null | undefined): string {
 }
 
 /** Cascade rule from Plan §4.1: Sublimation is polyester-only, and polyester knits are not jersey. */
-export function isValidCombination(options: PricingOptions): boolean {
-  const print = options.print;
-  const fabric = options.material;
-  const knit = options.knit;
-  if (print && fabric && !fabricTypeOptions(print).includes(fabric)) return false;
-  if (fabric && knit && !knitStructureOptions(fabric).includes(knit)) return false;
-  return true;
+/**
+ * A combination exists when no cascade rule excludes it. The rules come from Attribute Management;
+ * without them the documented §4.1 cascade applies, so an old draft or a test stays valid.
+ */
+export function isValidCombination(
+  options: PricingOptions,
+  rules: readonly AttributeCascadeRule[] = DEFAULT_CASCADE_RULES,
+): boolean {
+  return Object.keys(options).every((key) => cascadeAllows(rules, key, options));
 }
 
 export function rowKey(options: PricingOptions, keys: readonly string[]): string {
@@ -50,7 +52,10 @@ export function rowKey(options: PricingOptions, keys: readonly string[]): string
 }
 
 /** One row per valid combination, in attribute order so the grid reads like the chain. */
-export function combinationsFor(attributes: readonly PricingAttribute[]): PricingRow[] {
+export function combinationsFor(
+  attributes: readonly PricingAttribute[],
+  rules: readonly AttributeCascadeRule[] = DEFAULT_CASCADE_RULES,
+): PricingRow[] {
   const usable = attributes.filter((attribute) => attribute.options.length > 0);
   if (!usable.length) return [];
   const keys = usable.map((attribute) => attribute.key);
@@ -63,7 +68,7 @@ export function combinationsFor(attributes: readonly PricingAttribute[]): Pricin
     })));
   }
   return rows
-    .filter((row) => isValidCombination(row.options))
+    .filter((row) => isValidCombination(row.options, rules))
     .map((row) => ({ key: rowKey(row.options, keys), options: row.options }));
 }
 

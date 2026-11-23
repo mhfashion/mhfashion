@@ -14,6 +14,11 @@ import {
   PRINT_METHOD_OPTIONS,
   SIZE_OPTIONS,
 } from "@/lib/editor-attributes";
+import {
+  DEFAULT_CASCADE_RULES,
+  normalizeCascadeRules,
+  type AttributeCascadeRule,
+} from "@/lib/attribute-rules";
 
 export const ADMIN_DEMO_DATA_KEY = "mh-fashion-admin-demo-data-v1";
 
@@ -588,6 +593,8 @@ export type AdminDemoData = {
   designs: AdminDesign[];
   designTakedowns: AdminDesignTakedown[];
   attributeChain: AdminAttributeDefinition[];
+  /** Plan §4.1 cascade as data, so Attribute Management can change it without a code change. */
+  attributeCascade: AttributeCascadeRule[];
   deliveries: AdminDelivery[];
   loyalty: AdminLoyalty;
   jerseyStyles: JerseyStyle[];
@@ -1982,6 +1989,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     designs,
     designTakedowns: [],
     attributeChain: createSeedAttributeChain(),
+    attributeCascade: DEFAULT_CASCADE_RULES.map((rule) => ({ ...rule, allowed: [...rule.allowed] })),
     deliveries: createSeedDeliveries(orders),
     loyalty: createSeedLoyalty(),
     jerseyStyles: createSeedJerseyStyles(now),
@@ -2033,6 +2041,7 @@ export function readAdminDemoData(): AdminDemoData {
           attributeChain: Array.isArray(parsed.attributeChain) && parsed.attributeChain.length
             ? parsed.attributeChain
             : createSeedAttributeChain(),
+          attributeCascade: normalizeCascadeRules(parsed.attributeCascade),
           deliveries: Array.isArray(parsed.deliveries) ? parsed.deliveries : createSeedDeliveries(orders),
           loyalty: parsed.loyalty?.rules && Array.isArray(parsed.loyalty.tiers) && Array.isArray(parsed.loyalty.milestones)
             ? parsed.loyalty

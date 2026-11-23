@@ -118,7 +118,7 @@ test("Attribute Management is registered, routed and linked from Pricing", () =>
   assert.match(pricing, /Open Attribute Management/);
 });
 
-test("the Attributes screen states the cascade and the editor boundary", () => {
+test("the Attributes screen edits the cascade as data and states the editor boundary", () => {
   const source = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminAttributes.tsx"), "utf8");
   for (const marker of [
     "data-attribute-label",
@@ -127,12 +127,16 @@ test("the Attributes screen states the cascade and the editor boundary", () => {
     'aria-label="New option"',
     "Reset to built-in",
     "Cascade rules",
-    "Sublimation",
-    "Polyester",
+    "data-cascade-pair",
+    'aria-label="Reset cascade rules"',
     "Existing posts keep the options they were published with.",
-    "until the editor is reopened",
+    "keeps the built-in list (owner directive 1)",
   ]) {
     assert.ok(source.includes(marker), `AdminAttributes is missing ${marker}`);
   }
   assert.match(source, /Change those prices first/);
+  // The rules come from the store, so the screen holds no hardcoded cascade words.
+  assert.doesNotMatch(source, /"Sublimation"|"Polyester"/);
+  assert.match(source, /cascadeOptions\(rules/);
+  assert.match(source, /setCascadeAllowed\(store/);
 });

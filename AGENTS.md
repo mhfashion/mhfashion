@@ -416,6 +416,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Attribute cascade (`apps/web/src/lib/attribute-rules.ts`)
+- Rules are `{ target, source, value, allowed }`, stored in `data.attributeCascade`, seeded with the four
+  documented §4.1 rules. `cascadeAllows`/`cascadeOptions` narrow a list; `isValidCombination` and
+  `combinationsFor` take the rules, so the pricing grid cannot disagree with Attribute Management.
+- The chain's column order does **not** decide what narrows what — the rules do. Validation only checks
+  that both keys exist, the values are real options, and `allowed` is non-empty.
+- An empty rule list is a deliberate "nothing is narrowed"; only a **missing** field means an old draft
+  and reads as the defaults (`cascadeRules` uses `??`, not `?.length`).
+- `setCascadeAllowed` refuses a change that hides every value or orphans a price row, and removes the rule
+  entirely when every value is offered again, so the stored list stays minimal.
+- The seeded chain order is `size, material, knit, fit, color, …` with `print` **disabled**, so a UI that
+  walked adjacent chain entries would show no print → material rule. Build the matrices from the rules'
+  own (source, target) pairs.
+
 ## Flip lives in the Adjustments panel (`EditorAdjustmentsPanel.tsx`)
 - Owner decision 2026-11-22: Flip is not in the Tools bar. The two buttons sit at the top of the panel's
   **Appearance** section and keep the `Flip horizontal` / `Flip vertical` labels the tests find them by;

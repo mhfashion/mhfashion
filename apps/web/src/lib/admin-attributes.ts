@@ -3,6 +3,14 @@
 // an option that an existing priced combination depends on, so the price book cannot be orphaned.
 
 import {
+  DEFAULT_CASCADE_RULES,
+  cascadeRuleIssues,
+  removeCascadeRule,
+  setCascadeRule,
+  type AttributeCascadeRule,
+} from "@/lib/attribute-rules";
+import { isValidCombination } from "@/lib/pricing-combinations";
+import {
   TSHIRT_POST_ATTRIBUTES,
   createSeedAttributeChain,
   type AdminAttributeDefinition,
@@ -12,6 +20,11 @@ import {
 } from "@/lib/admin-demo-data";
 
 export type ChainIssue = { key: AdminTshirtPostAttributeKey; message: string };
+
+/** Only a missing field means "old draft"; an empty list is the admin's choice to narrow nothing. */
+export function cascadeRules(data: AdminDemoData): AttributeCascadeRule[] {
+  return data.attributeCascade ?? DEFAULT_CASCADE_RULES;
+}
 
 export function attributeChain(data: AdminDemoData): AdminAttributeDefinition[] {
   return data.attributeChain?.length ? data.attributeChain : createSeedAttributeChain();
@@ -142,4 +155,55 @@ export function moveAttribute(data: AdminDemoData, key: AdminTshirtPostAttribute
 
 export function resetAttributeChain(data: AdminDemoData): AdminDemoData {
   return { ...data, attributeChain: createSeedAttributeChain() };
+}
+
+export type CascadePatchResult = { data: AdminDemoData; issues: string[] };
+
+/**
+ * Turn one target value on or off for a source value. The change is refused when the rule would be
+ * invalid (empty list, unknown value, source after target) or would orphan a price row that exists
+ * today, so the price book keeps every combination it is already selling.
+ */
+export function setCascadeAllowed(
+  data: AdminDemoData,
+  target: string,
+  source: string,
+  value: string,
+  allowed: string[],
+): CascadePatchResult {
+  const chain = attributeChain(data);
+  const rules = cascadeRules(data);
+  const sourceAttribute = chain.find((attribute) => attribute.key === source);
+  const targetAttribute = chain.find((attribute) => attribute.key === target);
+  if (!sourceAttribute || !targetAttribute) {
+    return { data, issues: ["That rule names an attribute the chain does not hold."] };
+  }
+  if (!sourceAttribute.options.includes(value)) {
+    return { data, issues: [`${sourceAttribute.label} no longer offers ${value}.`] };
+  }
+  const next = targetAttribute.options.filter((option) => allowed.includes(option));
+  if (!next.length) {
+    return { data, issues: [`${targetAttribute.label} would offer nothing while ${sourceAttribute.label} is ${value}. Switch the attribute off instead.`] };
+  }
+  const candidate = next.length === targetAttribute.options.length
+    ? removeCascadeRule(rules, target, source, value)
+    : setCascadeRule(rules, { target, source, value, allowed: next });
+  const ruleIssues = cascadeRuleIssues(candidate, chain);
+  if (ruleIssues.length) return { data, issues: ruleIssues.map((issue) => issue.message) };
+
+  const orphaned: string[] = [];
+  for (const post of data.tshirtPosts) {
+    const lost = post.prices.filter((row) => isValidCombination(row.options, rules) && !isValidCombination(row.options, candidate)).length;
+    if (lost) orphaned.push(`${post.title} still prices ${lost} row${lost === 1 ? "" : "s"} that this rule removes.`);
+  }
+  if (orphaned.length) return { data, issues: orphaned };
+
+  return { data: { ...data, attributeCascade: candidate }, issues: [] };
+}
+
+export function resetCascadeRules(data: AdminDemoData): AdminDemoData {
+  return {
+    ...data,
+    attributeCascade: DEFAULT_CASCADE_RULES.map((rule) => ({ ...rule, allowed: [...rule.allowed] })),
+  };
 }

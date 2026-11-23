@@ -8,8 +8,10 @@ import { AdminBadge, AdminButton, AdminCard, AdminDrawer, AdminEmpty, AdminField
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { type AdminAttributeDefinition, type AdminTshirtPostAttributeKey } from "@/lib/admin-demo-data";
 import {
-  applyChainPatch, attributeChain, chainIssues, chainUsage, moveAttribute, resetAttributeChain,
+  applyChainPatch, attributeChain, cascadeRules, chainIssues, chainUsage, moveAttribute, resetAttributeChain,
+  resetCascadeRules, setCascadeAllowed,
 } from "@/lib/admin-attributes";
+import { cascadeOptions } from "@/lib/attribute-rules";
 
 export default function AdminAttributes() {
   const data = useAdminDemoData();
@@ -23,6 +25,31 @@ export default function AdminAttributes() {
   const [problems, setProblems] = useState<string[]>([]);
 
   const active = editing ? chain.find((attribute) => attribute.key === editing) ?? null : null;
+  const rules = cascadeRules(data);
+  // One table per (source → target) pair the rules use, so the screen shows exactly the cascade that is
+  // enforced — whatever order the chain columns happen to be in.
+  const pairs: { source: AdminAttributeDefinition; target: AdminAttributeDefinition }[] = [];
+  for (const rule of rules) {
+    if (pairs.some((pair) => pair.source.key === rule.source && pair.target.key === rule.target)) continue;
+    const source = chain.find((attribute) => attribute.key === rule.source);
+    const target = chain.find((attribute) => attribute.key === rule.target);
+    if (source && target) pairs.push({ source, target });
+  }
+
+  function toggleCascade(source: AdminAttributeDefinition, target: AdminAttributeDefinition, value: string, targetValue: string) {
+    const current = cascadeOptions(rules, target.key, { [source.key]: value }, target.options);
+    const next = current.includes(targetValue)
+      ? current.filter((option) => option !== targetValue)
+      : [...current, targetValue];
+    let failed: string[] = [];
+    updateAdminData((store) => {
+      const result = setCascadeAllowed(store, target.key, source.key, value, next);
+      failed = result.issues;
+      return result.data;
+    });
+    setProblems(failed);
+    setMessage(failed.length ? "" : `Saved: ${target.label} with ${source.label} ${value}.`);
+  }
 
   function openEditor(attribute: AdminAttributeDefinition) {
     setEditing(attribute.key);
@@ -168,16 +195,65 @@ export default function AdminAttributes() {
 
       <AdminCard className="mt-3">
         <div className="px-4 py-3">
-          <h2 className="text-[11px] font-bold text-[#303844]">Cascade rules</h2>
-          <p className="mt-1 text-[10px] text-[#6c7683]">These combinations do not exist, so no post, price row or order may contain them.</p>
-          <ul className="mt-2 space-y-1 text-[10px] text-[#4b5563]">
-            <li><span className="font-bold">Sublimation</span> is polyester only — Combed Cotton and Compact Combed Cotton cannot be sublimated.</li>
-            <li><span className="font-bold">Polyester</span> offers only Interlock and Air Layer — Single Jersey is cotton-only.</li>
-          </ul>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-[11px] font-bold text-[#303844]">Cascade rules</h2>
+              <p className="mt-1 text-[10px] text-[#6c7683]">A combination that a rule removes does not exist, so no post, price row or order may contain it.</p>
+            </div>
+            <AdminButton compact variant="ghost" aria-label="Reset cascade rules" onClick={() => { updateAdminData(resetCascadeRules); setProblems([]); setMessage("Cascade rules reset."); }}>
+              <RotateCcw size={12} /> Reset
+            </AdminButton>
+          </div>
+          {pairs.map(({ source, target }) => (
+            <div key={`${source.key}-${target.key}`} className="mt-3 overflow-x-auto" data-cascade-pair={`${source.key}-${target.key}`}>
+              <table className="w-full min-w-[420px] border-collapse text-[10px]">
+                <thead>
+                  <tr className="text-left text-[#6c7683]">
+                    <th className="border-b border-[#f0f2f4] px-2 py-1 font-semibold">{source.label} is…</th>
+                    {target.options.map((option) => (
+                      <th key={option} className="border-b border-[#f0f2f4] px-2 py-1 text-center font-semibold">{option}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {source.options.map((value) => {
+                    const offered = cascadeOptions(rules, target.key, { [source.key]: value }, target.options);
+                    return (
+                      <tr key={value}>
+                        <td className="border-b border-[#f7f8f9] px-2 py-1 font-semibold text-[#3c4553]">{value}</td>
+                        {target.options.map((option) => {
+                          const on = offered.includes(option);
+                          return (
+                            <td key={option} className="border-b border-[#f7f8f9] px-2 py-1 text-center">
+                              <button
+                                type="button"
+                                aria-pressed={on}
+                                aria-label={`${on ? "Hide" : "Offer"} ${target.label} ${option} when ${source.label} is ${value}`}
+                                onClick={() => toggleCascade(source, target, value, option)}
+                                className={`h-6 w-full rounded-md border text-[9px] font-bold ${on ? "border-[#c8e6c9] bg-[#eef7ee] text-[#3f8c22]" : "border-[#f0d3d3] bg-[#fdf3f3] text-[#a33] line-through"}`}
+                              >
+                                {on ? "Offered" : "Hidden"}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
+          {pairs.length === 0 ? <p className="mt-3 text-[10px] text-[#6c7683]">No rule narrows anything, so every combination exists. Use Reset for the shipped cascade.</p> : null}
           <p className="mt-2 text-[10px] text-[#98a1ac]">
-            The rules live in <code>lib/editor-attributes.ts</code> and are enforced by the pricing grid. The design editor keeps the built-in list until the editor is reopened (owner directive 1).
+            Rules are enforced by the pricing grid, which only ever lists the combinations they allow. The design editor keeps the built-in list (owner directive 1), so it still shows every option.
           </p>
         </div>
+        {problems.length ? (
+          <div role="alert" className="border-t border-[#f0d3d3] bg-[#fdf3f3] px-4 py-2">
+            {problems.map((problem) => <p key={problem} className="text-[10px] font-semibold text-[#a33]">{problem}</p>)}
+          </div>
+        ) : null}
       </AdminCard>
 
       <p className="mt-3 text-[10px] text-[#98a1ac]">

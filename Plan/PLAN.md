@@ -131,8 +131,21 @@ old option words (Cotton, Standard, Screen Print, …) are mapped onto the 4.1 v
 **Implemented cascade (2026-11-21):** Sublimation → Fabric Type = Polyester only; Polyester →
 Knit Structure = Interlock | Air Layer; cotton → Single Jersey | Interlock. GSM, Color, MH
 Cuttings and Size are not filtered. A selection the cascade drops falls back to the first option
-still offered instead of staying on screen. The rule list is static until Attribute Management
-(§16 P2) makes it admin-driven.
+still offered instead of staying on screen.
+
+**The cascade is admin-driven (2026-11-22).** The rules are data in `data.attributeCascade`
+(`lib/attribute-rules.ts`: `{ target, source, value, allowed }`), seeded with the four documented
+rules, and Attribute Management (§16) edits them as one table per source → target pair: every cell is
+"Offered" or "Hidden" for one source value, so the Super Admin sees the whole matrix instead of a rule
+form. The pricing grid enumerates combinations through the same rules (`combinationsFor(…, rules)`), so
+an admin change and the price book cannot disagree — offering Combed Cotton under Sublimation takes
+Mandalay Nights Tee from 3 to 6 priced combinations, and Reset puts the four rules back. A change is
+refused when it would hide every value ("switch the attribute off instead") or orphan a price row
+("Peacock Line Tee still prices 1 row that this rule removes"). An empty rule list is a real choice
+(nothing is narrowed); only a store saved before the field existed reads as the documented cascade. The
+chain's column order does not decide what narrows what — the rules do — so reordering the chain cannot
+silently change the cascade. The design editor keeps its built-in cascade (owner directive 1) and the
+screen says so.
 
 ### 4.2 Phone Cover
 
@@ -208,8 +221,9 @@ horizontal page scroll (`scrollWidth === clientWidth`), every touch target ≥ 4
 flow (select → bulk set → save) writes the same rows as the web grid. The search field in the
 admin header needed `min-w-0` to stop it forcing 370 px of page width at 320 px.
 
-**Attribute Management (built 2026-11-21):** `/admin/attributes` edits the chain — order, labels,
-option lists and on/off state — in `data.attributeChain`. Guards refuse a change that would orphan
+**Attribute Management (built 2026-11-21, cascade added 2026-11-22):** `/admin/attributes` edits the
+chain — order, labels, option lists and on/off state — in `data.attributeChain`, and now the cascade
+rules themselves in `data.attributeCascade` (§4.1). Guards refuse a change that would orphan
 prices ("Combed Cotton still prices 3 rows in Peacock Line Tee"), a duplicate or empty label, or
 switching off an attribute that prices rows. The chain supplies the pricing grid's column order and
 labels, the vocabulary a new post draft starts from, and the "no valid combinations → Open Attribute
