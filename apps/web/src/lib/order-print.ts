@@ -5,6 +5,7 @@ import {
 } from "./admin-demo-data";
 import { createZip, type ZipEntry } from "./zip";
 import { deliveryFileName, deliveryQuoteJson } from "./delivery";
+import { barcodeSvg, orderBarcodeValue } from "./order-barcode";
 import { orderQrPayload, qrSvg } from "./order-qr";
 import { orderQualityIssues, qualityReadmeLines, qualitySheetHtml } from "./print-quality";
 
@@ -175,6 +176,8 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
   const quality = qualitySheetHtml(orderQualityIssues(order));
   const qrTarget = orderQrPayload(order.id);
   const qr = `<figure class="qr">${qrSvg(qrTarget)}<figcaption>${escapeHtml(qrTarget.startsWith("http") ? "Scan to open this order" : qrTarget)}</figcaption></figure>`;
+  // The QR needs a camera; the scanner on the packing bench reads bars, so the sheet carries both.
+  const barcode = `<figure class="barcode">${barcodeSvg(orderBarcodeValue(order.id), { moduleWidth: 2, height: 44 })}<figcaption>${escapeHtml(order.id)}</figcaption></figure>`;
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
@@ -186,6 +189,10 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
   body { margin: 0; font: 11px/1.45 "Inter", Arial, sans-serif; color: #1d232b; }
   header { border-bottom: 2px solid #1d232b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   header .headline { flex: 1; }
+  .codes { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+  figure.barcode { margin: 0; text-align: center; }
+  figure.barcode svg { display: block; }
+  figure.barcode figcaption { font: 700 8px/1.2 "Inter", Arial, sans-serif; letter-spacing: .08em; margin-top: 2px; }
   figure.qr { margin: 0; width: 78px; flex: none; text-align: center; }
   figure.qr svg { width: 78px; height: 78px; display: block; }
   figure.qr figcaption { font-size: 7px; color: #4a5461; width: 78px; margin: 2px auto 0; line-height: 1.2; overflow-wrap: anywhere; }
@@ -242,7 +249,10 @@ export function buildOrderPrintSheetHtml(order: AdminOrder): string {
     <p class="meta">${escapeHtml(formatAdminDateTime(order.placedAt))} · ${escapeHtml(order.stage)} · ${escapeHtml(order.payment)}</p>
     ${printRunNote(order)}
   </div>
-  ${qr}
+  <div class="codes">
+    ${barcode}
+    ${qr}
+  </div>
 </header>
 ${quality}
 <div class="grid">

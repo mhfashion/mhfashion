@@ -1354,7 +1354,14 @@ proposal, not an approved order.
     Chromium end to end: request from the account page, the drawer shows it, an empty decline is refused,
     and approving leaves `stage: Refunded` with the decision stamped. `tests/order-refunds.test.cjs` covers
     the reasons against the published policy, the blockers, one-open-request, approve/decline, the queue
-    order and the read repair. Still open: any barcode a specific scanner needs.
+    order and the read repair.
+    **Barcode shipped 2026-11-22:** the press sheet now carries the order id as **Code 128B** bars beside the
+    QR (`lib/order-barcode.ts`), because the packing bench scans with a laser, not a camera. The value is the
+    id without its display `#`, the quiet zone is ten modules a side, every bar is one path with
+    `crispEdges`, and anything outside printable ASCII is refused rather than mangled. The bars were decoded
+    back from their own widths in `tests/order-barcode.test.cjs`, and the rendered sheet was measured in
+    Chromium (28 drawn runs, first bar at the quiet zone, total width = modules + both quiet zones).
+    If a particular scanner wants another symbology (Code 39, EAN), the encoder is one table away.
 14. **Operations:** error monitoring, Supabase backups. **Timestamps are done:** everything is stored
     as UTC ISO strings and every admin screen and printable document shows them in `Asia/Yangon`
     (`YANGON_TIME_ZONE`), so the device clock cannot change an hour or move an order to another day.

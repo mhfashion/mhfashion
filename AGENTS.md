@@ -416,6 +416,21 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   UTF-8 BOM first (Excel needs it for Myanmar text); `Blob.text()` strips that BOM, so a test must check
   the bytes, not the string.
 
+## Order barcode (`apps/web/src/lib/order-barcode.ts`)
+- Code 128B, hand-rolled: the table holds the published widths, **six numbers per symbol** (bar, space, bar,
+  space, bar, space = 11 modules) and **seven for the stop** (13 modules). Every entry sums to 11, which is
+  the cheapest way to catch a typo in the table.
+- Checksum: `sum(code * index)` with the start symbol weighted by 1, mod 103. `MH2001` → 14.
+- The bars are one `<path>` with `shape-rendering="crispEdges"`; a blurred edge reads as a second bar to a
+  laser. The quiet zone defaults to 10 modules a side.
+- `orderBarcodeValue` strips the display `#` (`#MH1086` → `MH1086`), because a scanned id is typed into a
+  search box or a spreadsheet.
+- Anything outside printable ASCII throws — Code 128B has no value for `é` or a newline, and silently
+  dropping the character would print a barcode that scans as a *different* order.
+- The QR stays next to it: the QR opens the order on a phone, the bars go to the scanner at the bench.
+- Verified by decoding the generated widths back through the same table, and in Chromium against the real
+  press sheet (28 runs for `MH1086`, first bar at x=20 with moduleWidth 2 and quietZone 10).
+
 ## PWA (`apps/web/src/app/manifest.ts`, `public/sw.js`, `components/PwaInstall.tsx`)
 - Icons are generated PNGs (dark tile, lime "MH"), not SVG: Chrome's install check wants a 192 and a 512,
   and Android crops a separate `maskable` tile. Regenerate with the same bar geometry if the brand changes.
