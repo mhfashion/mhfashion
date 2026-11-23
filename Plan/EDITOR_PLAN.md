@@ -248,11 +248,13 @@ the owner approves an item before it starts.
   desktop breakpoint; this adds the tappability rule the 320 × 480 section uses.
 - **Checklist item 2 is covered for effects (2026-11-22).** `burmeseEffects` types a Burmese layer,
   then reloads it once per effect (shadow, outline, glow, extrude, gradient) through the saved draft and
-  checks three things each time: the Burmese text still paints, no painted copy is truncated, and the
-  effect's own signature reaches the painted SVG (the shadow colour, a stroked `<text>` for the outline,
-  a filter for the glow, the extrude colour, a gradient definition). All five pass, so no fix was needed;
-  the test fails if an effect is silently dropped for Burmese text. Fonts other than the default are
-  still only covered by the audit in `tests/editor-font-audit.test.cjs`.
+  checks the Burmese text still paints, no painted copy is truncated, and the effect's own signature
+  reaches the painted SVG (the shadow colour, a stroked `<text>` for the outline, a filter for the glow,
+  the extrude colour, a gradient definition). It then reads `[data-editor-export-artwork]` — the group
+  the customer's SVG download and the press sheet are serialized from — and requires the Burmese text
+  there too and a longer document than the plain layer, so an effect cannot survive on screen and vanish
+  from the file that prints. All five pass, so no fix was needed. Fonts other than the default are still
+  only covered by the audit in `tests/editor-font-audit.test.cjs`.
 - **Checklist item 6 is covered at the tightest size (2026-11-22).** At 320 × 480 the `short phone bar`
   section finds all 16 bar buttons hit-testing to themselves (none covered, none off screen), the bar
   ending above the `Mobile navigation` bar, and the print canvas scrolling clear above the bar. No bug

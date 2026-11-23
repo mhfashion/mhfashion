@@ -924,14 +924,18 @@ async function main() {
       .filter((value) => /[\u1000-\u109F]/.test(value)));
     const plain = await painted();
     assert.ok(plain.some((value) => value.includes(text)), "the plain Burmese layer paints");
+    const exportMarkup = () => evaluate(() => document.querySelector('[data-editor-export-artwork="true"]')?.innerHTML ?? "");
+    const plainExport = await exportMarkup();
+    assert.ok(plainExport.includes(text), "the exported SVG carries the Burmese text");
     // Each effect must reach the paint, not just sit in the model: the signature is what the
     // renderer writes for it, so a silently dropped effect fails here.
     const effects = [
-      { id: "e1", kind: "shadow", color: "#ff2d55", offsetX: 14, offsetY: 14, blur: 0, paints: (markup) => /#ff2d55|255, 45, 85/.test(markup) },
-      { id: "e2", kind: "outline", color: "#000000", width: 8, paints: (markup) => /<text\b[^>]*stroke=/.test(markup) },
-      { id: "e3", kind: "glow", color: "#22d3ee", blur: 18, paints: (markup) => /filter/.test(markup) },
-      { id: "e4", kind: "extrude", color: "#111111", color2: "#333333", offsetX: 10, offsetY: 12, depth: 8, paints: (markup) => /#111111|17, 17, 17/.test(markup) },
-      { id: "e5", kind: "gradient", color: "#ff2d55", color2: "#22d3ee", paints: (markup) => /Gradient/.test(markup) },
+      // `paints` is checked on the canvas and on the exported SVG, the file the press sheet prints.
+      { id: "e1", kind: "shadow", color: "#ff2d55", offsetX: 14, offsetY: 14, blur: 0, paints: /#ff2d55|255, 45, 85/ },
+      { id: "e2", kind: "outline", color: "#000000", width: 8, paints: null },
+      { id: "e3", kind: "glow", color: "#22d3ee", blur: 18, paints: /filter/ },
+      { id: "e4", kind: "extrude", color: "#111111", color2: "#333333", offsetX: 10, offsetY: 12, depth: 8, paints: /#111111|17, 17, 17/ },
+      { id: "e5", kind: "gradient", color: "#ff2d55", color2: "#22d3ee", paints: /Gradient/ },
     ];
     for (const effect of effects) {
       await evaluate((next) => {
@@ -947,9 +951,12 @@ async function main() {
       await pause(5000);
       const values = await painted();
       const markup = await evaluate(() => document.querySelector('section[aria-label="Print canvas"] svg')?.outerHTML ?? "");
+      const exported = await exportMarkup();
       assert.ok(values.length > 0, `${effect.kind}: the Burmese layer still paints`);
       assert.ok(values.every((value) => value.includes(text)), `${effect.kind}: no Burmese text is truncated`);
-      assert.ok(effect.paints(markup), `${effect.kind}: the effect reaches the painted SVG (${(markup.match(/<text\b[^>]*>/) ?? [""])[0].slice(0, 160)})`);
+      if (effect.paints) assert.ok(effect.paints.test(markup), `${effect.kind}: the effect reaches the painted SVG`);
+      assert.ok(exported.includes(text), `${effect.kind}: the exported SVG still carries the Burmese text`);
+      assert.ok(exported.length > plainExport.length, `${effect.kind}: the exported SVG carries the effect too`);
     }
     console.log("PASS Burmese effects: shadow, outline, glow, extrude and gradient keep every glyph");
   }
