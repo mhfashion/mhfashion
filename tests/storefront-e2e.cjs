@@ -335,6 +335,17 @@ async function main() {
 
     console.log("PASS desktop: home, search, wishlist, faq, guide, checkout, account orders");
 
+    // A keyboard user has to see where they are: the search field draws its focus on the pill.
+    await visit("/", "header");
+    const searchFocus = await evaluate(() => {
+      const field = document.querySelector('[data-header-search="desktop"] input');
+      const pill = field.closest("form");
+      const before = getComputedStyle(pill).borderColor;
+      field.focus();
+      return { before, after: getComputedStyle(pill).borderColor };
+    });
+    assert.notEqual(searchFocus.after, searchFocus.before, "the search field shows focus on its pill");
+
     await assertAccessibleNames([["/", "header"], ["/create", 'canvas[aria-label="Blank print canvas"]'], ["/checkout", "main"]]);
     console.log("PASS accessible names: home, editor and checkout controls are all named");
 

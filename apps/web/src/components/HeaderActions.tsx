@@ -61,7 +61,7 @@ export default function HeaderActions() {
         role="search"
         onSubmit={submitSearch}
         data-header-search="desktop"
-        className="hidden lg:flex items-center gap-2 bg-bg-surface border border-border rounded-full px-3 py-1.5 w-56 text-text-secondary"
+        className="hidden lg:flex items-center gap-2 bg-bg-surface border border-border rounded-full px-3 py-1.5 w-56 text-text-secondary focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40"
       >
         <Search size={15} />
         <input
@@ -89,7 +89,7 @@ export default function HeaderActions() {
             role="search"
             onSubmit={submitSearch}
             data-header-search="compact"
-            className="absolute right-0 top-full mt-3 w-64 bg-bg-surface border border-border rounded-full px-3 py-2 shadow-xl flex items-center gap-2 text-text-secondary z-50"
+            className="absolute right-0 top-full mt-3 w-64 bg-bg-surface border border-border rounded-full px-3 py-2 shadow-xl flex items-center gap-2 text-text-secondary z-50 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40"
           >
             <Search size={15} />
             <input

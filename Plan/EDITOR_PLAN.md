@@ -954,8 +954,8 @@ exception or `console.error`.
 
 `tests/storefront-e2e.cjs` drives the purchase path over CDP at 1440 × 900 and 390 × 844 touch, and
 asserts that every control on the home, editor and checkout pages has an accessible name, that each of
-those pages has exactly one `<h1>`, and that `<html lang>` follows the language switcher (English, then
-Myanmar, and back across a reload).
+those pages has exactly one `<h1>`, that the header search field shows its focus on the pill, and that
+`<html lang>` follows the language switcher (English, then Myanmar, and back across a reload).
 
 The last full run (`node --test tests/*.test.cjs`) reported **705 passing, 0 failing**, against a server
 on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise), and both browser suites
