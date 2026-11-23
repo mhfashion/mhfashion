@@ -125,7 +125,9 @@ design; each one creates a text layer and opens the inline editor.
 
 - Typing happens in a text box drawn over the canvas, aligned to the drawn baseline. It grows with every
   wrapped line instead of scrolling the caret out of view.
-- While typing, the workspace pans so the caret line stays visible.
+- While typing, the workspace pans so the caret line stays visible. The pan follows the **visual**
+  viewport, so the part a phone keyboard covers does not count as visible, and it runs again when the
+  keyboard opens, the screen rotates or the window resizes — not only when the text changes.
 - Enter adds a line, Escape stops editing. Choosing another tool also ends editing, and re-entering a
   text layer puts the caret at the end of the text.
 - Text wraps to the layer's `wrapWidth` (880 units for new text). Text saved before wrapping existed has

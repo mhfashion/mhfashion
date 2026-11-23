@@ -891,10 +891,15 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       const caretLine = editor.value.slice(0, editor.selectionStart).split("\n").length - 1;
       const caretTop = rect.top + caretLine * lineHeight;
       const bounds = viewport.getBoundingClientRect();
+      // A phone keyboard shrinks the visual viewport without shrinking the layout box, so the
+      // bottom of the page is visible to the element and hidden from the person typing.
+      const visual = window.visualViewport;
+      const visibleTop = visual ? Math.max(bounds.top, visual.offsetTop) : bounds.top;
+      const visibleBottom = visual ? Math.min(bounds.bottom, visual.offsetTop + visual.height) : bounds.bottom;
       const margin = 32;
       let shift = 0;
-      if (caretTop + lineHeight > bounds.bottom - margin) shift = caretTop + lineHeight - (bounds.bottom - margin);
-      else if (caretTop < bounds.top + margin) shift = caretTop - (bounds.top + margin);
+      if (caretTop + lineHeight > visibleBottom - margin) shift = caretTop + lineHeight - (visibleBottom - margin);
+      else if (caretTop < visibleTop + margin) shift = caretTop - (visibleTop + margin);
       if (shift) setPan((current) => ({ ...current, y: current.y - shift }));
     });
   }, []);
@@ -904,6 +909,23 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     return () => {
       if (caretPanFrameRef.current !== null) cancelAnimationFrame(caretPanFrameRef.current);
       caretPanFrameRef.current = null;
+    };
+  }, [editingTextValueForCaret, keepTextCaretVisible]);
+  // The keyboard opening, a rotation or a window resize moves the caret out of view without any
+  // typing, so the pan has to run again even though the text did not change.
+  useEffect(() => {
+    if (editingTextValueForCaret === undefined) return;
+    const schedule = () => requestAnimationFrame(keepTextCaretVisible);
+    const visual = window.visualViewport;
+    window.addEventListener("resize", schedule);
+    window.addEventListener("orientationchange", schedule);
+    visual?.addEventListener("resize", schedule);
+    visual?.addEventListener("scroll", schedule);
+    return () => {
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("orientationchange", schedule);
+      visual?.removeEventListener("resize", schedule);
+      visual?.removeEventListener("scroll", schedule);
     };
   }, [editingTextValueForCaret, keepTextCaretVisible]);
   // Moving the caret inside existing text (click, arrow keys) has to scroll it into view too.

@@ -864,6 +864,58 @@ async function main() {
     }
     console.log("PASS Burmese wrapping: a long word breaks between clusters on the canvas, the mockup and the preview");
   }
+  /** E2 checklist 3: the soft keyboard shrinks the viewport; the caret has to stay in view. */
+  async function keyboardCaret() {
+    await load(390, 844, true);
+    await tap('button[aria-label="Text tool"]');
+    const spot = await evaluate(() => {
+      const r = document.querySelector('canvas[aria-label="Blank print canvas"]').getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 3 };
+    });
+    await touch("touchStart", [{ ...spot, id: 1 }]);
+    await touch("touchEnd", []);
+    await pause(700);
+    for (let line = 1; line <= 6; line++) {
+      await send("Input.insertText", { text: `line ${line}` });
+      await send("Input.dispatchKeyEvent", { type: "keyDown", text: "\r", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+      await pause(120);
+    }
+    const caretBox = () => evaluate(() => {
+      const viewport = document.querySelector('[aria-label="Editor viewport"]');
+      const editor = viewport.querySelector('[data-editor-text-editor="true"] textarea');
+      const rect = editor.getBoundingClientRect();
+      const cssHeight = editor.offsetHeight || rect.height;
+      const scale = cssHeight > 0 ? rect.height / cssHeight : 1;
+      const lineHeight = (Number.parseFloat(getComputedStyle(editor).lineHeight) || cssHeight) * scale;
+      const caretLine = editor.value.slice(0, editor.selectionStart).split("\n").length - 1;
+      const top = rect.top + caretLine * lineHeight;
+      const box = viewport.getBoundingClientRect();
+      const visual = window.visualViewport;
+      return {
+        top,
+        bottom: top + lineHeight,
+        visibleTop: visual ? Math.max(box.top, visual.offsetTop) : box.top,
+        visibleBottom: visual ? Math.min(box.bottom, visual.offsetTop + visual.height) : box.bottom,
+        lines: editor.value.split("\n").length,
+      };
+    });
+    const tall = await caretBox();
+    assert.ok(tall.lines >= 6, "six lines of text reached the editor");
+    assert.ok(tall.bottom <= tall.visibleBottom + 1, "the caret is in view while the whole screen is available");
+    // A soft keyboard takes the lower half of the screen: 390 x 844 becomes 390 x 400.
+    await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 400, mobile: true, deviceScaleFactor: 2 });
+    await pause(700);
+    const short = await caretBox();
+    assert.ok(short.visibleBottom < 500, "the visible area really did shrink");
+    assert.ok(short.top >= short.visibleTop - 1 && short.bottom <= short.visibleBottom + 1,
+      `the caret stays inside the visible area when the keyboard opens (caret ${Math.round(short.top)}-${Math.round(short.bottom)}, visible ${Math.round(short.visibleTop)}-${Math.round(short.visibleBottom)})`);
+    await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, mobile: true, deviceScaleFactor: 2 });
+    await pause(700);
+    const restored = await caretBox();
+    assert.ok(restored.top >= restored.visibleTop - 1 && restored.bottom <= restored.visibleBottom + 1, "and it is still in view once the keyboard closes");
+    console.log("PASS keyboard caret: six lines, a shrinking viewport and a restored one all keep the caret in view");
+  }
   /** E2 checklist 7: a busy design, the 30-step undo floor, a second finger and a rotation. */
   async function denseDesign() {
     await load(390, 844, true);
@@ -1278,6 +1330,8 @@ async function main() {
     await pause(250);
     assert.equal(await evaluate(() => !!document.querySelector('[data-editor-hover-outline="true"]')), false, "a touch has no hover outline");
     console.log("PASS hover highlight: canvas to row, row to canvas, no selection change, touch unaffected");
+
+    await keyboardCaret();
 
     const uniqueProblems = [...new Set(pageProblems)];
     assert.deepEqual(uniqueProblems, [], `the page logged no error during the run:\n${uniqueProblems.join("\n")}`);

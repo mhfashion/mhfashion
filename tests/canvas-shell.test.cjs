@@ -885,7 +885,11 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /const screenScale = cssHeight > 0 \? rect\.height \/ cssHeight : 1;/);
   assert.match(source, /const lineHeight = \(Number\.parseFloat\(window\.getComputedStyle\(editor\)\.lineHeight\) \|\| cssHeight\) \* screenScale;/);
   assert.match(source, /const caretTop = rect\.top \+ caretLine \* lineHeight;/);
-  assert.match(source, /if \(caretTop \+ lineHeight > bounds\.bottom - margin\) shift = caretTop \+ lineHeight - \(bounds\.bottom - margin\);/);
+  // A phone keyboard shrinks the visual viewport only, so the pan clamps to it and re-runs when it moves.
+  assert.match(source, /const visibleBottom = visual \? Math\.min\(bounds\.bottom, visual\.offsetTop \+ visual\.height\) : bounds\.bottom;/);
+  assert.match(source, /if \(caretTop \+ lineHeight > visibleBottom - margin\) shift = caretTop \+ lineHeight - \(visibleBottom - margin\);/);
+  assert.match(source, /window\.addEventListener\("resize", schedule\)/);
+  assert.match(source, /visual\?\.addEventListener\("resize", schedule\)/);
   // One keystroke must not pan twice: the value effect and the caret listeners coalesce.
   assert.match(source, /if \(caretPanFrameRef\.current !== null\) cancelAnimationFrame\(caretPanFrameRef\.current\);/);
   assert.doesNotMatch(source, /const caret = editor\.getBoundingClientRect\(\);\n\s*const bounds = viewport\.getBoundingClientRect\(\);/);
