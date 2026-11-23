@@ -832,9 +832,11 @@ rather than in the Tools bar.
 
 ## 8. Test coverage today
 
+Counted on 2026-11-22 from the files themselves (each file run on its own, passing), not from memory.
+
 | Suite | Tests |
-|---|---|
-| **Editor** | **224** |
+| --- | --- |
+| **Editor** | **245** |
 | `tests/browser-guards.test.cjs` | 1 |
 | `tests/canvas-shell.test.cjs` | 30 |
 | `tests/canvas-spec.test.cjs` | 2 |
@@ -846,58 +848,79 @@ rather than in the Tools bar.
 | `tests/editor-flip.test.cjs` | 7 |
 | `tests/editor-font-audit.test.cjs` | 5 |
 | `tests/editor-fonts.test.cjs` | 12 |
-| `tests/editor-image-ppi.test.cjs` | 9 |
+| `tests/editor-image-ppi.test.cjs` | 11 |
 | `tests/editor-layers.test.cjs` | 49 |
 | `tests/editor-path-boolean.test.cjs` | 10 |
 | `tests/editor-pen-path.test.cjs` | 6 |
+| `tests/editor-pinch.test.cjs` | 11 |
 | `tests/editor-price.test.cjs` | 4 |
 | `tests/editor-shortcuts.test.cjs` | 6 |
 | `tests/editor-snap.test.cjs` | 8 |
 | `tests/editor-tool-options.test.cjs` | 12 |
+| `tests/editor-viewport.test.cjs` | 8 |
 | `tests/photo-adjustments.test.cjs` | 18 |
-| **Admin** | **152** |
-| `tests/account-orders.test.cjs` | 6 |
+| **Admin** | **165** |
 | `tests/admin-ads.test.cjs` | 12 |
 | `tests/admin-attributes.test.cjs` | 10 |
+| `tests/admin-brushes.test.cjs` | 13 |
+| `tests/admin-cascade.test.cjs` | 10 |
+| `tests/admin-csv.test.cjs` | 9 |
 | `tests/admin-demo-auth.test.cjs` | 4 |
 | `tests/admin-demo-data.test.cjs` | 13 |
 | `tests/admin-jersey.test.cjs` | 10 |
 | `tests/admin-loyalty.test.cjs` | 10 |
 | `tests/admin-modules.test.cjs` | 11 |
-| `tests/admin-order-print.test.cjs` | 11 |
+| `tests/admin-order-print.test.cjs` | 12 |
 | `tests/admin-orders.test.cjs` | 7 |
 | `tests/admin-posts.test.cjs` | 13 |
 | `tests/admin-pricing.test.cjs` | 16 |
 | `tests/admin-settlements.test.cjs` | 8 |
 | `tests/admin-takedown.test.cjs` | 7 |
-| `tests/order-archive.test.cjs` | 9 |
-| `tests/order-qr.test.cjs` | 5 |
-| **Storefront and shared** | **129** |
+| **Storefront and shared** | **295** |
+| `tests/account-orders.test.cjs` | 6 |
+| `tests/asset-catalogue.test.cjs` | 15 |
+| `tests/asset-rebuild.test.cjs` | 3 |
+| `tests/asset-routes.test.cjs` | 14 |
 | `tests/cart-lines.test.cjs` | 9 |
+| `tests/check-font-manifest.test.cjs` | 5 |
 | `tests/checkout.test.cjs` | 10 |
+| `tests/client-error-log.test.cjs` | 15 |
+| `tests/contact-messages.test.cjs` | 8 |
 | `tests/delivery-quote.test.cjs` | 5 |
 | `tests/guide-card.test.cjs` | 5 |
 | `tests/guide-http.test.cjs` | 5 |
+| `tests/guide-products.test.cjs` | 17 |
 | `tests/guides.test.cjs` | 10 |
+| `tests/loyalty-ledger.test.cjs` | 7 |
 | `tests/nyein-brand.test.cjs` | 5 |
+| `tests/order-archive.test.cjs` | 9 |
+| `tests/order-barcode.test.cjs` | 9 |
+| `tests/order-qr.test.cjs` | 5 |
+| `tests/order-refunds.test.cjs` | 8 |
 | `tests/payments.test.cjs` | 9 |
-| `tests/print-quality.test.cjs` | 16 |
+| `tests/print-quality.test.cjs` | 40 |
 | `tests/product-mockup.test.cjs` | 14 |
 | `tests/product-trust-row.test.cjs` | 4 |
+| `tests/pwa.test.cjs` | 7 |
 | `tests/rate-limit.test.cjs` | 9 |
 | `tests/search.test.cjs` | 5 |
+| `tests/size-chart.test.cjs` | 7 |
+| `tests/stock-movement.test.cjs` | 7 |
 | `tests/storefront-info.test.cjs` | 8 |
 | `tests/structured-data.test.cjs` | 8 |
 | `tests/wishlist.test.cjs` | 7 |
-| **All suites** | **505** |
+| **All suites** | **705** |
 
-`tests/editor-touch.cjs` is the browser suite (16 sections, run against a live server): the draft
+`tests/editor-touch.cjs` is the browser suite (17 sections, run against a live server): the draft
 reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, a long Burmese word
-wrapping between grapheme clusters, an upload that cannot be decoded, and a console guard that fails the run on any uncaught exception or
-`console.error`.
+wrapping between grapheme clusters, an upload that cannot be decoded, the hover highlight in both
+directions, and a console guard that fails the run on any uncaught exception or `console.error`.
 
-The last full run (`node --test tests/*.test.cjs`) reported 505 passing, 0 failing, against a server
-on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise).
+`tests/storefront-e2e.cjs` drives the purchase path over CDP at 1440 × 900 and 390 × 844 touch.
+
+The last full run (`node --test tests/*.test.cjs`) reported **705 passing, 0 failing**, against a server
+on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise), and both browser suites
+passed on the same build.
 
 
 ### Checks run 2026-11-22 (shop side, admin, routing)
