@@ -646,6 +646,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   that reads as decoration. The current icons change with the state, and each control still carries
   `aria-label` + `title` naming the current value and `data-header-language` / `data-header-currency`.
   Keep all three or the state becomes invisible again.
+- `<html lang>` follows the locale: `LocaleProvider` sets `document.documentElement.lang` to `en` / `my`
+  on every change, so a screen reader uses the right voice for Burmese. It used to stay `en` always.
+- Two `[data-header-language]` nodes exist in the DOM at every width (the header button and the mobile
+  drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
+  whose `click()` does nothing.
 
 ## Editor draft restore (`apps/web/src/lib/design-draft.ts`, `EditorCanvas.tsx`)
 - The draft payload is `{ layers, placement }`; `placement[id] = { offset, scale, rotation }`. `readDesignDraftSnapshot()` reads it, `saveDesignDraft(layers, placement)` writes it.
