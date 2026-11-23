@@ -62,6 +62,8 @@ export default function Footer() {
           <form className="flex gap-1.5">
             <input
               type="email"
+
+              aria-label={t("footer.email")}
               placeholder={t("footer.email")}
               className="flex-1 bg-bg-surface rounded-md h-6 px-2 text-[9px] text-text-primary placeholder:text-text-faint"
             />

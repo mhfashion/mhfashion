@@ -66,6 +66,22 @@ async function main() {
     await send("Emulation.setDeviceMetricsOverride", { width, height, mobile, deviceScaleFactor: 1 });
     await send("Emulation.setTouchEmulationEnabled", { enabled: mobile, maxTouchPoints: mobile ? 5 : 1 });
   }
+  /** Every control a shopper can reach must have an accessible name; a placeholder is not one. */
+  async function assertAccessibleNames(pages) {
+    const missing = [];
+    for (const [path, ready] of pages) {
+      await visit(path, ready);
+      const unnamed = await evaluate(() => {
+        const name = (element) => (element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || "").trim();
+        return [...document.querySelectorAll('button, a[href], input:not([type="hidden"]), select, textarea')]
+          .filter((element) => !element.closest('[aria-hidden="true"]'))
+          .filter((element) => !name(element))
+          .map((element) => `${element.tagName.toLowerCase()}${element.getAttribute("type") ? `[${element.getAttribute("type")}]` : ""}`);
+      });
+      if (unnamed.length) missing.push(`${path}: ${unnamed.join(", ")}`);
+    }
+    assert.deepEqual(missing, [], "every control has an accessible name");
+  }
   async function visit(path, ready) {
     await send("Page.navigate", { url: `${origin}${path}` });
     for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -315,6 +331,9 @@ async function main() {
 
     console.log("PASS desktop: home, search, wishlist, faq, guide, checkout, account orders");
 
+    await assertAccessibleNames([["/", "header"], ["/create", 'canvas[aria-label="Blank print canvas"]'], ["/checkout", "main"]]);
+    console.log("PASS accessible names: home, editor and checkout controls are all named");
+
     // ---------- phone ----------
     await viewport(390, 844, true);
     await visit("/", "header");
@@ -355,7 +374,8 @@ async function main() {
     assert.ok(phoneOrders.cards.every((width) => width <= 390), `card widths: ${phoneOrders.cards.join(",")}`);
 
     assert.deepEqual(errors, [], `no page errors during the run: ${errors.join(" | ")}`);
-    console.log("PASS phone: navigation, checkout and order history fit 390px");
+    await assertAccessibleNames([["/", "header"], ["/checkout", "main"]]);
+    console.log("PASS phone: navigation, checkout and order history fit 390px, every control is named");
   } finally {
     ws.close();
   }
