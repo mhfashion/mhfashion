@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -301,6 +301,16 @@ export default function AccountPage() {
   const sectionLabel = (section: (typeof SECTIONS)[number]) => t(section.labelKey) === section.labelKey ? section.fallback : t(section.labelKey);
 
   const sectionContent = useMemo(() => active, [active]);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const lastSection = useRef(active);
+
+  // Switching sections swaps the whole panel in place, so the focus has to follow it or a keyboard user
+  // is left standing on a nav button with no idea what the page now shows.
+  useEffect(() => {
+    if (lastSection.current === active) return;
+    lastSection.current = active;
+    requestAnimationFrame(() => headingRef.current?.focus());
+  }, [active]);
 
   return (
     <main className="min-h-screen bg-bg">
@@ -309,7 +319,7 @@ export default function AccountPage() {
         <div className="mx-auto grid w-full max-w-[1480px] gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="hidden xl:flex xl:flex-col xl:gap-4">
             <div className="rounded-2xl bg-gradient-to-br from-[#69b917] via-[#4a9d0f] to-[#25720b] p-5 text-center text-white shadow-sm"><div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/70 bg-slate-900 text-xl font-black shadow-lg">MTA</div><h2 className="mt-3 text-lg font-black">Min Thu Aung</h2><p className="text-xs text-white/80">@minthu.aung</p><span className="mt-3 inline-flex rounded-full bg-[#e7b52d] px-3 py-1 text-[10px] font-bold text-[#573600]">♛ {copy.member}</span></div>
-            <nav aria-label="Account navigation" className="rounded-2xl border border-border bg-bg-surface p-2">{SECTIONS.map((section) => { const Icon = section.Icon; return <button key={section.id} onClick={() => setActive(section.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-xs font-semibold transition-colors ${active === section.id ? "bg-accent/10 text-accent" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}><Icon size={17} /> {sectionLabel(section)}{section.id === "points" && <span data-account-points-badge className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[9px] text-accent-foreground">{points.total}</span>}</button>; })}<div className="my-2 border-t border-border" /><button className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold text-text-secondary hover:bg-bg"><LogOut size={17} /> {t("account.signOut")}</button></nav>
+            <nav aria-label="Account navigation" className="rounded-2xl border border-border bg-bg-surface p-2">{SECTIONS.map((section) => { const Icon = section.Icon; return <button key={section.id} onClick={() => setActive(section.id)} aria-current={active === section.id ? "page" : undefined} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-xs font-semibold transition-colors ${active === section.id ? "bg-accent/10 text-accent" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}><Icon size={17} /> {sectionLabel(section)}{section.id === "points" && <span data-account-points-badge className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[9px] text-accent-foreground">{points.total}</span>}</button>; })}<div className="my-2 border-t border-border" /><button className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold text-text-secondary hover:bg-bg"><LogOut size={17} /> {t("account.signOut")}</button></nav>
             <div className="rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]"><Sparkles size={25} className="mx-auto text-[#6eae18]" /><h3 className="mt-3 text-base font-black">{copy.earn}</h3><p className="mt-2 text-[10px]">{copy.earnSub}</p><button className="mt-4 rounded-full bg-[#54a817] px-4 py-2 text-[10px] font-bold text-white">{copy.learn} <ArrowRight size={12} className="ml-1 inline" /></button></div>
           </aside>
 
@@ -321,7 +331,7 @@ export default function AccountPage() {
             </section>
             {sectionContent === "dashboard" ? (
               <>
-                <section className="relative isolate mb-5 min-h-[205px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-6 py-7 text-[#172810] sm:px-9 sm:py-9"><div className="relative z-10 max-w-[58%]"><h1 className="text-3xl font-black leading-tight sm:text-4xl">{copy.welcome}</h1><p className="mt-3 text-sm text-[#355128]">{copy.welcomeSub}</p><button onClick={() => window.location.href = "/create"} className="mt-5 inline-flex items-center rounded-full bg-[#55a918] px-4 py-2.5 text-xs font-bold text-white">{copy.start} <ArrowRight size={15} className="ml-1.5" /></button></div><div className="absolute -right-8 -top-12 h-72 w-72 rounded-full bg-[#9bda45]/50" /><div className="absolute bottom-[-55px] right-[18%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block"><div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div></div><div className="absolute bottom-5 right-6 text-3xl font-black italic text-[#54a817]/80 sm:right-12">Create<br />Your Style</div></section>
+                <section className="relative isolate mb-5 min-h-[205px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-6 py-7 text-[#172810] sm:px-9 sm:py-9"><div className="relative z-10 max-w-[58%]"><h1 ref={headingRef} tabIndex={-1} className="text-3xl font-black leading-tight sm:text-4xl">{copy.welcome}</h1><p className="mt-3 text-sm text-[#355128]">{copy.welcomeSub}</p><button onClick={() => window.location.href = "/create"} className="mt-5 inline-flex items-center rounded-full bg-[#55a918] px-4 py-2.5 text-xs font-bold text-white">{copy.start} <ArrowRight size={15} className="ml-1.5" /></button></div><div className="absolute -right-8 -top-12 h-72 w-72 rounded-full bg-[#9bda45]/50" /><div className="absolute bottom-[-55px] right-[18%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block"><div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div></div><div className="absolute bottom-5 right-6 text-3xl font-black italic text-[#54a817]/80 sm:right-12">Create<br />Your Style</div></section>
                 <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard Icon={ShoppingBag} label={copy.totalOrders} value={String(orders.length)} helper={orders.length ? copy.recentOrders : copy.viewAllOrders} /><StatCard Icon={Star} label={copy.points} value={String(points.total)} helper={points.permanent ? `${points.permanent} kept + ${points.daily} daily` : `${points.daily} daily`} tone="yellow" /><StatCard Icon={Wallet} label={copy.wallet} value={formatMoney(12500)} helper={`↑ +${formatMoney(2000)}`} tone="blue" /><StatCard Icon={Heart} label={copy.wishlist} value={String(wishlist.count)} helper="View all →" tone="red" /></section>
                 <div className="grid gap-5 lg:grid-cols-[1.25fr_0.9fr]">
                   <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><ShoppingBag size={19} className="text-accent" /> {copy.recentOrders}</h2><button onClick={() => setActive("orders")} className="text-xs font-semibold text-accent">{copy.viewAllOrders} <ArrowRight size={13} className="ml-1 inline" /></button></div>{orders.length ? (
@@ -338,7 +348,7 @@ export default function AccountPage() {
               </>
             ) : (
               <section className="rounded-2xl border border-border bg-bg-surface p-5 sm:p-7">
-                <div className="mb-6 flex items-end justify-between border-b border-border pb-5"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent">MH Fashion Account</p><h1 className="mt-2 text-2xl font-black">{sectionLabel(SECTIONS.find((section) => section.id === active) ?? SECTIONS[0])}</h1></div><button onClick={() => setActive("dashboard")} className="text-xs font-semibold text-accent">← Dashboard</button></div>
+                <div className="mb-6 flex items-end justify-between border-b border-border pb-5"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent">MH Fashion Account</p><h1 ref={headingRef} tabIndex={-1} className="mt-2 text-2xl font-black">{sectionLabel(SECTIONS.find((section) => section.id === active) ?? SECTIONS[0])}</h1></div><button onClick={() => setActive("dashboard")} className="text-xs font-semibold text-accent">← Dashboard</button></div>
                 {active === "orders" && (orders.length ? (
                   <div data-account-orders>
                     <p className="mb-3 text-xs text-text-muted">{orders.length} {orders.length === 1 ? "order" : "orders"} placed on this device.</p>

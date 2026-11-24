@@ -618,6 +618,39 @@ async function main() {
     assert.match(wishCleared.notice, /cleared/i, "clearing is announced");
     assert.match(wishCleared.focus, /No saved designs yet/i, `clear wishlist parks the focus on the empty state, not ${wishCleared.focus}`);
     console.log("PASS wishlist: un-hearting a card keeps the focus in the list and says what left");
+
+    // ---------- account sections ----------
+    // The section nav swapped the whole panel in place: nothing said which section was showing, and the
+    // focus stayed on the nav button while the page under it changed.
+    await viewport(1440, 900, false);
+    const accountState = () => evaluate(() => {
+      const nav = document.querySelector('nav[aria-label="Account navigation"]');
+      return {
+        current: [...nav.querySelectorAll("button")]
+          .filter((button) => button.getAttribute("aria-current") === "page")
+          .map((button) => button.textContent.trim()),
+        heading: document.querySelector("h1")?.textContent?.trim() || "",
+        focus: document.activeElement?.tagName === "H1" ? `h1:${document.activeElement.textContent.trim()}` : (document.activeElement?.tagName || ""),
+      };
+    });
+
+    await visit("/account", "main");
+    const accountStart = await accountState();
+    assert.deepEqual(accountStart.current, ["Dashboard"], `exactly one section is current: ${accountStart.current}`);
+
+    await evaluate(() => [...document.querySelectorAll('nav[aria-label="Account navigation"] button')].find((button) => /order/i.test(button.textContent)).click());
+    await pause(400);
+    const accountOrders = await accountState();
+    assert.deepEqual(accountOrders.current, ["Order History"], "the current section follows the choice");
+    assert.equal(accountOrders.heading, "Order History", "the panel shows the chosen section");
+    assert.equal(accountOrders.focus, "h1:Order History", `the focus moves to the new section heading, not ${accountOrders.focus}`);
+
+    await evaluate(() => [...document.querySelectorAll('nav[aria-label="Account navigation"] button')].find((button) => /dashboard/i.test(button.textContent)).click());
+    await pause(400);
+    const accountBack = await accountState();
+    assert.deepEqual(accountBack.current, ["Dashboard"], "returning to the dashboard marks it current");
+    assert.match(accountBack.focus, /^h1:/, "the dashboard heading takes the focus back");
+    console.log("PASS account sections: the nav states the current section and hands the focus to its heading");
     // ---------- reduced motion ----------
     // A shopper who asks the system for less motion must not get the sliding category strip.
     await viewport(1440, 900, false);

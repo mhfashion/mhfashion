@@ -652,6 +652,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Account section nav (`app/account/page.tsx`)
+- The desktop sidebar swaps the whole panel in place, so each nav button carries
+  `aria-current="page"` when it is the shown section, and `active` changing moves the focus to the section
+  `<h1>` (`tabIndex={-1}`). Without it the focus stayed on the nav button and nothing said what the page
+  now showed. The dashboard and the other sections render different `<h1>`s, and both take the same ref
+  because only one is mounted at a time.
+- `tests/storefront-e2e.cjs` clicks the nav at 1440px (the aside is `xl:flex`) and asserts the current
+  marker, the heading text and the focused element.
+
 ## Wishlist removals (`app/wishlist/page.tsx`)
 - Un-hearting a card and "Clear wishlist" both delete the focused button, so the page watches `items` and,
   when the list shrinks, hands the focus to the next card's `[data-wishlist-toggle]` or to the empty-state
