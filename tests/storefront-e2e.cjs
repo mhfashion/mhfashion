@@ -651,6 +651,49 @@ async function main() {
     assert.deepEqual(accountBack.current, ["Dashboard"], "returning to the dashboard marks it current");
     assert.match(accountBack.focus, /^h1:/, "the dashboard heading takes the focus back");
     console.log("PASS account sections: the nav states the current section and hands the focus to its heading");
+
+    // ---------- contact form ----------
+    // The issue list was silent and the success panel appeared under a focus that never moved, so a
+    // screen-reader shopper heard nothing either way.
+    await viewport(1440, 900, false);
+    const contactState = () => evaluate(() => ({
+      alert: document.querySelector('[data-contact-issues][role="alert"]')?.textContent?.trim() || "",
+      focus: document.activeElement?.getAttribute("aria-label") || document.activeElement?.tagName || "",
+      nameInvalid: document.querySelector('[aria-label="Your name"]')?.getAttribute("aria-invalid") || "",
+      sentRole: document.querySelector("[data-contact-sent]")?.getAttribute("role") || "",
+      sentFocused: document.activeElement?.hasAttribute("data-contact-sent") || false,
+    }));
+    const typeInto = async (label, text) => {
+      await evaluate((selector) => document.querySelector(selector).focus(), `[aria-label="${label}"]`);
+      await send("Input.insertText", { text });
+      await pause(120);
+    };
+
+    await visit("/contact", "[data-contact-form]");
+    await evaluate(() => document.querySelector("[data-contact-record]").focus());
+    await pressEnter();
+    const contactEmpty = await contactState();
+    assert.match(contactEmpty.alert, /Add your name/, "the issues are an alert, so they are announced");
+    assert.equal(contactEmpty.focus, "Your name", `the focus goes to the first field to fix, not ${contactEmpty.focus}`);
+    assert.equal(contactEmpty.nameInvalid, "true", "the offending field is marked invalid");
+
+    await typeInto("Your name", "Thura Aung");
+    await typeInto("Your email", "thura@example.com");
+    await typeInto("Design link or name", "Starburst tee");
+    await typeInto("Message", "The starburst tee is my artwork. Please take it down.");
+    await evaluate(() => document.querySelector("[data-contact-record]").focus());
+    await pressEnter();
+    const contactSent = await contactState();
+    assert.equal(contactSent.alert, "", "the issues clear once the form is valid");
+    assert.equal(contactSent.sentRole, "status", "the confirmation is a live region");
+    assert.equal(contactSent.sentFocused, true, "the focus moves to the confirmation");
+
+    await evaluate(() => [...document.querySelectorAll("[data-contact-sent] button")].find((button) => /another/i.test(button.textContent)).click());
+    await pause(300);
+    const contactAgain = await contactState();
+    assert.equal(contactAgain.sentRole, "", "writing another message closes the confirmation");
+    assert.equal(contactAgain.focus, "Your name", `the focus returns to the first field, not ${contactAgain.focus}`);
+    console.log("PASS contact form: the issues are announced, the bad field is marked and the confirmation takes the focus");
     // ---------- reduced motion ----------
     // A shopper who asks the system for less motion must not get the sliding category strip.
     await viewport(1440, 900, false);

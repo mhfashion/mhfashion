@@ -50,19 +50,29 @@ export const CONTACT_BODY_MAX = 2000;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** What stops a message being sent, in the order the form shows it. */
-export function contactDraftIssues(draft: Partial<ContactDraft>): string[] {
-  const issues: string[] = [];
-  if (!draft.name?.trim()) issues.push("Add your name so we know who we are replying to.");
-  if (!draft.email?.trim()) issues.push("Add an email address for the reply.");
-  else if (!EMAIL_SHAPE.test(draft.email.trim())) issues.push("That email address does not look complete.");
+export type ContactField = "name" | "email" | "message" | "topic" | "design";
+
+/**
+ * The same rules as {@link contactDraftIssues}, keyed by the field they belong to, so the form can mark
+ * the offending input with `aria-invalid` instead of only listing the sentences above it.
+ */
+export function contactFieldIssues(draft: Partial<ContactDraft>): Partial<Record<ContactField, string>> {
+  const issues: Partial<Record<ContactField, string>> = {};
+  if (!draft.name?.trim()) issues.name = "Add your name so we know who we are replying to.";
+  if (!draft.email?.trim()) issues.email = "Add an email address for the reply.";
+  else if (!EMAIL_SHAPE.test(draft.email.trim())) issues.email = "That email address does not look complete.";
   const body = draft.body?.trim() ?? "";
-  if (!body) issues.push("Write your message.");
-  else if (body.length < CONTACT_BODY_MIN) issues.push(`A useful message is at least ${CONTACT_BODY_MIN} characters.`);
-  else if (body.length > CONTACT_BODY_MAX) issues.push(`Keep the message under ${CONTACT_BODY_MAX} characters.`);
-  if (!draft.topic || !CONTACT_TOPICS.includes(draft.topic)) issues.push("Choose what the message is about.");
+  if (!body) issues.message = "Write your message.";
+  else if (body.length < CONTACT_BODY_MIN) issues.message = `A useful message is at least ${CONTACT_BODY_MIN} characters.`;
+  else if (body.length > CONTACT_BODY_MAX) issues.message = `Keep the message under ${CONTACT_BODY_MAX} characters.`;
+  if (!draft.topic || !CONTACT_TOPICS.includes(draft.topic)) issues.topic = "Choose what the message is about.";
   // A claim without the design is not actionable, and the page already asks for it.
-  if (draft.topic === "claim" && !draft.designRef?.trim()) issues.push("A claim needs the design name or a link to it.");
+  if (draft.topic === "claim" && !draft.designRef?.trim()) issues.design = "A claim needs the design name or a link to it.";
   return issues;
+}
+
+export function contactDraftIssues(draft: Partial<ContactDraft>): string[] {
+  return Object.values(contactFieldIssues(draft));
 }
 
 function nextMessageId(existing: readonly ContactMessage[]): string {

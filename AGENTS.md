@@ -24,6 +24,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `npm run start --workspace=apps/web -- --port 3000` then run the test file.
   `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
 
+## Contact form (`ContactForm.tsx`, `lib/contact-messages.ts`)
+- `contactFieldIssues(draft)` keys each rule to the field it belongs to (`name` / `email` / `message` /
+  `topic` / `design`); `contactDraftIssues` is `Object.values` of it, so the sentences the admin store
+  records and the form's `aria-invalid` marks come from one set of rules. Keep the two in that shape — a
+  second copy of the rules is how a field ends up marked without a reason, or the other way round.
+- Sending marks the offending fields `aria-invalid`, moves the focus to the first one, and lists the
+  reasons in a `role="alert"` block. The success panel is `role="status"` and takes the focus; "Write
+  another message" closes it and puts the focus back on the name field.
+- `tests/storefront-e2e.cjs` drives the whole path with `Input.insertText` (real `input` events, which
+  React's controlled fields need) and real Enter presses on the send button.
+
 ## Structural sweep (`tests/storefront-a11y-sweep.cjs`)
 - Walks 23 storefront routes at 1440px and six of them at 390px, and asserts per route: exactly one `<h1>`,
   every visible control has an accessible name, every visible `img` has `alt`, no duplicate `id`, no

@@ -965,7 +965,8 @@ quantity, that removing a cart line hands the focus to the next line and says wh
 panel is a dialog with a state, an unread count and Escape, that un-hearting a wishlist card hands the
 focus to the next card and says what left, that the account section nav marks the current section and
 hands the focus to its heading, that every route keeps one h1, named controls, alt text, unique ids and an
-ordered outline, and that `<html lang>` follows the language switcher (English, then Myanmar, and back across a reload).
+ordered outline, that the contact form announces its issues, marks the bad field and hands the focus to
+its confirmation, and that `<html lang>` follows the language switcher (English, then Myanmar, and back across a reload).
 
 The last full run (`node --test tests/*.test.cjs`) reported **705 passing, 0 failing**, against a server
 on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise), and both browser suites

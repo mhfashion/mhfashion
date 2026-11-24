@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Check, Copy, Mail, Send } from "lucide-react";
 import { CONTACT_EMAIL } from "@/lib/storefront-info";
 import { updateAdminData } from "@/lib/admin-demo-store";
-import { contactDraftIssues, submitContactMessage, type ContactMessage } from "@/lib/contact-messages";
+import { contactFieldIssues, submitContactMessage, type ContactField, type ContactMessage } from "@/lib/contact-messages";
 
 const TOPICS = [
   { id: "claim", label: "Copyright claim about a design", subject: "Copyright claim" },
@@ -24,7 +24,14 @@ export default function ContactForm() {
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
   const [sent, setSent] = useState<ContactMessage | null>(null);
-  const [issues, setIssues] = useState<string[]>([]);
+  const [fieldIssues, setFieldIssues] = useState<Partial<Record<ContactField, string>>>({});
+  const topicRef = useRef<HTMLSelectElement | null>(null);
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const designRef = useRef<HTMLInputElement | null>(null);
+  const messageRef = useRef<HTMLTextAreaElement | null>(null);
+  const sentRef = useRef<HTMLDivElement | null>(null);
+  const issues = Object.values(fieldIssues);
 
   const subject = useMemo(() => {
     const base = TOPICS.find((entry) => entry.id === topic)?.subject ?? "Enquiry";
@@ -46,11 +53,20 @@ export default function ContactForm() {
   const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   const ready = Boolean(name.trim() && email.trim() && message.trim());
 
+  const fields: Record<ContactField, React.RefObject<HTMLElement | null>> = {
+    topic: topicRef, name: nameRef, email: emailRef, design: designRef, message: messageRef,
+  };
+
   function sendToShop() {
     const draft = { topic, name, email, orderNumber, designRef: designLink, body: message };
-    const found = contactDraftIssues(draft);
-    setIssues(found);
-    if (found.length) return;
+    const found = contactFieldIssues(draft);
+    setFieldIssues(found);
+    const first = (Object.keys(fields) as ContactField[]).find((field) => found[field]);
+    if (first) {
+      // The list is announced by role="alert"; the focus goes to the field the shopper has to fix.
+      fields[first].current?.focus();
+      return;
+    }
     let recorded: ContactMessage | null = null;
     updateAdminData((current) => {
       const result = submitContactMessage(current, draft);
@@ -58,6 +74,12 @@ export default function ContactForm() {
       return result.data;
     });
     setSent(recorded);
+    requestAnimationFrame(() => sentRef.current?.focus());
+  }
+
+  function writeAnother() {
+    setSent(null);
+    requestAnimationFrame(() => nameRef.current?.focus());
   }
 
   async function copy() {
@@ -82,17 +104,17 @@ export default function ContactForm() {
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block sm:col-span-2">
           <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Topic</span>
-          <select aria-label="Topic" value={topic} onChange={(event) => setTopic(event.target.value as TopicId)} className={field}>
+          <select ref={topicRef} aria-label="Topic" aria-invalid={fieldIssues.topic ? true : undefined} value={topic} onChange={(event) => setTopic(event.target.value as TopicId)} className={field}>
             {TOPICS.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
           </select>
         </label>
         <label className="block">
           <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Your name</span>
-          <input aria-label="Your name" value={name} onChange={(event) => setName(event.target.value)} className={field} />
+          <input ref={nameRef} aria-label="Your name" aria-invalid={fieldIssues.name ? true : undefined} value={name} onChange={(event) => setName(event.target.value)} className={field} />
         </label>
         <label className="block">
           <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Your email</span>
-          <input aria-label="Your email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} className={field} />
+          <input ref={emailRef} aria-label="Your email" type="email" aria-invalid={fieldIssues.email ? true : undefined} value={email} onChange={(event) => setEmail(event.target.value)} className={field} />
         </label>
         <label className="block">
           <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Order number (optional)</span>
@@ -100,23 +122,23 @@ export default function ContactForm() {
         </label>
         <label className="block">
           <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Design link or name (claims)</span>
-          <input aria-label="Design link or name" value={designLink} onChange={(event) => setDesignLink(event.target.value)} className={field} />
+          <input ref={designRef} aria-label="Design link or name" aria-invalid={fieldIssues.design ? true : undefined} value={designLink} onChange={(event) => setDesignLink(event.target.value)} className={field} />
         </label>
         <label className="block sm:col-span-2">
           <span className="text-[10px] font-bold uppercase tracking-wide text-text-muted">Message</span>
-          <textarea aria-label="Message" rows={5} value={message} onChange={(event) => setMessage(event.target.value)} className={field} />
+          <textarea ref={messageRef} aria-label="Message" aria-invalid={fieldIssues.message ? true : undefined} rows={5} value={message} onChange={(event) => setMessage(event.target.value)} className={field} />
         </label>
       </div>
 
       {sent ? (
-        <div data-contact-sent className="mt-4 rounded-xl border border-[#cfe8c2] bg-[#f3fbee] px-3 py-2.5 text-[11px] leading-5 text-[#2f6b2a]">
+        <div ref={sentRef} role="status" tabIndex={-1} data-contact-sent className="mt-4 rounded-xl border border-[#cfe8c2] bg-[#f3fbee] px-3 py-2.5 text-[11px] leading-5 text-[#2f6b2a]">
           <p className="flex items-center gap-1.5 font-bold"><Check size={13} /> Message {sent.id} is with the shop</p>
           <p className="mt-0.5">We reply to {sent.email} within one business day. Keep the reference if you write again.</p>
-          <button type="button" onClick={() => setSent(null)} className="mt-1 text-[10px] font-bold underline">Write another message</button>
+          <button type="button" onClick={writeAnother} className="mt-1 text-[10px] font-bold underline">Write another message</button>
         </div>
       ) : null}
       {issues.length ? (
-        <ul data-contact-issues className="mt-3 space-y-1 rounded-xl border border-[#f3d2d4] bg-[#fff6f6] px-3 py-2 text-[10px] font-semibold text-[#c9424a]">
+        <ul role="alert" data-contact-issues className="mt-3 space-y-1 rounded-xl border border-[#f3d2d4] bg-[#fff6f6] px-3 py-2 text-[10px] font-semibold text-[#c9424a]">
           {issues.map((issue) => <li key={issue}>{issue}</li>)}
         </ul>
       ) : null}
