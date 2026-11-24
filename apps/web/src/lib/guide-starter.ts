@@ -27,6 +27,20 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
         "Understand the planned checkout choices and payment-provider flow.",
     },
     {
+      id: "10000000-0000-4000-8000-000000000005",
+      slug: "editor-guide",
+      name: "Editor Guide",
+      description:
+        "Learn the editor step by step: the tools, layers, text, and how to export a print-ready design.",
+    },
+    {
+      id: "10000000-0000-4000-8000-000000000006",
+      slug: "size-guide",
+      name: "Size Guide",
+      description:
+        "Choose the right size: how to measure, how to read the chart, and how a size should fit.",
+    },
+    {
       id: "10000000-0000-4000-8000-000000000004",
       slug: "delivery-guide",
       name: "Delivery Guide",
@@ -72,7 +86,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000011",
       slug: "how-to-read-the-size-guide",
-      categorySlug: "product-guide",
+      categorySlug: "size-guide",
       title: "How to read the size guide",
       excerpt:
         "Measure the garment you already wear, compare it with the chart, and pick the size that matches — not the size on the label.",
@@ -114,7 +128,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000012",
       slug: "how-the-editor-works",
-      categorySlug: "design-guide",
+      categorySlug: "editor-guide",
       title: "How the editor works: tools, layers and export",
       excerpt:
         "Pick a garment, open the editor, draw or upload artwork on its own layer, then export a print-ready file.",
@@ -265,7 +279,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000003",
       slug: "editor-guide",
-      categorySlug: "design-guide",
+      categorySlug: "editor-guide",
       title: "Editor Guide: make your first print",
       excerpt:
         "Open the editor, draw and type on the print canvas, arrange the layers, then check the mockup before you order.",

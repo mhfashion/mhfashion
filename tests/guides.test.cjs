@@ -116,12 +116,12 @@ function livePost(post, category) {
   };
 }
 
-test("starter handbook has four categories and twelve valid article links", async (t) => {
+test("starter handbook has six categories and twelve valid article links", async (t) => {
   useEnvironment(t, { NEXT_PUBLIC_SUPABASE_URL: undefined, NEXT_PUBLIC_SUPABASE_ANON_KEY: undefined });
   const guides = loadGuides();
   const catalog = await guides.getGuideCatalog();
   assert.equal(catalog.source, "starter");
-  assert.equal(catalog.categories.length, 4);
+  assert.equal(catalog.categories.length, 6);
   assert.equal(catalog.posts.length, 12);
   assert.equal(new Set(catalog.posts.map((post) => post.slug)).size, 12);
   for (const post of catalog.posts) {
@@ -137,7 +137,8 @@ test("the editor guide describes the editor that ships", () => {
   const catalog = starter();
   const post = catalog.posts.find((candidate) => candidate.slug === "editor-guide");
   assert.ok(post, "the editor guide is missing from the starter catalog");
-  assert.equal(post.categorySlug, "design-guide");
+  // The Editor Guide category exists for exactly this: the editor's own posts.
+  assert.equal(post.categorySlug, "editor-guide");
   assert.equal(catalog.posts.some((candidate) => candidate.slug === "the-planned-editor-flow"), false);
 
   const text = JSON.stringify(post.sections);

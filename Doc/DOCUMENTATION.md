@@ -1182,6 +1182,19 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — The handbook is grouped by subject: Editor Guide and Size Guide
+
+The handbook is the shop's post library, so the categories are subjects, not internal process names. Two categories
+join Product, Design, Payment and Delivery.
+
+- **Editor Guide** (`editor-guide`) holds the editor's own posts: "Editor Guide: make your first print" and
+  "How the editor works: tools, layers and export". The Design Guide keeps the preview and mockup post.
+- **Size Guide** (`size-guide`) holds the size posts: "How to read the size guide".
+- A post is listed under the category whose subject it teaches, so the landing page's category row reads like the
+  handbook's table of contents.
+
+The starter catalogue now holds 6 categories and 12 posts; the guide tests that count them move with it.
+
 ### 2026-11-24 — Three more handbook posts: editor, print care, ordering
 
 The handbook is the shop's post library, so the owner asked for the content a customer actually needs: sizes, the
