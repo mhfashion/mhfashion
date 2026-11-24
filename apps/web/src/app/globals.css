@@ -7,14 +7,14 @@
   color-scheme: light;
   --bg: 255 255 255;
   --bg-surface: 242 242 242;
-  --accent: 101 156 20;       /* darker lime for contrast on light bg */
+  --accent: 79 122 18;        /* dark enough that lime text and white-on-lime both reach 4.5:1 */
   --accent-foreground: 255 255 255;
   --border: 224 224 224;
   --border-light: 200 200 200;
   --text-primary: 13 13 13;
   --text-secondary: 90 90 90;
-  --text-muted: 120 120 120;
-  --text-faint: 150 150 150;
+  --text-muted: 106 106 106;
+  --text-faint: 110 110 110;
 }
 
 /* Dark mode (confirmed default theme — see .dark class on <html>) */
@@ -28,8 +28,8 @@
   --border-light: 64 64 64;
   --text-primary: 240 240 240;
   --text-secondary: 179 179 179;
-  --text-muted: 138 138 138;
-  --text-faint: 106 106 106;
+  --text-muted: 154 154 154;
+  --text-faint: 138 138 138;
 }
 
 body {

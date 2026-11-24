@@ -652,6 +652,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Colour tokens (light and dark)
+- `tests/contrast.test.cjs` reads the tokens straight out of `globals.css` and requires 4.5:1 (WCAG AA for
+  normal text) for `text-primary` / `text-secondary` / `text-muted` / `text-faint` / `accent` against both
+  `bg` and `bg-surface`, plus `accent-foreground` on `accent`. Add a token there when you add one: the
+  light lime used to sit at 3.3:1 as text and under white button text.
+- Light mode is the harder palette: `--accent` is `79 122 18` (#4F7A12, 5.09 on white) so white labels on
+  a lime button also pass. Dark mode's lime is already far above the threshold.
+- `--border` / `--border-light` are hairlines at ~1.3:1 by design; they separate content rather than mark
+  a control edge. Do not "fix" them to 3:1 without looking at the light theme, it turns every card into a
+  drawn box.
+
 ## Keyboard access (`SkipToContent.tsx`, `globals.css`)
 - The skip link focuses the page's **`<h1>`**, not a layout wrapper: the header is rendered *inside* each
   page's `<main>`, so a `#main-content` anchor jumped to a point still in front of the header. Every page

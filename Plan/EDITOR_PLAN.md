@@ -958,8 +958,9 @@ those pages has exactly one `<h1>`, that the header search field shows its focus
 checkout field carries `aria-invalid` and its own message after a failed submit, that the cart button
 names its count, that the order confirmation takes focus, that the first Tab reaches a skip link which
 lands on the page heading, that every header control shows a focus ring, that the closed phone drawer is
-inert and Escape hands the focus back from it and from the cart panel, and that `<html lang>` follows
-the language switcher (English, then Myanmar, and back across a reload).
+inert and Escape hands the focus back from it and from the cart panel, that every text token in both
+themes reaches WCAG AA against both page backgrounds, and that `<html lang>` follows the language
+switcher (English, then Myanmar, and back across a reload).
 
 The last full run (`node --test tests/*.test.cjs`) reported **705 passing, 0 failing**, against a server
 on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise), and both browser suites
