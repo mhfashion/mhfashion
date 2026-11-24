@@ -961,8 +961,9 @@ lands on the page heading, that every header control shows a focus ring, that th
 inert and Escape hands the focus back from it and from the cart panel, that every text token in both
 themes reaches WCAG AA against both page backgrounds, that the category strip stops when the system asks
 for reduced motion, that the product page marks the chosen size/colour and announces the price and
-quantity, that removing a cart line hands the focus to the next line and says what left, and that
-`<html lang>` follows the language switcher (English, then Myanmar, and back across a reload).
+quantity, that removing a cart line hands the focus to the next line and says what left, that the notification
+panel is a dialog with a state, an unread count and Escape, and that `<html lang>` follows the language
+switcher (English, then Myanmar, and back across a reload).
 
 The last full run (`node --test tests/*.test.cjs`) reported **705 passing, 0 failing**, against a server
 on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise), and both browser suites

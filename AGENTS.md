@@ -652,6 +652,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Notification panel (`NotificationBell.tsx`)
+- The bell is rendered twice (header and phone drawer), so its panel id comes from `useId()`. A static id
+  would be duplicated in the document.
+- The trigger carries `aria-expanded` / `aria-controls` / `aria-haspopup="dialog"` and names the unread
+  count (`Notifications, 2 unread`); the dot is `aria-hidden`. The panel is a labelled `role="dialog"`
+  with `tabIndex={-1}`, takes the focus on open, and Escape closes it and returns the focus to the bell.
+  Before this it closed only on an outside `mousedown`, which a keyboard user cannot produce.
+- Items render as `<ul><li>` so the count is announced; they have no action yet, so they no longer show a
+  pointer cursor.
+- Testing gotcha: the drawer copy is hidden by desktop CSS, and a panel inside a hidden subtree refuses
+  the focus, so probes must select the bell with `getClientRects().length` rather than the first match.
+
 ## Cart line removal (`CartPageClient.tsx`)
 - Removing a line, or decrementing one whose quantity is 1 (`updateCartQuantity` deletes at 0), destroys
   the button that had the focus, so the focus has to be handed over explicitly: `focusAfterRemoval` moves

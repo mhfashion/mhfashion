@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 
 type NotificationItem = {
@@ -21,6 +21,10 @@ const PLACEHOLDER_NOTIFICATIONS: NotificationItem[] = [
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // The bell is rendered in the header and again in the phone drawer, so the panel id has to be unique.
+  const panelId = useId();
   const unreadCount = PLACEHOLDER_NOTIFICATIONS.filter((n) => !n.read).length;
 
   useEffect(() => {
@@ -33,21 +37,46 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Without Escape the panel could only be dismissed with a mouse: it closes on an outside mousedown.
+  useEffect(() => {
+    if (!open) return;
+    panelRef.current?.focus();
+    function handleKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpen(false);
+      buttonRef.current?.focus();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open]);
+
   return (
     <div className="relative" ref={ref}>
       <button
-        aria-label="Notifications"
+        ref={buttonRef}
+        aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-haspopup="dialog"
         className="relative"
         onClick={() => setOpen((o) => !o)}
       >
         <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-accent" />
+          <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-accent" />
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-3 w-80 bg-bg-surface border border-border rounded-xl shadow-xl overflow-hidden z-50">
+        <div
+          ref={panelRef}
+          id={panelId}
+          role="dialog"
+          aria-label="Notifications"
+          tabIndex={-1}
+          className="absolute right-0 top-full mt-3 w-80 bg-bg-surface border border-border rounded-xl shadow-xl overflow-hidden z-50 outline-none"
+        >
           <div className="px-4 py-3 border-b border-border">
             <p className="text-sm font-semibold text-text-primary">
               Notifications
@@ -59,24 +88,26 @@ export default function NotificationBell() {
                 No notifications yet
               </p>
             ) : (
-              PLACEHOLDER_NOTIFICATIONS.map((n) => (
-                <div
-                  key={n.id}
-                  className="flex items-start gap-2.5 px-4 py-3 border-b border-border last:border-0 hover:bg-bg cursor-pointer"
-                >
-                  {!n.read && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 flex-shrink-0" />
-                  )}
-                  <div className={n.read ? "pl-4" : ""}>
-                    <p className="text-xs text-text-primary leading-snug">
-                      {n.title}
-                    </p>
-                    <p className="text-[10px] text-text-muted mt-0.5">
-                      {n.timeAgo}
-                    </p>
-                  </div>
-                </div>
-              ))
+              <ul>
+                {PLACEHOLDER_NOTIFICATIONS.map((n) => (
+                  <li
+                    key={n.id}
+                    className="flex items-start gap-2.5 px-4 py-3 border-b border-border last:border-0 hover:bg-bg"
+                  >
+                    {!n.read && (
+                      <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 flex-shrink-0" />
+                    )}
+                    <div className={n.read ? "pl-4" : ""}>
+                      <p className="text-xs text-text-primary leading-snug">
+                        {n.title}
+                      </p>
+                      <p className="text-[10px] text-text-muted mt-0.5">
+                        {n.timeAgo}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>

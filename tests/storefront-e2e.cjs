@@ -529,6 +529,51 @@ async function main() {
     assert.match(afterClear.notice, /cleared/i, "clearing is announced");
     assert.match(afterClear.focus, /cart is empty/i, `clear cart parks the focus on the empty-state heading, not ${afterClear.focus}`);
     console.log("PASS cart lines: removing a line keeps the focus in the list and says what left");
+
+    // ---------- notifications ----------
+    // The panel used to close only on an outside mousedown, which a keyboard user cannot produce.
+    await viewport(1440, 900, false);
+    // The drawer holds a second bell that desktop CSS hides, and a hidden panel cannot take the focus,
+    // so every probe picks the bell that is actually painted.
+    const visibleBell = `[...document.querySelectorAll('button[aria-haspopup="dialog"][aria-label^="Notifications"]')].find((candidate) => candidate.getClientRects().length)`;
+    const bellState = () => evaluate(() => {
+      const button = [...document.querySelectorAll('button[aria-haspopup="dialog"][aria-label^="Notifications"]')]
+        .find((candidate) => candidate.getClientRects().length);
+      const panel = document.getElementById(button?.getAttribute("aria-controls") || "");
+      return {
+        label: button?.getAttribute("aria-label") || "",
+        expanded: button?.getAttribute("aria-expanded") || "",
+        role: panel?.getAttribute("role") || "",
+        items: panel ? panel.querySelectorAll("li").length : 0,
+        focusInPanel: Boolean(panel && document.activeElement === panel),
+      };
+    });
+    const pressEscape = async () => {
+      await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+      await pause(300);
+    };
+
+    await visit("/", "header");
+    const bellClosed = await bellState();
+    assert.equal(bellClosed.expanded, "false", "the bell starts collapsed");
+    assert.equal(bellClosed.role, "", "no panel is mounted while collapsed");
+    assert.match(bellClosed.label, /2 unread/, `the bell states the unread count: ${bellClosed.label}`);
+
+    await evaluate((selector) => eval(selector).click(), visibleBell);
+    await pause(400);
+    const bellOpen = await bellState();
+    assert.equal(bellOpen.expanded, "true", "opening the bell states it is expanded");
+    assert.equal(bellOpen.role, "dialog", "the panel is a labelled dialog");
+    assert.equal(bellOpen.items, 3, "every notification is a list item");
+    assert.equal(bellOpen.focusInPanel, true, "the focus moves into the panel");
+
+    await pressEscape();
+    const bellAfterEscape = await bellState();
+    assert.equal(bellAfterEscape.expanded, "false", "Escape closes the panel");
+    assert.equal(bellAfterEscape.role, "", "the panel is unmounted after Escape");
+    assert.equal(await evaluate(() => document.activeElement?.getAttribute("aria-haspopup")), "dialog", "Escape returns the focus to the bell");
+    console.log("PASS notifications: the panel is a dialog, states its state, and Escape closes it");
     // ---------- reduced motion ----------
     // A shopper who asks the system for less motion must not get the sliding category strip.
     await viewport(1440, 900, false);
