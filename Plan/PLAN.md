@@ -3072,6 +3072,17 @@ used by the editor yet, and the editor's draft is browser-only.
   selection, and it also rejects a combination that has no price or is hidden in Availability. The button is
   never the only guard.
 - **Scope:** T-Shirt. The Phone product's required set is decided when Phone ordering is built.
+- **Helper and the bar's report built 2026-11-24 (phase 0, Buy still disabled).**
+  `lib/editor-required.ts` holds `EDITOR_REQUIRED_SELECTIONS` (the eight boxes in bar order, English and
+  Myanmar labels), `missingEditorSelections` (blank, whitespace, `null` and an absent key all count as not
+  chosen; a pre-filled default counts, decision D7) and `editorSelectionNotice` ("Choose Color and Size
+  before buying", "အရောင် နှင့် အရွယ်အစား ကို ရွေးပါ"). The notice sorts by bar order and de-duplicates, so
+  a caller's own order cannot leak into the sentence. `EditorHeaderBar2` computes the list from its own
+  eight boxes — three different states feed it (props for Product and GSM, `attributes` for the four
+  attribute boxes, local state for Color and Size) — and exposes it as `data-editor-missing` and
+  `data-editor-missing-notice`. Verified: `tests/editor-required.test.cjs` (6 tests), the header source
+  assertions in `tests/canvas-shell.test.cjs`, and `/create` in Chromium with every default chosen
+  (`data-editor-missing=""`, no console error, Buy still disabled).
 - **Order of work:** the gate ships with Buy (E1, after payment). Until then Buy stays disabled.
 - Acceptance: with Color empty, Buy shows a notice naming Color, the Color box is outlined and in view; Save
   works with Color empty; choosing Color clears the notice and outline at once; with everything chosen Buy

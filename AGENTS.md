@@ -893,6 +893,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Never `git reset --hard origin/main` without a `git fetch` first: the tracking ref lags, and the
   reset silently drops local commits that were already pushed (recover them from the pushed branch).
 
+## The Buy gate (plan E12, `apps/web/src/lib/editor-required.ts`)
+- `EDITOR_REQUIRED_SELECTIONS` is the eight header boxes in bar order with English and Myanmar labels;
+  `missingEditorSelections` treats blank, whitespace, `null` and an absent key as not chosen (a pre-filled
+  default counts, decision D7), and `editorSelectionNotice` words the sentence.
+- `EditorHeaderBar2` reports the result as `data-editor-missing` / `data-editor-missing-notice`. Buy is
+  still `disabled` until E1 lands, so this is the single place the gate will read.
+- The notice sorts and de-duplicates by bar order itself; do not pre-sort at the call site.
+
 ## Editor Header Bar 2 (`apps/web/src/components/EditorHeaderBar2.tsx`)
 - Shared geometry constants keep the Product / GSM / Color / Size / Save / Buy boxes uniform: `FIELD_BOX`, `TRIGGER_BOX`, `ACTION_BOX`, `MENU_BOX`, `MENU_OPTION`, `COLOR_SWATCH`.
 - `BoxDropdown` renders its panel through `createPortal` (so the scrollable bar cannot clip it) and sizes the panel to the trigger box width, clamped to the viewport.

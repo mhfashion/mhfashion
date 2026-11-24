@@ -1113,6 +1113,11 @@ test("Editor Header Bar 2 uses one uniform box shape, one rounded dropdown, and 
   assert.match(headerBar2, /import \{ createPortal \} from "react-dom"/);
   assert.match(headerBar2, /import type \{ EditorProduct \} from "@\/lib\/editor-product"/);
   assert.match(headerBar2, /import \{ calculateEditorPriceKs \} from "@\/lib\/editor-price"/);
+  // The E12 gate reads the same eight boxes Buy will check, so the bar reports what is missing.
+  assert.match(headerBar2, /import \{ editorSelectionNotice, missingEditorSelections \} from "@\/lib\/editor-required"/);
+  assert.match(headerBar2, /missingEditorSelections\(\{[\s\S]*?printMethod: attributes\.printMethod[\s\S]*?color: selectedColor[\s\S]*?size: selectedSize[\s\S]*?\}\)/);
+  assert.match(headerBar2, /data-editor-missing=\{missingSelections\.join\(" "\)\}/);
+  assert.match(headerBar2, /data-editor-missing-notice=\{editorSelectionNotice\(missingSelections\)\}/);
 });
 
 test("Free Transform box hides while a Brush/Pencil stroke is being drawn", () => {

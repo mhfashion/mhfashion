@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import type { EditorProduct } from "@/lib/editor-product";
+import { editorSelectionNotice, missingEditorSelections } from "@/lib/editor-required";
 import { calculateEditorPriceKs } from "@/lib/editor-price";
 import {
   COLOR_OPTIONS,
@@ -308,6 +309,19 @@ export default function EditorHeaderBar2({
 
   // Provisional client-side price, matching the storefront's variant model
   // until a real pricing source is connected to /create.
+  // Buy will refuse an order that lacks one of the eight choices (plan E12); the bar reports what is missing
+  // today so the gate has one source of truth and nothing to re-derive when Buy is wired.
+  const missingSelections = missingEditorSelections({
+    product,
+    printMethod: attributes.printMethod,
+    fabricType: attributes.fabricType,
+    knitStructure: attributes.knitStructure,
+    cuttings: attributes.cuttings,
+    gsm,
+    color: selectedColor,
+    size: selectedSize,
+  });
+
   const priceKs = calculateEditorPriceKs({ product, gsm, size: selectedSize });
   const priceLabel = priceKs === null ? "Price —" : `Price ${priceKs.toLocaleString("en-US")} Ks`;
 
@@ -315,6 +329,8 @@ export default function EditorHeaderBar2({
     <div
       role="region"
       aria-label="Header Bar 2"
+      data-editor-missing={missingSelections.join(" ")}
+      data-editor-missing-notice={editorSelectionNotice(missingSelections)}
       className="h-11 w-full shrink-0 overflow-x-auto overscroll-x-contain border-b border-border bg-bg px-2.5 [scrollbar-width:none] sm:px-3 [&::-webkit-scrollbar]:hidden"
     >
       <div className="flex h-full w-max min-w-full items-center justify-between gap-2">
