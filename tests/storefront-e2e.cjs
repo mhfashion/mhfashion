@@ -652,6 +652,38 @@ async function main() {
     assert.match(accountBack.focus, /^h1:/, "the dashboard heading takes the focus back");
     console.log("PASS account sections: the nav states the current section and hands the focus to its heading");
 
+    // ---------- product lightbox ----------
+    // The enlarged image was an aria-modal overlay that never took the focus, so the close button was out of
+    // reach until the shopper tabbed through the whole page behind it.
+    const lightboxState = () => evaluate(() => {
+      const lightbox = document.querySelector("[data-product-lightbox]");
+      return {
+        open: Boolean(lightbox),
+        focusInside: Boolean(lightbox && lightbox.contains(document.activeElement)),
+        focusLabel: document.activeElement?.getAttribute("aria-label") || document.activeElement?.tagName || "",
+      };
+    });
+    await visit("/products", "main");
+    const productPath = await evaluate(() => document.querySelector("main a[href^='/products/']")?.getAttribute("href") ?? "");
+    // The catalogue comes from Supabase, so a local run without it has no product page to open.
+    if (!productPath) {
+      console.log("SKIP product lightbox: the catalogue is empty, so there is no product page to open");
+    } else {
+    await visit(productPath, "[data-product-zoom]");
+    await evaluate(() => [...document.querySelectorAll("[data-product-zoom]")].find((button) => button.getClientRects().length).focus());
+    await pressEnter();
+    const lightboxOpen = await lightboxState();
+    assert.equal(lightboxOpen.open, true, "Enter on the zoom button opens the lightbox");
+    assert.equal(lightboxOpen.focusInside, true, "the focus moves into the lightbox");
+    await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    await pause(300);
+    const lightboxClosed = await lightboxState();
+    assert.equal(lightboxClosed.open, false, "Escape closes the lightbox");
+    assert.equal(lightboxClosed.focusLabel, "Zoom product image", `Escape returns the focus to the zoom button, not ${lightboxClosed.focusLabel}`);
+    console.log("PASS product lightbox: the focus moves in and Escape gives it back to the zoom button");
+    }
+
     // ---------- contact form ----------
     // The issue list was silent and the success panel appeared under a focus that never moved, so a
     // screen-reader shopper heard nothing either way.

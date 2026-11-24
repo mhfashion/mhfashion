@@ -24,12 +24,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `npm run start --workspace=apps/web -- --port 3000` then run the test file.
   `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
 
-## Admin modals (`components/admin/AdminUi.tsx`)
+## Modal focus (`lib/use-modal-focus.ts`)
 - `useModalFocus(open, onClose)` is the one place that moves the focus into a `role="dialog" aria-modal`
-  panel, cycles Tab inside it, and returns the focus to the control that opened it on close. It returns
-  the ref for the panel, which must also carry `tabIndex={-1}`.
-- `AdminDrawer` and the pricing `BottomSheet` both use it. A new modal should too: `aria-modal` without
-  focus management hides the page from a screen reader while Tab still walks it.
+  panel, cycles Tab inside it, handles Escape, and returns the focus to the control that opened it on
+  close. It returns the ref for the panel, which must also carry `tabIndex={-1}`.
+- Used by the admin `AdminDrawer`, the pricing `BottomSheet` and the product image lightbox
+  (`ProductMockupPreview`). A new modal should use it too: `aria-modal` without focus management hides
+  the page from a screen reader while Tab still walks it.
+- The product lightbox section of `storefront-e2e.cjs` logs `SKIP` when the local catalogue is empty
+  (Supabase is not configured, so `/products` has no cards and no product page exists). It asserts
+  normally wherever a catalogue is present.
 - The backdrop close button is `tabIndex={-1}` on purpose — it is outside the panel, so the trap never
   lands on it. Select the panel as `div[tabindex="-1"]`, not `[tabindex="-1"]`, or you get the backdrop.
 - The orders table keeps a hidden copy of each row for the phone layout, so a test must pick the opener

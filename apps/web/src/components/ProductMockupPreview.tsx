@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2, X } from "lucide-react";
 import EditorArtworkLayers from "@/components/EditorArtworkLayers";
+import { useModalFocus } from "@/lib/use-modal-focus";
 import type { DesignOverlay } from "@/lib/design-draft";
 import {
   PRODUCT_PRINT_AREA, mockupCandidates, selectionLabel, type ProductSelection,
@@ -149,16 +150,8 @@ export default function ProductMockupPreview({
 
   const [zoom, setZoom] = useState({ active: false, x: 50, y: 50 });
   const [lightbox, setLightbox] = useState(false);
-
-  // Escape closes the zoom view; without it the overlay traps the phone back button.
-  useEffect(() => {
-    if (!lightbox) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setLightbox(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [lightbox]);
+  // Escape, the focus and the hand-back to the zoom button all come from the shared modal hook.
+  const lightboxRef = useModalFocus(lightbox, () => setLightbox(false));
 
   function trackZoom(event: React.PointerEvent<HTMLDivElement>) {
     if (event.pointerType !== "mouse") return;
@@ -252,12 +245,14 @@ export default function ProductMockupPreview({
 
       {lightbox && src ? (
         <div
+          ref={lightboxRef}
+          tabIndex={-1}
           role="dialog"
           aria-modal="true"
           aria-label={`${name} enlarged`}
           data-product-lightbox
           onClick={() => setLightbox(false)}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 outline-none"
         >
           <button
             type="button"

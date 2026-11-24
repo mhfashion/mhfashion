@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { useModalFocus } from "@/lib/use-modal-focus";
 import { X } from "lucide-react";
 
 export type AdminTone = "green" | "blue" | "amber" | "red" | "violet" | "slate";
@@ -147,55 +148,6 @@ export function AdminEmpty({ title, description }: { title: string; description?
       {description ? <p className="mt-1 text-[10px] text-[#929ba7]">{description}</p> : null}
     </div>
   );
-}
-
-/**
- * aria-modal hides the page from a screen reader, so the focus has to move into the panel, stay in while it is
- * open, and go back to the control that opened it — otherwise Tab walks the page behind the sheet.
- * Returns the ref to put on the panel, which must also carry `tabIndex={-1}`.
- */
-export function useModalFocus(open: boolean, onClose: () => void) {
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-  useEffect(() => {
-    if (!open) return;
-    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const panel = panelRef.current;
-    panel?.focus();
-    function handleKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onCloseRef.current();
-        return;
-      }
-      if (event.key !== "Tab" || !panel) return;
-      const focusable = [...panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
-        .filter((element) => element.getClientRects().length > 0);
-      if (!focusable.length) {
-        event.preventDefault();
-        panel.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      } else if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
-        event.preventDefault();
-        last.focus();
-      }
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => {
-      window.removeEventListener("keydown", handleKey);
-      returnFocusRef.current?.focus?.();
-    };
-  }, [open]);
-  return panelRef;
 }
 
 export function AdminDrawer({
