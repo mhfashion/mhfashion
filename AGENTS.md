@@ -24,6 +24,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `npm run start --workspace=apps/web -- --port 3000` then run the test file.
   `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
 
+## Admin sidebar (`components/admin/AdminShell.tsx`)
+- On a phone the sidebar is a drawer. Closed, it is translated off-screen but still in the document, so it
+  carries `inert` (only while the viewport is narrow — it is the permanent sidebar on desktop). The flag
+  comes from `useMediaQuery("(max-width: 767px)")`, which reports false until hydration, so the desktop
+  layout is never briefly inert.
+- Opening it focuses the `<aside>`; Escape and the two close buttons call `closeSidebar`, which also
+  returns the focus to the "Open navigation" button (`aria-expanded` / `aria-controls` on that button).
+- The phone layout's `md:hidden` triggers mean a desktop test never sees the drawer; the sidebar section
+  of `tests/admin-drawer-a11y.cjs` runs after the pricing sheet, so it is already at 390px.
+
 ## Modal focus (`lib/use-modal-focus.ts`)
 - `useModalFocus(open, onClose)` is the one place that moves the focus into a `role="dialog" aria-modal`
   panel, cycles Tab inside it, handles Escape, and returns the focus to the control that opened it on

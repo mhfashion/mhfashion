@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BarChart3, Bell, Box, Brush, CircleHelp, ClipboardList, Globe2, House, Inbox, Layers3, LogOut, Megaphone, Menu, Newspaper, Package, Percent, Crown, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
 import { getDemoAdminSession, signOutDemoAdmin, type AdminDemoSession } from "@/lib/admin-demo-auth";
 import type { AdminModuleId } from "@/lib/admin-demo-data";
+import { useMediaQuery } from "@/lib/use-media-query";
 
 const NAV: { id: AdminModuleId; label: string; href: string; icon: LucideIcon }[] = [
   { id: "dashboard", label: "Dashboard", href: "/admin", icon: House },
@@ -60,6 +61,26 @@ export default function AdminShell({
   const [admin, setAdmin] = useState<AdminDemoSession | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isPhone = useMediaQuery("(max-width: 767px)");
+  const sidebarRef = useRef<HTMLElement | null>(null);
+  const navButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // On a phone the sidebar is a drawer. Closed, it is off-screen but still in the document, so it has to be
+  // inert or Tab walks links nobody can see; open, it takes the focus and Escape gives it back.
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false);
+    navButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    sidebarRef.current?.focus();
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") closeSidebar();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [sidebarOpen, closeSidebar]);
 
   useEffect(() => {
     const session = getDemoAdminSession();
@@ -87,15 +108,20 @@ export default function AdminShell({
 
   return (
       <div data-admin-dashboard data-admin-module={active} className="admin-dashboard -mb-16 min-h-screen bg-[#f4f6f9] text-[#171c25] md:mb-0">
-        {sidebarOpen && <button type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-[69] bg-[#111820]/50 md:hidden" />}
+        {sidebarOpen && <button type="button" aria-label="Close navigation" tabIndex={-1} onClick={closeSidebar} className="fixed inset-0 z-[69] bg-[#111820]/50 md:hidden" />}
         <div className="flex min-h-screen">
-          <aside className={`fixed inset-y-0 left-0 z-[70] flex w-[224px] shrink-0 flex-col bg-[#11171b] text-white shadow-xl transition-transform duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 md:shadow-none ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+          <aside
+            ref={sidebarRef}
+            id="admin-sidebar"
+            tabIndex={-1}
+            inert={isPhone && !sidebarOpen}
+            className={`fixed inset-y-0 left-0 z-[70] flex w-[224px] shrink-0 flex-col bg-[#11171b] text-white shadow-xl outline-none transition-transform duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 md:shadow-none ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
             <div className="flex h-[72px] items-center justify-between border-b border-white/[0.07] px-5">
               <Link href="/admin" className="flex flex-col leading-none" aria-label="MH Fashion admin dashboard">
                 <span className="text-[18px] font-black tracking-tight"><span className="text-[#8bd340]">MH</span> FASHION<span className="text-[#8bd340]">.</span></span>
                 <span className="mt-1 text-[9px] font-medium tracking-[0.12em] text-[#8e979e]">SUPER ADMIN · PREVIEW</span>
               </Link>
-              <button type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} className="rounded-lg p-1.5 text-[#b8c0c6] hover:bg-white/10 md:hidden"><X size={18} /></button>
+              <button type="button" aria-label="Close navigation" onClick={closeSidebar} className="rounded-lg p-1.5 text-[#b8c0c6] hover:bg-white/10 md:hidden"><X size={18} /></button>
             </div>
 
             <nav aria-label="Admin navigation" className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
@@ -129,7 +155,7 @@ export default function AdminShell({
 
           <div className="min-w-0 flex-1">
             <header className="sticky top-0 z-40 flex h-[64px] items-center gap-3 border-b border-[#e8ebef] bg-white/95 px-3 backdrop-blur sm:px-5 lg:px-7">
-              <button type="button" aria-label="Open navigation" onClick={() => setSidebarOpen(true)} className="rounded-xl p-2 text-[#566070] hover:bg-[#f2f4f6] md:hidden"><Menu size={19} /></button>
+              <button ref={navButtonRef} type="button" aria-label="Open navigation" aria-expanded={sidebarOpen} aria-controls="admin-sidebar" onClick={() => setSidebarOpen(true)} className="rounded-xl p-2 text-[#566070] hover:bg-[#f2f4f6] md:hidden"><Menu size={19} /></button>
               {search ?? <div className="hidden text-[11px] font-semibold text-[#7b8492] sm:block">{heading}</div>}
               <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2.5">
                 <span className="hidden rounded-full bg-[#fff5dd] px-2.5 py-1.5 text-[9px] font-bold tracking-wide text-[#946b12] sm:inline">PREVIEW MODE</span>

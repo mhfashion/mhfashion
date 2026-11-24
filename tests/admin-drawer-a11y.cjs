@@ -151,6 +151,36 @@ async function main() {
   assert.equal(sheetClosed.focusLabel, "Open filters", `Escape returns the focus to the filters button, not ${sheetClosed.focusLabel}`);
   console.log("PASS admin bottom sheet: the focus moves in, Escape closes it and returns the focus");
 
+  // The sidebar is a phone drawer: closed it slides off-screen but stays in the document.
+  await send("Page.navigate", { url: `${origin}/admin/orders` });
+  await waitFor('button[aria-label="Open navigation"]');
+  const sidebarState = () => evaluate(() => {
+    const sidebar = document.getElementById("admin-sidebar");
+    const opener = document.querySelector('button[aria-label="Open navigation"]');
+    return {
+      inert: Boolean(sidebar?.inert),
+      focusInside: Boolean(sidebar && sidebar.contains(document.activeElement)),
+      expanded: opener?.getAttribute("aria-expanded") || "",
+      focusLabel: document.activeElement?.getAttribute("aria-label") || document.activeElement?.tagName || "",
+    };
+  });
+  const sidebarClosed = await sidebarState();
+  assert.equal(sidebarClosed.inert, true, "the closed sidebar is inert, so Tab skips its links");
+  assert.equal(sidebarClosed.expanded, "false", "the opener says the drawer is closed");
+
+  await evaluate(() => document.querySelector('button[aria-label="Open navigation"]').focus());
+  await press("Enter", "Enter", 13);
+  const sidebarOpen = await sidebarState();
+  assert.equal(sidebarOpen.inert, false, "the open sidebar takes Tab again");
+  assert.equal(sidebarOpen.expanded, "true", "the opener says the drawer is open");
+  assert.equal(sidebarOpen.focusInside, true, "the focus moves into the sidebar");
+
+  await press("Escape", "Escape", 27);
+  const sidebarEscaped = await sidebarState();
+  assert.equal(sidebarEscaped.inert, true, "Escape puts the sidebar back to inert");
+  assert.equal(sidebarEscaped.focusLabel, "Open navigation", `Escape returns the focus to the opener, not ${sidebarEscaped.focusLabel}`);
+  console.log("PASS admin sidebar: closed it is inert, open it takes the focus, Escape gives it back");
+
   await send("Emulation.clearDeviceMetricsOverride");
   ws.close();
 }
