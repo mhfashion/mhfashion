@@ -574,6 +574,50 @@ async function main() {
     assert.equal(bellAfterEscape.role, "", "the panel is unmounted after Escape");
     assert.equal(await evaluate(() => document.activeElement?.getAttribute("aria-haspopup")), "dialog", "Escape returns the focus to the bell");
     console.log("PASS notifications: the panel is a dialog, states its state, and Escape closes it");
+
+    // ---------- wishlist ----------
+    // The heart that removed a card was the focused button, so the focus has to move to the next card.
+    await viewport(1440, 900, false);
+    const seedWishlist = () => evaluate(() => {
+      localStorage.setItem("mh-fashion-wishlist", JSON.stringify([
+        { id: "w1", slug: "butterfly-effect", name: "Butterfly Effect", priceMinKs: 21000, priceMaxKs: 25000 },
+        { id: "w2", slug: "neon-bloom", name: "Neon Bloom", priceMinKs: 18000, priceMaxKs: 22000 },
+      ]));
+    });
+    const wishlistState = () => evaluate(() => ({
+      items: [...document.querySelectorAll("[data-wishlist-item]")].map((node) => node.getAttribute("data-wishlist-item")),
+      notice: document.querySelector("[data-wishlist-notice]")?.textContent || "",
+      focus: document.activeElement?.hasAttribute("data-wishlist-toggle")
+        ? `toggle:${document.activeElement.getAttribute("data-wishlist-toggle")}`
+        : (document.activeElement?.textContent || "").trim().slice(0, 30),
+    }));
+
+    await seedWishlist();
+    await visit("/wishlist", "[data-wishlist-item]");
+    assert.deepEqual((await wishlistState()).items, ["w1", "w2"], "both seeded cards are listed");
+
+    await evaluate(() => document.querySelector('[data-wishlist-toggle="w1"]').focus());
+    await pressEnter();
+    const wishAfterRemove = await wishlistState();
+    assert.deepEqual(wishAfterRemove.items, ["w2"], "the un-hearted card is gone");
+    assert.equal(wishAfterRemove.focus, "toggle:w2", `the focus moves to the next card, not ${wishAfterRemove.focus}`);
+    assert.match(wishAfterRemove.notice, /Butterfly Effect/, "the removal names the product");
+
+    await evaluate(() => document.querySelector('[data-wishlist-toggle="w2"]').focus());
+    await pressEnter();
+    const wishEmpty = await wishlistState();
+    assert.deepEqual(wishEmpty.items, [], "un-hearting the last card empties the list");
+    assert.match(wishEmpty.focus, /No saved designs yet/i, `the focus lands on the empty state, not ${wishEmpty.focus}`);
+
+    await seedWishlist();
+    await visit("/wishlist", "[data-wishlist-item]");
+    await evaluate(() => document.querySelector("[data-wishlist-clear]").focus());
+    await pressEnter();
+    const wishCleared = await wishlistState();
+    assert.deepEqual(wishCleared.items, [], "clear wishlist empties the list");
+    assert.match(wishCleared.notice, /cleared/i, "clearing is announced");
+    assert.match(wishCleared.focus, /No saved designs yet/i, `clear wishlist parks the focus on the empty state, not ${wishCleared.focus}`);
+    console.log("PASS wishlist: un-hearting a card keeps the focus in the list and says what left");
     // ---------- reduced motion ----------
     // A shopper who asks the system for less motion must not get the sliding category strip.
     await viewport(1440, 900, false);

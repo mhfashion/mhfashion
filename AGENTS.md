@@ -652,6 +652,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Wishlist removals (`app/wishlist/page.tsx`)
+- Un-hearting a card and "Clear wishlist" both delete the focused button, so the page watches `items` and,
+  when the list shrinks, hands the focus to the next card's `[data-wishlist-toggle]` or to the empty-state
+  heading (`tabIndex={-1}`). It only takes over when the browser dropped the focus to `<body>`, so a mouse
+  user's focus is left alone.
+- The same effect announces through `[data-wishlist-notice]` (`role="status"`). It names the product for a
+  single removal and says "Wishlist cleared" when several disappear at once, or when the button set
+  `clearing.current` — with one item left, "all of them went" and "one went" look identical otherwise.
+- `tests/storefront-e2e.cjs` seeds two cards in `localStorage` and drives the hearts with real Enter
+  presses.
+
 ## Notification panel (`NotificationBell.tsx`)
 - The bell is rendered twice (header and phone drawer), so its panel id comes from `useId()`. A static id
   would be duplicated in the document.

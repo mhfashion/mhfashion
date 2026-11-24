@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Heart, ShoppingBag, Trash2 } from "lucide-react";
 import Header from "@/components/Header";
@@ -8,6 +9,26 @@ import { useWishlist } from "@/lib/wishlist-context";
 
 export default function WishlistPage() {
   const { items, count, clear } = useWishlist();
+  const [notice, setNotice] = useState("");
+  const previousItems = useRef(items);
+  const clearing = useRef(false);
+  const emptyHeadingRef = useRef<HTMLHeadingElement | null>(null);
+
+  // Un-hearting a card (or clearing the list) deletes the button that had the focus, so the focus has to
+  // be handed to the next card, or to the empty-state heading, and the removal has to be spoken.
+  useEffect(() => {
+    const before = previousItems.current;
+    previousItems.current = items;
+    if (items.length >= before.length) return;
+    const removed = before.filter((item) => !items.some((current) => current.id === item.id));
+    setNotice(clearing.current || removed.length > 1 ? "Wishlist cleared" : `Removed ${removed[0]?.name ?? "the design"} from your wishlist`);
+    clearing.current = false;
+    requestAnimationFrame(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      const nextToggle = document.querySelector<HTMLButtonElement>("[data-wishlist-item] [data-wishlist-toggle]");
+      (nextToggle ?? emptyHeadingRef.current)?.focus();
+    });
+  }, [items]);
 
   return (
     <div>
@@ -23,7 +44,7 @@ export default function WishlistPage() {
               </p>
             </div>
             {count > 0 ? (
-              <button type="button" onClick={clear} data-wishlist-clear className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-[11px] font-bold hover:border-accent hover:text-accent">
+              <button type="button" onClick={() => { clearing.current = true; clear(); }} data-wishlist-clear className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-[11px] font-bold hover:border-accent hover:text-accent">
                 <Trash2 size={13} /> Clear wishlist
               </button>
             ) : null}
@@ -40,7 +61,7 @@ export default function WishlistPage() {
           ) : (
             <div data-wishlist-empty className="rounded-2xl border border-border bg-bg-surface p-10 text-center">
               <Heart size={28} className="mx-auto text-text-muted" />
-              <h2 className="mt-3 text-base font-black">No saved designs yet</h2>
+              <h2 ref={emptyHeadingRef} tabIndex={-1} className="mt-3 text-base font-black">No saved designs yet</h2>
               <p className="mx-auto mt-1 max-w-md text-xs text-text-muted">
                 Tap the heart on any product to keep it here. The list stays on this device — the price you see on the product page is always the current one.
               </p>
@@ -51,6 +72,7 @@ export default function WishlistPage() {
               </div>
             </div>
           )}
+          <p role="status" aria-live="polite" data-wishlist-notice className="sr-only">{notice}</p>
         </div>
       </main>
     </div>
