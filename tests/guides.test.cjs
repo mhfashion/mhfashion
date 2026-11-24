@@ -133,6 +133,29 @@ test("starter handbook has six categories and twelve valid article links", async
   assert.equal(await guides.getGuidePostBySlug("does-not-exist"), null);
 });
 
+test("the handbook lists its subjects and posts in the owner's order", () => {
+  const catalog = starter();
+  assert.deepEqual(
+    catalog.categories.map((category) => category.slug),
+    ["editor-guide", "size-guide", "product-guide", "design-guide", "payment-guide", "delivery-guide"],
+  );
+  const order = catalog.posts.map((post) => `${post.categorySlug}/${post.slug}`);
+  assert.deepEqual(order, [
+    "editor-guide/editor-guide",
+    "editor-guide/how-the-editor-works",
+    "size-guide/how-to-read-the-size-guide",
+    "product-guide/how-mh-fashion-products-are-organized",
+    "product-guide/how-apparel-options-narrow-down",
+    "product-guide/print-methods-and-how-to-care-for-a-print",
+    "product-guide/how-to-place-an-order-step-by-step",
+    "design-guide/how-previews-and-mockups-are-planned",
+    "payment-guide/payment-options-at-checkout",
+    "payment-guide/what-payment-means-for-order-status",
+    "delivery-guide/how-delivery-fees-are-planned",
+    "delivery-guide/order-status-and-delivery-handoff",
+  ]);
+});
+
 test("the editor guide describes the editor that ships", () => {
   const catalog = starter();
   const post = catalog.posts.find((candidate) => candidate.slug === "editor-guide");

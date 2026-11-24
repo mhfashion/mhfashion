@@ -1182,6 +1182,16 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — The handbook's subject order is fixed
+
+The owner listed the handbook as it should read: Editor Guide, Size Guide, Product Guide, Design Guide, Payment Guide,
+Delivery Guide — and the posts inside each subject in the order they were given.
+
+- The catalogue is rendered in array order (no sorting), so the order lives in `GUIDE_STARTER_CATALOG` itself:
+  the categories array and the posts array are both arranged to match.
+- `tests/guides.test.cjs` pins that order, so a later reshuffle of the array fails a test instead of silently
+  reordering the page.
+
 ### 2026-11-24 — The handbook is grouped by subject: Editor Guide and Size Guide
 
 The handbook is the shop's post library, so the categories are subjects, not internal process names. Two categories
