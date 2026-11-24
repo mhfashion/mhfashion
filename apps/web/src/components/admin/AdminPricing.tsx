@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeftRight, Check, ChevronDown, Download, History, RotateCcw, Save, Search, SlidersHorizontal, Tags, Upload, X } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
-import { AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminEmpty, AdminInput, AdminSelect, AdminStat } from "@/components/admin/AdminUi";
+import { AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminEmpty, AdminInput, AdminSelect, AdminStat, useModalFocus } from "@/components/admin/AdminUi";
 import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { formatKs, type AdminDemoData } from "@/lib/admin-demo-data";
@@ -85,11 +85,13 @@ function BottomSheet({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const panelRef = useModalFocus(open, onClose);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[90] flex items-end" role="dialog" aria-modal="true" aria-label={title}>
-      <button type="button" aria-label="Close sheet" onClick={onClose} className="absolute inset-0 bg-[#111820]/45" />
-      <div className="relative max-h-[80vh] w-full overflow-y-auto rounded-t-2xl bg-white pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-16px_48px_rgba(17,24,32,0.18)]">
+      <button type="button" aria-label="Close sheet" tabIndex={-1} onClick={onClose} className="absolute inset-0 bg-[#111820]/45" />
+      <div ref={panelRef} tabIndex={-1} className="relative max-h-[80vh] w-full overflow-y-auto rounded-t-2xl bg-white pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-16px_48px_rgba(17,24,32,0.18)] outline-none">
         <div className="sticky top-0 flex items-center justify-between border-b border-[#edf0f3] bg-white px-4 py-3">
           <h2 className="text-[12px] font-bold text-[#202733]">{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close sheet" className="rounded-lg p-1.5 text-[#87909c] hover:bg-[#f3f5f7]"><X size={16} /></button>
