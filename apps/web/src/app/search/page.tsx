@@ -85,7 +85,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <section className="mt-6" data-search-idle>
           <div className="rounded-2xl border border-border bg-bg-surface p-8 text-center">
             <SearchIcon size={26} className="mx-auto text-text-muted" />
-            <h3 className="mt-3 text-base font-black">{tooShort ? "Type at least two characters" : "What are you looking for?"}</h3>
+            <h2 className="mt-3 text-base font-black">{tooShort ? "Type at least two characters" : "What are you looking for?"}</h2>
             <p className="mt-1 text-xs text-text-muted">Search the catalog by product name, by line (MH Sport, Nyein) or by product type.</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((item) => <a key={item.href} href={item.href} className="rounded-full border border-border px-3 py-1.5 text-[10px] font-bold hover:border-accent hover:text-accent">{item.label}</a>)}

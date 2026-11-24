@@ -1,0 +1,149 @@
+// Structural accessibility sweep over every storefront route. Start the production app and a headless
+// Chromium CDP endpoint first:
+//   npm run start --workspace=apps/web -- --port 3000
+//   chromium --headless=new --no-sandbox --remote-debugging-port=9222 about:blank
+// then: node --test tests/storefront-a11y-sweep.cjs
+// STOREFRONT_TEST_ORIGIN and STOREFRONT_CDP_URL override the localhost defaults.
+const assert = require("node:assert/strict");
+const origin = process.env.STOREFRONT_TEST_ORIGIN || "http://127.0.0.1:3000";
+const cdp = process.env.STOREFRONT_CDP_URL || "http://127.0.0.1:9222";
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const ROUTES = [
+  "/", "/search", "/search?q=tee", "/products", "/new", "/popular", "/best-sellers", "/collections",
+  "/mh-fashion", "/nyein", "/create", "/cart", "/checkout", "/account", "/wishlist", "/guide", "/faq",
+  "/contact", "/about", "/privacy", "/returns", "/shipping", "/cookie-policy",
+];
+
+async function main() {
+  const targets = await (await fetch(`${cdp}/json`)).json();
+  const page = targets.find((target) => target.type === "page");
+  assert.ok(page, "Start Chromium with a local remote-debugging port first");
+  const ws = new WebSocket(page.webSocketDebuggerUrl);
+  await new Promise((resolve, reject) => {
+    ws.addEventListener("open", resolve, { once: true });
+    ws.addEventListener("error", reject, { once: true });
+  });
+  let sequence = 0;
+  const pending = new Map();
+  ws.addEventListener("message", (event) => {
+    const message = JSON.parse(event.data);
+    const entry = pending.get(message.id);
+    if (!entry) return;
+    pending.delete(message.id);
+    clearTimeout(entry.timer);
+    if (message.error) entry.reject(new Error(JSON.stringify(message.error)));
+    else entry.resolve(message.result);
+  });
+  function send(method, params = {}) {
+    return new Promise((resolve, reject) => {
+      const id = ++sequence;
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error(`CDP timed out: ${method}`));
+      }, 15000);
+      pending.set(id, { resolve, reject, timer });
+      ws.send(JSON.stringify({ id, method, params }));
+    });
+  }
+  async function evaluate(fn) {
+    const result = await send("Runtime.evaluate", { expression: `(${fn.toString()})()`, returnByValue: true, awaitPromise: true });
+    if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
+    return result.result.value;
+  }
+  async function viewport(width, height, mobile) {
+    await send("Emulation.setDeviceMetricsOverride", { width, height, mobile, deviceScaleFactor: 1 });
+    await send("Emulation.setTouchEmulationEnabled", { enabled: mobile, maxTouchPoints: mobile ? 5 : 1 });
+  }
+  async function visit(path) {
+    await send("Page.navigate", { url: `${origin}${path}` });
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await pause(150);
+      try {
+        if (await evaluate(() => Boolean(document.querySelector("main")))) return;
+      } catch (error) {
+        if (!/Execution context was destroyed|Cannot find context/.test(String(error))) throw error;
+      }
+    }
+    throw new Error(`${path} never rendered a <main>`);
+  }
+  await send("Page.enable");
+  await send("Runtime.enable");
+
+  // Everything the sweep reads comes from one pass so the numbers describe the same paint.
+  const inspect = () => evaluate(() => {
+    const visible = (element) => element.getClientRects().length > 0
+      && !element.closest("[inert]")
+      && !element.closest('[aria-hidden="true"]');
+    const name = (element) => {
+      const labelledBy = element.getAttribute("aria-labelledby");
+      const fromLabel = labelledBy
+        ? labelledBy.split(/\s+/).map((id) => document.getElementById(id)?.textContent || "").join(" ")
+        : "";
+      const fromLabels = element.labels ? [...element.labels].map((label) => label.textContent).join(" ") : "";
+      return (element.getAttribute("aria-label") || fromLabel || fromLabels || element.getAttribute("title")
+        || (element.tagName === "IMG" ? element.getAttribute("alt") : "")
+        || (element.tagName === "INPUT" && /^(submit|button|reset)$/i.test(element.type) ? element.value : "")
+        || element.textContent || "").trim();
+    };
+    const controls = [...document.querySelectorAll('button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [role="switch"], [role="checkbox"]')]
+      .filter(visible);
+    const unnamed = controls.filter((element) => !name(element))
+      .map((element) => `${element.tagName.toLowerCase()}${element.type ? `[${element.type}]` : ""}${element.name ? `#${element.name}` : ""}`);
+    const imagesWithoutAlt = [...document.querySelectorAll("img")].filter(visible).filter((image) => !image.getAttribute("alt")?.trim())
+      .map((image) => (image.getAttribute("src") || "").slice(0, 50));
+    const ids = [...document.querySelectorAll("[id]")].map((element) => element.id);
+    const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+    const positiveTabindex = [...document.querySelectorAll("[tabindex]")].filter((element) => Number(element.getAttribute("tabindex")) > 0).length;
+    const levels = [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].filter(visible).map((heading) => Number(heading.tagName[1]));
+    const jumps = [];
+    for (let index = 1; index < levels.length; index += 1) {
+      if (levels[index] - levels[index - 1] > 1) jumps.push(`h${levels[index - 1]}→h${levels[index]}`);
+    }
+    return {
+      h1: document.querySelectorAll("h1").length,
+      unnamed,
+      imagesWithoutAlt,
+      duplicateIds,
+      positiveTabindex,
+      jumps,
+    };
+  });
+
+  await viewport(1440, 900, false);
+  const problems = [];
+  for (const route of ROUTES) {
+    await visit(route);
+    const found = await inspect();
+    if (found.h1 !== 1) problems.push(`${route}: ${found.h1} <h1>`);
+    if (found.unnamed.length) problems.push(`${route}: unnamed ${found.unnamed.join(", ")}`);
+    if (found.imagesWithoutAlt.length) problems.push(`${route}: img without alt ${found.imagesWithoutAlt.join(", ")}`);
+    if (found.duplicateIds.length) problems.push(`${route}: duplicate id ${found.duplicateIds.join(", ")}`);
+    if (found.positiveTabindex) problems.push(`${route}: ${found.positiveTabindex} positive tabindex`);
+    if (found.jumps.length) problems.push(`${route}: heading jump ${found.jumps.join(", ")}`);
+  }
+  assert.deepEqual(problems, [], "every route has one h1, named controls, alt text, unique ids and an ordered outline");
+  console.log(`PASS desktop sweep: ${ROUTES.length} routes have one h1, named controls and an ordered outline`);
+
+  // The phone layout swaps the header for a drawer and stacks the pages, so it needs its own pass.
+  await viewport(390, 844, true);
+  const phoneProblems = [];
+  for (const route of ["/", "/cart", "/checkout", "/account", "/wishlist", "/create"]) {
+    await visit(route);
+    const found = await inspect();
+    if (found.h1 !== 1) phoneProblems.push(`${route}: ${found.h1} <h1>`);
+    if (found.unnamed.length) phoneProblems.push(`${route}: unnamed ${found.unnamed.join(", ")}`);
+    if (found.duplicateIds.length) phoneProblems.push(`${route}: duplicate id ${found.duplicateIds.join(", ")}`);
+  }
+  assert.deepEqual(phoneProblems, [], "the phone layout keeps the same invariants");
+  console.log("PASS phone sweep: the drawer and the stacked pages keep one h1 and named controls");
+
+  await send("Emulation.setTouchEmulationEnabled", { enabled: false, maxTouchPoints: 1 });
+  await send("Emulation.clearDeviceMetricsOverride");
+  ws.close();
+}
+
+main().then(() => process.exit(0)).catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
