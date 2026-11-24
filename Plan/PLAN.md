@@ -667,10 +667,17 @@ kind is empty. The body carries no timestamp of its own (each kind carries `buil
 can answer 304, and the route keeps the same 60-second cache. The static `issues` segment wins over
 `[kind]`, and `/api/assets/fonts` still answers (checked on a running server: issues 200 with six kinds,
 fonts 200, mockups 404 without a bucket, revalidate 304).
+**Editor switched to the service 2026-11-24 (part 6, font half).** `editorFontManifestSources(base)` in
+`lib/editor-fonts.ts` lists `/api/assets/fonts` first and the bucket's public `fonts/manifest.json` second, and
+`loadEditorFontManifest` keeps the first source that names at least one font. The empty answer the route gives
+while the bucket is unbound is not treated as a failure, so a deploy without the binding keeps exactly the fonts
+it loads today; when the binding lands the same code reads the service with no further change. Checked on a
+running server: `/create` requests `/api/assets/fonts` only (no `/fonts/manifest.json` when no bucket address is
+configured), the picker still lists the eight system fonts, console clean; `tests/editor-fonts.test.cjs` holds the
+source order.
 **Still to build:** the R2 binding in `wrangler.jsonc` (needs the bucket name), the scheduled trigger that
-calls `rebuildAssetCatalogues` (the Worker entry needs a `scheduled` export first), the editor reading
-`/api/assets/fonts` instead of the public manifest URL (only once the binding exists, or production would
-lose the fonts it loads today), and the admin writes (after Supabase Auth).
+calls `rebuildAssetCatalogues` (the Worker entry needs a `scheduled` export first), and the admin writes (after
+Supabase Auth).
 
 **Rollout.**
 1. Read-only service for fonts, brushes, designs and elements, with hand uploads and the scheduled rebuild.
@@ -2784,7 +2791,7 @@ the owner approves an item before it starts.
 | E14 | Image resolution warning — **done 2026-11-22** | a photo enlarged past what the press can print sharply is only discovered after printing | `lib/editor-image-ppi.ts`, `editor-layers`, `EditorCanvas`, Layers box, Adjustment box | small |
 | E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium — **step 1 done 2026-11-22** (one vocabulary); the admin-driven chain still waits for the database |
 | E16 | Download my design — **done 2026-11-22** | the customer had no copy of the artwork; the press bundle was the only file | `lib/design-export.ts`, `EditorDesignExport`, `EditorToolsBar` | small |
-| E17 | Font library, including Burmese fonts — **approved 2026-11-22; steps 1–4 done 2026-11-22** (manifest picker, download embedding, upload check, list previews); the press bundle waits on E1 | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, R2, design export, print export | medium |
+| E17 | Font library, including Burmese fonts — **approved 2026-11-22; steps 1–5 done** (manifest picker, download embedding, upload check, list previews, and 2026-11-24 the editor reading `/api/assets/fonts` with the public file as fallback); the press bundle waits on E1 | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, R2, design export, print export | medium |
 | E18 | Text effects, round 2 | more looks and finer control for the effect stack | `editor-layers`, `EditorLayerPreview`, `EditorAdjustmentsPanel` | medium |
 | E19 | A real text bend — **approach decided 2026-11-22** (outline warp with HarfBuzz) | Arch and Wave only slant the text | `editor-layers`, `editor-fonts`, renderer, bounds, print | medium |
 | E20 | Brushes, round 2 | brush packs, pressure, stabiliser and a size cursor | Brush box, `public/brushes`, `EditorCanvas` | medium |

@@ -7,6 +7,20 @@
 // whose family is the entry's `name`; no stored design has to be rewritten when fonts arrive.
 export const FONT_MANIFEST_PATH = "fonts/manifest.json";
 
+/** The site's read-only asset service (plan 12.1, part 6) answers the same manifest shape. */
+export const FONT_SERVICE_PATH = "/api/assets/fonts";
+
+/**
+ * Where the font manifest is read from, in order. The service is first so the shop's uploads reach the
+ * editor without a code change; the bucket's public file stays as the fallback because the service
+ * answers an empty list until the R2 binding exists.
+ */
+export function editorFontManifestSources(base: string): string[] {
+  const sources = [FONT_SERVICE_PATH];
+  if (base) sources.push(`${base}/${FONT_MANIFEST_PATH}`);
+  return sources;
+}
+
 export const EDITOR_FONT_SHELVES = ["sans", "serif", "display", "script", "burmese"] as const;
 export type EditorFontShelf = (typeof EDITOR_FONT_SHELVES)[number];
 

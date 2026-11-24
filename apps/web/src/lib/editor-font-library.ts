@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   EDITOR_SYSTEM_FONTS,
-  FONT_MANIFEST_PATH,
+  editorFontManifestSources,
   editorFontNames,
   embeddedFontFaceCss,
   fontFaceCss,
@@ -28,22 +28,33 @@ export function fontLibraryBase(): string {
 let manifestPromise: Promise<EditorFontEntry[]> | null = null;
 
 /**
- * Read the manifest once per page. No bucket address, a missing manifest or a broken one all end
- * as an empty list, which leaves the editor on the eight system fonts it always had.
+ * Walk the sources in order and keep the first one that names at least one font. An empty answer is
+ * not a failure: the asset service answers an empty list until the R2 binding exists, and that must
+ * not take the fonts the shop already has away.
+ */
+export async function loadEditorFontManifest(load: (url: string) => Promise<unknown>): Promise<EditorFontEntry[]> {
+  for (const url of editorFontManifestSources(fontLibraryBase())) {
+    try {
+      const fonts = parseEditorFontManifest(await load(url)).fonts;
+      if (fonts.length) return fonts;
+    } catch {
+      // Try the next source.
+    }
+  }
+  return [];
+}
+
+/**
+ * Read the manifest once per page. Every source failing ends as an empty list, which leaves the
+ * editor on the eight system fonts it always had.
  */
 export function loadEditorFontLibrary(): Promise<EditorFontEntry[]> {
   if (manifestPromise) return manifestPromise;
-  const base = fontLibraryBase();
-  manifestPromise = (async () => {
-    if (!base) return [];
-    try {
-      const response = await fetch(`${base}/${FONT_MANIFEST_PATH}`);
-      if (!response.ok) return [];
-      return parseEditorFontManifest(await response.json()).fonts;
-    } catch {
-      return [];
-    }
-  })();
+  manifestPromise = loadEditorFontManifest(async (url) => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${url} answered ${response.status}`);
+    return response.json();
+  });
   return manifestPromise;
 }
 

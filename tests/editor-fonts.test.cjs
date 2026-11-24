@@ -24,6 +24,20 @@ test("without a manifest the editor keeps the eight system fonts", () => {
   assert.deepEqual(fonts.parseEditorFontManifest({ fonts: [] }), { fonts: [], skipped: [] });
 });
 
+test("fonts are read from the asset service first, and from the public file next", () => {
+  assert.equal(fonts.FONT_SERVICE_PATH, "/api/assets/fonts");
+  // No bucket address still asks the service; the file is skipped rather than fetched as "/fonts/...".
+  assert.deepEqual(fonts.editorFontManifestSources(""), ["/api/assets/fonts"]);
+  assert.deepEqual(fonts.editorFontManifestSources("https://cdn.example/assets"), [
+    "/api/assets/fonts",
+    "https://cdn.example/assets/fonts/manifest.json",
+  ]);
+  // The service answers the same shape plus its own `skipped` list, so one parser reads both.
+  const fromService = fonts.parseEditorFontManifest({ fonts: [entry()], skipped: [{ slug: "catalog/fonts.json", reason: "no meta.json" }] });
+  assert.equal(fromService.fonts.length, 1);
+  assert.deepEqual(fromService.skipped, []);
+});
+
 test("a good manifest keeps every field and fills the defaults", () => {
   const manifest = fonts.parseEditorFontManifest({
     version: 1,

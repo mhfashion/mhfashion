@@ -1182,6 +1182,23 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — The editor reads fonts from the asset service
+
+Plan 12.1 part 6, the font half. The asset service (`/api/assets/fonts`) was built and unused: the editor still
+read the bucket's public `fonts/manifest.json` straight from the browser.
+
+- **Order.** `editorFontManifestSources(base)` in `lib/editor-fonts.ts` returns `/api/assets/fonts` first and
+  `${base}/fonts/manifest.json` second (dropped when no bucket address is configured). `loadEditorFontManifest`
+  walks them and keeps the first that names at least one font.
+- **Why an empty answer is not a failure.** Until the R2 binding exists the route answers `{ fonts: [], skipped:
+  [ … "the asset bucket is not bound in this environment" ] }`. Treating that as success would have emptied the
+  picker in production, so an empty list falls through to the public file, and only then to the eight system fonts.
+- **Nothing else moved.** Font files still load from the bucket's public address (`fontFileUrl`), because decision
+  R2-1 keeps public files on the CDN; only the manifest moved.
+- Checked on a running server: `/create` requests `/api/assets/fonts` and nothing else when no bucket address is
+  set, the Text tool picker still lists the eight system fonts, console clean. `tests/editor-fonts.test.cjs` holds
+  the source order and the shared parser.
+
 ### 2026-11-24 — Every slider in the Adjustments panel has a number field, and every tool box resets
 
 Plan E21 items 1 and 8, the part that needed no new control family. The panel had four sliders that could only be
