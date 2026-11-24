@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-lang="en" data-device="desktop" data-sheet="half">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adjustments panel — visual mock-up (Plan E22)</title>
+<!--
+  A static mock-up of the Adjustments panel the plan (E22) describes, for the owner to review
+  before any code is written. It is one file with three switches, so every state the plan asks
+  for is a click away: language (English / မြန်မာ), theme (dark / light) and device
+  (desktop / phone, which turns the panel into a bottom sheet with three heights).
+
+  Nothing here talks to the editor. The colours, radius and focus ring are the site's own
+  tokens from apps/web/src/app/globals.css, so the panel looks like the rest of the editor.
+-->
+<style>
+  :root {
+    --bg: 255 255 255;
+    --bg-surface: 242 242 242;
+    --accent: 79 122 18;
+    --accent-foreground: 255 255 255;
+    --border: 224 224 224;
+    --border-light: 200 200 200;
+    --text-primary: 13 13 13;
+    --text-secondary: 90 90 90;
+    --stage: 232 232 232;
+    --radius: 10px;
+    --row: 32px;
+  }
+  html[data-theme="dark"] {
+    --bg: 13 13 13;
+    --bg-surface: 26 26 26;
+    --accent: 212 255 63;
+    --accent-foreground: 13 13 13;
+    --border: 38 38 38;
+    --border-light: 64 64 64;
+    --text-primary: 240 240 240;
+    --text-secondary: 165 165 165;
+    --stage: 8 8 8;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: rgb(var(--stage));
+    color: rgb(var(--text-primary));
+    font: 12px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", "Noto Sans Myanmar", sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  :focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+
+  /* ---- the mock-up's own chrome, clearly not part of the editor ---- */
+  .mockbar {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+    padding: 10px 16px; border-bottom: 1px solid rgb(var(--border)); background: rgb(var(--bg));
+  }
+  .mockbar strong { font-size: 13px; }
+  .mockbar p { margin: 2px 0 0; font-size: 11px; color: rgb(var(--text-secondary)); max-width: 52ch; }
+  .mockbar__controls { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid rgb(var(--border)); border-radius: 8px; background: rgb(var(--bg-surface)); }
+  .seg button {
+    min-height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent;
+    color: rgb(var(--text-secondary)); font: inherit; font-size: 11px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: rgb(var(--accent)); color: rgb(var(--accent-foreground)); font-weight: 600; }
+  .seg button:hover[aria-pressed="false"] { background: rgb(var(--border)); color: rgb(var(--text-primary)); }
+
+  /* ---- stage: a faux canvas beside the panel ---- */
+  /* flex: none + a viewport-height floor: the panel is taller than the window, so the page scrolls
+     and the notes start below it instead of sliding underneath. */
+  .stage { flex: none; display: flex; gap: 16px; padding: 16px; align-items: stretch; justify-content: center; min-height: calc(100vh - 96px); }
+  .canvas {
+    flex: 1; align-self: flex-start; max-width: 720px; aspect-ratio: 4 / 3; border-radius: var(--radius);
+    background: #ffffff; display: grid; place-items: center; position: relative; overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+  }
+  .canvas__art { text-align: center; color: #14161a; }
+  .canvas__art b { display: block; font-size: clamp(22px, 5vw, 44px); letter-spacing: .12em; }
+  .canvas__art span { font-size: 12px; color: #6a6f78; }
+  .canvas__box { position: absolute; inset: 12% 18%; border: 1.5px solid #2f7bff; border-radius: 4px; }
+  .canvas__box i { position: absolute; width: 8px; height: 8px; background: #fff; border: 1.5px solid #2f7bff; border-radius: 2px; }
+
+  /* ---- the panel ---- */
+  .panel {
+    width: 320px; max-width: 100%; max-height: calc(100vh - 140px); display: flex; flex-direction: column;
+    background: rgb(var(--bg-surface)); border: 1px solid rgb(var(--border)); border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel__head { display: flex; gap: 10px; align-items: center; padding: 10px 12px; background: rgb(var(--bg)); border-bottom: 1px solid rgb(var(--border)); position: sticky; top: 0; }
+  .thumb { width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, rgb(var(--accent)) 0%, #6b8f1f 100%); display: grid; place-items: center; color: rgb(var(--accent-foreground)); font-weight: 700; font-size: 12px; }
+  .panel__title { display: flex; flex-direction: column; min-width: 0; }
+  .panel__title b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .panel__title span { font-size: 11px; color: rgb(var(--text-secondary)); }
+  .icon-btn {
+    width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid transparent; border-radius: 8px;
+    background: transparent; color: rgb(var(--text-secondary)); cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  .icon-btn:hover { background: rgb(var(--border)); color: rgb(var(--text-primary)); }
+  .icon-btn[aria-pressed="true"] { background: rgb(var(--accent)); color: rgb(var(--accent-foreground)); border-color: rgb(var(--accent)); }
+  .icon-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 8px; border-bottom: 1px solid rgb(var(--border)); background: rgb(var(--bg)); }
+  .tabs button { flex: 0 0 auto; min-height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: rgb(var(--text-secondary)); font: inherit; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .tabs button[aria-selected="true"] { background: rgb(var(--accent) / .16); color: rgb(var(--text-primary)); font-weight: 600; box-shadow: inset 0 -2px 0 rgb(var(--accent)); }
+  .tabs button:hover[aria-selected="false"] { background: rgb(var(--border)); color: rgb(var(--text-primary)); }
+
+  .panel__head, .tabs { flex: 0 0 auto; }
+  .panel__body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 4px 0 12px; }
+  .section { border-bottom: 1px solid rgb(var(--border)); }
+  .section__head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; min-height: 38px; }
+  .section__head h3 { margin: 0; font-size: 14px; font-weight: 600; flex: 1; }
+  .section__head .hint { font-size: 11px; color: rgb(var(--text-secondary)); }
+  .section__body { padding: 2px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+
+  .row { display: flex; align-items: center; gap: 8px; min-height: var(--row); }
+  .row > .label { flex: 1; font-size: 12px; color: rgb(var(--text-primary)); }
+  .row > .label small { display: block; font-size: 11px; color: rgb(var(--text-secondary)); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: 1; }
+  .row--stack { flex-direction: column; align-items: stretch; gap: 4px; padding: 2px 0; }
+  .row--stack > .label { flex: none; }
+
+  .field { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 8px; border: 1px solid rgb(var(--border-light)); border-radius: 8px; background: rgb(var(--bg)); }
+  .field { min-width: 0; }
+  .field input { flex: 1 1 auto; width: auto; min-width: 0; border: 0; background: transparent; color: rgb(var(--text-primary)); font: inherit; font-size: 12px; outline: none; text-align: right; }
+  .field small { font-size: 11px; color: rgb(var(--text-secondary)); }
+  .field:focus-within { border-color: rgb(var(--accent)); box-shadow: 0 0 0 2px rgb(var(--accent) / .2); }
+
+  input[type="range"] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 4px; background: rgb(var(--border-light)); flex: 1; min-width: 60px; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: rgb(var(--accent)); border: 2px solid rgb(var(--bg)); box-shadow: 0 0 0 1px rgb(var(--accent)); cursor: pointer; }
+  input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: rgb(var(--accent)); border: 2px solid rgb(var(--bg)); cursor: pointer; }
+
+  .slider { display: flex; align-items: center; gap: 8px; flex: 1; }
+  .slider .field { width: 70px; flex: 0 0 auto; }
+
+  .btn { min-height: 28px; padding: 0 10px; border: 1px solid rgb(var(--border-light)); border-radius: 8px; background: rgb(var(--bg)); color: rgb(var(--text-primary)); font: inherit; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { border-color: rgb(var(--accent)); }
+  .btn[aria-pressed="true"] { background: rgb(var(--accent)); color: rgb(var(--accent-foreground)); border-color: rgb(var(--accent)); font-weight: 600; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn--danger:hover { border-color: #d14343; color: #d14343; }
+
+  .swatch { width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgb(var(--border-light)); cursor: pointer; padding: 0; }
+  .popover { position: relative; }
+  .popover__body {
+    position: absolute; right: 0; top: 32px; z-index: 5; width: 208px; padding: 8px;
+    background: rgb(var(--bg)); border: 1px solid rgb(var(--border-light)); border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .35); display: none;
+  }
+  .popover[data-open="true"] .popover__body { display: block; }
+  .popover__body p { margin: 6px 0 4px; font-size: 11px; color: rgb(var(--text-secondary)); }
+  .palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .palette button { aspect-ratio: 1; border-radius: 6px; border: 1px solid rgb(var(--border-light)); cursor: pointer; }
+  .palette button[aria-pressed="true"] { box-shadow: 0 0 0 2px rgb(var(--accent)); }
+
+  .looks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .looks button { display: flex; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid rgb(var(--border-light)); border-radius: 8px; background: rgb(var(--bg)); color: rgb(var(--text-secondary)); font: inherit; font-size: 11px; cursor: pointer; }
+  .looks button[aria-pressed="true"] { border-color: rgb(var(--accent)); box-shadow: 0 0 0 2px rgb(var(--accent) / .25); }
+  .looks i { display: block; height: 34px; border-radius: 6px; }
+
+  .note { font-size: 11px; color: rgb(var(--text-secondary)); margin: 0; }
+
+  /* ---- phone: the panel becomes a bottom sheet with three heights ---- */
+  html[data-device="phone"] body { max-width: 390px; margin: 0 auto; background: rgb(var(--stage)); }
+  /* flex: none, or the flex basis steals the height and the sheet sizes against 129px. */
+  html[data-device="phone"] .stage { flex: none; flex-direction: column; justify-content: flex-start; padding: 0; gap: 0; position: relative; height: calc(100vh - 96px); }
+  /* flex: none, or the column stretch overrides the aspect ratio and the canvas fills the sheet. */
+  html[data-device="phone"] .canvas { flex: none; width: 100%; max-width: none; aspect-ratio: 4 / 3; border-radius: 0; box-shadow: none; }
+  html[data-device="phone"] .panel {
+    position: absolute; left: 0; right: 0; bottom: 0; width: 100%; max-height: none; border-radius: 18px 18px 0 0;
+    border-bottom: 0; box-shadow: 0 -12px 30px rgba(0, 0, 0, .35);
+  }
+  html[data-device="phone"][data-sheet="peek"] .panel { height: 132px; }
+  html[data-device="phone"][data-sheet="half"] .panel { height: 54%; }
+  html[data-device="phone"][data-sheet="full"] .panel { height: 88%; }
+  html[data-device="phone"] .grabber { display: flex; justify-content: center; padding: 8px 0 0; }
+  html[data-device="phone"] .grabber span { width: 40px; height: 4px; border-radius: 4px; background: rgb(var(--border-light)); }
+  html[data-device="phone"] .panel__head,
+  html[data-device="phone"] .tabs button,
+  html[data-device="phone"] .btn,
+  html[data-device="phone"] .icon-btn,
+  html[data-device="phone"] .row { min-height: 44px; }
+  html[data-device="phone"] .icon-btn { width: 44px; height: 44px; }
+  .grabber, .sheet-sizes { display: none; }
+  html[data-device="phone"] .sheet-sizes { display: inline-flex; gap: 4px; }
+  .sheet-sizes .icon-btn { flex: 0 0 auto; display: grid; align-content: end; justify-items: center; padding-bottom: 7px; }
+  .sheet-sizes .icon-btn i { display: block; width: 16px; background: currentColor; border-radius: 2px; }
+
+  /* ---- notes under the stage ---- */
+  .notes { padding: 4px 16px 20px; max-width: 1100px; margin: 0 auto; width: 100%; }
+  .notes h2 { font-size: 14px; margin: 8px 0 6px; }
+  .notes ul { margin: 0 0 12px; padding-left: 18px; }
+  .notes li { font-size: 12px; color: rgb(var(--text-primary)); margin: 2px 0; }
+  .notes li span { color: rgb(var(--text-secondary)); }
+
+  [data-lang="en"] .mm, [data-lang="mm"] .en { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn, .icon-btn, .seg button, .tabs button { transition: background-color .12s ease, color .12s ease, border-color .12s ease; }
+  }
+  @media (max-width: 760px) {
+    .stage { flex-direction: column; align-items: stretch; }
+    .canvas { max-width: none; }
+    .panel { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header class="mockbar">
+  <div>
+    <strong>Adjustments panel — visual mock-up</strong>
+    <p>
+      <span class="en">Plan E22. This is the shape to approve before the build, not the live editor. Switch language, theme and device above; on phone the panel is a bottom sheet with three heights.</span>
+      <span class="mm">Plan E22။ ဆောက်မည့်ပုံစံကို အတည်ပြုရန် ပြထားခြင်းဖြစ်သည်၊ တကယ့် editor မဟုတ်ပါ။ အပေါ်တွင် ဘာသာစကား၊ အရောင်၊ စက် ပြောင်း၍ ကြည့်နိုင်သည်။ ဖုန်းတွင် panel သည် အောက်မှ တက်လာသော sheet ဖြစ်ပြီး အမြင့် ၃ မျိုး ရှိသည်။</span>
+    </p>
+    <p><span class="en">Myanmar wording is a first pass for the layout check; the shop's copywriter finalises it.</span><span class="mm">မြန်မာစာသားများကို ပုံစံစစ်ရန်သာ ရေးထားသည်။ ဆိုင်မှ ပြန်လည်တည်းဖြတ်မည်။</span></p>
+  </div>
+  <div class="mockbar__controls">
+    <div class="seg" role="group" aria-label="Language">
+      <button type="button" data-set="lang" data-value="en" aria-pressed="true">English</button>
+      <button type="button" data-set="lang" data-value="mm" aria-pressed="false">မြန်မာ</button>
+    </div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button type="button" data-set="theme" data-value="dark" aria-pressed="true">Dark</button>
+      <button type="button" data-set="theme" data-value="light" aria-pressed="false">Light</button>
+    </div>
+    <div class="seg" role="group" aria-label="Device">
+      <button type="button" data-set="device" data-value="desktop" aria-pressed="true">Desktop</button>
+      <button type="button" data-set="device" data-value="phone" aria-pressed="false">Phone</button>
+    </div>
+  </div>
+</header>
+
+<main class="stage">
+  <section class="canvas" aria-label="Print canvas">
+    <div class="canvas__box" aria-hidden="true">
+      <i style="left:-4px;top:-4px"></i><i style="right:-4px;top:-4px"></i>
+      <i style="left:-4px;bottom:-4px"></i><i style="right:-4px;bottom:-4px"></i>
+    </div>
+    <div class="canvas__art">
+      <b>MH</b>
+      <span class="en">Front · 30 × 40 cm print area</span>
+      <span class="mm">ရှေ့ဘက် · ပရင့်ဧရိယာ 30 × 40 စင်တီမီတာ</span>
+    </div>
+  </section>
+
+  <aside class="panel" aria-label="Adjustments panel mock-up">
+    <div class="grabber" aria-hidden="true"><span></span></div>
+
+    <div class="panel__head">
+      <div class="thumb" aria-hidden="true">MH</div>
+      <div class="panel__title">
+        <b><span class="en">Front artwork</span><span class="mm">ရှေ့ဘက် ဒီဇိုင်း</span></b>
+        <span><span class="en">Text layer</span><span class="mm">စာသား အလွှာ</span></span>
+      </div>
+      <div class="sheet-sizes" role="group" aria-label="Sheet height">
+        <button type="button" class="icon-btn" data-sheet="peek" title="Peek" aria-label="Peek height"><i style="height:3px"></i></button>
+        <button type="button" class="icon-btn" data-sheet="half" title="Half" aria-label="Half height" aria-pressed="true"><i style="height:8px"></i></button>
+        <button type="button" class="icon-btn" data-sheet="full" title="Full" aria-label="Full height"><i style="height:14px"></i></button>
+      </div>
+      <button type="button" class="icon-btn" aria-label="Close adjustments" title="Close">✕</button>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Adjustment tabs">
+      <button type="button" role="tab" aria-selected="true"><span aria-hidden="true">⬚</span><span class="en">Arrange</span><span class="mm">နေရာ</span></button>
+      <button type="button" role="tab" aria-selected="false"><span aria-hidden="true">◐</span><span class="en">Style</span><span class="mm">အရောင်</span></button>
+      <button type="button" role="tab" aria-selected="false"><span aria-hidden="true">✦</span><span class="en">Effects</span><span class="mm">အကျိုး</span></button>
+      <button type="button" role="tab" aria-selected="false"><span aria-hidden="true">▤</span><span class="en">Photo</span><span class="mm">ဓာတ်ပုံ</span></button>
+      <button type="button" role="tab" aria-selected="false"><span aria-hidden="true">☰</span><span class="en">Layer</span><span class="mm">အလွှာ</span></button>
+    </div>
+
+    <div class="panel__body">
+
+      <!-- Arrange -->
+      <section class="section">
+        <div class="section__head">
+          <h3><span class="en">Arrange</span><span class="mm">နေရာ</span></h3>
+          <span class="hint">30 × 40 cm</span>
+          <button type="button" class="icon-btn" aria-label="Reset arrangement" title="Reset arrangement">⟲</button>
+        </div>
+        <div class="section__body">
+          <div class="row row--stack">
+            <span class="label"><span class="en">Position</span><span class="mm">တည်နေရာ</span></span>
+            <div class="pair">
+              <label class="field"><small>X</small><input type="text" inputmode="decimal" value="12.4" aria-label="X in centimetres"><small>cm</small></label>
+              <label class="field"><small>Y</small><input type="text" inputmode="decimal" value="9.1" aria-label="Y in centimetres"><small>cm</small></label>
+            </div>
+          </div>
+          <div class="row row--stack">
+            <span class="label"><span class="en">Size</span><span class="mm">အရွယ်အစား</span><small>372 × 273 px</small></span>
+            <div class="pair">
+              <label class="field"><small>W</small><input type="text" inputmode="decimal" value="18.6" aria-label="Width in centimetres"><small>cm</small></label>
+              <label class="field"><small>H</small><input type="text" inputmode="decimal" value="13.7" aria-label="Height in centimetres"><small>cm</small></label>
+            </div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Lock proportions</span><span class="mm">အချိုးအစား မပြောင်း</span></span>
+            <button type="button" class="icon-btn" aria-pressed="true" aria-label="Lock proportions" title="Lock proportions">🔒</button>
+          </div>
+          <div class="row row--stack">
+            <span class="label"><span class="en">Rotation</span><span class="mm">လှည့်ခြင်း</span></span>
+            <div class="slider">
+              <input type="range" min="-180" max="180" value="8" aria-label="Rotation">
+              <label class="field"><input type="text" inputmode="numeric" value="8" aria-label="Rotation in degrees"><small>°</small></label>
+            </div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Align to print area</span><span class="mm">ပရင့်ဧရိယာနှင့် ညှိ</span></span>
+            <div class="seg" role="group" aria-label="Align horizontally">
+              <button type="button" aria-pressed="false" aria-label="Align left" title="Align left">⇤</button>
+              <button type="button" aria-pressed="true" aria-label="Align centre" title="Align centre">↔</button>
+              <button type="button" aria-pressed="false" aria-label="Align right" title="Align right">⇥</button>
+            </div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Rotate and reset</span><span class="mm">လှည့် / မူလအတိုင်း</span></span>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn" aria-label="Rotate 90 degrees">↻ 90°</button>
+              <button type="button" class="btn" aria-label="Reset transform">⟲ <span class="en">Reset</span><span class="mm">မူလအတိုင်း</span></button>
+            </div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Distribute</span><span class="mm">အညီအမျှ ခွဲ</span><small><span class="en">two or more layers</span><span class="mm">အလွှာ ၂ ခု အထက်</span></small></span>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="icon-btn" disabled aria-label="Distribute horizontally" title="Distribute horizontally">⇹</button>
+              <button type="button" class="icon-btn" disabled aria-label="Distribute vertically" title="Distribute vertically">⇳</button>
+            </div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Flip</span><span class="mm">ဘက်ပြောင်း</span><small><span class="en">moved here from the Tools bar</span><span class="mm">Tools bar မှ ဒီကို ပြောင်းထားသည်</span></small></span>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn" aria-label="Flip horizontal">⇋ <span class="en">H</span><span class="mm">အလျား</span></button>
+              <button type="button" class="btn" aria-label="Flip vertical">⇵ <span class="en">V</span><span class="mm">ဒေါင်လိုက်</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Style -->
+      <section class="section">
+        <div class="section__head">
+          <h3><span class="en">Style</span><span class="mm">အပြင်အဆင်</span></h3>
+          <button type="button" class="icon-btn" aria-label="Reset style" title="Reset style">⟲</button>
+        </div>
+        <div class="section__body">
+          <div class="row">
+            <span class="label"><span class="en">Colour</span><span class="mm">အရောင်</span><small><span class="en">one control everywhere</span><span class="mm">နေရာတိုင်း အတူတူ</span></small></span>
+            <div class="popover" data-popover data-open="false">
+              <button type="button" class="swatch" style="background:#d4ff3f" aria-label="Colour, #d4ff3f" aria-expanded="false"></button>
+              <div class="popover__body" role="dialog" aria-label="Colour picker">
+                <p><span class="en">Shop palette</span><span class="mm">ဆိုင်၏ အရောင်များ</span></p>
+                <div class="palette">
+                  <button type="button" style="background:#0d0d0d" aria-label="Black" aria-pressed="false"></button>
+                  <button type="button" style="background:#ffffff" aria-label="White" aria-pressed="false"></button>
+                  <button type="button" style="background:#d4ff3f" aria-label="Lime" aria-pressed="true"></button>
+                  <button type="button" style="background:#2f7bff" aria-label="Blue" aria-pressed="false"></button>
+                  <button type="button" style="background:#d14343" aria-label="Red" aria-pressed="false"></button>
+                  <button type="button" style="background:#f2c94c" aria-label="Gold" aria-pressed="false"></button>
+                </div>
+                <p><span class="en">Last six</span><span class="mm">နောက်ဆုံး ၆ ရောင်</span></p>
+                <div class="palette">
+                  <button type="button" style="background:#1f2937" aria-label="Recent #1f2937"></button>
+                  <button type="button" style="background:#7c3aed" aria-label="Recent #7c3aed"></button>
+                  <button type="button" style="background:#10b981" aria-label="Recent #10b981"></button>
+                  <button type="button" style="background:#f97316" aria-label="Recent #f97316"></button>
+                  <button type="button" style="background:#e11d48" aria-label="Recent #e11d48"></button>
+                  <button type="button" style="background:#0ea5e9" aria-label="Recent #0ea5e9"></button>
+                </div>
+                <p style="display:flex;gap:6px;align-items:center">
+                  <label class="field" style="flex:1"><small>#</small><input type="text" value="D4FF3F" aria-label="Hex colour"></label>
+                  <button type="button" class="icon-btn" aria-label="Pick a colour from the canvas" title="Eyedropper (E21)">💧</button>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Blend mode</span><span class="mm">ရောစပ်ပုံ</span></span>
+            <div class="popover" data-popover>
+              <button type="button" class="btn" aria-expanded="false" aria-haspopup="listbox"><span class="en">Normal</span><span class="mm">ပုံမှန်</span> ▾</button>
+              <div class="popover__body" role="listbox" aria-label="Blend mode" style="width:160px">
+                <button type="button" class="btn" role="option" aria-selected="true" style="width:100%;justify-content:flex-start"><span class="en">Normal</span><span class="mm">ပုံမှန်</span></button>
+                <button type="button" class="btn" role="option" aria-selected="false" style="width:100%;justify-content:flex-start;margin-top:4px">Multiply</button>
+                <button type="button" class="btn" role="option" aria-selected="false" style="width:100%;justify-content:flex-start;margin-top:4px">Screen</button>
+              </div>
+            </div>
+          </div>
+          <div class="row row--stack">
+            <span class="label"><span class="en">Opacity</span><span class="mm">အလင်းအမှောင်</span></span>
+            <div class="slider">
+              <input type="range" min="0" max="100" value="100" aria-label="Opacity">
+              <label class="field"><input type="text" inputmode="numeric" value="100" aria-label="Opacity percent"><small>%</small></label>
+            </div>
+          </div>
+          <div class="row row--stack">
+            <span class="label"><span class="en">Fill</span><span class="mm">ဖြည့်</span></span>
+            <div class="slider">
+              <input type="range" min="0" max="100" value="100" aria-label="Fill">
+              <label class="field"><input type="text" inputmode="numeric" value="100" aria-label="Fill percent"><small>%</small></label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Effects (text) -->
+      <section class="section">
+        <div class="section__head">
+          <h3><span class="en">Text</span><span class="mm">စာသား</span></h3>
+          <button type="button" class="icon-btn" aria-label="Reset text" title="Reset text">⟲</button>
+        </div>
+        <div class="section__body">
+          <div class="row">
+            <span class="label"><span class="en">Letter case</span><span class="mm">စာလုံး အကြီး/အသေး</span></span>
+            <div class="seg" role="group" aria-label="Letter case">
+              <button type="button" aria-pressed="true">Aa</button>
+              <button type="button" aria-pressed="false">AA</button>
+              <button type="button" aria-pressed="false">aa</button>
+            </div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Weight</span><span class="mm">အလေးချိန်</span><small><span class="en">from the hosted font</span><span class="mm">hosted font မှ</span></small></span>
+            <div class="popover" data-popover>
+              <button type="button" class="btn" aria-expanded="false" aria-haspopup="listbox"><span class="en">SemiBold 600</span><span class="mm">SemiBold 600</span> ▾</button>
+              <div class="popover__body" role="listbox" aria-label="Weight" style="width:170px">
+                <button type="button" class="btn" role="option" aria-selected="false" style="width:100%;justify-content:flex-start">Regular 400</button>
+                <button type="button" class="btn" role="option" aria-selected="true" style="width:100%;justify-content:flex-start;margin-top:4px">SemiBold 600</button>
+                <button type="button" class="btn" role="option" aria-selected="false" style="width:100%;justify-content:flex-start;margin-top:4px">Bold 700</button>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Effects</span><span class="mm">အကျိုးသက်ရောက်မှု</span></span>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="icon-btn" aria-pressed="true" aria-label="Shadow" title="Shadow">◧</button>
+              <button type="button" class="icon-btn" aria-pressed="false" aria-label="Outline" title="Outline">◯</button>
+              <button type="button" class="icon-btn" aria-pressed="false" aria-label="Glow" title="Glow">✳</button>
+              <button type="button" class="icon-btn" aria-pressed="false" aria-label="Extrude" title="Extrude">▨</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Photo -->
+      <section class="section">
+        <div class="section__head">
+          <h3><span class="en">Photo</span><span class="mm">ဓာတ်ပုံ</span></h3>
+          <button type="button" class="icon-btn" aria-label="Reset photo" title="Reset photo">⟲</button>
+        </div>
+        <div class="section__body">
+          <div class="row">
+            <span class="label"><span class="en">Before / after</span><span class="mm">မတိုင်မီ / ပြီးနောက်</span></span>
+            <button type="button" class="btn" aria-pressed="false" aria-label="Show the photo before adjustments">◐ <span class="en">Before</span><span class="mm">မတိုင်မီ</span></button>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">View</span><span class="mm">မြင်ကွင်း</span></span>
+            <div class="seg" role="group" aria-label="Photo view">
+              <button type="button" aria-pressed="true">Basic</button>
+              <button type="button" aria-pressed="false">Advanced</button>
+            </div>
+          </div>
+          <div class="row row--stack">
+            <span class="label"><span class="en">Exposure</span><span class="mm">အလင်း</span></span>
+            <div class="slider"><input type="range" min="-100" max="100" value="6" aria-label="Exposure"><label class="field"><input type="text" inputmode="numeric" value="6" aria-label="Exposure value"></label></div>
+          </div>
+          <div class="row row--stack">
+            <span class="label"><span class="en">Contrast</span><span class="mm">ခြားနားမှု</span></span>
+            <div class="slider"><input type="range" min="-100" max="100" value="12" aria-label="Contrast"><label class="field"><input type="text" inputmode="numeric" value="12" aria-label="Contrast value"></label></div>
+          </div>
+          <div class="row row--stack">
+            <span class="label"><span class="en">Saturation</span><span class="mm">အရောင်ပြင်းအား</span></span>
+            <div class="slider"><input type="range" min="-100" max="100" value="-4" aria-label="Saturation"><label class="field"><input type="text" inputmode="numeric" value="-4" aria-label="Saturation value"></label></div>
+          </div>
+          <div class="row row--stack">
+            <span class="label"><span class="en">Temperature</span><span class="mm">အပူချိန်</span></span>
+            <div class="slider"><input type="range" min="-100" max="100" value="0" aria-label="Temperature"><label class="field"><input type="text" inputmode="numeric" value="0" aria-label="Temperature value"></label></div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">One-tap looks</span><span class="mm">တစ်ချက်နှိပ်ပုံစံ</span></span>
+          </div>
+          <div class="looks" role="group" aria-label="One-tap looks">
+            <button type="button" aria-pressed="true"><i style="background:linear-gradient(135deg,#d4ff3f,#2f7bff)"></i>Original</button>
+            <button type="button" aria-pressed="false"><i style="background:linear-gradient(135deg,#f6d365,#fda085)"></i>Warm</button>
+            <button type="button" aria-pressed="false"><i style="background:linear-gradient(135deg,#89f7fe,#66a6ff)"></i>Cool</button>
+            <button type="button" aria-pressed="false"><i style="background:linear-gradient(135deg,#2c2c2c,#8e8e8e)"></i>Mono</button>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Image</span><span class="mm">ပုံ</span></span>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn">✂ <span class="en">Crop</span><span class="mm">ဖြတ်</span></button>
+              <button type="button" class="btn">⇄ <span class="en">Replace</span><span class="mm">အစားထိုး</span></button>
+            </div>
+          </div>
+          <p class="note"><span class="en">Background removal stays “not connected” until the image service exists (E10).</span><span class="mm">နောက်ခံဖျက်ခြင်းကို ပုံဝန်ဆောင်မှု (E10) မရှိသေးသဖြင့် “မချိတ်ရသေးပါ” ဟု ပြထားသည်။</span></p>
+        </div>
+      </section>
+
+      <!-- Layer -->
+      <section class="section">
+        <div class="section__head">
+          <h3><span class="en">Layer</span><span class="mm">အလွှာ</span></h3>
+          <button type="button" class="icon-btn" aria-label="Reset layer" title="Reset layer">⟲</button>
+        </div>
+        <div class="section__body">
+          <div class="row">
+            <span class="label"><span class="en">Name</span><span class="mm">အမည်</span></span>
+            <label class="field" style="flex:1"><input type="text" value="Front artwork" aria-label="Layer name"></label>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Style</span><span class="mm">ပုံစံ</span><small><span class="en">copy from one layer, paste to another</span><span class="mm">အလွှာတစ်ခုမှ ကူးပြီး အခြားတစ်ခုတွင် ကပ်မည်</span></small></span>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn">⧉ <span class="en">Copy</span><span class="mm">ကူး</span></button>
+              <button type="button" class="btn">⇩ <span class="en">Paste</span><span class="mm">ကပ်</span></button>
+            </div>
+          </div>
+          <div class="row">
+            <span class="label"><span class="en">Layer actions</span><span class="mm">အလွှာ လုပ်ဆောင်ချက်များ</span></span>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="icon-btn" aria-label="Duplicate layer" title="Duplicate">⧉</button>
+              <button type="button" class="icon-btn" aria-label="Lock layer" aria-pressed="false" title="Lock">🔓</button>
+              <button type="button" class="icon-btn btn--danger" aria-label="Delete layer" title="Delete">🗑</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </aside>
+</main>
+
+<section class="notes">
+  <h2><span class="en">What this mock-up shows</span><span class="mm">ဤ mock-up တွင် ပြထားသည်</span></h2>
+  <ul>
+    <li><span class="en">A sticky header with the layer's thumbnail, name and kind, then icon tabs for Arrange, Style, Effects, Photo and Layer.</span><span class="mm">အပေါ်တွင် အလွှာ၏ ပုံငယ်၊ အမည်၊ အမျိုးအစား ကပ်ထားပြီး အောက်တွင် နေရာ/အရောင်/အကျိုး/ဓာတ်ပုံ/အလွှာ tab များ ရှိသည်။</span></li>
+    <li><span class="en">Several sections open at once, and a reset on every section header.</span><span class="mm">Section များကို တစ်ချိန်တည်း ဖွင့်ထားနိုင်ပြီး section တစ်ခုချင်းစီတွင် မူလအတိုင်း ပြန်ထားသော ခလုတ် ရှိသည်။</span></li>
+    <li><span class="en">One control family: 32 px rows, a slider always with a number field, X/Y and W/H on one row, segmented controls for two to four choices, the header's dropdown instead of native selects.</span><span class="mm">Control အားလုံး ပုံစံတူသည် — 32 px အတန်း၊ slider တိုင်းတွင် ဂဏန်းကွက်၊ X/Y နှင့် W/H တစ်တန်းတည်း၊ ရွေးချယ်မှု ၂–၄ ခုကို segmented၊ native select အစား header ၏ dropdown။</span></li>
+    <li><span class="en">Arrange carries X, Y, width and height in centimetres with pixels beside them, rotation, lock proportions, align, rotate 90°, reset, distribute and Flip horizontal / vertical.</span><span class="mm">နေရာ tab တွင် X၊ Y၊ အနံ၊ အမြင့် စင်တီမီတာဖြင့် (px ပါ တွဲပြ)၊ လှည့်ခြင်း၊ အချိုးအစား မပြောင်း၊ ညှိခြင်း၊ 90° လှည့်၊ မူလအတိုင်း၊ ခွဲဝေ၊ အလျား/ဒေါင်လိုက် ဘက်ပြောင်း တို့ ပါသည်။</span></li>
+    <li><span class="en">One colour control everywhere: a swatch opening the shop palette, the last six colours, a hex field and an eyedropper.</span><span class="mm">အရောင်ကို နေရာတိုင်း တစ်မျိုးတည်း သုံးသည် — swatch နှိပ်လျှင် ဆိုင်၏ အရောင်များ၊ နောက်ဆုံး ၆ ရောင်၊ hex ကွက်၊ အရောင်ခြည် (eyedropper) ပွင့်သည်။</span></li>
+    <li><span class="en">Text gains letter case and the hosted font's real weights; Photo gains before/after, Basic/Advanced and one-tap looks.</span><span class="mm">စာသားတွင် စာလုံး အကြီး/အသေး နှင့် hosted font ၏ အလေးချိန် အစစ်အမှန် ရသည်။ ဓာတ်ပုံတွင် မတိုင်မီ/ပြီးနောက်၊ Basic/Advanced၊ တစ်ချက်နှိပ်ပုံစံ များ ရသည်။</span></li>
+    <li><span class="en">Type is 12 px body, 11 px captions, 14 px section titles, line height 1.5, so Myanmar stacked marks are not clipped.</span><span class="mm">စာလုံးအရွယ်အစား — ကိုယ်ထည် 12 px၊ ရှင်းလင်းချက် 11 px၊ ခေါင်းစဉ် 14 px၊ line height 1.5 ဖြစ်သောကြောင့် မြန်မာ အက္ခရာ အထပ်များ မညှပ်ပါ။</span></li>
+    <li><span class="en">On phone the panel is a bottom sheet with a drag handle and three heights, 44 px targets, and it never covers the object being edited.</span><span class="mm">ဖုန်းတွင် panel သည် အောက်ခံ sheet ဖြစ်ပြီး ဆွဲရန် handle နှင့် အမြင့် ၃ မျိုး၊ ခလုတ် 44 px ရှိသည်။ တည်းဖြတ်နေသော အရာကို မဖုံးပါ။</span></li>
+  </ul>
+</section>
+
+<script>
+  const root = document.documentElement;
+
+  const syncSwitches = () => {
+    for (const button of document.querySelectorAll("[data-set]")) {
+      button.setAttribute("aria-pressed", String(root.dataset[button.dataset.set] === button.dataset.value));
+    }
+  };
+  syncSwitches();
+
+  for (const button of document.querySelectorAll("[data-set]")) {
+    button.addEventListener("click", () => {
+      const { set, value } = button.dataset;
+      root.dataset[set] = value;
+      for (const sibling of button.parentElement.querySelectorAll("button")) {
+        sibling.setAttribute("aria-pressed", String(sibling === button));
+      }
+    });
+  }
+
+  // Scoped to the sheet buttons: <html> carries data-sheet itself, and it has no parent to walk.
+  for (const button of document.querySelectorAll(".sheet-sizes [data-sheet]")) {
+    button.addEventListener("click", () => {
+      root.dataset.sheet = button.dataset.sheet;
+      for (const sibling of button.parentElement.querySelectorAll("button")) {
+        sibling.setAttribute("aria-pressed", String(sibling === button));
+      }
+    });
+  }
+
+  // One popover at a time, closed by Escape or a click outside, like the header's own dropdown.
+  const closePopovers = () => {
+    for (const popover of document.querySelectorAll("[data-popover]")) {
+      popover.dataset.open = "false";
+      popover.querySelector("button")?.setAttribute("aria-expanded", "false");
+    }
+  };
+  for (const popover of document.querySelectorAll("[data-popover]")) {
+    const trigger = popover.querySelector("button");
+    trigger?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = popover.dataset.open !== "true";
+      closePopovers();
+      popover.dataset.open = String(open);
+      trigger.setAttribute("aria-expanded", String(open));
+    });
+  }
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element) || !event.target.closest("[data-popover]")) closePopovers();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closePopovers();
+  });
+
+  // Pressing a swatch or a look shows the pressed state, so the mock-up behaves like the real panel.
+  for (const group of document.querySelectorAll(".palette, .looks, .seg")) {
+    for (const button of group.querySelectorAll("button")) {
+      button.addEventListener("click", () => {
+        for (const sibling of group.querySelectorAll("button")) {
+          sibling.setAttribute("aria-pressed", String(sibling === button));
+        }
+      });
+    }
+  }
+</script>
+</body>
+</html>

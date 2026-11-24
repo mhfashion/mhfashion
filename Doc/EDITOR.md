@@ -104,7 +104,8 @@ and in the thumbnail, and a button clears them.
 ## 5. Selection and transform
 
 - Placement is done on the canvas, the way Kittl does it: drag to move, the eight handles to resize, the
-  round handle to rotate. The Adjustments panel has no Arrange box.
+  round handle to rotate. The Adjustments panel has no Arrange box yet; the panel that replaces it is
+  designed in `public/editor-adjustments-mockup.html` (Plan E22) and is reviewed before it is built.
 - Duplicate, flip, rotate and reset live on the canvas toolbar and in the Edit sidebar, so the panel does
   not repeat them.
 

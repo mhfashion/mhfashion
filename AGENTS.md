@@ -328,6 +328,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The product page requires size and colour before adding (`data-add-to-cart`), and shows `[data-variant-warning]` otherwise, so no line reaches the print desk without a size or colour.
 - `normalizeCartItems` gives pre-variant carts a key per stored line instead of collapsing them.
 
+## Adjustments panel mock-up (`apps/web/public/editor-adjustments-mockup.html`)
+- Plan E22 waits on the owner reviewing this page before the panel is rebuilt. It is one self-contained file (inline CSS and JS, no network requests) served at `/editor-adjustments-mockup.html`; open it with any static server or straight from disk.
+- Switches set `data-lang` (en/mm), `data-theme` (dark/light) and `data-device` (desktop/phone) on `<html>`; CSS shows one of each pair. On a phone the panel is a bottom sheet sized by `data-sheet` (peek/half/full).
+- Size rules that are easy to break again: `.stage { flex: none }` (a flex basis made the phone sheet measure against a 129 px stage), `.canvas { flex: none }` on a phone (a column stretch overrode its aspect ratio), and `.panel__head, .tabs { flex: 0 0 auto }` (shrinking clipped the tabs).
+- Number fields need `flex: 1; min-width: 0` inside `.field`; `width: 100%` collapsed them to one digit. Paired rows use `.row--stack` so the caption sits above the two fields.
+- `tests/editor-adjustments-mockup.test.cjs` holds the file to the plan: every control the item lists, no font size under 11px, a 320px panel, three sheet heights, and Myanmar labels present.
+- The Myanmar wording is a first pass for the layout check (words reused from `lib/i18n.tsx` where possible); the shop's copywriter finalises it.
+
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.
 - The job's **first step** verifies the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets. If either is missing it exits 1 and every later step is skipped, so **the Cloudflare Worker is never deployed**.

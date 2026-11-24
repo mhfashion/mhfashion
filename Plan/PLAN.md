@@ -3531,6 +3531,15 @@ rather than in the Tools bar.
   before any code. Then the shared controls (row, slider with number, colour field, dropdown, segmented) are
   built once and the sections move onto them one at a time. E21 reuses these controls, so E22 comes first or
   together with it.
+- **The mock-up is built: `/editor-adjustments-mockup.html`** (`apps/web/public/`, one self-contained file, no
+  network requests, so it opens from the site or straight from disk). Switches at the top set English or
+  Myanmar, dark or light, desktop or phone, and the phone sheet has Peek / Half / Full. It shows the sticky
+  layer header, the five tabs, the Arrange, Style, Text, Effects, Photo and Layer sections, the one colour
+  popover (shop palette, last six, hex, eyedropper), the before/after photo toggle, and the section resets.
+  Measured in headless Chromium at 1440 × 900 and 390 × 844: nothing under 11 px, no clipped label in either
+  language, no horizontal overflow, a 320 px (20 rem) desktop panel, and sheet heights 132 / 434 / 708 px.
+  `tests/editor-adjustments-mockup.test.cjs` holds the file to the controls and sizes this item lists. The
+  Myanmar wording is a first pass for the layout check and still needs the shop's copywriter (open question 6).
 - **Tools bar after the change:** Flip leaves it. **Flip moved 2026-11-22** (the owner had already decided it, so
   it did not wait for the mock-up): both buttons now sit at the top of the panel's Appearance section, keep their
   `Flip horizontal` / `Flip vertical` labels, and are disabled while the layer is locked. The rest of E22 still
