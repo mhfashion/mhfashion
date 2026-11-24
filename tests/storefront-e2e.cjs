@@ -474,6 +474,34 @@ async function main() {
     console.log("PASS cart popover: aria-expanded tracks the panel and Escape closes it");
 
 
+
+    // ---------- reduced motion ----------
+    // A shopper who asks the system for less motion must not get the sliding category strip.
+    await viewport(1440, 900, false);
+    const motionState = () => evaluate(() => {
+      const strip = document.querySelector(".animate-marquee");
+      const drawer = document.getElementById("mobile-menu");
+      return {
+        media: matchMedia("(prefers-reduced-motion: reduce)").matches,
+        animation: strip ? getComputedStyle(strip).animationName : "missing",
+        transition: drawer ? parseFloat(getComputedStyle(drawer).transitionDuration) : -1,
+      };
+    });
+
+    await visit("/", "header");
+    const motionNormal = await motionState();
+    assert.equal(motionNormal.media, false, "the page starts without the reduced-motion preference");
+    assert.equal(motionNormal.animation, "marquee-left", "the category strip animates by default");
+    assert.ok(motionNormal.transition > 0.1, `the drawer slides by default: ${motionNormal.transition}`);
+
+    await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+    await visit("/", "header");
+    const motionReduced = await motionState();
+    assert.equal(motionReduced.media, true, "the browser reports the reduced-motion preference");
+    assert.equal(motionReduced.animation, "none", "the category strip stops when motion is reduced");
+    assert.ok(motionReduced.transition < 0.001, `transitions collapse to nothing: ${motionReduced.transition}`);
+    await send("Emulation.setEmulatedMedia", { features: [] });
+    console.log("PASS reduced motion: the strip stops and transitions collapse when the system asks for it");
     // ---------- phone drawer ----------
     // The drawer is always in the DOM so it can slide; while it is closed its links must be out of
     // reach, and while it is open Escape must close it and give the focus back.

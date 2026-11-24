@@ -652,6 +652,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Motion (`globals.css`, `CategoryRow.tsx`)
+- `@media (prefers-reduced-motion: reduce)` kills `.animate-marquee` and collapses every animation and
+  transition to `0.01ms` with one iteration, so the drawer opens instantly and spinners settle instead of
+  looping. Add new continuous animations under that media query too.
+- The block is plain (unlayered) CSS with `!important`, so it beats Tailwind's utilities; keep it outside
+  `@layer base` if you extend it.
+- `tests/storefront-e2e.cjs` toggles the preference with `Emulation.setEmulatedMedia` and asserts the
+  category strip reports `animation-name: none` and the drawer's `transition-duration` collapses. Reset the
+  emulation (`features: []`) before later sections, or the phone checks inherit it.
+
 ## Colour tokens (light and dark)
 - `tests/contrast.test.cjs` reads the tokens straight out of `globals.css` and requires 4.5:1 (WCAG AA for
   normal text) for `text-primary` / `text-secondary` / `text-muted` / `text-faint` / `accent` against both

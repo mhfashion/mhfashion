@@ -65,3 +65,20 @@ body {
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+/* A shopper who asks the system for less motion should not get a strip that slides forever, a drawer
+   that glides, or a spinner that never settles. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
