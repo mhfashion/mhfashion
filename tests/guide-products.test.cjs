@@ -118,7 +118,7 @@ test("the guide model reads product links from the row and repairs what it canno
   assert.match(source, /seo_description, product_links/, "the query asks for the column");
   assert.match(source, /productLinks: GuideProductLink\[\]/, "every post carries the list, empty when it sells nothing");
   const starter = readFileSync(path.join(ROOT, "apps/web/src/lib/guide-starter.ts"), "utf8");
-  assert.equal(starter.match(/productLinks: \[\]/g).length, 9, "each starter post declares an empty list");
+  assert.equal(starter.match(/productLinks: \[\]/g).length, 12, "each starter post declares an empty list");
 });
 
 test("the post page renders the section and nothing when there is nothing to show", () => {

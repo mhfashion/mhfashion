@@ -116,14 +116,14 @@ function livePost(post, category) {
   };
 }
 
-test("starter handbook has four categories and nine valid article links", async (t) => {
+test("starter handbook has four categories and twelve valid article links", async (t) => {
   useEnvironment(t, { NEXT_PUBLIC_SUPABASE_URL: undefined, NEXT_PUBLIC_SUPABASE_ANON_KEY: undefined });
   const guides = loadGuides();
   const catalog = await guides.getGuideCatalog();
   assert.equal(catalog.source, "starter");
   assert.equal(catalog.categories.length, 4);
-  assert.equal(catalog.posts.length, 9);
-  assert.equal(new Set(catalog.posts.map((post) => post.slug)).size, 9);
+  assert.equal(catalog.posts.length, 12);
+  assert.equal(new Set(catalog.posts.map((post) => post.slug)).size, 12);
   for (const post of catalog.posts) {
     assert.match(post.slug, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
     assert.ok(catalog.categories.some((category) => category.slug === post.categorySlug));

@@ -1182,6 +1182,20 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — Three more handbook posts: editor, print care, ordering
+
+The handbook is the shop's post library, so the owner asked for the content a customer actually needs: sizes, the
+editor, and the rest. Three posts join it, written the same way as the existing eight.
+
+- `how-the-editor-works` (Design Guide, featured): the tools bar, print canvas, layers and mockup, then export and the
+  photo-resolution warning.
+- `print-methods-and-how-to-care-for-a-print` (Product Guide): which artwork suits direct-to-garment, vinyl or
+  embroidery, and how to wash and iron a printed garment.
+- `how-to-place-an-order-step-by-step` (Product Guide): product and options, design, mockup and size check, cart,
+  delivery details, and keeping the order number.
+
+The handbook now holds 12 posts. The guide tests that count the starter catalogue were updated with it.
+
 ### 2026-11-24 — A size-guide article joins the handbook
 
 The guide catalogue had no size or fit article, so `/size-guide` (the chart page) was the only place sizing was

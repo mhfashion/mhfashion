@@ -112,6 +112,121 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
         "Measure a garment you already wear, compare it with the MH Fashion size chart, and choose the right size for a relaxed or closer fit.",
     },
     {
+      id: "20000000-0000-4000-8000-000000000012",
+      slug: "how-the-editor-works",
+      categorySlug: "design-guide",
+      title: "How the editor works: tools, layers and export",
+      excerpt:
+        "Pick a garment, open the editor, draw or upload artwork on its own layer, then export a print-ready file.",
+      sections: [
+        {
+          heading: "The four parts of the screen",
+          paragraphs: [
+            "The tools bar holds the brush, pencil, pen, shape, text, gradient and eraser. The print canvas in the middle is the area that actually prints. The layers panel lists everything on the design, and the mockup shows the garment with your artwork on it.",
+            "Nothing you draw goes straight onto the garment: every mark lands on the selected layer, so you can move, hide or delete it later without touching the rest.",
+          ],
+          bullets: [
+            "Choose the garment and colour first, then open the editor.",
+            "Draw inside the white print area; anything outside it is not printed.",
+            "Watch the mockup: it shows what the finished garment will look like.",
+          ],
+        },
+        {
+          heading: "Layers keep the design editable",
+          paragraphs: [
+            "Each text block, shape, pen path, photo and brush stroke can sit on its own layer. Use one layer per idea, name it, and lock the ones you are happy with so a later drag cannot move them by accident.",
+            "Group layers that belong together, and reorder them when one needs to sit above another. A layer hidden in the panel is hidden in the print file too.",
+          ],
+        },
+        {
+          heading: "Export and print quality",
+          paragraphs: [
+            "The editor warns when a photo is too small for the print area, because a stretched photo prints soft. Keep photos at or above the size the warning asks for.",
+            "Export the design when it looks right on the mockup. The exported file carries the layers at print resolution, which is what the shop prints from.",
+          ],
+        },
+      ],
+      readingMinutes: 4,
+      featured: true,
+      publishedAt: PUBLISHED_AT,
+      seoTitle: "MH Fashion editor guide: tools, layers and print export",
+      productLinks: [],
+      seoDescription:
+        "A walk through the MH Fashion editor: the tools bar, the print canvas, layers and the mockup, and how to export a print-ready design.",
+    },
+    {
+      id: "20000000-0000-4000-8000-000000000013",
+      slug: "print-methods-and-how-to-care-for-a-print",
+      categorySlug: "product-guide",
+      title: "Print methods and how to care for a print",
+      excerpt:
+        "Direct-to-garment, vinyl and embroidery each suit different artwork. Wash the garment inside out and the print keeps its colour.",
+      sections: [
+        {
+          heading: "Which method suits which artwork",
+          paragraphs: [
+            "Direct-to-garment printing sprays ink into the fabric, so it handles photographs, gradients and many colours without extra cost. It sits best on cotton and cotton blends.",
+            "Vinyl is cut from a coloured sheet, so it suits solid shapes, names and numbers in one or two colours and holds sharp edges on polyester sportswear. Embroidery stitches the artwork in thread, which suits logos and small chest marks rather than fine detail.",
+          ],
+          bullets: [
+            "Photos and gradients: direct-to-garment.",
+            "Bold one-colour shapes and lettering: vinyl.",
+            "Logos and small marks: embroidery.",
+          ],
+        },
+        {
+          heading: "Care that keeps the print",
+          paragraphs: [
+            "Turn the garment inside out, wash cold on a gentle cycle, and skip fabric softener and bleach. Tumble dry low or hang it to dry; a hot dryer is what cracks a print first.",
+            "Iron the reverse side only, never straight onto the print, and do not dry-clean a printed garment.",
+          ],
+        },
+      ],
+      readingMinutes: 3,
+      featured: false,
+      publishedAt: PUBLISHED_AT,
+      seoTitle: "MH Fashion print methods and print care",
+      productLinks: [],
+      seoDescription:
+        "How direct-to-garment, vinyl and embroidery differ, which artwork suits each, and how to wash and iron a printed garment so the print lasts.",
+    },
+    {
+      id: "20000000-0000-4000-8000-000000000014",
+      slug: "how-to-place-an-order-step-by-step",
+      categorySlug: "product-guide",
+      title: "How to place an order, step by step",
+      excerpt:
+        "Pick the product and its options, design it, check the mockup and the size, add it to the cart and confirm the delivery details.",
+      sections: [
+        {
+          heading: "From product to cart",
+          paragraphs: [
+            "Choose the product, then narrow it down with the options the shop offers, such as colour and size. The price updates as the options change, so the number you see is the number for that combination.",
+            "Open the editor, finish the design, and check the mockup before adding it to the cart. If you are unsure about the size, read the size guide and measure a garment you already wear.",
+          ],
+          bullets: [
+            "One design per cart line; duplicate the line if you want two sizes of the same design.",
+            "Check the print area on the mockup, not only on the canvas.",
+            "Keep the design saved so you can order it again later.",
+          ],
+        },
+        {
+          heading: "Delivery and confirmation",
+          paragraphs: [
+            "Enter the delivery address and phone number carefully, then confirm the order. The shop sends the order number, and that number is what to quote in any message about the order.",
+            "If a detail is wrong, message the shop with the order number as soon as possible; an order that has already gone to print cannot be changed.",
+          ],
+        },
+      ],
+      readingMinutes: 3,
+      featured: false,
+      publishedAt: PUBLISHED_AT,
+      seoTitle: "How to place an MH Fashion order",
+      productLinks: [],
+      seoDescription:
+        "The MH Fashion ordering steps: choose product and options, design it, check the mockup and size, add to cart, confirm delivery details and keep the order number.",
+    },
+    {
       id: "20000000-0000-4000-8000-000000000002",
       slug: "how-apparel-options-narrow-down",
       categorySlug: "product-guide",
