@@ -22,7 +22,7 @@ test("guide landing serves article content and categories without JavaScript", a
   assert.match(result.visible, /How MH Fashion products are organized/);
   assert.match(result.visible, /Editor Guide/);
   assert.ok(result.visible.includes('href="/guide/editor-guide"'), "the Editor Guide is missing from the guide menu");
-  assert.equal(new Set(result.articleLinks).size, 8);
+  assert.equal(new Set(result.articleLinks).size, 9);
   assert.match(result.visible, /<h1\b/);
   assert.match(result.html, /MH Fashion Guide — Products, Design &amp; Payment/);
 });

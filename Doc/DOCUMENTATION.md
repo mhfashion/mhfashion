@@ -1182,6 +1182,16 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — A size-guide article joins the handbook
+
+The guide catalogue had no size or fit article, so `/size-guide` (the chart page) was the only place sizing was
+explained, and nothing in the handbook pointed at it.
+
+- `GUIDE_STARTER_CATALOG` gains `how-to-read-the-size-guide` under Product Guide: measure a garment you already wear,
+  compare it with the chart, and choose between two close sizes. It is a normal post, so it appears in the catalogue,
+  the category filter and the article route like the other eight.
+- The guide tests that count the starter handbook were updated (8 -> 9 posts, unique slugs and empty `productLinks`).
+
 ### 2026-11-24 — Shift and Alt shape the shape tool's drag, and the Shape box says so
 
 Plan E21 item 5, the hint half. The Shape box only listed presets, and the canvas ignored the modifier keys a print

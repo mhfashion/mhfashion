@@ -70,6 +70,48 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
         "Understand MH Fashion product types, customization levels, attribute choices, and how planned pricing is determined.",
     },
     {
+      id: "20000000-0000-4000-8000-000000000011",
+      slug: "how-to-read-the-size-guide",
+      categorySlug: "product-guide",
+      title: "How to read the size guide",
+      excerpt:
+        "Measure the garment you already wear, compare it with the chart, and pick the size that matches — not the size on the label.",
+      sections: [
+        {
+          heading: "Start from a garment you already like",
+          paragraphs: [
+            "Lay the garment flat, button or zip it, and smooth out the wrinkles. A flat measurement is easier to repeat than a body measurement, and it is what the chart records.",
+            "Measure chest one inch below the armhole, length from the highest point of the shoulder to the hem, and sleeve from the shoulder seam to the cuff. Write the three numbers down in centimetres.",
+          ],
+          bullets: [
+            "Chest is measured across the front only, then doubled, or straight across as the chart states.",
+            "Keep the tape level and snug, never pulled tight.",
+            "Measure twice; a one-centimetre slip changes the size.",
+          ],
+        },
+        {
+          heading: "Compare with the chart, then choose",
+          paragraphs: [
+            "The chart lists garment measurements for each size, so match your numbers to the closest row rather than to the size printed on an old label. Sizes differ between suppliers.",
+            "When two sizes are both close, choose the larger one for a relaxed fit and the smaller one for a closer fit. Knit fabrics give a little; woven fabrics do not.",
+          ],
+        },
+        {
+          heading: "Ask before you order",
+          paragraphs: [
+            "If a measurement sits between two rows, message the shop with your numbers and the product link before ordering. A wrong size costs more to fix than a short question.",
+          ],
+        },
+      ],
+      readingMinutes: 3,
+      featured: false,
+      publishedAt: PUBLISHED_AT,
+      seoTitle: "MH Fashion size guide: how to measure and choose a size",
+      productLinks: [],
+      seoDescription:
+        "Measure a garment you already wear, compare it with the MH Fashion size chart, and choose the right size for a relaxed or closer fit.",
+    },
+    {
       id: "20000000-0000-4000-8000-000000000002",
       slug: "how-apparel-options-narrow-down",
       categorySlug: "product-guide",
