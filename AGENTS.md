@@ -652,6 +652,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Cart line removal (`CartPageClient.tsx`)
+- Removing a line, or decrementing one whose quantity is 1 (`updateCartQuantity` deletes at 0), destroys
+  the button that had the focus, so the focus has to be handed over explicitly: `focusAfterRemoval` moves
+  it to the line that takes the slot (`[data-cart-remove]`), falling back to the cart heading and then the
+  empty-state heading (`tabIndex={-1}`). Without it the focus lands on `<body>` and a keyboard user is
+  back at the top of the page.
+- Removals and "Clear cart" are announced through `[data-cart-notice]` (`role="status"`), naming the
+  product. The per-line quantity is `aria-live="polite"`.
+- `tests/storefront-e2e.cjs` drives this with real Enter key events after seeding two lines in
+  `localStorage`, and asserts the surviving line's remove button holds the focus.
+
 ## Product page selection state (`ProductDetailClient.tsx`)
 - The six option groups (Size, Color, Material, Fit Type, Sleeve, GSM) render through `OptionButton`,
   which carries `aria-pressed={selected}`; the colour swatches carry their own

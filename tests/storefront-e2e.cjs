@@ -475,6 +475,60 @@ async function main() {
 
 
 
+
+    // ---------- cart lines ----------
+    // Removing a line deletes the button that had the focus, so the focus has to land on the line that
+    // takes its place and the removal has to be spoken.
+    await viewport(1440, 900, false);
+    const seedLines = () => evaluate(() => {
+      const variant = { size: "M", color: "Black", material: null, gsm: null, fit: null, sleeve: null };
+      localStorage.setItem("mh-fashion-cart-items", JSON.stringify([
+        { id: "p1", name: "Butterfly Effect", slug: "butterfly-effect", priceMinKs: 21000, priceMaxKs: 25000, key: "p1", quantity: 2, variant, unitPriceKs: 21000 },
+        { id: "p2", name: "Neon Bloom", slug: "neon-bloom", priceMinKs: 18000, priceMaxKs: 22000, key: "p2", quantity: 1, variant, unitPriceKs: 18000 },
+      ]));
+    });
+    const pressEnter = async () => {
+      await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+      await pause(400);
+    };
+    const cartState = () => evaluate(() => ({
+      lines: [...document.querySelectorAll("[data-cart-line]")].map((line) => line.getAttribute("data-cart-line")),
+      focus: document.activeElement?.getAttribute("data-cart-remove") !== null
+        ? `remove:${document.activeElement.closest("[data-cart-line]")?.getAttribute("data-cart-line")}`
+        : (document.activeElement?.textContent || "").trim().slice(0, 30),
+      notice: document.querySelector("[data-cart-notice]")?.textContent || "",
+      quantityLive: document.querySelector("[data-cart-quantity]")?.getAttribute("aria-live") || "",
+    }));
+
+    await seedLines();
+    await visit("/cart", "[data-cart-line]");
+    const before = await cartState();
+    assert.deepEqual(before.lines, ["p1", "p2"], "both seeded lines are listed");
+    assert.equal(before.quantityLive, "polite", "the line quantity is a live region");
+
+    await evaluate(() => document.querySelector('[data-cart-line="p1"] [data-cart-remove]').focus());
+    await pressEnter();
+    const afterRemove = await cartState();
+    assert.deepEqual(afterRemove.lines, ["p2"], "the removed line is gone");
+    assert.equal(afterRemove.focus, "remove:p2", `the focus moved to the surviving line, not ${afterRemove.focus}`);
+    assert.match(afterRemove.notice, /Butterfly Effect/, "the removal is announced with the product name");
+
+    await evaluate(() => document.querySelector('[data-cart-line="p2"] [aria-label="Decrease quantity"]').focus());
+    await pressEnter();
+    const afterEmpty = await cartState();
+    assert.deepEqual(afterEmpty.lines, [], "decrementing the last line empties the cart");
+    assert.match(afterEmpty.focus, /cart is empty/i, `the focus lands on the empty-state heading, not ${afterEmpty.focus}`);
+
+    await seedLines();
+    await visit("/cart", "[data-cart-line]");
+    await evaluate(() => [...document.querySelectorAll("button")].find((button) => button.textContent.trim() === "Clear cart").focus());
+    await pressEnter();
+    const afterClear = await cartState();
+    assert.deepEqual(afterClear.lines, [], "clear cart empties the list");
+    assert.match(afterClear.notice, /cleared/i, "clearing is announced");
+    assert.match(afterClear.focus, /cart is empty/i, `clear cart parks the focus on the empty-state heading, not ${afterClear.focus}`);
+    console.log("PASS cart lines: removing a line keeps the focus in the list and says what left");
     // ---------- reduced motion ----------
     // A shopper who asks the system for less motion must not get the sliding category strip.
     await viewport(1440, 900, false);
