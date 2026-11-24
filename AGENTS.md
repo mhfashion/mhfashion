@@ -877,6 +877,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - A PAT pasted into chat on 2026-11-21 (`github_pat_11CNAE4QQ…`) was rejected by
   `GET https://api.github.com/user` with `401 Bad credentials`, and `git push` with it returned
   `Invalid username or token` / `403`. Treat a pasted token as unusable until the API accepts it.
+- A fine-grained PAT pasted into chat was rejected with `Invalid username or token` and
+  `GET /user` returned `401 Bad credentials`, so check the token with the API before
+  retrying a push; the length can look right (93 chars) and still be revoked or mistyped.
 - To push without persisting the credential, pass a write-capable token inline and leave
   `origin` alone, so the read-only URL in `.git/config` is never overwritten:
   `git push "https://x-access-token:$TOKEN@github.com/mhfashion/mhfashion.git" HEAD:main`
