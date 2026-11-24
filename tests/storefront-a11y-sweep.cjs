@@ -90,8 +90,15 @@ async function main() {
       .filter(visible);
     const unnamed = controls.filter((element) => !name(element))
       .map((element) => `${element.tagName.toLowerCase()}${element.type ? `[${element.type}]` : ""}${element.name ? `#${element.name}` : ""}`);
-    const imagesWithoutAlt = [...document.querySelectorAll("img")].filter(visible).filter((image) => !image.getAttribute("alt")?.trim())
-      .map((image) => (image.getAttribute("src") || "").slice(0, 50));
+    // `alt=""` is the correct marker for a decorative image, so only a missing attribute fails. An empty alt
+    // inside a link or button with no other text does fail: the control would be nameless.
+    const imagesWithoutAlt = [...document.querySelectorAll("img")].filter(visible).filter((image) => {
+      if (!image.hasAttribute("alt")) return true;
+      if (image.getAttribute("alt").trim()) return false;
+      const control = image.closest("a[href], button");
+      return Boolean(control) && !control.textContent.trim()
+        && !control.getAttribute("aria-label") && !control.getAttribute("aria-labelledby");
+    }).map((image) => (image.getAttribute("src") || "").slice(0, 50));
     const ids = [...document.querySelectorAll("[id]")].map((element) => element.id);
     const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
     const positiveTabindex = [...document.querySelectorAll("[tabindex]")].filter((element) => Number(element.getAttribute("tabindex")) > 0).length;
@@ -137,6 +144,63 @@ async function main() {
   }
   assert.deepEqual(phoneProblems, [], "the phone layout keeps the same invariants");
   console.log("PASS phone sweep: the drawer and the stacked pages keep one h1 and named controls");
+
+  // The admin dashboard is behind the demo session, so it needs its own pass with the session seeded.
+  const ADMIN_ROUTES = [
+    "/admin", "/admin/orders", "/admin/products", "/admin/designs", "/admin/posts", "/admin/ads",
+    "/admin/pricing", "/admin/attributes", "/admin/brushes", "/admin/settlements", "/admin/loyalty",
+    "/admin/customers", "/admin/inventory", "/admin/messages", "/admin/promotions", "/admin/reports",
+    "/admin/jersey", "/admin/settings",
+  ];
+  await viewport(1440, 900, false);
+  await visit("/");
+  await evaluate(() => localStorage.setItem("mh-fashion-admin-demo-session-v1", JSON.stringify({
+    name: "Sweep Admin", email: "sweep@example.com", role: "Administrator", expiresAt: Date.now() + 86400000,
+  })));
+  const adminProblems = [];
+  for (const route of ADMIN_ROUTES) {
+    await send("Page.navigate", { url: `${origin}${route}` });
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await pause(150);
+      try {
+        if (await evaluate(() => Boolean(document.querySelector("[data-admin-dashboard]")))) break;
+      } catch (error) {
+        if (!/Execution context was destroyed|Cannot find context/.test(String(error))) throw error;
+      }
+    }
+    const found = await inspect();
+    if (found.h1 !== 1) adminProblems.push(`${route}: ${found.h1} <h1>`);
+    if (found.unnamed.length) adminProblems.push(`${route}: unnamed ${found.unnamed.join(", ")}`);
+    if (found.imagesWithoutAlt.length) adminProblems.push(`${route}: img without alt ${found.imagesWithoutAlt.join(", ")}`);
+    if (found.duplicateIds.length) adminProblems.push(`${route}: duplicate id ${found.duplicateIds.join(", ")}`);
+    if (found.positiveTabindex) adminProblems.push(`${route}: ${found.positiveTabindex} positive tabindex`);
+    if (found.jumps.length) adminProblems.push(`${route}: heading jump ${found.jumps.join(", ")}`);
+  }
+  assert.deepEqual(adminProblems, [], "every admin route has one h1, named controls, alt text, unique ids and an ordered outline");
+  console.log(`PASS admin sweep: ${ADMIN_ROUTES.length} dashboard routes keep the same invariants`);
+
+  // On a phone the admin sidebar is a closed drawer, so it must be inert and stay out of the sweep.
+  await viewport(390, 844, true);
+  const adminPhoneProblems = [];
+  for (const route of ["/admin", "/admin/orders", "/admin/pricing", "/admin/products", "/admin/customers", "/admin/settings"]) {
+    await send("Page.navigate", { url: `${origin}${route}` });
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await pause(150);
+      try {
+        if (await evaluate(() => Boolean(document.querySelector("[data-admin-dashboard]")))) break;
+      } catch (error) {
+        if (!/Execution context was destroyed|Cannot find context/.test(String(error))) throw error;
+      }
+    }
+    const found = await inspect();
+    const sidebarInert = await evaluate(() => Boolean(document.getElementById("admin-sidebar")?.inert));
+    if (found.h1 !== 1) adminPhoneProblems.push(`${route}: ${found.h1} <h1>`);
+    if (found.unnamed.length) adminPhoneProblems.push(`${route}: unnamed ${found.unnamed.join(", ")}`);
+    if (found.duplicateIds.length) adminPhoneProblems.push(`${route}: duplicate id ${found.duplicateIds.join(", ")}`);
+    if (!sidebarInert) adminPhoneProblems.push(`${route}: the closed phone sidebar is not inert`);
+  }
+  assert.deepEqual(adminPhoneProblems, [], "the phone dashboard keeps one h1, named controls and an inert sidebar");
+  console.log("PASS admin phone sweep: the closed sidebar is inert and the pages stay named");
 
   await send("Emulation.setTouchEmulationEnabled", { enabled: false, maxTouchPoints: 1 });
   await send("Emulation.clearDeviceMetricsOverride");

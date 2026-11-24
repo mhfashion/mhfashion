@@ -24,6 +24,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `npm run start --workspace=apps/web -- --port 3000` then run the test file.
   `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
 
+## Accessibility sweep (`tests/storefront-a11y-sweep.cjs`)
+- Four passes now: 23 storefront routes at 1440, 6 at 390, **18 admin dashboard routes at 1440** and 6
+  admin routes at 390. The admin passes seed `mh-fashion-admin-demo-session-v1` in localStorage and wait
+  for `[data-admin-dashboard]`; they would otherwise land on `/admin/login`.
+- Every route must have exactly one `<h1>`, named controls, unique ids, no positive tabindex and no
+  heading jump larger than one level.
+- An `<img>` fails only when the `alt` attribute is **missing**; `alt=""` is the correct marker for a
+  decorative image. An empty alt inside a link or button with no other text still fails, because the
+  control would be nameless. The admin post thumbnails are deliberately `alt=""` next to their titles.
+- The phone admin pass also asserts `#admin-sidebar` is inert while closed, so the sidebar drawer cannot
+  quietly become tabbable again.
+
 ## Admin sidebar (`components/admin/AdminShell.tsx`)
 - On a phone the sidebar is a drawer. Closed, it is translated off-screen but still in the document, so it
   carries `inert` (only while the viewport is narrow — it is the permanent sidebar on desktop). The flag
