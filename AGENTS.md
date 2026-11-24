@@ -28,9 +28,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
 
 ## Accessibility sweep (`tests/storefront-a11y-sweep.cjs`)
-- Four passes now: 23 storefront routes at 1440, 6 at 390, **18 admin dashboard routes at 1440** and 6
-  admin routes at 390. The admin passes seed `mh-fashion-admin-demo-session-v1` in localStorage and wait
-  for `[data-admin-dashboard]`; they would otherwise land on `/admin/login`.
+- Five passes: 23 storefront routes at 1440, 6 at 390, `/admin/login` signed out, **18 admin dashboard
+  routes at 1440** and 6 admin routes at 390. The admin passes seed `mh-fashion-admin-demo-session-v1` in
+  localStorage and wait for `[data-admin-dashboard]`; they would otherwise land on `/admin/login`. The
+  login pass runs *before* the seeding, because the page redirects away when a session exists.
 - Every route must have exactly one `<h1>`, named controls, unique ids, no positive tabindex and no
   heading jump larger than one level.
 - An `<img>` fails only when the `alt` attribute is **missing**; `alt=""` is the correct marker for a

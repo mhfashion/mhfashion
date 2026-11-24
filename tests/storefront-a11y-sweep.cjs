@@ -154,6 +154,26 @@ async function main() {
   ];
   await viewport(1440, 900, false);
   await visit("/");
+  // The sign-in page is only reachable signed out, so it is swept before the session is seeded.
+  await evaluate(() => localStorage.removeItem("mh-fashion-admin-demo-session-v1"));
+  await send("Page.navigate", { url: `${origin}/admin/login` });
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await pause(150);
+    try {
+      if (await evaluate(() => Boolean(document.querySelector("form")))) break;
+    } catch (error) {
+      if (!/Execution context was destroyed|Cannot find context/.test(String(error))) throw error;
+    }
+  }
+  const loginFound = await inspect();
+  const loginProblems = [];
+  if (loginFound.h1 !== 1) loginProblems.push(`/admin/login: ${loginFound.h1} <h1>`);
+  if (loginFound.unnamed.length) loginProblems.push(`/admin/login: unnamed ${loginFound.unnamed.join(", ")}`);
+  if (loginFound.duplicateIds.length) loginProblems.push(`/admin/login: duplicate id ${loginFound.duplicateIds.join(", ")}`);
+  assert.deepEqual(loginProblems, [], "the admin sign-in page keeps one h1 and named controls");
+  console.log("PASS admin login: one h1, named controls and no duplicate ids");
+
+  await visit("/");
   await evaluate(() => localStorage.setItem("mh-fashion-admin-demo-session-v1", JSON.stringify({
     name: "Sweep Admin", email: "sweep@example.com", role: "Administrator", expiresAt: Date.now() + 86400000,
   })));
