@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, type EditorShapePreset } from "@/lib/editor-layers";
+import { editorToolShortcutKey, type EditorShortcutTool } from "@/lib/editor-shortcuts";
 
 export type EditorTool = "move" | "hand" | "pencil" | "pen" | "text" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
 
@@ -121,6 +122,8 @@ export default function EditorToolsBar({
           <div className="flex max-w-full flex-wrap items-center justify-center gap-0.5">
             {tools.map(({ id, label, Icon }) => {
               const disabled = drawingToolsDisabled && (id === "brush" || id === "pencil" || id === "pen" || id === "shape" || id === "gradient" || id === "eraser");
+              // E21 item 2: the key that picks this tool, printed in the tooltip and exposed to assistive tech.
+              const shortcut = editorToolShortcutKey(id as EditorShortcutTool);
               if (id === "shape") {
                 // Shape tool: a chip beside the bar opens the preset picker. The chip
                 // shows the selected shape's icon, and picking an option closes the box.
@@ -133,7 +136,8 @@ export default function EditorToolsBar({
                       aria-haspopup="true"
                       aria-expanded={shapeMenuOpen}
                       disabled={disabled}
-                      title={disabled ? "Drawing tools are off for photo layers" : label}
+                      title={disabled ? "Drawing tools are off for photo layers" : `${label} (${shortcut})`}
+                      aria-keyshortcuts={shortcut || undefined}
                       onClick={() => {
                         onSelect(id);
                         setShapeMenuOpen((open) => !open);
@@ -175,7 +179,8 @@ export default function EditorToolsBar({
                   aria-label={label}
                   aria-pressed={activeTool === id}
                   disabled={disabled}
-                  title={disabled ? "Drawing tools are off for photo layers" : id === "hand" ? "Hand tool" : label}
+                  title={disabled ? "Drawing tools are off for photo layers" : `${label} (${shortcut})`}
+                  aria-keyshortcuts={shortcut || undefined}
                   onClick={() => onSelect(id)}
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40 ${activeTool === id ? "bg-accent text-accent-foreground shadow-[0_2px_8px_rgba(212,255,63,.35)]" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}
                 >

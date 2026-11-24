@@ -209,8 +209,10 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(toolsBar, /aria-label="Foreground Color"/);
   assert.match(toolsBar, /aria-label="Background Color"/);
   assert.equal((toolsBar.match(/type="color"/g) ?? []).length, 2);
-  assert.match(source, /const \[foregroundColor, setForegroundColor\] = useState\("#202124"\)/);
-  assert.match(source, /const \[backgroundColor, setBackgroundColor\] = useState\("#ffffff"\)/);
+  // The two default colours live in the shortcuts helper, so D can restore the same pair the editor opens with.
+  assert.match(source, /const \[foregroundColor, setForegroundColor\] = useState\(EDITOR_DEFAULT_FOREGROUND\)/);
+  assert.match(source, /const \[backgroundColor, setBackgroundColor\] = useState\(EDITOR_DEFAULT_BACKGROUND\)/);
+
   assert.match(source, /color: foregroundColor/);
   assert.match(source, /foregroundColor=\{foregroundColor\}/);
   assert.match(source, /backgroundColor=\{backgroundColor\}/);

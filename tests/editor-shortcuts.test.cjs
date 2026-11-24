@@ -84,8 +84,77 @@ test("a non-Latin layout falls back to the physical key, a Latin letter wins ove
 });
 
 test("the canvas binds the shortcut to the same undo and redo as the tool-bar buttons", () => {
-  assert.match(canvasSource, /import \{ editorHistoryShortcut \} from "@\/lib\/editor-shortcuts";/);
+  assert.match(canvasSource, /editorHistoryShortcut,/);
+  assert.match(canvasSource, /\} from "@\/lib\/editor-shortcuts";/);
   assert.match(canvasSource, /const historyKeyHandlerRef = useRef<\(event: KeyboardEvent\) => void>/);
   assert.match(canvasSource, /if \(action === "undo"\) undoCanvasAction\(\);\n\s*else redoCanvasAction\(\);/);
   assert.match(canvasSource, /historyKeyHandlerRef\.current = \(event\) => \{\n\s*const action = editorHistoryShortcut\(event\);/);
+});
+
+// ---- E21 item 2: one letter per tool, brackets for the nib, X and D for the colours ------------------
+
+const pressTool = (overrides) => shortcuts.editorToolShortcut({ key: "", ...overrides });
+
+test("each tool has its letter, and the letters do not collide", () => {
+  const expected = { v: "move", h: "hand", b: "brush", n: "pencil", p: "pen", t: "text", e: "eraser", u: "shape", g: "gradient" };
+  for (const [key, tool] of Object.entries(expected)) {
+    assert.deepEqual(pressTool({ key }), { kind: "tool", tool }, `${key} picks ${tool}`);
+    assert.deepEqual(pressTool({ key: key.toUpperCase() }), { kind: "tool", tool }, `${key.toUpperCase()} picks ${tool} too`);
+  }
+  const letters = shortcuts.EDITOR_TOOL_SHORTCUTS.map((entry) => entry.key);
+  assert.equal(new Set(letters).size, letters.length, "no two tools share a letter");
+  assert.equal(shortcuts.editorToolShortcutKey("brush"), "B");
+  assert.equal(shortcuts.editorToolShortcutKey("move"), "V");
+});
+
+test("a Myanmar layout still reaches the tool on the same physical key", () => {
+  assert.deepEqual(pressTool({ key: "ဘ", code: "KeyB" }), { kind: "tool", tool: "brush" });
+  assert.deepEqual(pressTool({ key: "ဩ", code: "Unidentified" }), null);
+});
+
+test("brackets step the nib and X / D touch the colours", () => {
+  assert.deepEqual(pressTool({ key: "[", code: "BracketLeft" }), { kind: "brush-size", direction: -1 });
+  assert.deepEqual(pressTool({ key: "]", code: "BracketRight" }), { kind: "brush-size", direction: 1 });
+  assert.deepEqual(pressTool({ key: "{", code: "BracketLeft", shiftKey: true }), { kind: "brush-size", direction: -1 });
+  assert.deepEqual(pressTool({ key: "x" }), { kind: "swap-colors" });
+  assert.deepEqual(pressTool({ key: "d" }), { kind: "default-colors" });
+  assert.equal(pressTool({ key: "q" }), null);
+});
+
+test("a modified key, a text field and a composition are left alone", () => {
+  assert.equal(pressTool({ key: "b", ctrlKey: true }), null, "Ctrl+B stays the browser's");
+  assert.equal(pressTool({ key: "b", metaKey: true }), null);
+  assert.equal(pressTool({ key: "b", altKey: true }), null, "AltGr types characters");
+  assert.equal(pressTool({ key: "b", isComposing: true }), null);
+  assert.equal(pressTool({ key: "t", target: new FakeElement("TEXTAREA") }), null);
+  assert.equal(pressTool({ key: "t", target: new FakeElement("INPUT") }), null);
+  assert.equal(pressTool({ key: "t", target: new FakeElement("DIV", { editable: true }) }), null);
+  assert.deepEqual(pressTool({ key: "t", target: new FakeElement("DIV") }), { kind: "tool", tool: "text" });
+});
+
+test("the nib steps by a tenth and never leaves the slider range", () => {
+  assert.equal(shortcuts.stepBrushSize(52, 1), 57);
+  assert.equal(shortcuts.stepBrushSize(52, -1), 47);
+  assert.equal(shortcuts.stepBrushSize(1, -1), 1, "never below one");
+  assert.equal(shortcuts.stepBrushSize(500, 1), 500, "never above the slider maximum");
+  assert.equal(shortcuts.stepBrushSize(4, -1), 3, "a small nib still moves by at least one");
+  assert.equal(shortcuts.stepBrushSize(0, 1), 1);
+});
+
+test("the canvas binds the letters, the brackets and the colours", () => {
+  assert.match(canvasSource, /editorToolShortcut,/);
+  assert.match(canvasSource, /const toolShortcutHandlerRef = useRef<\(event: KeyboardEvent\) => void>/);
+  assert.match(canvasSource, /toolShortcutHandlerRef\.current = \(event\) => \{\n\s*const action = editorToolShortcut\(event\);/);
+  assert.match(canvasSource, /if \(action\.kind === "tool"\) \{[\s\S]*?chooseTool\(action\.tool\);/);
+  assert.match(canvasSource, /updateToolOptions\(\{ brush: \{ size: stepBrushSize\(toolOptions\.brush\.size, action\.direction\) \} \}\)/);
+  assert.match(canvasSource, /if \(action\.kind === "swap-colors"\) swapColors\(\);/);
+  assert.match(canvasSource, /setForegroundColor\(EDITOR_DEFAULT_FOREGROUND\);\n\s*setBackgroundColor\(EDITOR_DEFAULT_BACKGROUND\);/);
+  // The bar's swap button and the X key share one function, so they cannot drift apart.
+  assert.match(canvasSource, /onSwapColors=\{swapColors\}/);
+  assert.match(canvasSource, /function swapColors\(\) \{\n\s*setForegroundColor\(backgroundColor\);\n\s*setBackgroundColor\(foregroundColor\);/);
+  // The tool buttons print their key.
+  const barSource = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorToolsBar.tsx"), "utf8");
+  assert.match(barSource, /const shortcut = editorToolShortcutKey\(id as EditorShortcutTool\);/);
+  assert.match(barSource, /title=\{disabled \? "Drawing tools are off for photo layers" : `\$\{label\} \(\$\{shortcut\}\)`\}/);
+  assert.match(barSource, /aria-keyshortcuts=\{shortcut \|\| undefined\}/);
 });

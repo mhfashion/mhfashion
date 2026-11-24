@@ -20,7 +20,13 @@ import {
   releaseLargeArtworkTier,
 } from "@/lib/editor-artwork-tiers";
 import { PRINT_CANVAS_BACKING_SPEC, PRINT_CANVAS_SPEC } from "@/lib/editor-canvas-spec";
-import { editorHistoryShortcut } from "@/lib/editor-shortcuts";
+import {
+  EDITOR_DEFAULT_BACKGROUND,
+  EDITOR_DEFAULT_FOREGROUND,
+  editorHistoryShortcut,
+  editorToolShortcut,
+  stepBrushSize,
+} from "@/lib/editor-shortcuts";
 import { imagePrintQuality, imagePrintLevelRank } from "@/lib/editor-image-ppi";
 import type { ImagePrintQuality } from "@/lib/editor-image-ppi";
 import { flipLayerPlacement, getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } from "@/lib/editor-transform";
@@ -595,8 +601,8 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const [selectedShape, setSelectedShape] = useState<EditorShapePreset>("rectangle");
   const [shapeDrawing, setShapeDrawing] = useState<ActiveShapeDrag | null>(null);
   const [gradientDrawing, setGradientDrawing] = useState<ActiveGradientDrag | null>(null);
-  const [foregroundColor, setForegroundColor] = useState("#202124");
-  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
+  const [foregroundColor, setForegroundColor] = useState(EDITOR_DEFAULT_FOREGROUND);
+  const [backgroundColor, setBackgroundColor] = useState(EDITOR_DEFAULT_BACKGROUND);
   const [penAnchors, setPenAnchors] = useState<EditorPenAnchor[]>([]);
   const [penHoverPoint, setPenHoverPoint] = useState<Point | null>(null);
   const [penHoverCloseTarget, setPenHoverCloseTarget] = useState(false);
@@ -960,6 +966,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const penEditDragRef = useRef<PenEditDrag | null>(null);
   const penEditWindowHandlersRef = useRef<{ move: (event: PointerEvent) => void; end: (event: PointerEvent) => void } | null>(null);
   const penKeyHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  const toolShortcutHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
   const historyKeyHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
   const finishPenPathRef = useRef<(close?: boolean) => void>(() => {});
   const activeEraserRef = useRef<{ pointerId: number; layerId: string; target: LayerEditTarget; points: Point[] } | null>(null);
@@ -1146,6 +1153,45 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   });
   useEffect(() => {
     const handler = (event: KeyboardEvent) => historyKeyHandlerRef.current(event);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // E21 item 2: one letter per tool, `[`/`]` for the nib, X and D for the colours. The same rule as the
+  // history keys — a text field, a composition or a modifier leaves the keystroke alone — so typing "t"
+  // into a layer name never swaps the tool under the caret.
+  useEffect(() => {
+    toolShortcutHandlerRef.current = (event) => {
+      const action = editorToolShortcut(event);
+      if (!action) return;
+      if (action.kind === "tool") {
+        event.preventDefault();
+        chooseTool(action.tool);
+        return;
+      }
+      if (action.kind === "brush-size") {
+        if (activeTool === "brush") {
+          event.preventDefault();
+          updateToolOptions({ brush: { size: stepBrushSize(toolOptions.brush.size, action.direction) } });
+        } else if (activeTool === "pencil") {
+          event.preventDefault();
+          updateToolOptions({ pencil: { size: stepBrushSize(toolOptions.pencil.size, action.direction) } });
+        } else if (activeTool === "eraser") {
+          event.preventDefault();
+          updateToolOptions({ eraser: { size: stepBrushSize(toolOptions.eraser.size, action.direction) } });
+        }
+        return;
+      }
+      event.preventDefault();
+      if (action.kind === "swap-colors") swapColors();
+      else {
+        setForegroundColor(EDITOR_DEFAULT_FOREGROUND);
+        setBackgroundColor(EDITOR_DEFAULT_BACKGROUND);
+      }
+    };
+  });
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => toolShortcutHandlerRef.current(event);
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
@@ -2823,6 +2869,11 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     }));
   }
 
+  function swapColors() {
+    setForegroundColor(backgroundColor);
+    setBackgroundColor(foregroundColor);
+  }
+
   function resetView() {
     setZoom(1);
     setPan({ x: 0, y: 0 });
@@ -3359,11 +3410,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
         onRedo={redoCanvasAction}
         canDownload={layers.some((layer) => layer.visible)}
         onDownload={(format: "png" | "svg") => void downloadDesign(format)}
-        onSwapColors={() => {
-          const nextForeground = backgroundColor;
-          setBackgroundColor(foregroundColor);
-          setForegroundColor(nextForeground);
-        }}
+        onSwapColors={swapColors}
         onToggleCollapsed={() => setToolsCollapsed((collapsed) => !collapsed)}
         hideOnMobile={layersOpen || editSidebarOpen}
       />

@@ -3432,6 +3432,17 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 2. **Shortcut keys:** V Move, H Hand, B Brush, N Pencil, P Pen, T Text, E Eraser, U Shape, G Gradient, I
    Eyedropper, `[` and `]` for brush size, X to swap colours, D for the default colours; each is shown in the
    tool tooltip and is ignored while a field has focus (the same rule as E13).
+   *Built 2026-11-24 (the part that needs no new control).* `editorToolShortcut` in `lib/editor-shortcuts.ts`
+   maps V H B N P T E U G, `[`/`]` and X/D, and `EDITOR_TOOL_SHORTCUTS` is the one list the tooltips read.
+   No modifier is allowed (Ctrl+B stays the browser's), and a text field, a composition or AltGr is left
+   alone, exactly like E13's undo keys; the canvas keeps the current state in `toolShortcutHandlerRef` so a
+   rebuilt handler always sees the live tool and nib. `stepBrushSize` moves a tenth, clamped to 1–500.
+   X calls the same `swapColors` the bar's swap button uses, and D restores `EDITOR_DEFAULT_FOREGROUND` /
+   `EDITOR_DEFAULT_BACKGROUND`, which are now also the editor's initial colours. Each tool button prints its
+   key in the tooltip and in `aria-keyshortcuts`. Verified in Chromium: all nine letters pick their tool,
+   `]` took the brush from 52 to 57 px, X swapped #202124/#ffffff and D restored them, typing "v" in the
+   header search left the Brush active, and the console stayed clean. I (eyedropper) is not built — it needs
+   the eyedropper itself.
 3. **Eyedropper:** pick a colour from the canvas or the mockup; the browser's EyeDropper API where it exists,
    canvas sampling elsewhere.
 4. **Pen box:** join style, line style (solid, dashed, dotted), end shapes for open paths, and a separate fill

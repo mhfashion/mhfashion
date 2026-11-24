@@ -893,6 +893,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Never `git reset --hard origin/main` without a `git fetch` first: the tracking ref lags, and the
   reset silently drops local commits that were already pushed (recover them from the pushed branch).
 
+## Tool shortcut keys (plan E21 item 2, `apps/web/src/lib/editor-shortcuts.ts`)
+- `editorToolShortcut` owns the plain-letter keys: V H B N P T E U G, `[`/`]` (`event.code` BracketLeft/Right,
+  so Shift works), X swap colours, D default colours. Any Ctrl/Meta/Alt, a composition or a text field returns
+  null; do not add a key that needs a modifier there or it will fight E13's undo.
+- The canvas keeps the handler in `toolShortcutHandlerRef` (rebuilt every render) so it sees the live
+  `activeTool` and `toolOptions`; the `[]`-dependency effect only subscribes once.
+- `EDITOR_TOOL_SHORTCUTS` is the single list the tools-bar tooltips (`title`, `aria-keyshortcuts`) read.
+- X uses the same `swapColors` as the bar button; D restores `EDITOR_DEFAULT_FOREGROUND`/`_BACKGROUND`, which
+  are also the editor's initial colours. `stepBrushSize` steps a tenth and clamps to 1–500.
+
 ## The Buy gate (plan E12, `apps/web/src/lib/editor-required.ts`)
 - `EDITOR_REQUIRED_SELECTIONS` is the eight header boxes in bar order with English and Myanmar labels;
   `missingEditorSelections` treats blank, whitespace, `null` and an absent key as not chosen (a pre-filled
