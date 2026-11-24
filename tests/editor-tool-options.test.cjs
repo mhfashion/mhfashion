@@ -14,6 +14,7 @@ const {
   EDITOR_TEXT_FONT_FAMILY,
   normalizeEditorTextToolSettings,
   normalizeEditorToolOptions,
+  penDashArray,
   editorGradientFromToolSettings,
 } = lib.exports;
 
@@ -47,6 +48,29 @@ test("the Text tool box defaults are complete and render-safe", () => {
   assert.equal(normalizeEditorTextToolSettings({ color: "red" }).color, null);
   assert.equal(normalizeEditorTextToolSettings({ fontFamily: "  " }).fontFamily, EDITOR_TEXT_FONT_FAMILY);
   assert.equal(normalizeEditorTextToolSettings({ fontFamily: "Georgia" }).fontFamily, "Georgia");
+});
+
+test("the pen joins corners and draws dashed or dotted lines", () => {
+  const pen = EDITOR_TOOL_OPTIONS_DEFAULT.pen;
+  assert.equal(pen.join, "round");
+  assert.equal(pen.style, "solid");
+  // Old saved settings fill the new fields in, and junk falls back to the default.
+  const filled = normalizeEditorToolOptions({ pen: { width: 9 } }).pen;
+  assert.deepEqual(filled, { width: 9, cap: "round", join: "round", style: "solid" });
+  const kept = normalizeEditorToolOptions({ pen: { join: "miter", style: "dot" } }).pen;
+  assert.equal(kept.join, "miter");
+  assert.equal(kept.style, "dot");
+  assert.equal(normalizeEditorToolOptions({ pen: { join: "round-join", style: "wavy" } }).pen.join, "round");
+  assert.equal(normalizeEditorToolOptions({ pen: { join: "round-join", style: "wavy" } }).pen.style, "solid");
+  // The dash pattern scales with the pen width, so a fat dotted line keeps its rhythm.
+  assert.equal(penDashArray("solid", 5), undefined);
+  assert.equal(penDashArray("dash", 4), "12 8");
+  assert.equal(penDashArray("dot", 10), "6 18");
+  assert.equal(penDashArray("dot", 0), "0.6 1.8", "a zero width still draws a dot, never a solid line");
+  // The one renderer every view shares (canvas, mockup, PNG/SVG export) paints what the path carries.
+  const preview = readFileSync(path.join(__dirname, "..", "apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
+  assert.match(preview, /strokeDasharray=\{shapeStyle \? shapeDash : path\.dash\}/);
+  assert.match(preview, /strokeLinejoin=\{path\.lineJoin \?\? "round"\}/);
 });
 
 test("every panel slider carries a number field that steps, jumps ten with Shift and resets", () => {

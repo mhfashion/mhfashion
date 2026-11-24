@@ -193,7 +193,9 @@ test("compact bottom-center Tools bar exposes requested tools and connected acti
   assert.match(source, /pointer-events-auto rounded-lg bg-accent/);
   assert.match(source, /Alt-click point to remove/);
   assert.match(source, /aria-label="Pen tool actions"/);
-  assert.match(source, /strokeWidth: toolOptions\.pen\.width, penPath/);
+  assert.match(source, /strokeWidth: toolOptions\.pen\.width,/);
+  assert.match(source, /dash: penDashArray\(toolOptions\.pen\.style, toolOptions\.pen\.width\)/);
+  assert.match(source, /lineJoin: toolOptions\.pen\.join/);
   assert.match(source, /strokeWidth="1\.5" vectorEffect="non-scaling-stroke"/);
   assert.match(source, /data-pen-handle-endpoint="in"/);
   assert.match(source, /data-pen-handle-endpoint="out"/);
@@ -1178,6 +1180,9 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
   assert.match(source, /activeTool === "eraser" \? "none" : undefined/);
   assert.match(adjustmentsPanel, /activeTool === "pen"/);
   assert.match(adjustmentsPanel, /ariaLabel="Pen path width"/);
+  // Plan E21 item 4: the Pen box chooses the corner join and the line style.
+  assert.match(adjustmentsPanel, /aria-label="Pen join"/);
+  assert.match(adjustmentsPanel, /aria-label="Pen line style"/);
   assert.match(adjustmentsPanel, /aria-label=\{`Pen cap \$\{cap\}`\}/);
   // The panel opens even without a selected layer so tool options stay reachable.
   assert.match(layersPanel, /aria-label="Open Adjustments panel" title="Open Adjustments" onClick=\{onOpenAdjustments\}/);

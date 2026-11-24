@@ -73,6 +73,7 @@ import {
   updateEditorLayer,
   updateLayerLastErasure,
   updateLayerLastStroke,
+  penDashArray,
 } from "@/lib/editor-layers";
 import type { ArtworkStroke, EditorBrushShape, EditorErasure, EditorGradient, EditorShapeBuilderMode, EditorShapeStyle, EditorToolOptions } from "@/lib/editor-layers";
 import {
@@ -121,8 +122,6 @@ const CANVAS_LAYER_TRAVEL_LIMIT = 2400;
 // viewport-wide drawing surface would swallow the scroll gesture that reaches the mockups.
 const PASTEBOARD_TOUCH_RING_PX = 96;
 const TEXT_EDIT_BOX_WIDTH = 900;
-// New text wraps at the print area width so a long line flows downward instead of
-// running past the canvas edge. Typed lines stay inside the artwork they print on.
 
 // Tools that paint onto a layer. A photo layer is edited only through the Photo
 // Adjustments panel, so these are disabled while a photo layer is selected.
@@ -1947,7 +1946,15 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     const pathData = editorPenPathData(penPath);
     rememberLayerSnapshot();
     setLayers((current) => appendEditorShapePaths(current, selectedLayer.id, [
-      { d: pathData, fill: close ? foregroundColor : "none", stroke: foregroundColor, strokeWidth: toolOptions.pen.width, penPath },
+      {
+        d: pathData,
+        fill: close ? foregroundColor : "none",
+        stroke: foregroundColor,
+        strokeWidth: toolOptions.pen.width,
+        dash: penDashArray(toolOptions.pen.style, toolOptions.pen.width),
+        lineJoin: toolOptions.pen.join,
+        penPath,
+      },
     ]));
     setSelectedLayerId(selectedLayer.id);
     setSelectedLayerIds([selectedLayer.id]);

@@ -3471,6 +3471,14 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    canvas sampling elsewhere.
 4. **Pen box:** join style, line style (solid, dashed, dotted), end shapes for open paths, and a separate fill
    for closed paths. Today it holds width, width presets and cap.
+   *Join and line style built 2026-11-24.* `EditorPenSettings` gains `join` (round / miter / bevel) and `style`
+   (solid / dash / dot), both normalised so old settings fill in; the Pen box has a Join and a Line row. A drawn
+   path stores `dash` (`penDashArray`, which scales the pattern with the pen width so a fat dotted line keeps its
+   rhythm) and `lineJoin`, and `EditorLayerPreview` paints them, so the canvas, the mockup and the PNG/SVG export
+   all agree. Verified: the Line row toggles (`aria-pressed`), `tests/editor-tool-options.test.cjs` holds the
+   dash maths, the normaliser and the renderer wiring. A drawn dotted path was not captured in the browser this
+   turn (the probe never got a layer selected), so a pixel check of the stroke is still worth doing.
+   **Open:** end shapes for open paths, and a separate fill for closed paths.
 5. **Shape box:** defaults for fill, stroke, width and corner radius, star points and polygon sides, and a hint
    for the modifier keys (Shift keeps proportions, Alt draws from the centre). Today it holds only the presets.
 6. **Text box:** a default text style for new text, default line height and wrap width, next to size, font,

@@ -63,7 +63,26 @@ export type EditorBrushSettings = {
   fadeOut: boolean;
   blend: EditorBrushBlend;
 };
-export type EditorPenSettings = { width: number; cap: "round" | "butt" | "square" };
+export type EditorPenLineStyle = "solid" | "dash" | "dot";
+export type EditorPenSettings = {
+  width: number;
+  cap: "round" | "butt" | "square";
+  /** How the corners of a drawn path join (plan E21 item 4). */
+  join: "round" | "miter" | "bevel";
+  /** Solid, dashed or dotted stroke. */
+  style: EditorPenLineStyle;
+};
+
+/**
+ * The stroke-dasharray a path is drawn with. Both patterns scale with the pen width, so a 24 px dotted
+ * line keeps the same rhythm as a 3 px one instead of turning into a solid line.
+ */
+export function penDashArray(style: EditorPenLineStyle, width: number): string | undefined {
+  if (style === "solid") return undefined;
+  const size = Math.max(1, width);
+  const round = (value: number) => Math.round(value * 100) / 100;
+  return style === "dash" ? `${round(size * 3)} ${round(size * 2)}` : `${round(size * 0.6)} ${round(size * 1.8)}`;
+}
 /** Eraser: a brush-style soft erase or a whole-stroke erase. */
 export type EditorEraserMode = "brush" | "stroke";
 export type EditorEraserSettings = {
@@ -127,7 +146,7 @@ export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
   brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0, spacing: 8, flow: 100, smoothing: 3, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   eraser: { mode: "brush", shape: "round", size: 120, hardness: 60, opacity: 100, flow: 100, spacing: 12, angle: 0, roundness: 100 },
-  pen: { width: 5, cap: "round" },
+  pen: { width: 5, cap: "round", join: "round", style: "solid" },
   gradient: { type: "linear", presetId: "black-white", reverse: false },
   text: { fontSize: 110, fontFamily: EDITOR_TEXT_FONT_FAMILY, fontWeight: 700, textAlign: "center", color: null, letterSpacing: 0, wrapWidth: DEFAULT_TEXT_WRAP_WIDTH },
 };
@@ -196,6 +215,8 @@ export function normalizeEditorToolOptions(input: Partial<EditorToolOptions> | u
     pen: {
       width: clamp(input?.pen?.width ?? EDITOR_TOOL_OPTIONS_DEFAULT.pen.width, 1, 60),
       cap: input?.pen?.cap === "butt" || input?.pen?.cap === "square" ? input.pen.cap : "round",
+      join: input?.pen?.join === "miter" || input?.pen?.join === "bevel" ? input.pen.join : "round",
+      style: input?.pen?.style === "dash" || input?.pen?.style === "dot" ? input.pen.style : "solid",
     },
     gradient: normalizeEditorGradientToolSettings(input?.gradient),
     text: normalizeEditorTextToolSettings(input?.text),
@@ -727,6 +748,10 @@ export type EditorShapePath = {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
+  /** Set when the path was drawn with a dashed or dotted pen. */
+  dash?: string;
+  /** Corner join for a drawn path; shapes without it keep the round join. */
+  lineJoin?: EditorPenSettings["join"];
   penPath?: EditorPenPath;
 };
 export type EditorShapeBuilderMode = "select" | "merge" | "subtract" | "intersect" | "exclude";

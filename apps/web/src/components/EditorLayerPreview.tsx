@@ -275,9 +275,9 @@ export default function EditorLayerPreview({
           fillOpacity={shapeStyle ? shapeStyle.fillOpacity / 100 : undefined}
           stroke={shapeStyle ? shapeStroke : path.stroke ?? "none"}
           strokeWidth={shapeStyle ? shapeStrokeWidth : path.strokeWidth ?? 20}
-          strokeDasharray={shapeStyle ? shapeDash : undefined}
+          strokeDasharray={shapeStyle ? shapeDash : path.dash}
           strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeLinejoin={path.lineJoin ?? "round"}
           filter={shapeStyle ? shapeFilter : undefined}
           data-editor-shape-path="true"
           data-editor-shape-style={shapeStyle ? "true" : undefined}

@@ -1182,6 +1182,21 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — The Pen box joins corners and draws dashed or dotted lines
+
+Plan E21 item 4, first half. The pen could only change its width and cap, so a dotted outline had to be drawn in
+another app.
+
+- `EditorPenSettings` gains `join` (round / miter / bevel) and `style` (solid / dash / dot); `normalizeEditorToolOptions`
+  fills them in for saved settings and rejects anything else.
+- A drawn path records `dash` and `lineJoin` on its `EditorShapePath`, and `EditorLayerPreview` paints them, so the
+  canvas, the mockup and the PNG/SVG export stay in step. `penDashArray(style, width)` scales the pattern with the
+  pen width, so a 24 px dotted line keeps the same rhythm as a 3 px one instead of reading as solid.
+- The Pen box has a Join row and a Line row beside Cap.
+- Verified: the Line row toggles to `aria-pressed="true"`; the dash maths, the normaliser and the renderer wiring are
+  covered by `tests/editor-tool-options.test.cjs`. A drawn dotted path was not captured in the browser this turn, so
+  a pixel check of the stroke is still worth doing.
+
 ### 2026-11-24 — New text wraps at the width the Text tool sets
 
 Plan E21 item 6, the wrap half. The wrap width was a constant inside `EditorCanvas`, so a shop that prints narrow
