@@ -172,6 +172,7 @@ Rules the editor enforces (a bad entry is skipped and named, never fatal — the
 | `files[].file` | **bucket-relative** `.woff2` path. Absolute URLs, `..` and other formats are refused |
 | `files[].weight` | 100–900, integer, default 400 |
 | `files[].style` | `normal` or `italic`, default `normal` |
+| `files[].outline` | optional bucket-relative `.ttf` or `.otf` beside the woff2 (decision D14). The bend (E19) reads it, because HarfBuzz cannot shape a woff2. A weight without it simply cannot be bent; the letters still display. An absolute URL, `..` or any other extension is dropped |
 | `licence` | required: `name` plus a `url`. A font without a licence is not shipped |
 | `enabled` | `false` hides the font from the picker; designs already using it fall back |
 
@@ -181,6 +182,11 @@ Rules the editor enforces (a bad entry is skipped and named, never fatal — the
   is wrong, so it can gate the upload.
 - **woff2 only.** It is the smallest and every current browser reads it; convert a `.ttf`/`.otf`
   before uploading (`fonttools`: `pyftsubset Font.ttf --flavor=woff2 --output-file=regular.woff2`).
+- **The bend needs the `.ttf`/`.otf` too.** Keep the original next to the woff2 and name it in
+  `outline`; the editor loads the woff2 to display and the `.ttf`/`.otf` only when a layer uses the
+  bend, so a design without one downloads nothing extra. `npm run fonts:check` prints which fonts
+  can be bent and fails when a named outline file is not in the folder. The asset service reports a
+  missing outline as an issue and still lists the font, so a lost file costs the bend, not the font.
 - **Replacing a font:** add the version to the file name (`regular-2.woff2`) and update the
   manifest, so a browser never serves a stale cached copy.
 - **Only fonts in use are loaded.** A design that uses none of the manifest's fonts downloads

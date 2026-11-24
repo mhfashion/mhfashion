@@ -1,7 +1,7 @@
 // Checks a font folder before it is uploaded to the bucket: the same manifest rules the editor
 // applies, plus the two things only the files themselves can show — a listed file that is not on
 // disk, and a file so large it would make the picker feel slow.
-import { parseEditorFontManifest, fontShelfGroups, type EditorFontShelf } from "@/lib/editor-fonts";
+import { canBendFont, parseEditorFontManifest, fontShelfGroups, type EditorFontShelf } from "@/lib/editor-fonts";
 
 /** A font bigger than this is worth a second look: a full Myanmar face is usually well under it. */
 export const FONT_FILE_WARN_BYTES = 1024 * 1024;
@@ -12,6 +12,10 @@ export type FontAudit = {
   /** Listed in the manifest but absent from the folder, so the picker would offer a font that 404s. */
   missing: string[];
   large: { file: string; bytes: number }[];
+  /** Fonts that can be bent (E19): each has the `.ttf`/`.otf` from decision D14. */
+  bendable: string[];
+  /** A named outline file that is not in the folder, so the bend would 404 at the first use. */
+  missingOutlines: string[];
 };
 
 function normalise(path: string): string {
@@ -42,17 +46,24 @@ export function auditFontLibrary(
   const paths = files.map((file) => file.path);
   const missing: string[] = [];
   const large: { file: string; bytes: number }[] = [];
+  const missingOutlines: string[] = [];
+  const bendable: string[] = [];
   for (const font of manifest.fonts) {
+    // Only a font whose outline file is really in the folder can be bent once it is uploaded.
+    if (canBendFont(font) && font.files.every((file) => !file.outline || fileIsPresent(file.outline, paths))) {
+      bendable.push(font.name);
+    }
     for (const file of font.files) {
       if (!fileIsPresent(file.file, paths)) missing.push(file.file);
       const size = files.find((candidate) => fileIsPresent(file.file, [candidate.path]))?.bytes ?? 0;
       if (size > FONT_FILE_WARN_BYTES) large.push({ file: file.file, bytes: size });
+      if (file.outline && !fileIsPresent(file.outline, paths)) missingOutlines.push(file.outline);
     }
   }
-  return { picker: fontShelfGroups(manifest.fonts), skipped: manifest.skipped, missing, large };
+  return { picker: fontShelfGroups(manifest.fonts), skipped: manifest.skipped, missing, large, bendable, missingOutlines };
 }
 
 /** True when the folder can be uploaded as it is. */
 export function fontAuditIsClean(audit: FontAudit): boolean {
-  return audit.skipped.length === 0 && audit.missing.length === 0;
+  return audit.skipped.length === 0 && audit.missing.length === 0 && audit.missingOutlines.length === 0;
 }

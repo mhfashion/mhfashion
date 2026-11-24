@@ -40,6 +40,11 @@ function reportLegacy(result) {
     console.log(`\nLarge files (${result.large.length}) — over ${Math.round(audit.FONT_FILE_WARN_BYTES / 1024)} KB:`);
     for (const file of result.large) console.log(`  ${file.file} — ${Math.round(file.bytes / 1024)} KB`);
   }
+  if (result.missingOutlines.length) {
+    console.log(`\nMissing outline files (${result.missingOutlines.length}) — these fonts cannot be bent:`);
+    for (const file of result.missingOutlines) console.log(`  ${file}`);
+  }
+  console.log(`\nBend (E19): ${result.bendable.length ? result.bendable.join(", ") : "no font has an outline file yet"}`);
 }
 
 async function main() {

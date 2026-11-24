@@ -189,3 +189,24 @@ test("the store refuses every key that could leave the bucket", async () => {
   await assert.rejects(() => store.get("fonts/../secret.txt"), /refused asset key/);
   await assert.rejects(() => store.put("fonts/../secret.txt", "x"), /refused asset key/);
 });
+
+test("a missing outline file is an issue, and the font keeps displaying without the bend", async () => {
+  const meta = fontMeta("padauk", {
+    files: [{ file: "fonts/padauk/padauk-400.woff2", weight: 400, style: "normal", outline: "fonts/padauk/padauk-400.ttf" }],
+  });
+  const store = storeLib.createMemoryAssetStore(fontBucket({ padauk: meta }));
+  const result = await catalogue.buildFontCatalogue(store, NOW);
+  assert.deepEqual(result.items.map((font) => font.slug), ["padauk"], "the font stays in the list");
+  assert.equal(result.items[0].files[0].outline, undefined, "the JSON never names a file that is not there");
+  assert.deepEqual(result.issues, [{ key: "fonts/padauk/meta.json", reason: "outline file fonts/padauk/padauk-400.ttf is not in the bucket" }]);
+});
+
+test("an outline file that is in the bucket stays on the item", async () => {
+  const meta = fontMeta("padauk", {
+    files: [{ file: "fonts/padauk/padauk-400.woff2", weight: 400, style: "normal", outline: "fonts/padauk/padauk-400.ttf" }],
+  });
+  const store = storeLib.createMemoryAssetStore({ ...fontBucket({ padauk: meta }), "fonts/padauk/padauk-400.ttf": "ttf" });
+  const result = await catalogue.buildFontCatalogue(store, NOW);
+  assert.equal(result.items[0].files[0].outline, "fonts/padauk/padauk-400.ttf");
+  assert.deepEqual(result.issues, []);
+});

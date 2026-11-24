@@ -141,6 +141,13 @@ export async function buildFontCatalogue(
       issues.push({ key: item.key, reason: `file ${missing[0]} is not in the bucket` });
       accepted.delete(slug);
     }
+    // D14: an outline file that is not in the bucket costs the bend only. The font still displays, so it
+    // stays in the list and the issue says what to upload.
+    for (const file of font.files) {
+      if (!file.outline || keys.includes(file.outline)) continue;
+      issues.push({ key: item.key, reason: `outline file ${file.outline} is not in the bucket` });
+      delete file.outline;
+    }
   }
   for (const skip of manifest.skipped) {
     const owner = entries.find((item) => asString(item.entry.slug) === skip.slug || folderOf(item.key, prefix) === skip.slug);

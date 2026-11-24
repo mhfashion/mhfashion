@@ -177,3 +177,44 @@ test("the picker previews a font with its regular file, or whatever it ships", (
   const css = fonts.fontFaceCss(boldOnly, "https://cdn.example.com", [fonts.previewFontFile(boldOnly)]);
   assert.equal(css.match(/@font-face/g).length, 1, "one file, one rule — the picker does not pull a family");
 });
+
+// ---- Decision D14: the optional outline file the bend reads -----------------------------------------
+
+test("an outline file is kept beside the woff2, and only .ttf/.otf inside the bucket is accepted", () => {
+  const ok = fonts.parseEditorFontManifest({ fonts: [entry({ files: [{ weight: 400, style: "normal", file: "fonts/padauk/regular.woff2", outline: "fonts/padauk/regular.ttf" }] })] });
+  assert.equal(ok.skipped.length, 0);
+  assert.equal(ok.fonts[0].files[0].outline, "fonts/padauk/regular.ttf");
+
+  const bad = fonts.parseEditorFontManifest({ fonts: [entry({ files: [
+    { weight: 400, style: "normal", file: "fonts/padauk/regular.woff2", outline: "https://evil.example/regular.ttf" },
+  ] })] });
+  assert.equal(bad.fonts.length, 1, "a bad outline value never drops the font");
+  assert.equal(bad.fonts[0].files[0].outline, undefined);
+  assert.equal(bad.fonts[0].files[0].file, "fonts/padauk/regular.woff2");
+
+  const cases = {
+    "fonts/padauk/../x.ttf": undefined, // escapes the bucket
+    "fonts/padauk/regular.woff2": undefined, // not a font file HarfBuzz can read
+    "fonts/padauk/regular.otf": "fonts/padauk/regular.otf",
+    "/fonts/padauk/regular.otf": "fonts/padauk/regular.otf", // a leading slash is stripped, as for woff2
+  };
+  for (const [outline, expected] of Object.entries(cases)) {
+    const parsed = fonts.parseEditorFontManifest({ fonts: [entry({ files: [{ weight: 400, style: "normal", file: "fonts/padauk/regular.woff2", outline }] })] });
+    assert.equal(parsed.fonts[0].files[0].outline, expected, outline);
+  }
+});
+
+test("canBendFont and outlineFontFile answer from the outline files alone", () => {
+  const plain = fonts.parseEditorFontManifest({ fonts: [entry()] }).fonts[0];
+  assert.equal(fonts.canBendFont(plain), false);
+  assert.equal(fonts.outlineFontFile(plain), null);
+
+  const bendable = fonts.parseEditorFontManifest({ fonts: [entry({ files: [
+    { weight: 400, style: "normal", file: "fonts/padauk/regular.woff2", outline: "fonts/padauk/regular.ttf" },
+    { weight: 700, style: "normal", file: "fonts/padauk/bold.woff2", outline: "fonts/padauk/bold.otf" },
+    { weight: 400, style: "italic", file: "fonts/padauk/italic.woff2" },
+  ] })] }).fonts[0];
+  assert.equal(fonts.canBendFont(bendable), true);
+  assert.equal(fonts.outlineFontFile(bendable, 700).outline, "fonts/padauk/bold.otf");
+  assert.equal(fonts.outlineFontFile(bendable, 400, "italic").outline, "fonts/padauk/regular.ttf", "falls back to a file that can be bent");
+});

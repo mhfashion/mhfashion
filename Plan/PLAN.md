@@ -3291,6 +3291,16 @@ used by the editor yet, and the editor's draft is browser-only.
   system fonts. Checked again against a manifest served from a local bucket: the picker listed the hosted
   font only (the bad entry was skipped), picking it injected both weights, and the browser downloaded only
   the weight the layer used; the missing font file fell back without an error.
+- **Step 3 done 2026-11-24: the `outline` field (decision D14).** `EditorFontFile.outline` names the
+  `.ttf`/`.otf` beside a woff2, validated by the same bucket-relative rule (an absolute URL, `..` or any
+  other extension is dropped, and a bad value costs the bend, never the font). `canBendFont` and
+  `outlineFontFile(font, weight, style)` answer from those files, so E19 has one place to ask. The asset
+  service's font builder reports a named outline that is not in the bucket as an issue and leaves the font
+  in the list with the field removed, which is the "removing the outline file turns the bend off" rule in
+  E19's acceptance. `auditFontLibrary` gained `bendable` and `missingOutlines`, so
+  `npm run fonts:check` prints the fonts that can be bent and exits 1 while a named outline is missing.
+  Verified: `tests/editor-fonts.test.cjs`, `tests/asset-catalogue.test.cjs`, `tests/editor-font-audit.test.cjs`
+  (756 unit tests, all pass), and the checker run on a local folder with and without the `.ttf`.
 - **Step 2 done 2026-11-22: the download keeps the font.** "Download my design" now inlines the used fonts
   as base64 `@font-face` rules in a `<defs><style>` block (`designExportFontCss` → `designExportDocument`),
   because the 300 dpi PNG is rasterised through an `<img>`, which fetches nothing. A file that cannot be

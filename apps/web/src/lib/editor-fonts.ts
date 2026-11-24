@@ -26,7 +26,16 @@ export const EDITOR_FONT_UNICODE_RANGES: Record<EditorFontScript, string> = {
   myanmar: "U+1000-109F, U+200C-200D, U+25CC, U+A9E0-A9FF, U+AA60-AA7F",
 };
 
-export type EditorFontFile = { weight: number; style: "normal" | "italic"; file: string };
+export type EditorFontFile = {
+  weight: number;
+  style: "normal" | "italic";
+  file: string;
+  /**
+   * Editor decision D14: the `.ttf`/`.otf` HarfBuzz reads when the text is bent (E19). woff2 cannot be
+   * shaped into outlines, so a weight without this file simply cannot be bent; display never needs it.
+   */
+  outline?: string;
+};
 
 export type EditorFontEntry = {
   slug: string;
@@ -74,6 +83,14 @@ function fontFilePath(value: unknown): string | null {
   return file;
 }
 
+/** The bend's source file: the same bucket-relative rule as a woff2, but `.ttf` or `.otf`. */
+function outlineFilePath(value: unknown): string | null {
+  const file = asString(value).replace(/^\/+/, "");
+  if (!file || !/\.(ttf|otf)$/i.test(file)) return null;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(file) || file.includes("..")) return null;
+  return file;
+}
+
 function parseFontFile(raw: unknown): EditorFontFile | null {
   if (!isRecord(raw)) return null;
   const file = fontFilePath(raw.file);
@@ -82,7 +99,9 @@ function parseFontFile(raw: unknown): EditorFontFile | null {
   if (!Number.isInteger(weight) || weight < 100 || weight > 900) return null;
   const style = raw.style === undefined ? "normal" : raw.style;
   if (style !== "normal" && style !== "italic") return null;
-  return { weight, style, file };
+  // An unusable outline value costs the bend, not the font: the letters still display.
+  const outline = outlineFilePath(raw.outline);
+  return outline ? { weight, style, file, outline } : { weight, style, file };
 }
 
 function parseScripts(raw: unknown): EditorFontScript[] {
@@ -158,6 +177,17 @@ export function parseEditorFontManifest(raw: unknown): EditorFontManifest {
     });
   }
   return { fonts, skipped };
+}
+
+/** A font can be bent only where a `.ttf`/`.otf` sits beside the woff2 (decision D14). */
+export function canBendFont(font: EditorFontEntry): boolean {
+  return font.files.some((file) => Boolean(file.outline));
+}
+
+/** The `.ttf`/`.otf` for one weight, so E19 shapes with the same face the canvas paints. */
+export function outlineFontFile(font: EditorFontEntry, weight = 400, style: "normal" | "italic" = "normal"): EditorFontFile | null {
+  const exact = font.files.find((file) => file.outline && file.weight === weight && file.style === style);
+  return exact ?? font.files.find((file) => Boolean(file.outline)) ?? null;
 }
 
 /** Where a font file is fetched from. The bucket address is a setting, never hard-coded. */

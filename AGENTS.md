@@ -893,6 +893,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Never `git reset --hard origin/main` without a `git fetch` first: the tracking ref lags, and the
   reset silently drops local commits that were already pushed (recover them from the pushed branch).
 
+## Font outline files (plan E17 step 3, decision D14)
+- `EditorFontFile.outline` names a bucket-relative `.ttf`/`.otf` beside the woff2; HarfBuzz cannot shape
+  woff2, so a weight without one cannot be bent (E19) while it still displays fine.
+- A bad `outline` value is dropped silently by the parser (never fatal); `buildFontCatalogue` reports a
+  named-but-missing outline as an issue and keeps the font with the field removed.
+- Ask `canBendFont` / `outlineFontFile` rather than reading `files[].outline` directly, so E19 and the
+  picker agree.
+
 ## Tool shortcut keys (plan E21 item 2, `apps/web/src/lib/editor-shortcuts.ts`)
 - `editorToolShortcut` owns the plain-letter keys: V H B N P T E U G, `[`/`]` (`event.code` BracketLeft/Right,
   so Shift works), X swap colours, D default colours. Any Ctrl/Meta/Alt, a composition or a text field returns

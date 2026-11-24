@@ -71,3 +71,35 @@ test("an entry the editor would drop stops the upload, with the editor's own rea
   assert.match(result.skipped[0].reason, /licence/);
   assert.equal(audit.fontAuditIsClean(result), false);
 });
+
+test("the audit names the fonts that can be bent and the outline files that are missing", () => {
+  const manifest = {
+    fonts: [
+      {
+        slug: "padauk", name: "Padauk", shelf: "burmese", scripts: ["myanmar"],
+        licence: { name: "OFL 1.1", url: "https://scripts.sil.org/OFL" },
+        files: [{ weight: 400, style: "normal", file: "fonts/padauk/regular.woff2", outline: "fonts/padauk/regular.ttf" }],
+      },
+      {
+        slug: "grotesk", name: "Grotesk", shelf: "sans", scripts: ["latin"],
+        licence: { name: "OFL 1.1", url: "https://scripts.sil.org/OFL" },
+        files: [{ weight: 400, style: "normal", file: "fonts/grotesk/regular.woff2" }],
+      },
+    ],
+  };
+  const withOutline = audit.auditFontLibrary(manifest, [
+    { path: "fonts/padauk/regular.woff2", bytes: 100 },
+    { path: "fonts/padauk/regular.ttf", bytes: 100 },
+    { path: "fonts/grotesk/regular.woff2", bytes: 100 },
+  ]);
+  assert.deepEqual(withOutline.bendable, ["Padauk"]);
+  assert.deepEqual(withOutline.missingOutlines, []);
+  assert.equal(audit.fontAuditIsClean(withOutline), true);
+
+  const without = audit.auditFontLibrary(manifest, [
+    { path: "fonts/padauk/regular.woff2", bytes: 100 },
+    { path: "fonts/grotesk/regular.woff2", bytes: 100 },
+  ]);
+  assert.deepEqual(without.missingOutlines, ["fonts/padauk/regular.ttf"]);
+  assert.equal(audit.fontAuditIsClean(without), false, "an upload with a missing outline file is not clean");
+});
