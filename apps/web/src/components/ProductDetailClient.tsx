@@ -37,7 +37,7 @@ const tabs: { id: Tab; label: string }[] = [
 
 function OptionButton({ selected, children, onClick }: { selected: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`rounded-md border px-1.5 py-1 text-[8px] font-semibold leading-none transition ${selected ? "border-accent bg-accent/10 text-accent shadow-sm" : "border-border bg-bg hover:border-accent/60"}`}>
+    <button type="button" aria-pressed={selected} onClick={onClick} className={`rounded-md border px-1.5 py-1 text-[8px] font-semibold leading-none transition ${selected ? "border-accent bg-accent/10 text-accent shadow-sm" : "border-border bg-bg hover:border-accent/60"}`}>
       {selected && <Check size={12} className="mr-1 inline-block" aria-hidden="true" />}
       {children}
     </button>
@@ -172,14 +172,14 @@ export default function ProductDetailClient({ product, related }: Props) {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-b border-border/70 pb-2.5 sm:mt-4 sm:gap-2 sm:pb-3"><span className="text-xl font-black text-accent sm:text-2xl">{price}</span><span className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent sm:text-[10px]">↓ 15%</span><span className="text-[10px] text-text-faint line-through sm:text-xs">28,000 Ks</span></div>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-b border-border/70 pb-2.5 sm:mt-4 sm:gap-2 sm:pb-3"><span data-product-price aria-live="polite" className="text-xl font-black text-accent sm:text-2xl">{price}</span><span className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent sm:text-[10px]">↓ 15%</span><span className="text-[10px] text-text-faint line-through sm:text-xs">28,000 Ks</span></div>
 
           <div className="mt-2 grid gap-1 xl:grid-cols-2">
             <OptionGroup title="Size" action={<button type="button" onClick={() => setActiveTab("size")} className="text-[10px] font-bold text-accent"><Ruler size={12} className="mr-1 inline" />Size Guide</button>}>
               {sizes.map((size) => <OptionButton key={size} selected={selectedSize === size} onClick={() => setSelectedSize(size)}>{size}</OptionButton>)}
             </OptionGroup>
             <OptionGroup title={`Color${selectedColor ? `: ${selectedColor}` : ""}`}>
-              {colors.map((color) => <button key={color.name} type="button" aria-label={color.name} onClick={() => setSelectedColor(color.name)} className={`h-5 w-5 rounded-full border ${color.className} ${selectedColor === color.name ? "border-accent ring-1 ring-accent/25 ring-offset-1" : "border-border"}`} />)}
+              {colors.map((color) => <button key={color.name} type="button" aria-label={color.name} aria-pressed={selectedColor === color.name} onClick={() => setSelectedColor(color.name)} className={`h-5 w-5 rounded-full border ${color.className} ${selectedColor === color.name ? "border-accent ring-1 ring-accent/25 ring-offset-1" : "border-border"}`} />)}
             </OptionGroup>
             <OptionGroup title="Material" action={<span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-black text-accent-foreground">New</span>}>
               {materials.map((material) => <OptionButton key={material} selected={selectedMaterial === material} onClick={() => setSelectedMaterial(material)}>{material}</OptionButton>)}
@@ -189,7 +189,7 @@ export default function ProductDetailClient({ product, related }: Props) {
             <OptionGroup title="GSM">{gsmOptions.map((gsm) => <OptionButton key={gsm} selected={selectedGsm === gsm} onClick={() => setSelectedGsm(gsm)}>{gsm}</OptionButton>)}</OptionGroup>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xs font-black">Quantity</span><div className="flex items-center rounded-full border border-border bg-bg"><button type="button" aria-label="Decrease quantity" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-2.5"><Minus size={14} /></button><span className="min-w-8 text-center text-sm font-bold">{quantity}</span><button type="button" aria-label="Increase quantity" onClick={() => setQuantity((value) => value + 1)} className="p-2.5"><Plus size={14} /></button></div><span className="flex items-center gap-1 text-[11px] font-bold text-accent"><Check size={14} /> In Stock · Ready to ship</span></div>
+          <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xs font-black">Quantity</span><div className="flex items-center rounded-full border border-border bg-bg"><button type="button" aria-label="Decrease quantity" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-2.5"><Minus size={14} /></button><span data-product-quantity aria-live="polite" className="min-w-8 text-center text-sm font-bold">{quantity}</span><button type="button" aria-label="Increase quantity" onClick={() => setQuantity((value) => value + 1)} className="p-2.5"><Plus size={14} /></button></div><span className="flex items-center gap-1 text-[11px] font-bold text-accent"><Check size={14} /> In Stock · Ready to ship</span></div>
           <div className={`mt-3 grid gap-1 sm:gap-1.5 ${designEditable ? "grid-cols-3" : "grid-cols-2"}`}><button type="button" onClick={buyNow} data-buy-now className="min-w-0 whitespace-nowrap rounded-lg bg-accent px-1 py-2.5 text-[9px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:px-2 sm:text-xs"><ShoppingCart size={12} className="mr-0.5 inline sm:mr-1 sm:h-[14px] sm:w-[14px]" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} data-add-to-cart className="min-w-0 whitespace-nowrap rounded-lg border-2 border-accent px-1 py-2.5 text-[9px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:px-2 sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button>{designEditable ? <a href={`/create?product=${encodeURIComponent(product.slug)}`} className="min-w-0 whitespace-nowrap rounded-lg border border-border px-1 py-2.5 text-center text-[9px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:px-2 sm:text-xs">Edit Design</a> : null}</div>
           {designEditable ? null : <p data-ready-made className="mt-2 rounded-lg bg-accent/10 px-2.5 py-1.5 text-[10px] font-semibold text-accent">{READY_MADE_NOTE}</p>}
           {variantWarning ? <p data-variant-warning role="status" className="mt-2 rounded-lg bg-[#fff6e6] px-2.5 py-1.5 text-[10px] font-semibold text-[#9a6a12]">Choose a size and colour first — every combination is a separate order line.</p> : null}

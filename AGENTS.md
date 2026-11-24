@@ -652,6 +652,21 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   drawer's pill group), so a test must click `button[data-header-language]`; the first match is a `div`
   whose `click()` does nothing.
 
+## Product page selection state (`ProductDetailClient.tsx`)
+- The six option groups (Size, Color, Material, Fit Type, Sleeve, GSM) render through `OptionButton`,
+  which carries `aria-pressed={selected}`; the colour swatches carry their own
+  `aria-pressed={selectedColor === color.name}`. The highlight colour and the check glyph are `aria-hidden`
+  and cannot be read, so without the pressed state a screen reader user cannot tell which variant is
+  chosen.
+- The price (`[data-product-price]`) and the quantity (`[data-product-quantity]`) are `aria-live="polite"`:
+  both change from a button press without moving the focus, so the new value has to be spoken.
+- There is **no catalogue locally** (Supabase is not connected), so `/products/<slug>` cannot be rendered
+  in this environment. `tests/product-page-a11y.test.cjs` asserts the markup contract against the
+  component source, the same way `tests/product-trust-row.test.cjs` does. When a catalogue is available,
+  add a real DOM assertion to `tests/storefront-e2e.cjs`.
+- `ProductOptions.tsx` is an unused older variant of the same widget, with no pressed state and a dead
+  Size Guide button; it is not imported anywhere.
+
 ## Motion (`globals.css`, `CategoryRow.tsx`)
 - `@media (prefers-reduced-motion: reduce)` kills `.animate-marquee` and collapses every animation and
   transition to `0.01ms` with one iteration, so the drawer opens instantly and spinners settle instead of
