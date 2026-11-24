@@ -24,6 +24,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `npm run start --workspace=apps/web -- --port 3000` then run the test file.
   `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
 
+## Structural sweep (`tests/storefront-a11y-sweep.cjs`)
+- Walks 23 storefront routes at 1440px and six of them at 390px, and asserts per route: exactly one `<h1>`,
+  every visible control has an accessible name, every visible `img` has `alt`, no duplicate `id`, no
+  positive `tabindex`, and no heading level jump larger than one.
+- It skips anything under `[inert]` or `[aria-hidden="true"]` — the editor's `input[type=color]`s sit
+  behind visible swatch buttons and are not unlabelled controls.
+- Needs the server and Chromium like `storefront-e2e.cjs`. It found two real bugs on its first run: the
+  `/mh-fashion` search input had only a placeholder, and the `/search` idle panel jumped h1 → h3.
+- Add a route to `ROUTES` when a page is added; this sweep is the cheap guard that keeps the outline and
+  the control names from rotting.
+
 ## Testing notes
 - `node --test tests/*.test.cjs` reports 460 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
 - The upload section feeds a `DataTransfer` file straight into the hidden
