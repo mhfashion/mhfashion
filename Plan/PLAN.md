@@ -3481,6 +3481,9 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    **Open:** end shapes for open paths, and a separate fill for closed paths.
 5. **Shape box:** defaults for fill, stroke, width and corner radius, star points and polygon sides, and a hint
    for the modifier keys (Shift keeps proportions, Alt draws from the centre). Today it holds only the presets.
+   *Hint and modifiers built 2026-11-24.* The canvas honoured neither key before: a shape drag now makes the shape
+   equal-sided when Shift is held and grows it from the press point as its centre when Alt is held, and the Shape
+   box says so in one line under the presets. `tests/canvas-shell.test.cjs` keeps the sentence honest.
 6. **Text box:** a default text style for new text, default line height and wrap width, next to size, font,
    weight, alignment, spacing and colour.
    *Wrap width built 2026-11-24.* `EditorTextToolSettings.wrapWidth` (default `DEFAULT_TEXT_WRAP_WIDTH` = 880,

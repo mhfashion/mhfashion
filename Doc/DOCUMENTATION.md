@@ -1182,6 +1182,18 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — Shift and Alt shape the shape tool's drag, and the Shape box says so
+
+Plan E21 item 5, the hint half. The Shape box only listed presets, and the canvas ignored the modifier keys a print
+shop reaches for by habit.
+
+- A shape drag now reads `shiftKey` (equal-sided: the longer side wins, direction kept) and `altKey` (the press point
+  is the centre, so the shape grows both ways). Both are applied before `createEditorShapePaths`, so every preset
+  benefits and the stored geometry is already what was drawn.
+- The Shape box carries one line under the presets: press and drag, Shift for an equal-sided shape, Alt from the
+  centre, and a click without a drag draws nothing (the canvas drops drags under 8 units).
+- `tests/canvas-shell.test.cjs` asserts the sentence, so the words cannot drift from the behaviour again.
+
 ### 2026-11-24 — The Pen box joins corners and draws dashed or dotted lines
 
 Plan E21 item 4, first half. The pen could only change its width and cap, so a dotted outline had to be drawn in

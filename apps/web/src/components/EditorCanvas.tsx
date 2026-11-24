@@ -2472,15 +2472,27 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       setShapeDrawing(null);
       if (event.type !== "pointerup") return;
       const point = toCanvasPoint(event.clientX, event.clientY);
-      const end = { x: point.x * 1000, y: point.y * 1200 };
-      if (Math.hypot(end.x - shapeDrag.start.x, end.y - shapeDrag.start.y) < 8) return;
+      const drawn = { x: point.x * 1000, y: point.y * 1200 };
+      if (Math.hypot(drawn.x - shapeDrag.start.x, drawn.y - shapeDrag.start.y) < 8) return;
+      // Shift keeps the shape equal-sided, Alt grows it from the press point as its centre.
+      const sign = (value: number) => (value < 0 ? -1 : 1);
+      let start = shapeDrag.start;
+      let end = drawn;
+      if (event.shiftKey) {
+        const side = Math.max(Math.abs(end.x - start.x), Math.abs(end.y - start.y));
+        end = { x: start.x + sign(end.x - start.x) * side, y: start.y + sign(end.y - start.y) * side };
+      }
+      if (event.altKey) {
+        const centre = start;
+        start = { x: 2 * centre.x - end.x, y: 2 * centre.y - end.y };
+      }
       const selectedLayer = layers.find((layer) => layer.id === shapeDrag.layerId);
       if (!selectedLayer || selectedLayer.locked) {
         setToolNotice("Select an unlocked layer before drawing.");
         return;
       }
       const label = EDITOR_SHAPE_LABELS[shapeDrag.preset];
-      const paths = createEditorShapePaths(shapeDrag.preset, shapeDrag.start, end, shapeDrag.color);
+      const paths = createEditorShapePaths(shapeDrag.preset, start, end, shapeDrag.color);
       rememberLayerSnapshot();
       setLayers((current) => appendEditorShapePaths(current, shapeDrag.layerId, paths));
       setSelectedTarget("artwork");

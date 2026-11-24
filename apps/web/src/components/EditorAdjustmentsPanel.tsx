@@ -336,6 +336,7 @@ function ShapeToolOptions({ preset, onSelect }: { preset: EditorShapePreset; onS
     <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Shape to draw</p>
     <div role="group" aria-label="Shape tool preset" className="grid grid-cols-3 gap-1">{EDITOR_SHAPE_PRESETS.map((option) => <button key={option} type="button" aria-label={`Shape tool ${EDITOR_SHAPE_LABELS[option]}`} aria-pressed={preset === option} onClick={() => onSelect(option)} className="flex min-h-8 flex-col items-center gap-0.5 rounded-lg border border-border px-1 py-1 text-[8px] leading-tight text-text-secondary outline-none transition hover:border-accent hover:bg-accent/10 aria-pressed:border-accent aria-pressed:bg-accent/15 aria-pressed:text-accent [@media(pointer:coarse)]:min-h-11"><ShapePresetIcon preset={option} />{EDITOR_SHAPE_LABELS[option]}</button>)}</div>
     <p className="text-[9px] leading-relaxed text-text-muted">The shape lands in the selected layer with the foreground colour. Adjust fill, stroke, corners, shadow and glow under Shape once it is drawn.</p>
+    <p className="text-[9px] leading-relaxed text-text-muted">Press and drag on the canvas to draw it. Hold <kbd className="rounded border border-border px-1 font-semibold text-text-secondary">Shift</kbd> for an equal-sided shape, or <kbd className="rounded border border-border px-1 font-semibold text-text-secondary">Alt</kbd> to draw from the centre. A click without a drag draws nothing.</p>
   </div>;
 }
 

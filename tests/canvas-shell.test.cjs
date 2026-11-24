@@ -1183,6 +1183,9 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
   // Plan E21 item 4: the Pen box chooses the corner join and the line style.
   assert.match(adjustmentsPanel, /aria-label="Pen join"/);
   assert.match(adjustmentsPanel, /aria-label="Pen line style"/);
+  // Plan E21 item 5: the Shape box says how a shape is drawn, in words that match the canvas
+  // (press and drag; a click without a drag is dropped by the 8-unit threshold).
+  assert.match(adjustmentsPanel, /A click without a drag draws nothing\./);
   assert.match(adjustmentsPanel, /aria-label=\{`Pen cap \$\{cap\}`\}/);
   // The panel opens even without a selected layer so tool options stay reachable.
   assert.match(layersPanel, /aria-label="Open Adjustments panel" title="Open Adjustments" onClick=\{onOpenAdjustments\}/);
