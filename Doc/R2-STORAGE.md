@@ -193,7 +193,7 @@ Rules the editor enforces (a bad entry is skipped and named, never fatal — the
 - **Licence:** confirm commercial print use for each font before `enabled: true`.
 - **Print:** the customer's download embeds the used fonts as base64 `@font-face` rules inside the SVG
   (`designExportFontCss`), so the PNG and the SVG both paint the chosen font without a network. The press
-  bundle still has to do the same, or convert the text to outlines — open in `Plan/EDITOR_PLAN.md` E17.
+  bundle still has to do the same, or convert the text to outlines — open in Part II of `Plan/PLAN.md`, E17.
 
 ### 3.3 Posts — `posts/<post-slug>.svg`
 

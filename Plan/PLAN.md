@@ -3,6 +3,7 @@
 **Canonical planning file:** `Plan/PLAN.md`
 **Consolidated from:** the former project, editor vision, editor implementation, legacy architecture, deployment notes, and TODO sources. Their full planning/specification/history content is preserved below. Operational guidance and audit records are consolidated in [`Doc/DOCUMENTATION.md`](../Doc/DOCUMENTATION.md).
 **Repository baseline at consolidation:** `mhfashion/mhfashion`, branch `main`, commit `90dc398` (2026-11-13). Re-check code and deployment before treating dated status statements as current.
+**Contents:** Part I is the project plan (sections 1 to 17 and the dated updates below); Part II is the editor plan, at the end of this file ([Part II — Editor plan](#part-ii--editor-plan)). `Plan/` holds this one file only.
 
 ## Owner directives and maintenance rules
 
@@ -11,11 +12,33 @@
 3. If implementation work reveals missing or changed scope, update this master plan and its Change Log before treating that scope as approved. Keep current requirements here; preserve dated history as history.
 4. This is the single source of truth for plans, product direction, detailed editor requirements, the legacy architecture snapshot, and the migrated task register. Do not recreate separate planning files.
 5. **Push repository work directly to GitHub.** After writing and basic validation of requested repository changes, commit and push them directly to the repository default branch (`main`) immediately, without asking the owner again. Do not create a compare/pull-request workflow unless the owner explicitly requests one. A GitHub push is not a production deployment; deployments and production data changes remain separate actions.
+6. **The file layout is fixed.** See *Repository layout and file rules* below: `Plan/` holds one file, `Doc/` holds documents only, `SQL/` holds SQL only, `Worker/` holds one Worker file. Finished work is recorded in `Doc/DOCUMENTATION.md`, never in a new file.
+
+## Repository layout and file rules  *(owner, 2026-11-23)*
+
+The repository is kept in a fixed shape so nothing is scattered. `tests/repo-layout.test.cjs` fails when it drifts.
+
+| Place | Holds | Rule |
+|---|---|---|
+| `Plan/` | `PLAN.md` | **Exactly one file.** Part I is the project plan, Part II is the editor plan. No second plan, no TODO, no notes file. |
+| `Doc/` | `README.md` (the index), `DOCUMENTATION.md` (work log), `EDITOR.md`, `PRINT-BUNDLE.md`, `MH-DELIVERY.md`, `R2-STORAGE.md` | Documents only, Markdown only, one topic per file. Every file is listed in `Doc/README.md`. No plans, SQL or scratch files. |
+| `SQL/` | numbered `NNNN_name.sql` files | SQL only: no README, no JSON. Numbers rise without repeats. The owner applies them in order in the Supabase SQL Editor. A file is never edited after it has been applied; a new number is added instead. |
+| `Worker/` | `assets.ts` | **Exactly one Worker file.** The folder is created when the R2 asset Worker is built (section 12.1) and does not exist before. Its configuration is `wrangler.assets.jsonc` at the repository root. |
+| `apps/web/` | the site | Its own `wrangler.jsonc`. |
+| `tests/`, `scripts/` | tests and helper scripts | |
+| repository root | `README.md` (the repository map), `AGENTS.md` (agent rules), `package.json`, `package-lock.json`, `.gitignore`, `.github/` | Nothing else. No loose plans, notes or TODO files. |
+
+Rules that follow from this:
+1. A new top-level file or folder needs the owner's word.
+2. Finished work is recorded in `Doc/DOCUMENTATION.md`, never in a new file.
+3. A new document is added to `Doc/README.md` in the same change.
+4. SQL files move only forwards: add `NNNN_name.sql`, never rename or reorder.
+5. The old `SQL/` folder no longer exists; the Supabase CLI is not used, so the folder name is free.
 
 ## Source-of-truth precedence
 
 - The current project overview, decisions, and build/deployment status are maintained in the **Project Plan** section below; reconcile stale dated statements against its latest status and the live repository.
-- The **editor plan** (`Plan/EDITOR_PLAN.md`) is the detailed contract for editor behavior, implementation, and acceptance tests; `Doc/EDITOR.md` documents the behaviour as built. This file does not carry editor detail.
+- The **editor plan** is **Part II of this file** ([Part II — Editor plan](#part-ii--editor-plan)): the detailed contract for editor behavior, implementation, and acceptance tests. `Doc/EDITOR.md` documents the behaviour as built.
 - The **Deployment Upgrade and Publishing Notes**, **Legacy Architecture Reference**, and **Historical TODO Register** are retained for traceability; they are archival where they conflict with current sections or current code.
 
 ---
@@ -79,7 +102,7 @@ this table whenever a dependency major/minor changes.
   → `npm run cf:build --workspace=apps/web` → `wrangler deploy --dry-run` →
   `wrangler deploy` (main only). It needs the repository secrets
   `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
-- Supabase: the AI assistant writes SQL migrations (`supabase/migrations/`); the
+- Supabase: the AI assistant writes SQL migrations (`SQL/`); the
   owner runs them in the SQL Editor. Migrations `0001`–`0007` are committed.
 - Current build toolchain: Next.js 16.4.6, React 19.3.1, Fabric.js 7.4.0,
   `@opennextjs/cloudflare` 1.20.16, Wrangler 4.158.0, ESLint 10.14.0 (flat
@@ -319,19 +342,13 @@ photo-box sizes; do not re-specify them.
 
 ## 6. Editor (`/create`)
 
-**Status: final as built (owner decision, 2026-11-21).** The editor is built as the owner asked, and its
-behaviour does not change on its own: the remaining-work register (section 16) contains no editor items,
-and no other section of this plan may assign editor work.
+**Status: built; changed only on the owner's word.** The editor has its own plan because it is large, but there
+is still **one plan file**: it is **Part II of this file** ([Part II — Editor plan](#part-ii--editor-plan)). Part II
+holds the contracts that must not drift, the verified gaps, the proposals E1 to E23 with their acceptance checks,
+the decisions, and the order of work. The behaviour documentation is `Doc/EDITOR.md`, written from the source.
 
-**The editor plan and the editor documentation are separate files (owner instruction, 2026-11-21).**
-
-| File | Contents |
-|---|---|
-| [`Plan/EDITOR_PLAN.md`](EDITOR_PLAN.md) | the editor plan: what the code does today, the contracts that must not drift, the verified gaps, the next steps with acceptance, and the owner's decisions |
-| [`Doc/EDITOR.md`](Doc/EDITOR.md) | how the editor behaves today, written from the source |
-
-Do not add editor detail to this file: it links to the editor plan instead. An item from that plan ships
-only when the owner approves that item.
+This section stays a summary. Editor requirements, status and work items are written in Part II and nowhere else,
+and the remaining-work register (section 16) carries no editor items.
 
 ## 7. Storefront Pages
 
@@ -536,7 +553,7 @@ The two sets are separate on purpose: a 4:5 catalogue photo does not fit the squ
 
 ### 12.1 R2 asset service — a Worker reads R2 and returns JSON  *(owner decision, 2026-11-22; not built)*
 
-**Rule.** The browser never lists, parses or hunts for files in R2 by itself. The site's own Worker reads the
+**Rule.** The browser never lists, parses or hunts for files in R2 by itself. A Worker (`Worker/assets.ts`, one file) reads the
 bucket through an R2 binding, turns what is in it into JSON, and the app calls that JSON and builds every file
 address from it. This replaces the earlier "future private serving contract" (`/api/editor/fonts`,
 `/api/editor/text-styles`, `/api/editor/assets/[...assetKey]`): the routes below take their place.
@@ -551,9 +568,15 @@ address from it. This replaces the earlier "future private serving contract" (`/
   and T-shirt post artwork is a data URL in the demo store.
 
 **Parts.**
-1. **Binding.** Add `r2_buckets: [{ binding: "MH_FASHION_ASSETS", bucket_name: "mh-fashion-assets" }]` to
-   `wrangler.jsonc`; route handlers reach it through the Cloudflare context; local development uses the local R2
-   simulation with a small fixture bucket.
+1. **One Worker, one file (owner rule, 2026-11-23).** The service is a separate Cloudflare Worker whose whole code is
+   `Worker/assets.ts`; nothing else lives in `Worker/`. It exports `fetch` (the read and admin routes) and
+   `scheduled` (the rebuild). The builders are named exports of that file so tests can import them. It may import the
+   app's pure rules by relative path (for example `../apps/web/src/lib/editor-fonts.ts` and
+   `../apps/web/src/lib/search-text.ts`), which wrangler bundles, so each rule exists once. Its configuration is
+   `wrangler.assets.jsonc` at the repository root (the site's own stays in `apps/web/wrangler.jsonc`) and holds the
+   `r2_buckets` binding `MH_FASHION_ASSETS`, the cron trigger and its variables; its own workflow,
+   `.github/workflows/deploy-assets-worker.yml`, deploys it when `Worker/**` changes. Local development uses
+   wrangler's local R2 simulation with a small fixture bucket.
 2. **`AssetStore` interface** (`list(prefix, cursor)`, `get(key)`, `put(key, body, meta)`, `delete(key)`). The
    R2 binding is the implementation today; an S3 implementation can follow if the site moves to AWS (owner
    decision, 2026-11-21: keep R2 access portable). Nothing else in the app touches the binding.
@@ -572,7 +595,9 @@ address from it. This replaces the earlier "future private serving contract" (`/
 6. **Read routes** (public, cacheable): `GET /api/assets/fonts`, `/designs`, `/elements`, `/brushes`,
    `/text-styles`, and `GET /api/assets/mockups/<product-slug>`, which lists the looks that really exist so the
    page picks the right file without probing. For fonts the JSON has the shape `parseEditorFontManifest` already
-   accepts, so the editor changes only the address it reads from.
+   accepts, so the editor changes only the address it reads from. The Worker serves the routes at the address in
+   `NEXT_PUBLIC_ASSETS_API_URL` and answers cross-origin calls from the site with an `Access-Control-Allow-Origin`
+   header for the site's address only.
 7. **File serving** (decision R2-1): public, non-sensitive files (fonts, mockups, designs, elements, brushes)
    keep being served from the bucket's public address (`NEXT_PUBLIC_R2_PUBLIC_URL`), cached by the CDN, and the
    bucket carries a CORS rule for the site because fonts are used across addresses. Private files (saved designs,
@@ -582,7 +607,8 @@ address from it. This replaces the earlier "future private serving contract" (`/
    type and size for its kind, generates the key (a key is never typed), writes the file and its `meta.json`
    through the binding, and rebuilds the snapshot. SVG is cleaned first (scripts, event attributes and external
    references removed). Until Auth exists these routes are not enabled; the shop uploads by hand and the
-   scheduled trigger picks the files up. The browser needs no R2 keys and no upload CORS rule.
+   scheduled trigger picks the files up. The browser needs no R2 keys and no upload CORS rule. The Worker checks the caller's Supabase access token and
+   the admin role itself; it never trusts the browser.
 9. **Caching.** JSON: `Cache-Control: public, max-age=60, stale-while-revalidate=600` with an `ETag`, and the
    cached copy is dropped when a snapshot is rebuilt. Files: versioned file names, `immutable`.
 10. **Issues panel.** `GET /api/admin/assets/issues` (admin only) lists every skipped entry with the reason
@@ -658,12 +684,13 @@ lose the fonts it loads today), and the admin writes (after Supabase Auth).
 
 | # | Question | Recommendation |
 |---|---|---|
-| R2-1 | Are public files served by the bucket's own address or through the Worker? | Public files from the bucket address with a CORS rule for the site; the Worker for the JSON and for every private file |
-| R2-2 | How often does the scheduled rebuild run? | Every five minutes, plus the admin "Rescan" button for an immediate refresh |
-| R2-3 | Where does an asset's description (`meta.json`) live? | Beside the asset in R2 for now; it moves into the database with the rest of the admin data |
+| R2-1 | Are public files served by the bucket's own address or through the Worker? | **Decided 2026-11-23:** public files from the bucket address with a CORS rule for the site; the Worker for the JSON and for every private file |
+| R2-2 | How often does the scheduled rebuild run? | **Decided 2026-11-23:** every five minutes, plus the admin "Rescan" button for an immediate refresh |
+| R2-3 | Where does an asset's description (`meta.json`) live? | **Decided 2026-11-23:** beside the asset in R2 for now; it moves into the database with the rest of the admin data |
+| R2-4 | Where does the Worker live and how is it addressed? | **Decided 2026-11-23:** `Worker/assets.ts` (one file), configured by `wrangler.assets.jsonc` at the root and deployed by its own workflow; addressed by a subdomain of the site (for example `assets.<site-domain>`), or by its workers.dev address until a domain is set, in `NEXT_PUBLIC_ASSETS_API_URL` |
 
-**Depends on:** the R2 binding in `wrangler.jsonc`, a scheduled-trigger entry, and Supabase Auth with a server-side
-admin check for the write and issues routes.
+**Depends on:** the R2 binding, the cron trigger and the variables in `wrangler.assets.jsonc`; the workflow
+`deploy-assets-worker.yml`; and Supabase Auth with a server-side admin check for the write and issues routes.
 
 Naming: lowercase, hyphens; UUIDs for system-generated assets, slugs for
 catalog-facing items.
@@ -944,7 +971,7 @@ browser-local demo data (section 16 P0).
   and acceptance criteria. It uses the official editor documentation
   documentation as behavioral references without copying proprietary assets or
   UI.
-- Fabric implementation appendix added (2026-11-12): `EDITOR_PLAN.md` now
+- Fabric implementation appendix added (2026-11-12): the former editor plan file (now Part II of `Plan/PLAN.md`) now
   specifies the Fabric.js 7.4.0 logic for Move gestures, scene/document
   coordinates, selection and lock guards, snapping, group transforms, pointer
   capture, keyboard nudges, transaction-safe Undo/Redo, and React/Fabric state
@@ -1033,6 +1060,8 @@ browser-local demo data (section 16 P0).
   order, labels, options and on/off state with guards that refuse to orphan a price row; the chain
   drives the pricing grid's labels and column order and the vocabulary a new post starts from.
 - 2026-11-22: Added §12.1, the R2 asset service: a Worker reads R2 through a binding and returns JSON catalogues (fonts, designs, elements, brushes, mockups), with snapshots, scheduled rebuilds, admin writes after Auth, private files only through the Worker, and an S3-ready store interface. Replaces the earlier future serving contract.
+- 2026-11-23: Decided R2-1 to R2-3 (§12.1). Editor plan: decided D1, D2, D4 to D9, D14 and D15; designed the saved design and order hand-off (E1), the Hoodie (E9) and design areas (E23); added the order of work (5.1) and the list of inputs only the owner can supply.
+- 2026-11-23: `Plan/` reduced to one file: the editor plan became Part II of this file and the separate editor plan file was removed. Added the repository layout and file rules (SQL only in `SQL/`, documents only in `Doc/`, one file in `Worker/` and in `Plan/`), the §17 search plan, and the Worker-file design in §12.1 (R2-4). Section 6 now points to Part II.
 
 
 
@@ -1478,7 +1507,7 @@ described an older state than the repository and the deployed site.
 
 **Sources checked:** `apps/web/package.json` and `package-lock.json` for installed
 versions; `apps/web/src/app/**/page.tsx` and `apps/web/public/manus-routes.json`
-for the route set; `supabase/migrations/` for the migration range;
+for the route set; `SQL/` for the migration range;
 `.github/workflows/deploy-cloudflare.yml` for the deploy path; `gh run list` and
 `gh run view --log-failed` for CI outcomes; and HTTP probes of
 `https://mhfashion.mhfashionmm.workers.dev` for what production currently serves.
@@ -1515,9 +1544,9 @@ date rather than tracking the latest build.
 <a id="unified-editor-vision"></a>
 <a id="editor-implementation-plan"></a>
 <a id="editor-plan-from-audit"></a>
-## Editor plan and specification (moved to `Plan/EDITOR_PLAN.md`)
+## Editor plan and specification (moved to Part II of this file)
 
-The editor plan now lives in [`Plan/EDITOR_PLAN.md`](EDITOR_PLAN.md) and the editor behaviour in
+The editor plan now lives in [Part II of the plan](#part-ii--editor-plan) and the editor behaviour in
 [`Doc/EDITOR.md`](../Doc/EDITOR.md). This project plan keeps only the short summary in §6 and the dated
 records of what was built; do not add editor detail here. The anchors above are kept so existing links
 still resolve.
@@ -1696,12 +1725,75 @@ Add both values as **repository-level Actions secrets** at `mhfashion/mhfashion`
 
 ## Current-main application boundary
 
-Latest `main` closes public `/admin/register` and includes `supabase/migrations/0007_create_super_admin_roles.sql`. The upgrade preserves that change and does not apply the migration. The admin dashboard still uses its browser-local demo session, not Supabase Auth or server-side authorization. Supabase catalog credentials and migrations/seeds remain unverified, so real product listings are not guaranteed by this upgrade.
+Latest `main` closes public `/admin/register` and includes `SQL/0007_create_super_admin_roles.sql`. The upgrade preserves that change and does not apply the migration. The admin dashboard still uses its browser-local demo session, not Supabase Auth or server-side authorization. Supabase catalog credentials and migrations/seeds remain unverified, so real product listings are not guaranteed by this upgrade.
 
 
 ---
 
 <a id="historical-todo"></a>
+## 17. Search  *(decided 2026-11-23)*
+
+How searching works today, what is wrong with it, and how every search will work. The decisions are the plan
+author's, taken on the owner's instruction to decide everything.
+
+### 17.1 What exists (checked in the code, 2026-11-23)
+
+| Where | How it works today | Code |
+|---|---|---|
+| Storefront `/search?q=` | Server-rendered. `normalizeSearchQuery` keeps letters, combining marks, digits, spaces and `' & . + -`, cuts the text at 60 characters and needs 2 characters. `searchProducts` asks Supabase for `ilike %term%` on `name`, `sub_brand` and `product_type`, ordered by name, at most 40 products, with a price range per product. With no hit the page shows popular products. The header search form goes to this page. | `lib/products.ts`, `app/search/page.tsx`, `components/HeaderActions.tsx` |
+| Guide `/guide?q=&category=` | Server-side. The text is normalised and matched with `includes` over each article's searchable fields; it composes with the category filter. | `lib/guides.ts` |
+| Editor | In the browser. The Edit sidebar search (Designs, Elements, Text) and the font picker filter their lists with a lower-case `includes` on names. | `EditorEditSidebar`, `EditorAdjustmentsPanel` |
+| Admin | In the browser, over the demo data. Each list (orders, products, posts, customers, designs, availability, promotions, settlements, the pricing grid) filters on one joined text made from its own fields; orders use id, customer, email and more. | `components/admin/*`, `lib/pricing-combinations.ts` |
+
+Verified gaps:
+1. Matching is a plain substring and nothing is ranked; the storefront simply orders by name.
+2. Every screen has its own text clean-up and none cleans Myanmar text: zero-width characters, the order of
+   medial and vowel signs, and look-alike letters are not handled, so two spellings of the same Burmese word may
+   not find each other.
+3. `/search` finds products only, not guides or designs.
+4. A Latin typo finds nothing.
+5. A search with no result leaves no trace, so the shop never learns what customers wanted.
+6. Admin search runs over demo data in the browser; it will not scale to Supabase.
+7. The allow-list in `normalizeSearchQuery` removes `%`, `_` and `,`, which protects the database filter today,
+   but the protection is an accident of one regular expression, not a tested rule.
+
+### 17.2 Decisions
+
+| # | Decision |
+|---|---|
+| S1 | **One shared text normaliser**, `normalizeSearchText`, in `apps/web/src/lib/search-text.ts`, used for the query and for what is searched, everywhere (storefront, guide, editor, admin, the Worker). It applies Unicode NFC, removes zero-width characters (ZWSP, ZWNJ, ZWJ, BOM), collapses spaces, folds Latin letters to lower case, and puts Myanmar medial and vowel signs into their standard order. Zawgyi is not converted (decision D10 in Part II: Unicode only). The fold list for look-alike letters is settled on real shop data and starts empty. The Worker imports the same file by relative path so the rule exists once. |
+| S2 | **Matching and ranking.** A Latin query is split on spaces and every word must match as a prefix or a substring. A Myanmar query has no spaces, so it matches as a substring after normalising. Results rank: exact name, then name starts with, then name contains, then other fields; ties break by popularity, then name. Phase 1 fetches up to 80 rows with `ilike` and ranks them in code, returning 40. |
+| S3 | **Typo tolerance** comes in phase 3 with the `pg_trgm` extension: a trigram index on the normalised search text and a similarity threshold of about 0.3. Postgres full-text search (`tsvector`) is not used because it has no usable Burmese configuration. |
+| S4 | **One search column.** Each searchable record (products, posts, designs, guides) gets a normalised `search_text` made from its names in English and in Myanmar, aliases, tags, brand and type, so a customer finds it in either language. The text is built when the record is written, and that column is what `ilike` and the trigram index read. The migration is a numbered file in `SQL/`. |
+| S5 | **Where filtering runs is decided by size, not by screen.** A list that comes from the database or may exceed about 200 rows is filtered in SQL (products, posts, orders, customers, designs). A small list already in memory is filtered in the browser (the editor's font, design, element, text-style and brush libraries, and the pricing grid). The editor libraries search the catalogue JSON that the asset Worker returns (section 12.1), over name, tags, shelf, scripts and aliases, using S1. |
+| S6 | **The storefront search page is grouped:** Products (default), Guides and Designs, each with a count and a cap (products 40, guides 10, designs 12), as tabs on a phone, with `?q=` and `?type=` in the address. The header search shows up to 5 suggestions while typing, after a 200 ms pause, and announces the count. |
+| S7 | **Interface rules.** `type="search"` inside `role="search"`, labelled in English and Myanmar; at least 2 characters after normalising, at most 60; Esc clears; the typed text stays after an error; the empty state offers popular products and a clear button; 44 px targets on a phone; the result count is announced to screen readers. |
+| S8 | **Misses are recorded.** When a storefront search returns nothing, the normalised query is counted in a table `search_misses` (no user id, no address), kept 90 days, and the admin shows the top misses each week. |
+| S9 | **Admin search** uses S1 and adds fields: orders also search phone, township, tracking number and payment reference; customers search phone. When the data comes from Supabase it is filtered in SQL and paged 50 at a time. |
+| S10 | **Database filter safety.** User text never goes into a filter string unescaped: each column is matched with its own parameterised `ilike`, `%` and `_` are escaped explicitly, and a test feeds `,` `(` `)` `.` `%` `_` `*` and `\`. |
+
+### 17.3 Rollout
+
+1. `search-text.ts` with its tests, and every existing search moved onto it. Nothing else changes for the user.
+2. Ranking and the `search_text` columns (a `SQL/` migration).
+3. `pg_trgm` typo tolerance.
+4. The grouped `/search` page, suggestions and the `search_misses` table.
+5. Admin search against Supabase, with paging.
+
+### 17.4 Acceptance
+
+- Two spellings of the same Burmese word (with and without a zero-width character, with the medial signs in a
+  different order) return the same results.
+- The Burmese test strings မြန်မာ, ကြောင်, ပြည်ထောင်စု and သင်္ကြန် each find their record by a part of the word.
+- An English name and its Myanmar name find the same record.
+- A one-letter Latin typo finds the product once phase 3 is in; before then it finds nothing.
+- Exact name matches come before partial ones.
+- The filter-safety test passes with every special character in the list.
+- Every search works at 1440 × 900 and 390 × 844, in English and Myanmar, in dark and light.
+
+**Depends on:** decision D10 (Unicode only); the asset Worker for the editor catalogues (section 12.1); and a `SQL/`
+migration for `search_text` and `search_misses`.
+
 ## Historical TODO Register (migrated from `TODO.md`)
 
 > This is a dated task-history snapshot preserved verbatim except that plan links now point to this master file. Confirm status against the current Project Plan and code before acting on any unchecked historical item. New backlog entries belong in the current Project Plan, not in a separate TODO file.
@@ -2186,7 +2278,7 @@ The owner asked for the editor plan and the editor documentation to be kept apar
 written from the code that works, and for the editor material that referenced other design products to be
 removed. No editor behaviour changed.
 
-- `Plan/EDITOR_PLAN.md` is the editor plan, written from the source: where the editor lives (file by
+- the former editor plan file (now Part II of `Plan/PLAN.md`) is the editor plan, written from the source: where the editor lives (file by
   file, with sizes), what works today item by item, the ten contracts that must not drift, the verified
   gaps with evidence, the next steps E1–E11 with files and acceptance, six decisions for the owner, and
   the change policy.
@@ -2543,3 +2635,1111 @@ The owner: the editor's Tools / Adjustments should be fuller on the design side.
   (866 px = 866 px), centre lands at dx 0 / dy 0, flip reads -100%, reset size 100%, duplicate adds a
   layer, and Neon writes two Glow effects that paint on the canvas. Phone: panel 256 px, buttons 44 px, no
   sideways scroll. Suite 386/386, tsc clean, ESLint 0 errors, e2e desktop + phone pass.
+
+---
+
+<a id="part-ii--editor-plan"></a>
+## Part II — Editor plan (`/create`)
+
+**Status: as built, changed only on the owner's word.** This part records what the editor code does, what it
+does not do, the work that could come next, and the order of work. It is a plan: nothing in it changes behaviour
+by itself, and an item starts only when the owner says so (items marked done or approved are released).
+
+**Where it sits (owner, 2026-11-23):** `Plan/` holds one file, this one. Part I is the project plan and Part II is
+the editor plan. This replaces the 2026-11-21 instruction to keep the editor plan in a separate file. The rule that
+the plan is written from the code, not from other products' editors, still stands. The behaviour documentation is
+`Doc/EDITOR.md`, written from the source. Section numbers in this part are written II.1, II.2 and so on, so they
+cannot be confused with Part I.
+
+**Checked against the source on 2026-11-21** in `apps/web/src`, and refreshed on 2026-11-22 against `main` after the
+commits that added per-tool option boxes, text styles, 3D text materials, the effects gallery, the brush pack
+folder, keyboard undo, the resolution warning, flip, the Shape Builder booleans and the design download.
+
+### II.1 Where the editor lives
+
+| Piece | File | Lines |
+|---|---|---|
+| Route shell: site header, Header Bar 2, workspace | `app/create/page.tsx` | 29 |
+| Canvas: tools, selection, layers, mockups, undo | `components/EditorCanvas.tsx` | 3,157 |
+| Layer model, text metrics, shapes, gradients, masks | `lib/editor-layers.ts` | 2,044 |
+| Layers box | `components/EditorLayersPanel.tsx` | 355 |
+| Adjustment box | `components/EditorAdjustmentsPanel.tsx` | 676 |
+| Tool bar | `components/EditorToolsBar.tsx` | 330 |
+| Header bar: Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size, price, Save, Buy | `components/EditorHeaderBar2.tsx` | 386 |
+| Edit sidebar | `components/EditorEditSidebar.tsx` | 338 |
+| Layer painting | `components/EditorArtworkLayers.tsx` | 332 |
+| Layer thumbnails | `components/EditorLayerPreview.tsx` | 364 |
+| Photo adjustments | `components/EditorPhotoAdjustments.tsx` | 261 |
+| Mockup mirror of the artwork | `components/MockupArtwork.tsx` | — |
+| Pen path geometry | `lib/editor-pen-path.ts` | 198 |
+| Transform maths | `lib/editor-transform.ts` | 132 |
+| Canvas spec | `lib/editor-canvas-spec.ts` | 9 |
+| Artwork tiers | `lib/editor-artwork-tiers.ts` | 38 |
+| Upload limits and compression | `lib/editor-upload.ts` | 101 |
+| Price table | `lib/editor-price.ts` | 45 |
+| Product and GSM defaults | `lib/editor-product.ts` | 4 |
+| Print attributes | `lib/editor-attributes.ts` | 72 |
+| Design library placeholder | `lib/editor-design-library.ts` | 181 |
+
+### II.2 What works today
+
+Checked item by item in the source.
+
+| Area | State |
+|---|---|
+| Print canvas | 4500 × 5400 px at 300 dpi, transparent, blank on open, frozen spec; the element lays out at 900 × 1080 (`PRINT_CANVAS_BACKING_SPEC`) because nothing is drawn into its bitmap, and the print size stays in the spec and the `data-canvas-*` attributes |
+| Workspace | pasteboard around the canvas, zoom 0.25×–3×, pan by wheel / Space / Hand tool, grid toggle |
+| Tools | Move, Hand, Pencil, Pen, Text, Brush, Eraser, Shape, Gradient; options normalised on load |
+| Tool options | every tool has a `Tool Options · <tool>` box at the top of the Adjustments panel (Brush/Pencil, Eraser, Pen, Text, Shape, Move, Gradient); a box writes one field at a time and merges into the stored settings |
+| Layers | five kinds; drag reorder; folders with nested children; rename, hide, lock; opacity, fill, blend mode; duplicate, delete |
+| Groups and links | group/ungroup with folder rows; link/unlink as transform membership |
+| Masks | non-destructive mask strokes (black hides, white reveals), painted with the brush, add/remove, thumbnail |
+| Eraser | brush mode and whole-stroke mode, stored as erasure passes, clearable |
+| Selection | content-derived box, eight resize handles, rotate handle, hit radius scaled to the box, 15° rotation snap |
+| Move | pick-and-drag, group drag, linked drag, arrow-key nudge, layers can be parked off-canvas and still grabbed |
+| Text | inline editor with wrapping, caret panning, per-layer styling, a font picker fed by the R2 manifest (search, recents, shelves) with the eight system fonts as fallback, each name painted in its own face, an effect stack of thirteen kinds (shadow, outline, glow, offset, echo, extrude, stripe, blur, gradient, pattern, hollow, bevel, gloss), three decorations, Plain/Arch/Wave warp (Arch and Wave are slants, see II.4) |
+| Text styles | 31 one-click looks on Classic, Fill and 3D shelves (including Chrome 3D, Gold, Ice, Lava, Balloon, Jelly, Wood, Marble, LED); every tile and every effect row paints its own live preview through the canvas renderer; a style only writes an effect stack, so every part stays editable |
+| Text bounds | ink-based, grows with effects and decorations; verified to ≤1.1 px in browser frame differencing |
+| Shapes | nine presets, stroke/fill/line style/rounding/shadow/glow, builder select/merge/subtract/intersect/exclude over any path data (`booleanPathData`), not just rectangles |
+| Pen | anchors with Bézier handles, drag handles (Alt breaks symmetry), insert and remove nodes, finish with Enter, discard with Escape |
+| Brush | per-tool options box: preset chips painted as rows of dabs, nib (tip, size, angle, roundness), paint (opacity, flow, spacing, smoothing), edge (softness, feather), shape dynamics (size, opacity, angle and roundness jitter, scatter, fade-out), dab blend, reset; strokes smoothed as drawn |
+| Gradients | five types, up to eight stops, presets, on-canvas axis, thumbnails |
+| Images | client-side compression (2 MB, 2000 px), nine photo-adjustment groups, non-destructive values, masks |
+| Mockups | Front and Back boxes with connectors, artwork mirror clipped to the print area, independent overlay transforms, shared 3500 px tier |
+| Header Bar 2 | eight selection boxes (Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size), live price; Save and Buy disabled |
+| Edit sidebar | Designs, Elements, Text, Upload, Image Create; rail stays visible; additions land in the Layers box |
+| Browser draft | the layers are written to `localStorage` (`mh-fashion-design-draft-v1`) 400 ms after a change; `/create` restores them on load and says "Restored the design from your last visit"; a design-editable product page renders that draft too |
+| Undo / redo | 30 snapshots of the layer list, covering paint, pen, shape and gradient edits plus add, delete, duplicate, rename, reorder, group, mask and visibility/lock toggles; Ctrl+Z / Ctrl+Shift+Z (⌘ on macOS) through `lib/editor-shortcuts.ts`; viewport, mockup overlay and the opacity/fill sliders stay outside it |
+| Download | "Download my design" saves a 38.1 × 45.72 cm SVG (300 dpi PNG too) with the used fonts inlined as base64 `@font-face` rules |
+| Fonts | the picker reads `fonts/manifest.json` from R2 (`lib/editor-fonts.ts`, `lib/editor-font-library.ts`); bad entries are skipped by name; the eight system fonts stay the fallback |
+| Flip | horizontal and vertical, about the selection's own centre (`flipLayerPlacement`); the buttons sit in the Tools bar today and move to the Adjustments panel (E22) |
+| Hover | the canvas outlines the layer under the pointer and the Layers row highlights with it |
+| Image resolution | a photo that would print below the press resolution is flagged in the Photo panel (`lib/editor-image-ppi.ts`) |
+| Phone | 44 px targets, Pan view mode, view-only zoom, second finger cannot hijack a gesture, no panel overlap; 25 layers, the 30-step undo floor and a portrait→landscape rotation are covered by `denseDesign()` in `tests/editor-touch.cjs` |
+
+### II.3 Contracts that must not drift
+
+Each of these was a real defect once. Keep them when changing the editor.
+
+1. A text transform box hugs the painted ink plus effects and decorations, never the font line box.
+2. A pure text layer gets no grab margin; strokes, shapes and images get 18 units.
+3. `editorTextLines` is the only source of painted lines.
+4. The inline editor's box follows the wrapped line count, not the newline count.
+5. Handle hit radius scales with the box; the rotate handle stays clear of the resize handles.
+6. Move, resize and rotate use the unclamped point; drawing tools stay on the canvas.
+7. A press on the selection re-picks a different layer underneath before dragging.
+8. Mockup artwork is clipped to the print area.
+9. Print geometry (4500 × 5400 px, `unitsPerCm`, layer records) is a contract with the press.
+10. The shared header's language and currency pills always show the active option.
+11. A new text effect kind needs a default in `effectSample` and `EffectTile`, or its tile paints empty; the renderer and the bounds share `editorTextEffects` and `editorTextPaintPadding`, so a new kind must extend the padding too.
+
+### II.4 Verified gaps
+
+What the code does not do, with the evidence.
+
+| Gap | Evidence |
+|---|---|
+| No Save, and no design outside the browser | Save and Buy are `disabled` in `EditorHeaderBar2`. The browser draft is restored on load (`readDesignDraftSnapshot` in `lib/design-draft.ts`), but nothing reaches a database, `clearDesignDraft` is never called, and `/create` ignores the `?product=` it is given. Waiting on decision D1 |
+| No design hand-off to an order | the editor never writes a design; the admin order record is built from the demo store, not from `/create` |
+| Undo is layer-only | `undoStack`/`redoStack` hold `EditorArtworkLayer[][]`; viewport zoom/pan, the mockup overlay transforms and the opacity/fill sliders are outside it, so those changes cannot be undone |
+| Every layer can be deleted | `deleteEditorLayer` filters the list without a floor, so deleting the last layer leaves an empty design. Add layer recovers it, and since 2026-11-22 a stroke on the empty design says "Add a layer before drawing." (it used to return silently). Owner decision still needed: keep one layer, or leave it deletable |
+| Arch and Wave do not bend text | `editorTextPresetMatrix` returns one shear matrix for the whole text block (6° for Arch, 4° for Wave); no glyph follows a curve. The `circle` option is no longer offered and survives only as a legacy stored value |
+| No Myanmar font until the bucket is filled | the picker reads `fonts/manifest.json` from R2 and falls back to the eight system fonts, but the shop has not uploaded a manifest yet, so today's list is still Inter, Arial, Georgia, Impact, Courier New, Trebuchet MS, Verdana and Times New Roman |
+| Brush packs are a contract only | `public/brushes/README.md` defines `brushes.json` and tip files, `brushes.json` is empty, and no code reads it |
+| No stylus or finger pressure | no `pressure` in the source |
+| No eyedropper | none in the source |
+| No tool shortcut keys beyond undo/redo | `lib/editor-shortcuts.ts` maps Ctrl/⌘+Z and Ctrl/⌘+Shift+Z; the other shortcuts are Space, arrows, Enter and Escape; no tool letters and no brush-size cursor |
+| No align or tidy control | `lib/editor-align.ts` (`alignOffset`, `tidyDeltas`) and its 8 unit tests exist, but no panel control calls them: the target area waits on the per-mockup design-area decision |
+| No positional snapping | only `snapEditorRotationDelta` (15°); no guides, no edge or centre snapping |
+| No context menu | no right-click menu on the canvas or the Layers box |
+| No glyph, uppercase or ligature controls | none in the text controls |
+| Styling is per text layer | one font, size and colour for the whole layer |
+| Only two products | Hoodie, Cup, Kids and Bag are disabled; product and GSM do not change the mockup art or the price table beyond what `editor-price.ts` lists |
+| Design library is a placeholder | `DESIGN_LIBRARY_STATUS = "pending-r2-endpoint"` |
+| Image Create has no pipeline | the prompt field exists; nothing generates or inserts an image |
+| No artboards | one print canvas plus mockups |
+| Phone verified by emulation only | `tests/editor-touch.cjs` runs Chromium with touch emulation |
+| Header choices are fixed in code | `lib/editor-attributes.ts` holds the option lists (Print Method, Fabric Type, Knit Structure, MH Cuttings) and the narrowing rules as constants, as its own header comment says; the admin attribute chain (`lib/admin-attributes.ts`, `AdminAttributes.tsx`) is edited separately and the editor does not read it |
+
+### II.5 Plan — next steps
+
+Ordered by what the shop needs first. Each item is a separate decision: the editor is final as built, so
+the owner approves an item before it starts.
+
+| # | Item | Why | Files | Size |
+|---|---|---|---|---|
+| E1 | Save the design, then hand it to the order | Save and Buy are dead buttons, the browser draft is never restored, and no order carries the artwork | `EditorHeaderBar2`, `EditorCanvas`, `lib/design-draft.ts`, the order payload | large |
+| E2 | Real-phone QA — **source half done 2026-11-22** (the Edit-sidebar crash is fixed and the suite passes 16/16; the canvas is bounded to 972k px; items 5–7 verified in emulation) | phone is the shop-floor tool; the known test failure hides regressions | `tests/editor-touch.cjs` | small |
+| E3 | Settle the `circle` preset — **done 2026-11-22** | a control that does nothing reads as a bug | `lib/editor-layers.ts`, `EditorAdjustmentsPanel` | small |
+| E4 | Align to the print canvas, tidy spacing | layers are placed by eye; alignment is the most-requested layout help | new `lib/editor-align.ts`, panel controls | medium |
+| E5 | Flip horizontal and vertical — **done 2026-11-22; moves out of the Tools bar into the Adjustments panel (owner, 2026-11-22, see E22)** | mirrored artwork is a normal request for a print shop | `lib/editor-transform.ts`, `EditorToolsBar`, Adjustments panel | medium |
+| E6 | Snap guides while dragging | free placement drifts off the print area | `EditorCanvas` drag paths | medium |
+| E7 | Hover highlight between canvas and Layers — **done 2026-11-22** | finding the row for a shape on a busy canvas is slow | `EditorCanvas`, `EditorLayersPanel` | small |
+| E8 | Shape Builder for `exclude` and arbitrary paths — **done 2026-11-22** | the builder only merges rectangles today | `lib/editor-path-boolean.ts`, `applyEditorShapeBuilderOperation` | medium |
+| E9 | Enable the remaining products | Hoodie, Cup, Kids and Bag are visible but dead | `EditorHeaderBar2`, mockups, `editor-price` | medium |
+| E10 | Connect the sidebar library and image generation | Designs, Elements and Image Create are placeholders | `editor-design-library`, R2 endpoint, image service | large |
+| E11 | Per-character styling, glyphs, artboards | only if the catalogue needs them | text model migration, renderers, export | large |
+| E12 | Required selections before Buy | an order must carry every choice; Save stays open | `EditorHeaderBar2`, new gate helper, order payload | small |
+| E13 | Keyboard Undo / Redo — **done 2026-11-22** | desktop users expect Ctrl+Z; only the tool-bar buttons exist | `lib/editor-shortcuts.ts`, `EditorCanvas` | small |
+| E14 | Image resolution warning — **done 2026-11-22** | a photo enlarged past what the press can print sharply is only discovered after printing | `lib/editor-image-ppi.ts`, `editor-layers`, `EditorCanvas`, Layers box, Adjustment box | small |
+| E15 | Header choices come from the admin dashboard | the shop must be able to change, add and remove the choices behind the header boxes without a code change | `lib/editor-attributes.ts`, `lib/admin-attributes.ts`, `EditorHeaderBar2`, `AdminAttributes` | medium — **step 1 done 2026-11-22** (one vocabulary); the admin-driven chain still waits for the database |
+| E16 | Download my design — **done 2026-11-22** | the customer had no copy of the artwork; the press bundle was the only file | `lib/design-export.ts`, `EditorDesignExport`, `EditorToolsBar` | small |
+| E17 | Font library, including Burmese fonts — **approved 2026-11-22; steps 1–4 done 2026-11-22** (manifest picker, download embedding, upload check, list previews); the press bundle waits on E1 | eight system fonts and no Myanmar font; the printed font depends on the device | `EditorAdjustmentsPanel`, font loading, R2, design export, print export | medium |
+| E18 | Text effects, round 2 | more looks and finer control for the effect stack | `editor-layers`, `EditorLayerPreview`, `EditorAdjustmentsPanel` | medium |
+| E19 | A real text bend — **approach decided 2026-11-22** (outline warp with HarfBuzz) | Arch and Wave only slant the text | `editor-layers`, `editor-fonts`, renderer, bounds, print | medium |
+| E20 | Brushes, round 2 | brush packs, pressure, stabiliser and a size cursor | Brush box, `public/brushes`, `EditorCanvas` | medium |
+| E21 | Tool adjustments, polish | numeric entry, reset, shortcuts, eyedropper, richer Pen and Shape boxes, phone layout | `EditorAdjustmentsPanel`, `EditorToolsBar`, `EditorCanvas` | medium |
+| E22 | Adjustments panel: complete, compact and beautiful | the panel has no numeric position or size, no align, flip or rotate, no colour system, and every label is 9 to 10 px | `EditorAdjustmentsPanel`, `EditorPhotoAdjustments`, `EditorToolsBar`, shared controls | large |
+| E23 | Design areas per mockup | align, snap and the outside-the-area warning need to know where artwork may go | admin, mockup `meta.json`, `EditorCanvas`, `lib/print-quality.ts` | medium |
+
+#### II.5.1 Order of work  *(set 2026-11-23)*
+
+| Phase | What | Needs first |
+|---|---|---|
+| 0 — ready now | E22 visual mock-up for the owner; E17 read-only service for fonts and the `outline` field; E21 items that do not need new controls; E2 real-device pass; the E12 notice logic and the "which selections are missing" function (Buy stays disabled) | nothing |
+| 1 — accounts | E1 (a) to (c): `0008` migration, Save, My designs, private photos; admin writes and the issues panel of the asset service | Supabase Auth and a server-side admin check |
+| 2 — payment | E1 (d) and (e): Buy, the E12 gate live, the order snapshot, the press bundle from the snapshot | the payment and order work |
+| 3 — owner inputs | E23 design areas, then E4 and E6; the font shelf with licences (E17); brush tips (E20); the Hoodie data (E9) | the inputs listed below |
+| 4 — polish | E22 build, E21, E19 (bend), E18 (effects), E20 (brushes) | E22 shared controls, E17 `outline` files |
+
+Dependencies that decide the order: E19 needs the `outline` font files from E17; E21 reuses the controls E22 builds;
+E9 needs E15; E4 and E6 need E23; E1 (d) needs E12 and payment.
+
+#### E1 — Save and order hand-off
+
+- Restore the draft the editor already writes, so a reload continues the same artwork, then make Save
+  write the design (layers, canvas, product, GSM, colour, size, price) somewhere it survives a browser
+  change; Buy turns the same payload into an order line.
+- Acceptance: reload keeps the artwork; a placed order shows the design in the admin order view with the
+  print sheet and mockups; a browser with storage disabled shows a clear message instead of losing work.
+- Blocked on the decision in II.6 D1 (where the design lives) and on the payment/order work.
+- **Step 1 done 2026-11-21: the draft is restored on load.** `lib/design-draft.ts` stores each layer's
+  move/scale/rotate beside the layers (`readDesignDraftSnapshot`), `EditorCanvas` restores it after mount
+  and shows "Restored the design from your last visit", and a browser that refuses storage says so once.
+  Reload keeps the artwork; the order hand-off and Save still wait on D1.
+- **A refused draft write is now covered (2026-11-22).** `storageRefused` makes `setItem` throw a
+  `QuotaExceededError` for the draft key only, adds a layer, and reads the `role="status"` text: the
+  editor says "This browser is not saving your design. Keep this tab open until you order." It then
+  restores `setItem` and checks the next change writes the draft again. The message already worked;
+  nothing in the suite asserted it, so a silent regression could have shipped.
+- **Bug fixed 2026-11-22: a corrupt draft blanked the editor.** Reading the draft back put whatever was in
+  `localStorage` in front of the renderer, so three shapes killed `/create` with "This page couldn't load"
+  until the visitor cleared storage: a `null` layer (`Cannot read properties of null (reading 'strokes')`),
+  a stroke whose `points` was not a list (`e.points.map is not a function`), and a shape path of `null`
+  (`Cannot read properties of undefined (reading 'flatMap')`). `readDesignDraftSnapshot` now runs every
+  layer through `sanitizeDesignDraftLayers`: a layer without an id, or whose declared kind has no usable
+  content, is dropped; unusable strokes and shape paths are dropped and the rest of the layer is kept;
+  numbers are coerced and clamped; an unknown kind from an older build is treated as plain artwork. A
+  layer that paints nothing is still kept, because that is the editor's own blank layer. Verified with
+  ten corrupt drafts in Chromium (every one now opens the canvas with no console error) and
+  `tests/design-draft.test.cjs` (3 new tests, 10 in the file).
+
+#### E1 — design of the saved design and the order hand-off  *(decided 2026-11-23)*
+
+What exists: a table `user_designs` (`user_id`, `product_id`, `canvas_state jsonb`, `mockup_attach_status`) and
+`order_items` (`design_id`, `attribute_selection`, `design_svg_url`, `placement_coordinates`). Neither has been
+used by the editor yet, and the editor's draft is browser-only.
+
+1. **Saved design (migration `0008_saved_designs.sql`).** `user_designs` gains `name`, `garment`
+   (`t-shirt` or `phone`; the editor works on a garment, not a catalogue product, so `product_id` becomes
+   optional), `selections jsonb` (the header choices, including Fit Type when it is on), `schema_version`,
+   `thumbnail_key`, `size_bytes`, `updated_at` and `deleted_at`. `canvas_state` holds
+   `{ schemaVersion, canvas: { width, height, dpi }, layers, placements }`. `mockup_attach_status` is left
+   unused. The number of designs per customer is capped by the existing "Max saved designs" setting in
+   `platform_settings`.
+2. **No pictures inside the row.** Today an image layer carries its photo as a data URL, which is too large for
+   a row and for browser storage. Before a design is saved, each photo is sent to private R2 through the Worker
+   (`uploads/<user-id>/<upload-id>/`, Part I §12.1, rollout step 4) and the layer keeps only that key.
+   Fonts are stored by slug, never as files.
+3. **Who may see it.** Row-level security lets a customer select, insert and update only rows with their own
+   `user_id`, with a `with check` on writes; nobody else can read a design. The admin order view and the press
+   read through the server, not through the customer's policy. The earlier note about `profiles` columns applies:
+   nothing a customer may edit may decide who is allowed to see a design.
+4. **Guest and account.** A guest keeps the browser draft. When someone signs in with a draft in the browser, the
+   editor offers "Save this as my design"; saving claims the draft and the browser copy remains as crash cover.
+5. **Save, autosave and conflicts.** Save names the design. While signed in, changes are autosaved to the open
+   design about five seconds after the last change. The header shows "Saving…", "Saved 12:04" or "Not saved:
+   offline". A save carries the `updated_at` it started from; if the stored copy is newer (another device), the
+   editor asks "Keep this version or load the other one" instead of overwriting.
+6. **My designs.** A list with a thumbnail, name and date, with open, duplicate and delete, in the account area
+   and in the Edit sidebar. The thumbnail is drawn in the browser at Save (about 600 px) and stored privately.
+   Delete is soft; the row and its files are purged after 30 days.
+7. **Buy hand-off (after payment and E12).** Buy creates an order item that owns an **immutable copy**:
+   `design_snapshot jsonb` (layers and selections at purchase), `design_svg_key` (the print SVG with the fonts
+   embedded or the text outlined, kept privately at `orders/<order-id>/`), `placement_coordinates` and
+   `print_checks jsonb` (the E14 ppi of each photo and the other checks from `lib/print-quality.ts`).
+   `design_id` still points at the saved design for reference. Editing or deleting the saved design afterwards
+   never changes a paid order, and the press bundle is built from the snapshot. `design_svg_url` becomes a key,
+   because a URL suggests a public file.
+8. **The server decides, not the browser.** On Buy the server repeats the E12 rule, looks the chosen combination
+   up in the price table and in Availability, computes the unit price itself, validates the design structure
+   with the same cleaning as `sanitizeDesignDraftLayers`, cleans the SVG, and rejects a design above the layer,
+   stroke and size limits. The client's price is never trusted.
+9. **Takedown and privacy.** Saved designs are private. A design under a copyright claim is hidden (policy in
+   Part I §8.1); a paid order whose design is taken down waits for the owner's review before printing.
+   Deleting an account deletes designs that no order uses; orders keep their snapshot.
+10. **Order of work.** (a) accounts and the `0008` migration with its row-level-security test; (b) Save, open and
+    My designs for a signed-in customer; (c) photos and thumbnails to private R2 through the Worker; (d) Buy with
+    the E12 gate and the order snapshot, after payment; (e) the admin order view and press bundle read the
+    snapshot.
+- Acceptance: a customer on a second device opens the same design; customer A cannot read customer B's design
+  (a test with two accounts); a paid order is unchanged after its design is edited, duplicated or deleted; a
+  design holding photos saves and reopens without a data URL in the row; a stale save is refused with the
+  choice dialog; the server refuses a payload with a missing selection, an unpriced combination or a hidden
+  one, and ignores the price the client sent.
+
+#### Built: E3 the `circle` text preset (2026-11-22)
+
+- Settled by removal from the control: the Adjustment box offers Plain / Arch / Wave, the three presets
+  that paint. A circle baseline would need a per-glyph placement pass in every renderer (canvas, inline
+  editor, mockup, print sheet) for a look the catalogue does not ask for.
+- `textTransform: "circle"` stays in the type and in `editorTextPresetMatrix` as a **legacy stored value**:
+  artwork saved with it renders as plain text with the ink box unchanged, instead of breaking.
+- Verified: `tests/editor-layers.test.cjs` (a circle layer renders plain, its box equals the plain box) and
+  `tests/editor-arrange.test.cjs` (the tile list is exactly Plain / Arch / Wave).
+
+#### E2 — Phone QA
+
+- Fix the `null` `getBoundingClientRect` in the Edit-sidebar section so the suite runs to the end, then
+  run the flow on at least one physical Android and one iPhone.
+- Acceptance: `tests/editor-touch.cjs` passes end to end, and a written note records the devices, OS
+  versions and what was checked.
+- Owner decision (2026-11-21): this item is done by testing on real devices and fixing what is found, not by emulation alone.
+- **Source half done 2026-11-22: the canvas limit is bounded.** Checklist item (1) is a real risk in the code:
+  the print canvas was a `<canvas width=4500 height=5400>`, a 24.3 million pixel backing store (~97 MB), and
+  older iOS refuses a canvas above 16.7 million pixels. Nothing draws into that bitmap — the artwork paints in
+  the SVG layers above it — so the element now takes `PRINT_CANVAS_BACKING_SPEC` (900 x 1080, 972k px) and keeps
+  the print size in `PRINT_CANVAS_SPEC` and the `data-canvas-*` attributes. Verified in Chromium at 1440x900 and
+  390x844: backing store 900x1080, `data-canvas-width/height/dpi` still 4500/5400/300, the on-screen box
+  unchanged at 292x350 (ratio 0.834). The physical-device pass still has to confirm it on hardware.
+- **Emulation pass 2026-11-22: checklist items 5, 6 and 7 are verified in Chromium, and the checks are now
+  part of the suite.** A new `denseDesign()` section in `tests/editor-touch.cjs` (14 sections, all pass) proves:
+  25 added layers sit beside the blank one and each add lands in well under a second; 35 pencil strokes then 40
+  `Ctrl+Z` presses leave exactly 5 strokes, so the undo floor is the documented 30 snapshots; a second finger
+  placed mid-stroke does not start a second stroke or extend the line (the tallest ink stays at the pencil width,
+  because every pointer handler already rejects a non-primary pointer); and a rotation to 844x390 keeps the
+  canvas width, adds no horizontal scroll at page or viewport level, and leaves the canvas reachable through the
+  viewport's own scroll.
+- **Every one of those paths was then checked in Chromium (1440 x 900) with the console guard on:** add
+  (1 to 2 rows, undo back to 1), rename (label becomes `Renamed Layer`, undo restores `Layer 1`), hide and
+  show, lock and unlock, mask add and remove, reorder, group, and delete (2 to 1, undo back to 2) each
+  return to the previous state with no console error. Deleting both layers leaves an empty list; a stroke
+  on it used to paint nothing and say nothing, and now says "Add a layer before drawing." — the same
+  treatment the Pen tool already gave a missing layer.
+- **Layer housekeeping is now undoable.** `deleteLayer`, `addLayer`, `duplicateLayer`, `renameLayer`,
+  `moveLayer`, `moveLayerToIndex`, `groupSelectedLayers`, `ungroupSelectedLayers`, `createLayerMask`,
+  `deleteLayerMask`, `toggleLayerVisibility` and `toggleLayerLock` all call `rememberLayerSnapshot()`. Before
+  this, a mis-tapped delete could not be undone, and `Ctrl+Z` silently reverted an older paint operation instead.
+- **Checked at five viewports on 2026-11-22** (768 x 1024, 1024 x 768, 820 x 1180, 414 x 896, 360 x 800;
+  touch emulation on the three under 900 px): no horizontal overflow (`scrollWidth - innerWidth` is 0 at
+  every size), the print canvas sits inside the viewport with the header above it and the tools bar below
+  it, all ten header boxes are present, and no console error is logged. The only elements wider than the
+  viewport are the header's own horizontal scroll container and the docked panels' scroll strips, which is
+  what they are for. A tablet (768 x 1024) is therefore covered by the layout rules, not just the two
+  sizes II.7 names.
+- **Bug fixed 2026-11-22: a long Burmese word broke inside its syllables.** A word wider than the
+  wrap limit was split per code point, so `"မြန်မာနိုင်ငံ"` painted lines that began with `"ာ"` and `"်"` —
+  vowel signs and the asat hanging off nothing, and the artwork broke at different places than the
+  textarea. The split now runs over grapheme clusters (`editorTextGraphemes`, `Intl.Segmenter`) and merges
+  a cluster that opens with a combining mark back into the previous one, because UAX #29 gives a Myanmar
+  spacing mark its own cluster. Verified with `tests/editor-layers.test.cjs` (Myanmar and joined-emoji
+  cases) and in Chromium: a 130-code-point Burmese word at the default 110px/880 wrap paints 10 lines,
+  rejoins to the original string, and no line starts with a mark, on the canvas, the mockup and the preview.
+- **The bar and canvas hold in landscape and on a tablet (2026-11-22).** `landscapeAndTablet` loads
+  844 × 390, 480 × 320, 768 × 1024 and 1024 × 768 touch and asserts the tools bar is fully in view,
+  all 16 tools are present and tappable (nothing overlapping them), the mobile navigation starts at or
+  below the bar's bottom, the print canvas is on screen, and the page does not scroll sideways. All
+  four pass. The existing `phone landscape` section only checked that the touch controls survive the
+  desktop breakpoint; this adds the tappability rule the 320 × 480 section uses.
+- **Checklist item 2 is covered for effects (2026-11-22).** `burmeseEffects` types a Burmese layer,
+  then reloads it once per effect (shadow, outline, glow, extrude, gradient) through the saved draft and
+  checks the Burmese text still paints, no painted copy is truncated, and the effect's own signature
+  reaches the painted SVG (the shadow colour, a stroked `<text>` for the outline, a filter for the glow,
+  the extrude colour, a gradient definition). It then reads `[data-editor-export-artwork]` — the group
+  the customer's SVG download and the press sheet are serialized from — and requires the Burmese text
+  there too and a longer document than the plain layer, so an effect cannot survive on screen and vanish
+  from the file that prints. All five pass, so no fix was needed. Fonts other than the default are still
+  only covered by the audit in `tests/editor-font-audit.test.cjs`.
+- **Checklist item 6 is covered at the tightest size (2026-11-22).** At 320 × 480 the `short phone bar`
+  section finds all 16 bar buttons hit-testing to themselves (none covered, none off screen), the bar
+  ending above the `Mobile navigation` bar, and the print canvas scrolling clear above the bar. No bug
+  was found; the check now guards the clearance work on the smallest screen the shop supports.
+- **Checklist item 3 is now covered in emulation and fixed in the source (2026-11-22).** A phone keyboard
+  shrinks the *visual* viewport without shrinking the layout box, so the caret could sit below the last
+  visible pixel with nothing re-panning it: measured on 390 × 844, after six lines the caret line sat at
+  y 490–529 while the visible area ended at 334. `keepTextCaretVisible` now clamps to
+  `visualViewport` (`offsetTop` + `height`) instead of the layout box, and it re-runs on `resize`,
+  `orientationchange` and the visual viewport's own `resize`/`scroll`, not only on a text change. Same
+  measurement after the fix: caret 264–302 inside 153–334, and it stays in view when the screen returns
+  to 844. The new `keyboard caret` section in `tests/editor-touch.cjs` pins it (19 sections, all pass).
+  A real keyboard still has to confirm it on hardware, which is what E2 itself requires.
+- Checklist for the real-device pass: (1) iPhone Safari opens `/create`, draws and holds many layers on the 4500 × 5400 canvas without the page reloading (browser canvas limits are not verified in the source); (2) Burmese text typed with the Text tool, in several fonts and with effects, renders correctly on the canvas, the mockup and the print sheet; (3) the on-screen keyboard never hides the text box or caret; (4) uploads from the gallery and camera, including photos over 10 MB; (5) every tool with one finger, a second finger never taking over, Pan view, `+` / `−` / Reset view; (6) the Layers box and Edit sidebar never overlap, and the bottom navigation and safe areas never cover the editor; (7) portrait to landscape, dark and light, 20 to 30 layers, and the 30-step undo limit; (8) a reload loses the working canvas today (E1) and is recorded as such.
+
+#### E4 — Align and tidy
+
+- Align the selection to the print canvas (left, centre, right, top, middle, bottom) and tidy the spacing
+  of three or more layers.
+- Constraint: moves layer origins, never scales, treats a linked set as one unit.
+- Owner decision (2026-11-21): the alignment targets are the design areas the shop defines for each mockup, not always the canvas centre. This item starts after the mockup design-area discussion.
+- **Helper only 2026-11-21:** `lib/editor-align.ts` (`alignOffset`, `tidyDeltas`) and its 8 unit tests are
+  written; it is not wired to any control yet, because the target area is the decision above.
+- Acceptance: unit tests on the helper against `PRINT_CANVAS_SPEC`; a canvas test that the artwork lands
+  inside the print area.
+
+#### E5 — Flip
+
+- Horizontal and vertical flip on the selection, mirrored in the mockup and the print export.
+- Acceptance: the printed PNG is the mirror of the unflipped one and the transform box still hugs the
+  ink (a flipped italic moves its ink).
+- **Owner decision (2026-11-22): Flip does not belong in the Tools bar.** The two buttons live in the
+  Adjustments panel's Arrange section (E22). `flipLayerPlacement` and `flipSelectedLayers` stay as they are; only
+  the buttons move, and the Tools bar loses its `canFlip` and `onFlip` props.
+
+#### E6 — Snap guides
+
+- While dragging, snap to the canvas edges and centre, and to other layers' edges and centres, with a
+  visible guide line; a modifier key suspends snapping.
+- Owner decision (2026-11-21): the snap targets include the design areas defined per mockup. This item starts after the mockup design-area discussion.
+- **Helper only 2026-11-21:** `lib/editor-snap.ts` (`snapTargetLines`, `snapBoxToLines`, `offsetBox`) and
+  its 8 unit tests are written and take the target area as a parameter; the drag is not wired to it yet.
+- Acceptance: a drag within the snap distance lands exactly on the guide, the guide disappears on release,
+  and touch dragging keeps working.
+
+#### E7 — Hover highlight — **built 2026-11-22, acceptance covered**
+
+- Hovering a canvas layer highlights its Layers row; hovering a row outlines its canvas layer. No
+  selection change. Implemented in `EditorCanvas.tsx` (`hoveredLayerId`, `hoveredBounds`, the
+  `[data-editor-hover-outline]` dashed box) and `EditorLayersPanel.tsx` (`onHoverLayer`, the row ring
+  and `data-layer-hovered`). The outline is only drawn for a layer that is **not** selected, so it never
+  doubles the solid transform box.
+- Acceptance met: the new `hover highlight` section in `tests/editor-touch.cjs` drives a real mouse in
+  Chromium at 1280 × 900 and asserts both directions and both clears — hover the artwork, then the row
+  of the same layer, then away — with the selection unchanged in every step, and a 390 × 844 touch tap
+  that leaves no outline. Suite now 17 sections, all pass.
+
+#### E8 — Shape Builder
+
+- `exclude` plus boolean operations on any closed path, not just the first two rectangles.
+- Acceptance: merge, subtract, intersect and exclude on rotated shapes and pen paths produce one path
+  that prints, with bounds following the result.
+
+#### E9 — Products  *(order decided 2026-11-23: Hoodie first)*
+
+- Enable Hoodie, then Cup, Kids and Bag only if the catalogue sells them, each with its mockups, design areas
+  (E23), price table and weight.
+- **Hoodie** comes first and only after E15, because its attribute set is not the T-shirt's. The header boxes,
+  the Buy gate (E12), the price table and the post form all read the managed chain, so the shop defines the
+  hoodie's attributes (fabric, weight, colours, sizes, print methods) in the admin and nothing is fixed in code.
+- **Design areas:** the hoodie's front area sits above the pocket, so it is shorter than the T-shirt's; the back
+  area is the full back. Both are set in E23.
+- **Mockups:** `mockups/editor/hoodie/<look>` and `mockups/product/<slug>/<look>` follow `Doc/R2-STORAGE.md`; the
+  service lists the looks that exist (Part I §12.1).
+- **Delivery:** the weight of each hoodie is measured by the shop and entered, as for the T-shirt.
+- **Needs from the owner:** the hoodie's attribute lists and prices, its photos, and its measured weights.
+- Acceptance: the hoodie renders its mockup, prices from its own table, prints on its own areas, passes the Buy
+  gate with its own attributes, and a T-shirt design opened on a hoodie keeps every layer inside the hoodie's
+  front area or says which layers are outside it.
+
+#### E10 — Sidebar services
+
+- Designs and Elements read the real design library; Upload stores its images; Image Create generates and
+  inserts an image.
+- **Through the R2 asset service (owner, 2026-11-22; Part I §12.1):** Designs and Elements read
+  `GET /api/assets/designs` and `/elements`, whose JSON the Worker builds from the folders in R2 and a small
+  `meta.json` per asset (name, category, tags). The `pending-r2-endpoint` placeholder in
+  `lib/editor-design-library.ts` is replaced by that response. A design's layers stay individually selectable.
+  Uploaded photos are private: they go to R2 through the Worker and come back only to their owner.
+- Acceptance: a design added from the sidebar survives a reload (once E1 lands) and appears in the print
+  bundle.
+
+#### E12 — Required selections before Buy  *(owner decision, 2026-11-21)*
+
+- **Rule:** Buy is allowed only when all eight header selections hold a value: Product, Print Method,
+  Fabric Type, Knit Structure, MH Cuttings, GSM, Color and Size. **Save is always allowed**, whatever is or
+  is not chosen.
+- **Today:** the header opens with a value in every box except Color (owner, 2026-11-21). A box counts as
+  chosen when it holds a value, a pre-filled default included (decision D7).
+- **Buy with something missing:** the Buy button stays clickable, because a disabled button cannot say why.
+  Clicking it shows a small notice that names every missing selection (for example "Choose Color before
+  buying"), outlines each missing box, and scrolls or focuses the first one. The notice is non-blocking, is
+  announced to screen readers (`role="status"`), and clears as soon as the last missing box is filled.
+- **Wording:** the notice reads in English and Myanmar with the active UI language, and names fields with
+  their header labels. The owner reviews the Myanmar wording.
+- **Web and Phone:** on Web the notice sits under the Buy button and does not cover the canvas; on Phone it
+  sits under the header row, above the bottom navigation, the header row scrolls the first missing box into
+  view, targets stay about 44 px, and the notice never overlaps the Layers box or Edit sidebar.
+- **Server check:** the order endpoint repeats the rule and rejects a payload that lacks a required
+  selection, and it also rejects a combination that has no price or is hidden in Availability. The button is
+  never the only guard.
+- **Scope:** T-Shirt. The Phone product's required set is decided when Phone ordering is built.
+- **Order of work:** the gate ships with Buy (E1, after payment). Until then Buy stays disabled.
+- Acceptance: with Color empty, Buy shows a notice naming Color, the Color box is outlined and in view; Save
+  works with Color empty; choosing Color clears the notice and outline at once; with everything chosen Buy
+  proceeds; Enter and Space on Buy behave like a click and move focus to the first missing box; the notice is
+  announced and shows in English and Myanmar, dark and light, at 1440 × 900 and 390 × 844; a unit test covers
+  the pure "which selections are missing" function; a server test rejects a payload with a missing selection,
+  an unpriced combination and a hidden one.
+
+#### E13 — Keyboard Undo / Redo  *(owner decision, 2026-11-21)*
+
+- `Ctrl+Z` (`Cmd+Z` on Mac) undoes; `Ctrl+Shift+Z`, `Cmd+Shift+Z` and `Ctrl+Y` redo. `Cmd+Y` is left alone.
+- It runs the same undo and redo functions as the tool-bar buttons and keeps the same scope: layer changes
+  only, 30 snapshots; zoom, pan and mockup positions stay outside the history.
+- **Fields keep the browser's own Undo:** while the focus is in an input, textarea, select, a contenteditable
+  element or a `role="textbox"` element (the inline text editor, the Edit-sidebar search, number fields), the
+  shortcut does nothing, so typing is never rolled back by layer history.
+- **Burmese and other non-Latin layouts:** when the pressed key is not a Latin letter, the physical key is
+  used, so the shortcut works on a Myanmar keyboard. On a Latin layout that moves the letters (AZERTY), the
+  letter wins.
+- Ignored: any Alt combination (AltGr types characters on some layouts) and keystrokes made while an input
+  method is composing text.
+- The shortcut works whether the tool bar is expanded or collapsed and while the Layers or Adjustment box is
+  open.
+- Phone: no keyboard, so the buttons stay the way to undo.
+- Acceptance: a unit test covers the key matrix and the field check; a browser test undoes and redoes a layer
+  change with the tool bar collapsed and with the Layers box open; typing in the text editor and pressing the
+  shortcut changes the text only; `Doc/EDITOR.md` §17 gains the new rows.
+
+#### E14 — Image resolution warning  *(owner decision, 2026-11-21: add it)*
+
+- **Facts checked in the source:** layers live in a 1000 × 1200 artwork space that maps to the 4500 × 5400 px
+  canvas at 4.5 px per unit; an uploaded photo is reduced to at most 2000 px on its long edge (`UPLOAD_MAX_EDGE`)
+  and inserted centred, fitted inside 80 % of the artwork width and height (`imageLayerBox`); an image layer
+  stores its box and byte size but not the photo's own pixel size.
+- **Measure:** effective ppi = 300 × (photo pixels along an axis) ÷ (pixels that axis covers on the print
+  canvas). Rotation and masks do not change it. A photo stretched on one axis only takes the lower value. By
+  this formula a 2000 px photo at the default size lands between about 139 ppi (a portrait photo) and 167
+  ppi (a landscape or square one), and a 1000 px photo between about 69 and 83 ppi.
+- **Needs:** the photo's source pixel size stored on the layer at upload, or measured by loading the image for
+  layers saved without it.
+- **Applies to** image layers only; text, shapes and strokes are vector.
+- **Levels:** good, low, very low. The thresholds come from the print desk's minimum acceptable ppi; 150 and
+  100 are placeholders to test with.
+- **Where:** a small badge on the image row in the Layers box, a "Print quality: N ppi" line with its level in
+  the Adjustment box, and a quiet on-canvas notice when resizing drops a layer to a lower level. Phone shows an
+  icon (about 44 px) that opens the detail. English and Myanmar, dark and light.
+- **Never blocks:** Save and Buy stay available. Whether "very low" needs a confirmation at Buy is decided in
+  E1. Optionally the ppi of each image layer is stored on the order item so the print sheet shows it
+  (`lib/print-quality.ts` already carries the other print checks).
+- Open decision D8: the 2000 px upload cap decides whether the warning is useful (see II.6).
+- Acceptance: unit tests for the formula (a 2000 px photo shown 2000 px wide gives 300; shown 3500 px wide gives
+  about 171; rotation and masks leave it unchanged; a one-axis stretch takes the lower value); the badge and
+  line update live while resizing; undo history is untouched; checked at 1440 × 900 and 390 × 844.
+
+#### E15 — Header choices managed from the admin dashboard  *(owner decision, 2026-11-21)*
+
+- **Rule:** the shop can change the choices behind the header boxes from the admin dashboard — rename, add,
+  remove and reorder the options of Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Size and
+  Color — and the narrowing rules between them (today Sublimation allows Polyester only, Polyester allows
+  Interlock and Air Layer, cotton allows Single Jersey and Interlock). Nothing the shop is expected to change
+  stays fixed in code.
+- **Same source everywhere:** the editor header, the admin pricing table and the T-shirt post form read the
+  same managed chain. Today the editor reads constants and the admin edits its own copy, so the two can
+  disagree.
+- **Removing an option:** an option already used by a priced combination, a post or an order is hidden from
+  new choices, not deleted, so existing records keep their meaning.
+- **Order of work:** the managed chain must live where the editor and the server can both read it (the
+  database, after the Supabase work); until then the admin copy and the constants stay in step by hand.
+- Acceptance: adding an option in the admin makes it appear in the editor header and the pricing table after
+  a reload; removing one hides it from new choices and leaves existing orders readable; a changed narrowing
+  rule changes what the header offers; a unit test covers the fall-back to the first valid option when a
+  choice stops being offered; checked on Web and Phone.
+
+#### E16 — Download my design (done 2026-11-22)
+
+- **Where:** a Download chip at the end of the editor tools bar, beside Undo and Redo, with a two-item menu:
+  "PNG · 300 dpi (print)" and "SVG · vector". It is disabled while every layer is hidden.
+- **What it writes:** only the artwork. `EditorDesignExport` renders the same `EditorArtworkLayers` into a
+  hidden `<svg>` with no transform box, guides, handles or inline text editor, and
+  `serializeArtworkSvg` copies that group into a standalone document. A file the press opens therefore looks
+  like the canvas and not like the editor.
+- **Size:** the document is `width="38.1cm" height="45.72cm"` with `viewBox="0 0 1000 1200"`, i.e. the print
+  area of `PRINT_CANVAS_SPEC` (4500 × 5400 px at 300 dpi). The PNG is rasterised through an `<img>` and a
+  canvas at `exportPixelSize()` — 4500 × 5400 px — so `pixelsToCentimetres()` recovers the same 38.1 × 45.72 cm
+  the press sheet and the layer-measurement CSV quote.
+- **No webfont risk:** the project loads no webfont (`EDITOR_TEXT_FONT_FAMILY` is `'Inter', system-ui, …`), so
+  the rasterised SVG resolves the same system fonts as the page. If a webfont is ever added, it must be inlined
+  into the export or the PNG text will fall back.
+- **Failure:** an empty canvas reports "Add something to the canvas before downloading"; a rasterise error
+  reports "The design could not be downloaded. Try again." rather than saving a broken file.
+- Verified in Chromium at 1440 × 900 and 390 × 844 touch: the menu items are 44 px tall on a phone, both files
+  download, the PNG is 4500 × 5400 px with the artwork in the same place as on the canvas, and the SVG holds
+  no `foreignObject`, handle or outline node.
+
+#### Built: E15 step 1 — one vocabulary for the header and the price book (2026-11-22)
+
+- `lib/editor-attributes.ts` now holds every list the header offers: print method, fabric, knit, MH
+  cuttings, GSM (`160/180/200/240`), size (`XS`–`3XL`) and the colours, each with its label and swatch.
+  `COLOR_LABELS` is the label list the price book keys on.
+- `TSHIRT_POST_ATTRIBUTES` in `lib/admin-demo-data.ts` is built from those lists instead of repeating them,
+  so the editor header and the admin pricing table cannot offer different sizes or colours again. This is
+  the interim step the plan asks for while the managed chain waits for the database; the admin still cannot
+  *change* the list, only read the same one.
+- What drifted and is now settled: the price book offered `S`–`2XL` and six colours while the header
+  offered `XS`–`3XL` and eight. The union is the shared list — sizes `XS`–`3XL`, colours White, Black, Navy,
+  Red, Blue, Green, Yellow, Grey, Sand (Sand is a real garment colour the price book already sold). The
+  header's price table already covered every size, so no price changed.
+- Verified: `tests/editor-attributes.test.cjs` pins the admin seed chain to the shared lists and checks the
+  size/GSM price tables cover exactly what is offered; `tests/canvas-shell.test.cjs` fails if the header
+  grows a private copy again; the phone and desktop header checks in `tests/editor-touch.cjs` pass with the
+  nine-colour menu.
+
+#### Built: E13 keyboard Undo / Redo (2026-11-22)
+
+- `lib/editor-shortcuts.ts` resolves the key: `Ctrl+Z` / `Cmd+Z` undo, `Ctrl+Shift+Z`, `Cmd+Shift+Z` and
+  `Ctrl+Y` redo, `Cmd+Y` left to the browser, Alt combinations and composing keystrokes ignored.
+- A focused text field (input, textarea, select, contenteditable, `role="textbox"`) keeps the browser's own
+  undo, so typing is never rolled back by the layer history.
+- A non-Latin layout falls back to the physical key (`KeyZ`), so a Myanmar keyboard works; a Latin letter
+  wins over the position, so AZERTY keeps its letter.
+- `EditorCanvas` binds it to the same `undoCanvasAction` / `redoCanvasAction` as the tool bar, through a
+  ref rebuilt every render, so it works with the tool bar collapsed and either box open.
+- Verified: `tests/editor-shortcuts.test.cjs` (6 cases) and a browser check in `tests/editor-touch.cjs`
+  that undoes and redoes a stroke with the tools collapsed and the Layers box open, then confirms a
+  focused rename field leaves the layers alone.
+
+#### Built: E14 image resolution warning (2026-11-22)
+
+- `lib/editor-image-ppi.ts`: effective ppi = 300 × the photo's own pixels ÷ the print pixels its box
+  covers (4.5 print px per artwork unit), taking the lower axis so a one-axis stretch counts. Levels step
+  at 150 and 100 ppi (placeholders from the print desk). Rotation and masks do not change the value, and a
+  layer without a stored pixel size reports nothing instead of a guess.
+- `EditorImageContent` gained `sourceWidth` / `sourceHeight`, written by the upload path from the retained
+  pixel size, so the number is measured, not estimated.
+- Where it shows: a badge on the image row in the Layers box (which also opens the Adjustment box, and is
+  a 44 px target on touch), and a "Print quality: N ppi · level" line at the top of the Adjustment box.
+  When a resize drops a photo a level, the editor says it once in the tool-bar notice. Save and Buy are
+  never blocked.
+- Verified: `tests/editor-image-ppi.test.cjs` (the 300 / 171 / 139 / 167 / 69 / 83 ppi cases, the level
+  steps, the null cases) and a Chromium check: a 1200 px upload shows "100 ppi · low", and resizing it up
+  1.5× turns the badge to "67 ppi" and the notice to "upload-1200.png: print quality dropped to 67 ppi".
+
+#### Built: E8 Shape Builder booleans (2026-11-22)
+
+- `lib/editor-path-boolean.ts` is the geometry: an SVG path walker (M, L, H, V, C, S, Q, T, Z, absolute and
+  relative; an arc falls back to a straight line to its endpoint) that flattens curves into closed rings,
+  a split-and-classify boolean that keeps the pieces each operation wants, and a chain walk that rebuilds
+  rings. Endpoints within a hundredth of a unit of each other are merged first, because the crossing of
+  edge A with edge B is computed twice and the two results differ in the last bits.
+- Rings are oriented by nesting depth, so a hole cuts the right way under the nonzero fill rule.
+- `applyEditorShapeBuilderOperation` now folds every path on the layer (the first is the base for
+  subtract) into one path, and leaves the artwork alone when the result would be empty.
+- The Adjustment box offers Select / Merge / Subtract / Intersect / Exclude.
+- Verified: `tests/editor-path-boolean.test.cjs` (areas, ring counts, curves, rotated shapes, pen paths,
+  relative commands, fractional coordinates, empty results) and a Chromium run that draws two overlapping
+  rectangles on one layer and clicks each mode: merge gives one 8-point ring, subtract one 6-point ring,
+  intersect one 4-point ring, exclude one path of two 6-point rings, and the transform box shrinks and
+  grows with the result (210x251 → 190x191 → 90x91 → 210x251 px).
+
+#### E17 — Font library, including Burmese fonts  *(approved 2026-11-22; the font files live in R2)*
+
+- **Facts checked in the source:** the font list is eight names, all system fonts; none is a Myanmar font; no
+  font file is loaded anywhere, so the font a layer paints with depends on the device. `Doc/PRINT-BUNDLE.md`
+  says text stays text in the print SVG and is converted to outlines only if the press lacks the font.
+- **Approved:** a hosted font library. The font files live in R2 and are put there by the shop (owner,
+  2026-11-22). The editor, the mockups and the print sheet all load the same files, so all three show the same
+  letters. Fonts sit on shelves (Sans, Serif, Display, Script, Burmese). Only fonts in use are loaded. The
+  admin dashboard takes over adding and removing fonts later, as E15 does for the header choices.
+- **In R2:** follows the folder pattern of `Doc/R2-STORAGE.md`:
+  - `fonts/<font-slug>/<style>.woff2` (for example `regular`, `bold`, `italic`), woff2 only, with a version in
+    the file name when a font is replaced so a cached copy is never served stale.
+  - The font list is **built by the R2 asset service** (Part I §12.1, owner decision 2026-11-22): the Worker
+    reads the font folders and a small `meta.json` per font (display name, shelf, files by weight and style, the
+    scripts it covers, the licence name and link, whether it is on) and returns `GET /api/assets/fonts`. The JSON has
+    the shape `parseEditorFontManifest` already accepts, so the editor changes only the address it reads from. A
+    bad entry is skipped and listed as an issue the admin can see, as for the brush tips. A hand-edited
+    `fonts/manifest.json`, if one exists, is still honoured while the shop moves over. The font list is expected to
+    move into the database later (D13).
+  - The base address of the font files comes from the same public R2 address the mockups use, never hard-coded, so a
+    later move to AWS S3 changes one setting.
+  - A browser only uses a font served from another address if R2 allows that site with an
+    `Access-Control-Allow-Origin` header, so the bucket needs a CORS rule for the site (`Doc/R2-STORAGE.md` §7);
+    that is the price of serving fonts from the public bucket address (decision R2-1 in Part I §12.1).
+  - Myanmar fonts are large: load one only when a layer uses it, and split Latin and Myanmar with a
+    `unicode-range` if a file is big.
+- **Export (a dependency of E16):** the design download draws the SVG through an `<img>`, which does not load
+  fonts from the network, so the export must embed the fonts the artwork uses inside the SVG (base64 woff2) or
+  turn the text into outlines; otherwise the PNG falls back to a system font. The E16 section already warns of
+  this. The press SVG and the press bundle follow the same rule.
+- **Licence:** every manifest entry carries its licence and a link; the owner confirms that commercial print
+  use is allowed before a font is switched on.
+- **Burmese:** a few open-licence Myanmar families offered as a shelf; the licence of each font is checked
+  before it ships (open-licence fonts such as Padauk and the Noto Myanmar families are the usual candidates).
+  Unicode is the only supported encoding; Zawgyi text is not supported or converted (owner decision,
+  2026-11-22, D10).
+- **Print:** at export time the text is converted to outlines, or the font file is embedded, so the press
+  never lacks a font.
+- **Step 1 done 2026-11-22: the manifest and the loader.** `lib/editor-fonts.ts` parses
+  `fonts/manifest.json` (shelf, scripts, weights, styles, licence, `enabled`), refuses a file that is not a
+  bucket-relative `.woff2` or an entry without a licence, and skips a bad entry by name instead of failing.
+  `lib/editor-font-library.ts` fetches the manifest once, builds `@font-face` rules with a Latin and a
+  Myanmar `unicode-range`, and loads only the fonts a text layer uses. The picker lists the manifest's fonts
+  shelf by shelf and falls back to the eight system fonts when there is no manifest, so nothing on screen
+  changed until fonts are uploaded. Documented in `Doc/R2-STORAGE.md` §3.2b and `Doc/EDITOR.md` §6.
+  Verified: `tests/editor-fonts.test.cjs` (10 tests) and the browser suite, which still lists the eight
+  system fonts. Checked again against a manifest served from a local bucket: the picker listed the hosted
+  font only (the bad entry was skipped), picking it injected both weights, and the browser downloaded only
+  the weight the layer used; the missing font file fell back without an error.
+- **Step 2 done 2026-11-22: the download keeps the font.** "Download my design" now inlines the used fonts
+  as base64 `@font-face` rules in a `<defs><style>` block (`designExportFontCss` → `designExportDocument`),
+  because the 300 dpi PNG is rasterised through an `<img>`, which fetches nothing. A file that cannot be
+  downloaded is left out, so a broken bucket never blocks the export. Verified in Chromium against a local
+  manifest: the downloaded `mh-fashion-t-shirt.svg` held `<defs><style><![CDATA[@font-face{...data:font/woff2;base64,...`
+  with the chosen family; `tests/editor-fonts.test.cjs` and `tests/design-export.test.cjs` cover the rules
+  and the CDATA guard.
+- **Step 3 done 2026-11-22: a pre-upload check.** `npm run fonts:check -- path/to/fonts`
+  (`lib/editor-font-audit.ts` + `scripts/check-font-manifest.cjs`) reads a local copy of the folder with the
+  editor's own parser and prints the picker order, every entry the editor would drop and why, any listed file
+  that is not in the folder, and any file over 1 MB; it exits 1 while something is wrong, so the owner can
+  gate the upload on it. Verified on a good folder, a missing weight, a folder passed as either the bucket
+  root or `fonts/`, and an entry without a licence.
+- **Step 4 done 2026-11-22: the list paints each font.** The picker already asked for `font-family: <name>` per
+  row, but a hosted face was never loaded until the font was chosen, so the labels painted in the fallback.
+  Opening the Font section now loads one file per enabled font (`previewFontFile`: the regular, else the first)
+  through the same single `<style>`, keyed `<slug>#preview` so a later full load still adds the other weights.
+  Verified against a local manifest: nothing was loaded while the section was closed; opening it injected one
+  400-weight rule and fetched only `regular.woff2`; the row carries `font-family: Padauk`.
+- **Still open:** upload the manifest and the font files to R2 and add the site origin to the bucket's CORS
+  rule; check each licence for commercial print; embed (or outline) the used fonts in the **press bundle**
+  SVG, which is the remaining E16 dependency; move the font list into the admin dashboard as E15 does;
+  confirm Burmese shaping on a real device.
+- Acceptance: Burmese text shows correct shaping (stacked consonants, medial signs, vowel order) on the canvas,
+  the mockup and the print sheet, with and without effects; a font switched off still renders on existing
+  designs; the editor does not load fonts it does not use; the fonts load from R2 with the CORS rule in place;
+  the downloaded PNG and SVG show the chosen font, not a fallback; a font whose file is missing falls back
+  quietly and the editor says so once; a bad manifest entry is skipped; checked on Web and Phone, EN and MM.
+
+#### E18 — Text effects, round 2  *(proposed, 2026-11-22)*
+
+Today an effect holds colour, a second colour, offset, blur, width, count, distance, angle and opacity, and the
+stack has thirteen kinds. Proposed additions, each with its own tile, row thumbnail, default and paint padding
+(contract 11):
+
+1. **Inner shadow and inner glow** — depth inside the letters, the missing piece of many 3D looks.
+2. **Outline options** — position (outside, centre, inside), join (round, mitre) and a second outline for a
+   double-outline look. An outline has only colour and width today.
+3. **Backdrop plate** — a rounded rectangle or pill behind the text with padding, radius and colour, for
+   label and sticker looks.
+4. **Image or texture fill** — the glyphs show a photo or texture instead of a flat colour.
+5. **Distress** — a grain mask removes parts of the letters for the vintage apparel look; the textures arrive
+   through a drop folder like the brush packs.
+6. **Pattern controls** — size, spacing and angle for dots, grid and checker, plus stripes, diagonals, stars
+   and waves, and a halftone dot that changes size across the letters.
+7. **Per-effect blend mode** (opacity already exists).
+8. **Stack tools** — duplicate an effect, copy a stack from one text layer to another, and save the current
+   stack as "my style".
+9. **More styles** on the shelves for the new kinds (for example a Retro, a Neon and a Distress shelf). A glitch
+   or RGB-split look needs no new kind; it is a preset of existing offsets.
+- **Print caution:** effects that rely on soft transparency (large blur, glow, soft shadow) can print
+  differently on a dark garment depending on the print method. Ask the print desk which effects are safe, and
+  consider previewing the design on a dark and a light garment colour.
+- Acceptance: for each kind the tile paints, the row thumbnail paints, the transform box contains all paint
+  (frame differencing, ≤1.1 px), the effect survives save and reload (once E1 lands), Burmese text keeps its
+  clusters intact under the effect, and it works at 1440 × 900 and 390 × 844.
+
+#### E19 — A real text bend  *(approach decided 2026-11-22; the owner delegated D11; not yet approved to start)*
+
+- **Fact:** `editorTextPresetMatrix` returns one shear matrix (6° Arch, 4° Wave). The whole block leans; nothing
+  curves. The Warp tiles therefore preview a slant.
+- **Goal:** real bends — Arc up and down, Circle, Wave, Flag, Rise, Bulge and Pinch — each with a Bend amount
+  from −100 to +100; Plain stays, and Bend 0 equals Plain.
+- **Decided method: outline warp.** The text is shaped, turned into glyph outlines, and every outline point is
+  moved by the bend function. Nothing is left to the browser's text layout.
+  1. **Shape** the text with HarfBuzz (`harfbuzzjs`, MIT, WebAssembly). HarfBuzz documents a dedicated Myanmar
+     shaping model, so stacked consonants, medial signs and vowel order come out as the font intends.
+  2. **Outline:** `font.glyphToPath(glyphId)` gives each glyph's outline as SVG path data.
+  3. **Bend:** each outline point is mapped through the chosen bend; long segments are subdivided first so the
+     edges curve smoothly.
+  4. **Paint:** the result is one path per text layer. The canvas, the Warp tiles, the mockup mirror, the print
+     SVG and the PNG export all paint that same path, so the bend is identical everywhere and needs no font at
+     export time.
+  5. **Source of truth:** the text and the bend settings stay on the layer, and the outline is derived data,
+     cached by (text, font file, size, bend). Plain text keeps today's text renderer, wrapping and caret; the
+     inline editor edits the unbent text and the bend shows live on the canvas.
+- **Why this over the alternatives:**
+
+  | Method | Burmese | Same result on every surface | Effects | Verdict |
+  |---|---|---|---|---|
+  | SVG text path | the browser decides how clusters are placed on a curve; old engines dropped clusters on a path (Mozilla bug 621918) and the W3C gap notes for Indic scripts show vowel signs and conjuncts still behave differently between engines | no: depends on each browser, and the PNG export | stroke effects cut joined glyphs apart | not chosen |
+  | Per-character transforms | splitting a Burmese syllable into characters breaks it; grapheme segmentation does not reliably keep a syllable whole | partly | as above | not chosen |
+  | **Outline warp** | shaped by HarfBuzz, whose Myanmar model is documented | **yes: one path painted everywhere** | effects run on one path; contours can be merged first | **chosen** |
+
+- **Effects and seams:** glyph outlines overlap inside a Burmese syllable, so stroking each glyph separately
+  shows seams (the W3C gap analyses list "text stroke cuts joining glyphs apart" for Indic scripts; Myanmar is
+  not named there, so it is checked on real text). The outline is therefore merged into one shape with
+  `booleanPathData(paths, "merge")` from `lib/editor-path-boolean.ts` before outline, hollow, bevel and extrude
+  effects use it. The layer's transform box follows the bent ink (contract 1).
+- **Needs the font file, and the manifest only lists woff2:** HarfBuzz's documented formats are TrueType and
+  OpenType (`.ttf`, `.ttc`, `.otf`); woff2 is not among them, and `lib/editor-fonts.ts` refuses any file that is not a bucket-relative `.woff2`.
+  Decision D14: each manifest style gets an optional `outline` field naming a `.ttf` or `.otf` kept next to the
+  woff2; the editor keeps loading the woff2 for display, and a font without an `outline` file simply cannot be
+  bent. The same R2 CORS rule covers the second file.
+- **System fonts cannot be bent:** the eight system fonts have no file the editor can read, so the bend is
+  offered for hosted fonts only; the control says so on a system font.
+- **Weight:** the HarfBuzz module is loaded only when a layer first uses a bend; its download size is to be
+  measured before it ships. Shaping and bending a few hundred glyphs is quick, and the cache keeps it off the
+  drawing path.
+- **Burmese specifics:** the line breaker must never split a syllable (break only between clusters), the bend
+  is checked on real Burmese strings such as မြန်မာ, ကြောင်, ပြည်ထောင်စု and သင်္ကြန်, and the same strings are
+  checked with and without effects.
+- Acceptance: each bend paints identically on the canvas, the tile, the mockup, the downloaded PNG and SVG, and
+  the press SVG; the box contains the ink (frame differencing, ≤1.1 px); Bend 0 equals Plain; the Burmese
+  strings above keep every stacked consonant, medial sign and vowel in the right place at several bend amounts;
+  an outline effect on bent Burmese text shows no seams; removing a font's `outline` file turns the bend off for
+  that font instead of failing; checked on Web and Phone, EN and MM.
+
+#### E20 — Brushes, round 2  *(proposed, 2026-11-22)*
+
+- **Fact:** the Brush box already has presets, nib, paint, edge and shape-dynamics controls. The brush pack
+  contract (`public/brushes/README.md`) exists but nothing reads it yet.
+- **Wire the brush pack:** the Brush box builds its gallery from `brushes.json` (a bad row is skipped, not
+  fatal), shelved by `group`, with PNG stamp tips tinted to the brush colour and SVG vector tips.
+- **Where the tips live (owner, 2026-11-22):** the owner finds the tips and puts them in R2, as with the fonts.
+  The `brushes.json` contract in `public/brushes/README.md` then applies to a `brushes/` folder in R2. The R2 asset
+  service (Part I §12.1) builds the list the Brush box reads, `GET /api/assets/brushes`, from that folder
+  and the `brushes.json` the shop wrote; the repo folder stays a template. The R2 CORS rule covers the tip files.
+  The pre-upload check for brushes uses the same builder as the fonts check.
+- **A starter set:** Ink (pen, marker), Dry media (chalk, charcoal, pencil), Airbrush, Splatter, Texture (grain,
+  sponge) and Shape (stars, leaves), found and uploaded by the owner; each licence is checked before a tip is
+  switched on.
+- **Pressure:** the pointer's pressure drives size and opacity when a stylus or pressure-capable screen
+  reports it, with an on/off switch per brush; no pressure is read today. Fingers report none, so the feature
+  is optional.
+- **Stabiliser:** a smoothing-by-lag slider for shaky hands, mostly useful on a phone.
+- **Nib cursor:** a circle or tip outline at the real size for the current zoom while the Brush, Pencil or
+  Eraser is active.
+- **Colour dynamics:** hue, saturation and brightness jitter alongside the existing jitters.
+- **My brushes:** save the current settings as a named preset; a symmetry (mirror) mode may follow.
+- Acceptance: a dropped pack appears without a code change and a malformed entry is skipped; a stamp brush
+  draws the tip at the right size, spacing and angle; the Eraser can use the same tips; pressure, stabiliser and
+  cursor work on Web and Phone; strokes still print identically to the canvas.
+
+#### E21 — Tool adjustments, polish  *(proposed, 2026-11-22)*
+
+1. **Number fields:** every slider gets a number field, step arrows, a per-field reset (double-click) and
+   arrow-key stepping (Shift for ×10); the value shows while dragging.
+2. **Shortcut keys:** V Move, H Hand, B Brush, N Pencil, P Pen, T Text, E Eraser, U Shape, G Gradient, I
+   Eyedropper, `[` and `]` for brush size, X to swap colours, D for the default colours; each is shown in the
+   tool tooltip and is ignored while a field has focus (the same rule as E13).
+3. **Eyedropper:** pick a colour from the canvas or the mockup; the browser's EyeDropper API where it exists,
+   canvas sampling elsewhere.
+4. **Pen box:** join style, line style (solid, dashed, dotted), end shapes for open paths, and a separate fill
+   for closed paths. Today it holds width, width presets and cap.
+5. **Shape box:** defaults for fill, stroke, width and corner radius, star points and polygon sides, and a hint
+   for the modifier keys (Shift keeps proportions, Alt draws from the centre). Today it holds only the presets.
+6. **Text box:** a default text style for new text, default line height and wrap width, next to size, font,
+   weight, alignment, spacing and colour.
+7. **Gradient box:** an angle field and the stop editor reachable from the tool box, plus opacity.
+8. **Reset everywhere:** every box gets a reset to its tool defaults; the Brush/Pencil box has one today and
+   the other boxes list none.
+9. **Presets and recents:** the shop's own saved presets per tool (save, rename, delete) and the last six
+   colours and fonts.
+10. **Phone:** a tool's options open as a bottom sheet with large sliders, one box at a time, never hiding the
+    canvas, 44 px targets.
+11. **Persistence (decision for the owner):** whether tool settings survive a reload.
+- Acceptance: each item works with mouse, touch and keyboard; the values stay in range after typing; settings
+  are never lost when another field changes (`updateToolOptions` merges per field); Web at 1440 × 900 and Phone
+  at 390 × 844; the Tool Options tests grow with each box.
+
+#### E22 — Adjustments panel: complete, compact and beautiful  *(proposed, 2026-11-22; owner request)*
+
+The owner wants the Adjustments panel to be more complete, tighter, and good to look at, and wants Flip in it
+rather than in the Tools bar.
+
+- **Facts checked in the source (`EditorAdjustmentsPanel.tsx`, 682 lines):**
+  - The panel is 16 rem wide (`PANEL_WIDTH = "min(16rem, 86vw)"`) and is a one-open-at-a-time accordion.
+  - Text is 9 px in 41 places and 10 px in 41 places; nothing is 12 px or larger. Myanmar script, which has tall
+    stacked marks, is hard to read at those sizes.
+  - Controls: 11 native colour inputs, 4 native selects, 4 range sliders and 5 number inputs, so colour, choice
+    and number controls look and behave differently from each other and from the header's own dropdown.
+  - **Appearance** holds only blend mode, opacity and fill.
+  - There is **no numeric X, Y, width, height or rotation**, no align, no rotate and no reset; the only
+    placement controls are the nudge pad in the Move tool options and the on-canvas handles.
+  - Flip and Download sit in the Tools bar, not in the panel.
+  - Text has bold, italic and underline toggles but no letter-case control.
+  - The existing `aria-label` strings are what the tests find controls by.
+
+**What the panel still needs**
+
+1. **Arrange section** (every layer kind): X and Y, width and height shown in centimetres (the press unit,
+   `unitsPerCm`) with the pixel size beside them, rotation in degrees, a lock-proportions toggle,
+   align to the design area (E4, E6) or to the print canvas, rotate 90°, reset transform, and for a multi-selection
+   distribute. **Flip horizontal and flip vertical are here** (owner decision, 2026-11-22), enabled whenever a
+   layer is selected, with the same `flipSelectedLayers` behaviour.
+2. **One colour control** for all eleven places: a swatch that opens a small popover with the shop's palette,
+   the last six colours, a hex field and an eyedropper (E21). The shop palette comes from the admin like the
+   header choices (E15).
+3. **Text:** letter case (as typed, UPPER, lower, Capitalised), and the text controls already listed in E21;
+   the hosted font's weights as a choice, not only a bold toggle.
+4. **Photo:** a reset per group, a before/after toggle, a Basic view (exposure, contrast, saturation,
+   temperature) and an Advanced view (the rest), crop, replace image, and a couple of one-tap looks with live
+   previews. Background removal stays "not connected" until the image service exists (E10).
+5. **Whole panel:** a reset on every section header, copy and paste of a layer's style, and remembering which
+   sections the shop keeps open for each kind of layer.
+
+**Design direction**
+
+1. **Structure:** a sticky header with the selected layer's thumbnail, name and kind, then a row of icon tabs
+   that depends on the kind (Arrange, Style, Effects, Photo, Layer). Several sections may be open at once.
+2. **One control family:** a 32 px row with the label on the left and the control on the right; a slider always
+   comes with a number field; two related values (X/Y, W/H) share a row; two to four choices are a segmented
+   control; on/off choices are icon toggles with a tooltip; native selects are replaced by the same dropdown the
+   header already uses.
+3. **Type and space:** body text 12 px and captions 11 px at least, section titles 14 px, line height 1.5 so
+   Myanmar marks are not clipped, a 4 / 8 px spacing scale, and the site's existing colour tokens, radius and
+   focus ring, so the panel looks like the rest of the editor in dark and light.
+4. **Width:** 18 to 20 rem on desktop, scrolling only inside the panel; labels may wrap in Myanmar instead of
+   being cut.
+5. **Feel:** previews inside presets (the text styles already paint live tiles; photo looks and shadows follow),
+   clear hover, pressed and disabled states, short transitions that respect reduced-motion.
+6. **Phone:** the panel opens as a bottom sheet with a drag handle and three heights, one section group at a
+   time, 44 px targets, and it never covers the object being edited.
+
+- **Order of work:** the owner reviews a visual mock-up (desktop and phone, dark and light, English and Myanmar)
+  before any code. Then the shared controls (row, slider with number, colour field, dropdown, segmented) are
+  built once and the sections move onto them one at a time. E21 reuses these controls, so E22 comes first or
+  together with it.
+- **Tools bar after the change:** Flip leaves it. **Flip moved 2026-11-22** (the owner had already decided it, so
+  it did not wait for the mock-up): both buttons now sit at the top of the panel's Appearance section, keep their
+  `Flip horizontal` / `Flip vertical` labels, and are disabled while the layer is locked. The rest of E22 still
+  waits for the mock-up. Download also sits in the Tools bar today; whether Download moves to the header next to
+  Save and Buy is the owner's call (decision D15).
+- **Contracts:** the panel keeps the existing `aria-label` strings the tests rely on, keeps the Undo and Redo
+  behaviour unchanged, and keeps the Layers and Adjustments boxes from overlapping.
+- Acceptance: a selected layer of each kind shows its Arrange section; typing a width in centimetres resizes the
+  layer and matches the on-canvas box; Flip works from the panel and the Tools bar no longer has it; every
+  colour field in the panel is the same control; no text in the panel is smaller than 11 px; Myanmar labels do
+  not clip; the panel reads well at 1440 × 900 and 390 × 844, in dark and light; the existing editor tests
+  pass; a screenshot per layer kind is attached to the change.
+
+#### E23 — Design areas per mockup  *(proposed 2026-11-23; the owner places the areas)*
+
+The owner decided that artwork may be placed freely inside areas the shop defines for each mockup, not always the
+centre, and that the details are discussed later. This item is the design that discussion can start from.
+
+- **Idea:** a design area is a rectangle (x, y, width, height in artwork units) per garment and per side (Front,
+  Back). Artwork inside it is printable; artwork outside it is flagged. One area per side to begin with; named
+  extra areas (sleeve, neck label) can follow with the same data.
+- **Where it is stored:** next to the editor mockup in R2 (`mockups/editor/<garment>/meta.json`), read through the
+  asset service (Part I §12.1); it moves into the database with the rest of the admin data. Nothing
+  about it is in code.
+- **How the shop sets it:** in the admin, over the mockup photo: drag and resize a rectangle, see the size in
+  centimetres (`unitsPerCm`), save. The jersey mapping-zones tool is the pattern to follow.
+- **What uses it:** the on-canvas frame (today a fixed print frame), alignment (E4), snap guides (E6), the
+  "outside the print area" check in `lib/print-quality.ts`, and the clipping of the mockup overlay.
+- **No area defined:** the whole print canvas, which is today's behaviour, so nothing breaks before the shop sets
+  its areas.
+- **One question only the owner can answer:** does the printed size change with the garment size (does an XL
+  get a bigger print than an S)? Until the owner says so, one artwork size serves every size.
+- Acceptance: the shop moves an area in the admin and the editor frame, align, snap and the warning follow after
+  a reload; a layer dragged outside the area is flagged on the canvas and in the order's `print_checks`; with no
+  area defined everything behaves as it does today; checked on Web and Phone.
+
+### II.6 Decisions for the owner
+
+| # | Question | Recommendation |
+|---|---|---|
+| D1 | Where does a saved design live — browser storage, the database, or only the order? | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): the database.** A saved design is a row of `user_designs` owned by the customer; an order item keeps its own frozen copy. The browser draft stays as the guest and crash cover. Detail in E1. |
+| D2 | Do Save and Buy ship before payments are finished? | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): Save ships first**, as soon as accounts exist (Supabase Auth); Buy ships after the payment flow. Until accounts exist, a guest keeps the browser draft and Save says "Sign in to save". |
+| D3 | Fix `circle` or remove it? | Remove it now, add it back with a real transform later |
+| D4 | Which product comes after T-Shirt and Phone? | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): Hoodie**, after E15 (managed attributes), because its attribute set differs from the T-shirt's. Cup, Kids and Bag follow only if the catalogue sells them. |
+| D5 | Alignment and snapping, or keep free placement? | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): both**, inside the design areas of E23: snap while dragging (E6) and align as a button in the Arrange section (E4, E22). |
+| D6 | Per-character text styling? | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): not now.** Per-layer styling covers the catalogue. |
+| D7 | Do the pre-filled header defaults count as chosen for the Buy gate (E12)? | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): yes.** A pre-filled default counts as chosen. |
+| D8 | Raise the 2000 px upload cap (E14)? | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): raise the cap** to 4000 px on the long edge and 6 MB on desktop, and 3000 px on a phone (starting values, confirmed in the real-device pass of E2). Only the compressed working copy is kept, not the original, unless the press asks for originals. At the default size a 4000 px photo then lands at about 278 ppi (portrait) to 333 ppi (landscape or square), and a 3000 px photo at about 208 to 250 ppi. |
+| D9 | Fit Type is a priced post attribute but has no box in the editor header. Where does the customer choose it, and is it required before Buy? (Owner, 2026-11-21: Sleeve has not been decided to be added, so it is outside this question.) | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): Fit Type becomes a header box when the shop switches it on for the T-shirt in the admin (E15), and it joins the Buy gate (E12).** Sleeve is not in the editor: it stays an attribute the shop can switch on later and is off by default; Sleeve values already stored on posts are kept in the data and not shown until it is switched on. |
+| D10 | Zawgyi: **resolved 2026-11-22** — Unicode only, Zawgyi is not supported. Burmese fonts: **confirmed 2026-11-22** — a short list of open-licence Unicode fonts, each licence checked, files put in R2 by the shop (E17) | — |
+| D11 | How is the text bend built? (E19) | **Resolved 2026-11-22 (owner delegated the choice):** outline warp — HarfBuzz shapes the text, the glyph outlines are bent and painted as one path everywhere; see E19 |
+| D12 | Who supplies the starter brush tips? (E20) | **Resolved 2026-11-22:** the owner finds them and puts them in R2; each licence is checked |
+| D13 | Until the database exists, where does the font list live? (E17) | **Resolved 2026-11-22, then refined the same day:** in R2. The Worker builds the JSON from the folders and each font's `meta.json` (Part I §12.1); it is expected to move into the database later |
+| D14 | How does the bend get a font file HarfBuzz can read? (E19) | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): yes.** Each manifest style may name an `outline` file (`.ttf` or `.otf`) beside its woff2; a font without one cannot be bent. |
+| D15 | Does Download leave the Tools bar too and sit in the header next to Save and Buy? (E22) | **Decided 2026-11-23 (the owner asked the plan author to decide every open question): yes.** Download leaves the Tools bar and becomes a menu on the Save button in the header (Save, then Download PNG and Download SVG); until Save exists the button is just Download. |
+
+#### Inputs only the owner can supply  *(listed 2026-11-23)*
+
+The plan author has decided every open design question above. These are facts the plan cannot invent:
+
+1. The Burmese and other font files, and the licence of each (E17, D10).
+2. The print desk's smallest acceptable resolution in ppi, for the good, low and very low levels of E14 (150 and 100
+   are placeholders).
+3. The design areas on each mockup, or approval to use the admin tool of E23 to set them, and whether a bigger
+   garment size gets a bigger print.
+4. The Hoodie's attributes, prices, photos and measured weights (E9).
+5. The brush tips and their licences (E20).
+6. A review of the Myanmar wording for the Buy notice (E12), the panel labels (E22) and the checkout messages.
+7. Real devices for the E2 pass: at least one Android phone and one iPhone.
+8. Which effects the press confirms print safely on dark garments (E18).
+9. The legal review of the terms, privacy and cookie pages (Part I §13).
+
+#### Owner decisions recorded (2026-11-21)
+
+1. Keyboard Undo / Redo is approved (E13).
+2. Save and the order hand-off (E1) is the most important item. Save comes first, once accounts exist; Buy
+   follows the payment work.
+3. Align and snap guides (E4, E6) work inside design areas that the shop defines for each mockup, not always
+   the centre. The mockup details are discussed later and E4 and E6 wait for that.
+4. The image resolution warning is approved (E14); the upload-cap question is open (D8).
+5. Phone QA (E2) is real-device testing followed by fixes.
+6. Required selections before Buy (E12): all eight header selections; Save always allowed; Buy shows what is
+   missing.
+7. The header holds eight selection boxes, as listed in II.2.
+8. The choices behind the header boxes, and the rules between them, must be changeable from the admin dashboard, not fixed in code (E15).
+9. More text effects, more brushes and better tool adjustments are wanted (owner request, 2026-11-22). E18 to E21 are proposals; none is approved to start.
+10. The font library (E17) is approved. The font files live in R2 and the shop puts them there (owner, 2026-11-22).
+11. Burmese text is Unicode only; Zawgyi is not supported. The font list stays in `fonts/manifest.json` in R2 for now and is expected to move into the database later (owner, 2026-11-22).
+12. The Burmese font approach is confirmed: a short list of open-licence Unicode fonts, licences checked, files put in R2 by the shop (owner, 2026-11-22).
+13. The text bend is built as an outline warp (E19); the owner left the choice to the plan author. Whether D14 (a `.ttf`/`.otf` file beside each woff2) is accepted is still to be confirmed.
+14. The brush tips are found and uploaded to R2 by the owner (E20, D12).
+15. Flip does not belong in the Tools bar; it moves into the Adjustments panel — **done 2026-11-22**. The Adjustments panel should be more complete, tighter and good to look at (E22, owner request, 2026-11-22). E22 is a proposal; the owner reviews a visual mock-up first.
+16. Files in R2 are read through a Worker that turns them into JSON, not by the browser directly (owner, 2026-11-22). The design is Part I §12.1; E10, E17 and E20 use it.
+17. 2026-11-23: the owner asked the plan author to decide every remaining open question and write it all down. The decisions are in II.6 (D1, D2, D4 to D9, D14, D15), Part I §12.1 (R2-1 to R2-3), and the order of work in II.5.1. What only the owner can supply is listed under "Inputs only the owner can supply". Nothing is approved to start by this entry; each item still begins on the owner's word.
+
+### II.7 Verification and change policy
+
+- The editor is final as built. Behaviour changes only on an explicit owner instruction, one item at a
+  time, and the item's acceptance in II.5 is met before it is called done.
+- Every change is checked at desktop 1440 × 900 **and** phone 390 × 844 touch.
+- Anything that paints is checked by frame differencing: hide the glyphs, diff two screenshots, require
+  ≤1.1 px of ink outside the transform box.
+- Any layer change is checked against the print sheet and the mockup, not only the canvas.
+- `node --test tests/*.test.cjs` must stay green, and `tests/editor-touch.cjs` is run against a live
+  server for anything interactive.
+- Documentation: `Doc/EDITOR.md` is updated in the same change as the behaviour; this plan is updated
+  when an item starts or finishes.
+
+### II.8 Test coverage today
+
+Counted on 2026-11-22 from the files themselves (each file run on its own, passing), not from memory.
+
+| Suite | Tests |
+| --- | --- |
+| **Editor** | **245** |
+| `tests/browser-guards.test.cjs` | 1 |
+| `tests/canvas-shell.test.cjs` | 30 |
+| `tests/canvas-spec.test.cjs` | 2 |
+| `tests/design-draft.test.cjs` | 10 |
+| `tests/design-export.test.cjs` | 7 |
+| `tests/editor-align.test.cjs` | 8 |
+| `tests/editor-arrange.test.cjs` | 8 |
+| `tests/editor-attributes.test.cjs` | 12 |
+| `tests/editor-flip.test.cjs` | 7 |
+| `tests/editor-font-audit.test.cjs` | 5 |
+| `tests/editor-fonts.test.cjs` | 12 |
+| `tests/editor-image-ppi.test.cjs` | 11 |
+| `tests/editor-layers.test.cjs` | 49 |
+| `tests/editor-path-boolean.test.cjs` | 10 |
+| `tests/editor-pen-path.test.cjs` | 6 |
+| `tests/editor-pinch.test.cjs` | 11 |
+| `tests/editor-price.test.cjs` | 4 |
+| `tests/editor-shortcuts.test.cjs` | 6 |
+| `tests/editor-snap.test.cjs` | 8 |
+| `tests/editor-tool-options.test.cjs` | 12 |
+| `tests/editor-viewport.test.cjs` | 8 |
+| `tests/photo-adjustments.test.cjs` | 18 |
+| **Admin** | **165** |
+| `tests/admin-ads.test.cjs` | 12 |
+| `tests/admin-attributes.test.cjs` | 10 |
+| `tests/admin-brushes.test.cjs` | 13 |
+| `tests/admin-cascade.test.cjs` | 10 |
+| `tests/admin-csv.test.cjs` | 9 |
+| `tests/admin-demo-auth.test.cjs` | 4 |
+| `tests/admin-demo-data.test.cjs` | 13 |
+| `tests/admin-jersey.test.cjs` | 10 |
+| `tests/admin-loyalty.test.cjs` | 10 |
+| `tests/admin-modules.test.cjs` | 11 |
+| `tests/admin-order-print.test.cjs` | 12 |
+| `tests/admin-orders.test.cjs` | 7 |
+| `tests/admin-posts.test.cjs` | 13 |
+| `tests/admin-pricing.test.cjs` | 16 |
+| `tests/admin-settlements.test.cjs` | 8 |
+| `tests/admin-takedown.test.cjs` | 7 |
+| **Storefront and shared** | **295** |
+| `tests/account-orders.test.cjs` | 6 |
+| `tests/asset-catalogue.test.cjs` | 15 |
+| `tests/asset-rebuild.test.cjs` | 3 |
+| `tests/asset-routes.test.cjs` | 14 |
+| `tests/cart-lines.test.cjs` | 9 |
+| `tests/check-font-manifest.test.cjs` | 5 |
+| `tests/checkout.test.cjs` | 10 |
+| `tests/client-error-log.test.cjs` | 15 |
+| `tests/contact-messages.test.cjs` | 8 |
+| `tests/delivery-quote.test.cjs` | 5 |
+| `tests/guide-card.test.cjs` | 5 |
+| `tests/guide-http.test.cjs` | 5 |
+| `tests/guide-products.test.cjs` | 17 |
+| `tests/guides.test.cjs` | 10 |
+| `tests/loyalty-ledger.test.cjs` | 7 |
+| `tests/nyein-brand.test.cjs` | 5 |
+| `tests/order-archive.test.cjs` | 9 |
+| `tests/order-barcode.test.cjs` | 9 |
+| `tests/order-qr.test.cjs` | 5 |
+| `tests/order-refunds.test.cjs` | 8 |
+| `tests/payments.test.cjs` | 9 |
+| `tests/print-quality.test.cjs` | 40 |
+| `tests/product-mockup.test.cjs` | 14 |
+| `tests/product-trust-row.test.cjs` | 4 |
+| `tests/pwa.test.cjs` | 7 |
+| `tests/rate-limit.test.cjs` | 9 |
+| `tests/search.test.cjs` | 5 |
+| `tests/size-chart.test.cjs` | 7 |
+| `tests/stock-movement.test.cjs` | 7 |
+| `tests/storefront-info.test.cjs` | 8 |
+| `tests/structured-data.test.cjs` | 8 |
+| `tests/wishlist.test.cjs` | 7 |
+| **All suites** | **705** |
+
+`tests/editor-touch.cjs` is the browser suite (22 sections, run against a live server): the draft
+reload, 25 layers, the 30-step undo floor, a second finger mid-stroke, a rotation, a long Burmese word
+wrapping between grapheme clusters, Burmese text under all five painted effects, an upload that cannot
+be decoded, the hover highlight in both directions, the caret above a shrinking (keyboard-sized)
+viewport, the 320 × 480 tools bar, the bar and canvas at 844 × 390, 480 × 320, 768 × 1024 and
+1024 × 768, a browser that refuses the draft, and a console guard that fails the run on any uncaught
+exception or `console.error`.
+
+`tests/storefront-e2e.cjs` drives the purchase path over CDP at 1440 × 900 and 390 × 844 touch, and
+asserts that every control on the home, editor and checkout pages has an accessible name, that each of
+those pages has exactly one `<h1>`, that the header search field shows its focus on the pill, that every
+checkout field carries `aria-invalid` and its own message after a failed submit, that the cart button
+names its count, that the order confirmation takes focus, that the first Tab reaches a skip link which
+lands on the page heading, that every header control shows a focus ring, that the closed phone drawer is
+inert and Escape hands the focus back from it and from the cart panel, that every text token in both
+themes reaches WCAG AA against both page backgrounds, that the category strip stops when the system asks
+for reduced motion, that the product page marks the chosen size/colour and announces the price and
+quantity, that removing a cart line hands the focus to the next line and says what left, that the notification
+panel is a dialog with a state, an unread count and Escape, that un-hearting a wishlist card hands the
+focus to the next card and says what left, that the account section nav marks the current section and
+hands the focus to its heading, that every route keeps one h1, named controls, alt text, unique ids and an
+ordered outline, that the contact form announces its issues, marks the bad field and hands the focus to
+its confirmation, that the admin drawers, the pricing bottom sheet and the product image lightbox move
+the focus in, keep Tab inside and give it back on Escape, that the phone admin sidebar is inert while
+closed and takes the focus when open, and that all 18 admin dashboard routes hold the same structural
+bar (one h1, named controls, unique ids, ordered outline) at 1440 and 390, and that `<html lang>` follows the language switcher (English, then Myanmar, and back across a reload).
+
+The last full run (`node --test tests/*.test.cjs`) reported **705 passing, 0 failing**, against a server
+on port 3000 (`guide-http` needs it; it fails with ECONNREFUSED otherwise), and both browser suites
+passed on the same build.
+
+
+#### Checks run 2026-11-22 (shop side, admin, routing)
+
+| Check | Result |
+|---|---|
+| Unknown slug on `/products`, `/guide`, `/collections`, `/admin/orders` | 404, no stack trace |
+| Reflected input: `/search?q=<script>`, `/guide?q=<img onerror>`, `/products?design=javascript:` | rendered escaped, no payload in the HTML |
+| Demo admin: register → `/admin` ("Good morning, Owner") → `/admin/pricing` | 24 combination rows, prices shown in Ks, no console error |
+| Admin pages without a session | redirect to `/admin/login`, so the guard holds |
+| Layer rename to `""` or whitespace | keeps the old name (`updateEditorLayer` trims and falls back) |
+| Upload a renamed non-image (`.heic`, `.png` with text inside) | no crash; the notice now names the file and suggests JPG/PNG/WebP (it used to show only Chrome's "The source image could not be decoded.") |
+| Upload a real 8×8 PNG | image layer added, "Upload reduced to 762 B and added to the canvas." |
+| Checkout with a seeded cart (no Supabase needed) | line + total 42,000 Ks, order `#MH1101` written with a `checkoutKey`, stage Pending Payment, cart emptied, no console error |
+| Checkout submit on an empty form | used to report only the terms; now lists name, phone, address, township, city and terms together |
+| Pen / shape / eraser with a single click (no drag) | no junk layer, no console error |
+| Press sheet from `/admin/orders` at 390x844 | opens its own tab (real click keeps the popup), 390/390 scroll, print button present |
+| Admin settings save → reload | used to show the seed values again and the next Save reverted the stored ones; now the saved name/rate survive a reload and a second save, and Reset demo data still restores the seed |
+| Every admin route at 1440x900 and 390x844 | 24 loads, no console error, no sideways scroll, a heading on each |
+| Admin orders at 390x844 (touch) | 390/390 scroll; a tap on "Advance #MH1086 to Printing" moves the order Processing → Printing; the drawer opens with the print button and the note field; printing records a `reprints` entry so the button reads "Reprint the press sheet" |
+| Delivery fee on checkout | by design the fee is quoted later; "Total today" is the subtotal and the panel says so |
+
+The shop catalogue and the checkout cannot be exercised in this workspace: products come from
+Supabase and `NEXT_PUBLIC_SUPABASE_URL` is unset, so every product list is empty and there is nothing
+to add to a cart. Those flows need the database (E15) before they can be tested end to end.

@@ -2,13 +2,16 @@
 
 Repository memory for AI agents working on **mhfashion/mhfashion**.
 
-## Where the editor docs live
-- The editor plan is `Plan/EDITOR_PLAN.md`: what the code does, the contracts, the verified gaps, the
-  next steps with acceptance, and the owner's decisions. It is written from the source.
-- The behaviour documentation is `Doc/EDITOR.md`. These two files are the only editor plan and doc.
-- `Plan/PLAN.md` §6 is a short summary with links — do not add editor detail there. Old anchors
-  (`#unified-editor-vision`, `#editor-implementation-plan`, `#editor-plan-from-audit`) stay in
-  `PLAN.md` as empty placeholders so existing links resolve.
+## Repository layout (owner rules, 2026-11-23)
+- `Plan/PLAN.md` is the **only** plan file. Part I is the project plan; Part II is the editor plan (contracts, verified
+  gaps, items E1 to E23, decisions, order of work). Never create another plan, TODO or notes file; record finished
+  work in `Doc/DOCUMENTATION.md`.
+- `Doc/` holds documents only (index: `Doc/README.md`); `SQL/` holds numbered `NNNN_name.sql` files only, applied by
+  the owner in the Supabase SQL Editor; `Worker/` will hold exactly one file, `assets.ts` (`Plan/PLAN.md` §12.1).
+  `tests/repo-layout.test.cjs` fails when any of this drifts. See `Plan/PLAN.md` "Repository layout and file rules".
+- The behaviour documentation of the editor is `Doc/EDITOR.md`. `Plan/PLAN.md` §6 is a short summary that points to
+  Part II — do not add editor detail to §6. Old anchors (`#unified-editor-vision`, `#editor-implementation-plan`,
+  `#editor-plan-from-audit`) stay in `PLAN.md` as empty placeholders so existing links resolve.
 
 ## Stack
 - Monorepo (`npm` workspaces). App lives in `apps/web`.
@@ -302,7 +305,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Size never enters a look key; extensions are tried in the order `webp, png, jpg`.
 
 ## Planning decisions (2026-11-21, `Plan/PLAN.md`)
-- **The editor is final as built.** Do not change editor design or behaviour, and do not add editor work to the plan. `Plan/PLAN.md` §6 says so; §16's register deliberately has no editor items.
+- **Editor work follows Part II of `Plan/PLAN.md`.** An item starts only when the owner says so; items marked done or approved there are released. Do not change editor behaviour outside Part II, and do not put editor work anywhere else in the plan. `Plan/PLAN.md` §6 summarises and links; §16's register has no editor items.
 - Prices are hand-entered in the **Pricing Management** UI (`Plan/PLAN.md` §4.5.1, Web + Phone). The Google Sheet price import is removed — do not reintroduce a sheet link, a CSV fetch, or "the sheet defines the attributes".
 - **Only admins upload to R2**, through the admin dashboard; the form generates the key. One key pattern only (`Plan/PLAN.md` §12, `Doc/R2-STORAGE.md`).
 - Canonical attribute names: Print Method / Fabric Type / Knit Structure / MH Cuttings.

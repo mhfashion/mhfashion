@@ -1,16 +1,23 @@
-## Hi there 👋
+# MH Fashion
 
-<!--
-**mhfashion/mhfashion** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+A print-on-demand platform: customers design apparel in the browser and order it printed. The site is a
+Next.js app that runs on a Cloudflare Worker; files live in Cloudflare R2; data lives in Supabase.
 
-Here are some ideas to get you started:
+## Repository map
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+| Place | What is in it |
+|---|---|
+| `Plan/PLAN.md` | the only plan file: Part I the project plan, Part II the editor plan |
+| `Doc/` | documents; start at `Doc/README.md` |
+| `SQL/` | numbered SQL files, applied in order in the Supabase SQL Editor |
+| `Worker/` | the R2 asset Worker, one file (created when it is built) |
+| `apps/web/` | the website and the editor |
+| `tests/` | the test suite (`node --test tests/*.test.cjs`) |
+| `scripts/` | helper scripts |
+| `AGENTS.md` | rules for AI agents working in this repository |
+
+## Rules
+
+- There is one plan file. Finished work is recorded in `Doc/DOCUMENTATION.md`.
+- `Doc/` holds documents only, `SQL/` holds SQL only, `Worker/` holds one file, `Plan/` holds one file.
+- `tests/repo-layout.test.cjs` fails if the layout drifts.
