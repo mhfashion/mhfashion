@@ -3475,6 +3475,11 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    for the modifier keys (Shift keeps proportions, Alt draws from the centre). Today it holds only the presets.
 6. **Text box:** a default text style for new text, default line height and wrap width, next to size, font,
    weight, alignment, spacing and colour.
+   *Wrap width built 2026-11-24.* `EditorTextToolSettings.wrapWidth` (default `DEFAULT_TEXT_WRAP_WIDTH` = 880,
+   clamped 120–2000) is now what `addCanvasTextLayer` writes into a new layer, instead of a constant in the canvas;
+   the Text box carries a "Wrap width" slider with a number field, so the shop sets how wide new text runs before
+   it wraps. Verified in Chromium: the field starts at 880, typing 320 gives a new text layer whose inline editor is
+   320 units wide, console clean. A default **line height** is still open.
 7. **Gradient box:** an angle field and the stop editor reachable from the tool box, plus opacity.
 8. **Reset everywhere:** every box gets a reset to its tool defaults; the Brush/Pencil box has one today and
    the other boxes list none.

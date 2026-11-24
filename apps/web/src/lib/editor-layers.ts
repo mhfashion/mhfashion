@@ -117,14 +117,19 @@ export type EditorTextToolSettings = {
   /** null follows the toolbar foreground colour. */
   color: string | null;
   letterSpacing: number;
+  /** How wide a new text layer wraps, in artwork units (plan E21 item 6). */
+  wrapWidth: number;
 };
+
+/** New text wraps at this width unless the Text tool says otherwise. */
+export const DEFAULT_TEXT_WRAP_WIDTH = 880;
 export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
   brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0, spacing: 8, flow: 100, smoothing: 3, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   eraser: { mode: "brush", shape: "round", size: 120, hardness: 60, opacity: 100, flow: 100, spacing: 12, angle: 0, roundness: 100 },
   pen: { width: 5, cap: "round" },
   gradient: { type: "linear", presetId: "black-white", reverse: false },
-  text: { fontSize: 110, fontFamily: EDITOR_TEXT_FONT_FAMILY, fontWeight: 700, textAlign: "center", color: null, letterSpacing: 0 },
+  text: { fontSize: 110, fontFamily: EDITOR_TEXT_FONT_FAMILY, fontWeight: 700, textAlign: "center", color: null, letterSpacing: 0, wrapWidth: DEFAULT_TEXT_WRAP_WIDTH },
 };
 
 /** Ready-made eraser nibs; each is a settings patch. */
@@ -220,6 +225,7 @@ export function normalizeEditorTextToolSettings(input: Partial<EditorTextToolSet
     textAlign: align === "left" || align === "right" ? align : "center",
     color: typeof input?.color === "string" && /^#[0-9a-f]{3,8}$/i.test(input.color) ? input.color : null,
     letterSpacing: clamp(input?.letterSpacing ?? EDITOR_TOOL_OPTIONS_DEFAULT.text.letterSpacing, 0, 40),
+    wrapWidth: clamp(input?.wrapWidth ?? EDITOR_TOOL_OPTIONS_DEFAULT.text.wrapWidth, 120, 2000),
   };
 }
 export type MaskBrushMode = "hide" | "reveal";

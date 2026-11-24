@@ -123,7 +123,6 @@ const PASTEBOARD_TOUCH_RING_PX = 96;
 const TEXT_EDIT_BOX_WIDTH = 900;
 // New text wraps at the print area width so a long line flows downward instead of
 // running past the canvas edge. Typed lines stay inside the artwork they print on.
-const DEFAULT_TEXT_WRAP_WIDTH = 880;
 
 // Tools that paint onto a layer. A photo layer is edited only through the Photo
 // Adjustments panel, so these are disabled while a photo layer is selected.
@@ -2630,7 +2629,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       fontWeight: textDefaults.fontWeight,
       textAlign: textDefaults.textAlign,
       ...(textDefaults.letterSpacing > 0 ? { letterSpacing: textDefaults.letterSpacing } : {}),
-      wrapWidth: DEFAULT_TEXT_WRAP_WIDTH,
+      wrapWidth: textDefaults.wrapWidth,
     };
     setLayers((current) => [
       createEditorTextLayer(id, `Text ${label}`, content),

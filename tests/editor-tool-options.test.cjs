@@ -8,6 +8,7 @@ const { loadModule } = require("./helpers/load-ts-module.cjs");
 const lib = { exports: loadModule("apps/web/src/lib/editor-layers.ts") };
 const {
   EDITOR_TOOL_OPTIONS_DEFAULT,
+  DEFAULT_TEXT_WRAP_WIDTH,
   EDITOR_ERASER_PRESETS,
   EDITOR_GRADIENT_PRESETS,
   EDITOR_TEXT_FONT_FAMILY,
@@ -27,13 +28,17 @@ test("the Text tool box defaults are complete and render-safe", () => {
   assert.equal(text.textAlign, "center");
   assert.equal(text.color, null, "null means follow the toolbar foreground colour");
   assert.equal(text.letterSpacing, 0);
+  assert.equal(text.wrapWidth, DEFAULT_TEXT_WRAP_WIDTH);
 
   assert.deepEqual(normalizeEditorTextToolSettings(undefined), text);
   // Out-of-range values are clamped, not rejected, so a slider can never store junk.
-  const clamped = normalizeEditorTextToolSettings({ fontSize: 5, fontWeight: 1200, letterSpacing: 400 });
+  const clamped = normalizeEditorTextToolSettings({ fontSize: 5, fontWeight: 1200, letterSpacing: 400, wrapWidth: 20 });
   assert.equal(clamped.fontSize, 20);
   assert.equal(clamped.fontWeight, 900);
   assert.equal(clamped.letterSpacing, 40);
+  assert.equal(clamped.wrapWidth, 120, "a wrap width below the limit is pulled up to it");
+  assert.equal(normalizeEditorTextToolSettings({ wrapWidth: 9000 }).wrapWidth, 2000);
+  assert.equal(normalizeEditorTextToolSettings({ wrapWidth: 640 }).wrapWidth, 640);
   // Alignment only accepts the three real values.
   assert.equal(normalizeEditorTextToolSettings({ textAlign: "justify" }).textAlign, "center");
   assert.equal(normalizeEditorTextToolSettings({ textAlign: "left" }).textAlign, "left");
@@ -113,6 +118,7 @@ test("the Adjustments panel renders a box for every tool", () => {
   assert.match(panel, /activeTool === "shape" && <ShapeToolOptions/);
   assert.match(panel, /activeTool === "move" && <MoveToolOptions/);
   assert.match(panel, /ariaLabel="Text tool font size"/);
+  assert.match(panel, /ariaLabel="Text tool wrap width"/);
   assert.match(panel, /aria-label="Text tool font family"/);
   assert.match(panel, /ariaLabel="Text tool weight"/);
   assert.match(panel, /ariaLabel="Text tool alignment"/);

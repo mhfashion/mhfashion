@@ -1182,6 +1182,20 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — New text wraps at the width the Text tool sets
+
+Plan E21 item 6, the wrap half. The wrap width was a constant inside `EditorCanvas`, so a shop that prints narrow
+chest prints could not make new text wrap sooner than 880 units.
+
+- `EditorTextToolSettings` gains `wrapWidth`, defaulted from `DEFAULT_TEXT_WRAP_WIDTH` (880) and clamped to
+  120–2000 by `normalizeEditorTextToolSettings`, so an old saved tool setting fills itself in.
+- `addCanvasTextLayer` now writes `textDefaults.wrapWidth`; the constant moved to `lib/editor-layers.ts` beside the
+  setting that uses it. A layer that already has a `wrapWidth` keeps it, so existing artwork does not reflow.
+- The Text box has a "Wrap width" slider with the shared number field and a double-click reset to 880.
+- Verified in Chromium at 1440 × 900: the field starts at 880, typing 320 then clicking the canvas creates a text
+  layer whose inline editor is 320 units wide, console clean. `tests/editor-tool-options.test.cjs` covers the
+  default, both clamps and the field.
+
 ### 2026-11-24 — The editor reads fonts from the asset service
 
 Plan 12.1 part 6, the font half. The asset service (`/api/assets/fonts`) was built and unused: the editor still
