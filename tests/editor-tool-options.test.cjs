@@ -44,6 +44,26 @@ test("the Text tool box defaults are complete and render-safe", () => {
   assert.equal(normalizeEditorTextToolSettings({ fontFamily: "Georgia" }).fontFamily, "Georgia");
 });
 
+test("every panel slider carries a number field that steps, jumps ten with Shift and resets", () => {
+  // One range input, inside RangeField: a slider anywhere else would be missing its number field.
+  assert.equal((panel.match(/type="range"/g) ?? []).length, 1);
+  assert.match(panel, /aria-label=\{`\$\{ariaLabel\} value`\}/);
+  assert.match(panel, /event\.shiftKey \? 10 : 1/, "Shift steps ten times");
+  assert.match(panel, /onDoubleClick=\{\(\) => \{ if \(defaultValue !== undefined\) commit\(defaultValue\); \}\}/);
+  // Values are bounded and land on the slider's own step before they are written back.
+  assert.match(panel, /const stepped = step > 0 \? Math\.round\(\(bounded - min\) \/ step\) \* step \+ min : bounded;/);
+  // Typing is held in a draft, so clearing a field is not read as zero.
+  assert.match(panel, /const \[draft, setDraft\] = useState<string \| null>\(null\);/);
+  // Plan E21 item 8: every tool box can go back to its defaults.
+  assert.match(panel, /aria-label="Reset pen to its default"/);
+  assert.match(panel, /aria-label="Reset eraser to its default"/);
+  assert.match(panel, /aria-label="Reset gradient to its default"/);
+  assert.match(panel, /aria-label="Reset text tool to its default"/);
+  assert.match(panel, /aria-label=\{`Reset \$\{label\} to its default`\}/);
+  // The brush and pencil share one box, so each passes the defaults of the tool it is showing.
+  assert.match(panel, /defaults=\{activeTool === "brush" \? EDITOR_TOOL_OPTIONS_DEFAULT\.brush : EDITOR_TOOL_OPTIONS_DEFAULT\.pencil\}/);
+});
+
 test("normalizing tool options keeps the Text group and fills it in for old drafts", () => {
   const normalized = normalizeEditorToolOptions({ pen: { width: 12, cap: "butt" }, gradient: { type: "radial", presetId: "sunset" } });
   assert.deepEqual(normalized.text, EDITOR_TOOL_OPTIONS_DEFAULT.text);

@@ -3439,6 +3439,13 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 
 1. **Number fields:** every slider gets a number field, step arrows, a per-field reset (double-click) and
    arrow-key stepping (Shift for ×10); the value shows while dragging.
+   *Built 2026-11-24.* `RangeField` is now the panel's only `type="range"`, so its 34 uses (Brush, Pencil,
+   Eraser, Pen, Gradient, Text, Appearance) all carry a `${ariaLabel} value` number field. Typing is held in a
+   draft until blur (clearing "100" is not read as 0), and every value passes `snap`, which bounds it and lands
+   it on the slider's step; 999 typed into brush size stores 400. ArrowUp/ArrowDown step once, Shift steps ten,
+   double-click returns the field to that tool's default. The field is 44 px tall on touch. Verified in Chromium
+   at 1440 × 900 and 390 × 844. Still open: the photo panel's sliders (`EditorPhotoAdjustments.tsx`), which E22
+   moves onto the same control.
 2. **Shortcut keys:** V Move, H Hand, B Brush, N Pencil, P Pen, T Text, E Eraser, U Shape, G Gradient, I
    Eyedropper, `[` and `]` for brush size, X to swap colours, D for the default colours; each is shown in the
    tool tooltip and is ignored while a field has focus (the same rule as E13).
@@ -3464,6 +3471,9 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
 7. **Gradient box:** an angle field and the stop editor reachable from the tool box, plus opacity.
 8. **Reset everywhere:** every box gets a reset to its tool defaults; the Brush/Pencil box has one today and
    the other boxes list none.
+   *Built 2026-11-24.* Pen, Eraser, Gradient and Text have the same "Reset … to default" button, each writing the
+   shared `EDITOR_TOOL_OPTIONS_DEFAULT` group. The Shape box has no settings of its own (it picks the next shape),
+   and the Move box only nudges, so neither has anything to reset.
 9. **Presets and recents:** the shop's own saved presets per tool (save, rename, delete) and the last six
    colours and fonts.
 10. **Phone:** a tool's options open as a bottom sheet with large sliders, one box at a time, never hiding the

@@ -91,8 +91,49 @@ function NumberField({ label, value, min, max, step = 1, ariaLabel, onChange }: 
   return <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>{label}</span><input aria-label={ariaLabel} type="number" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-20 rounded-lg border border-border bg-bg px-2 py-1.5 text-right text-[11px] text-text-primary outline-none focus:border-accent" /></label>;
 }
 
-function RangeField({ label, value, min, max, step = 1, suffix, ariaLabel, onChange }: { label: string; value: number; min: number; max: number; step?: number; suffix?: string; ariaLabel: string; onChange: (value: number) => void }) {
-  return <label className="block text-[10px] text-text-secondary">{label}<span className="float-right font-semibold text-text-primary">{value}{suffix}</span><input aria-label={ariaLabel} type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>;
+// Plan E21 item 1: a slider always comes with a number field. The field keeps the typed text in a draft
+// until blur, so deleting "100" to type "40" is not written back as 0; Enter, arrows and the spinner all
+// pass through `snap`, which bounds the value and lands it on the slider's own step.
+function RangeField({ label, value, min, max, step = 1, suffix, ariaLabel, onChange, defaultValue }: { label: string; value: number; min: number; max: number; step?: number; suffix?: string; ariaLabel: string; onChange: (value: number) => void; defaultValue?: number }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const snap = (next: number) => {
+    if (!Number.isFinite(next)) return value;
+    const bounded = Math.max(min, Math.min(max, next));
+    const stepped = step > 0 ? Math.round((bounded - min) / step) * step + min : bounded;
+    return Number(stepped.toFixed(4));
+  };
+  const commit = (next: number) => { setDraft(null); onChange(snap(next)); };
+  return <div className="text-[10px] text-text-secondary">
+    <div className="flex items-center justify-between gap-2">
+      <span className="min-w-0 truncate">{label}{suffix && <span className="ml-1 text-text-muted">{suffix}</span>}</span>
+      <input
+        aria-label={`${ariaLabel} value`}
+        type="number"
+        inputMode="decimal"
+        min={min}
+        max={max}
+        step={step}
+        value={draft ?? value}
+        onChange={(event) => {
+          const next = event.target.value;
+          setDraft(next);
+          if (next.trim() !== "" && Number.isFinite(Number(next))) onChange(snap(Number(next)));
+        }}
+        onBlur={() => setDraft(null)}
+        onDoubleClick={() => { if (defaultValue !== undefined) commit(defaultValue); }}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+          event.preventDefault();
+          const current = Number(draft ?? value);
+          const base = Number.isFinite(current) ? current : value;
+          commit(base + (event.key === "ArrowUp" ? 1 : -1) * step * (event.shiftKey ? 10 : 1));
+        }}
+        title={defaultValue === undefined ? undefined : "Double-click to reset"}
+        className="h-7 w-16 shrink-0 rounded-lg border border-border bg-bg px-1.5 text-right text-[11px] text-text-primary outline-none focus:border-accent [@media(pointer:coarse)]:h-11"
+      />
+    </div>
+    <input aria-label={ariaLabel} type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="mt-1.5 h-1.5 w-full cursor-pointer accent-[var(--accent)]" />
+  </div>;
 }
 
 // Brand colours for text, fill, stroke and frame borders, so a design stays on
@@ -103,7 +144,7 @@ function Swatches({ value, ariaLabel, onPick }: { value: string; ariaLabel: stri
   </div>;
 }
 
-function BrushOptions({ label, value, onChange, onReset }: { label: string; value: EditorBrushSettings; onChange: (patch: Partial<EditorBrushSettings>) => void; onReset: () => void }) {
+function BrushOptions({ label, value, defaults, onChange, onReset }: { label: string; value: EditorBrushSettings; defaults: EditorBrushSettings; onChange: (patch: Partial<EditorBrushSettings>) => void; onReset: () => void }) {
   const square = value.shape === "square";
   return <div className="space-y-3">
     <div className="space-y-1.5">
@@ -121,35 +162,35 @@ function BrushOptions({ label, value, onChange, onReset }: { label: string; valu
     <div className="space-y-1.5">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Nib</p>
       <OptionGroup label="Tip" ariaLabel={`${label} shape`} options={[{ value: "round", label: "Round" }, { value: "square", label: "Square" }]} value={value.shape} onChange={(shape) => onChange({ shape: shape as EditorBrushShape })} />
-      <RangeField label="Size" value={value.size} min={1} max={400} suffix="px" ariaLabel={`${label} size`} onChange={(size) => onChange({ size })} />
+      <RangeField label="Size" value={value.size} min={1} max={400} suffix="px" ariaLabel={`${label} size`} defaultValue={defaults.size} onChange={(size) => onChange({ size })} />
       {square && <>
-        <RangeField label="Angle" value={value.angle} min={-180} max={180} suffix="°" ariaLabel={`${label} angle`} onChange={(angle) => onChange({ angle })} />
-        <RangeField label="Roundness" value={value.roundness} min={0} max={100} suffix="%" ariaLabel={`${label} roundness`} onChange={(roundness) => onChange({ roundness })} />
+        <RangeField label="Angle" value={value.angle} min={-180} max={180} suffix="°" ariaLabel={`${label} angle`} defaultValue={defaults.angle} onChange={(angle) => onChange({ angle })} />
+        <RangeField label="Roundness" value={value.roundness} min={0} max={100} suffix="%" ariaLabel={`${label} roundness`} defaultValue={defaults.roundness} onChange={(roundness) => onChange({ roundness })} />
       </>}
     </div>
 
     <div className="space-y-1.5">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Paint</p>
-      <RangeField label="Opacity" value={Math.round(value.opacity * 100)} min={1} max={100} suffix="%" ariaLabel={`${label} opacity`} onChange={(percent) => onChange({ opacity: percent / 100 })} />
-      <RangeField label="Flow" value={value.flow} min={1} max={100} suffix="%" ariaLabel={`${label} flow`} onChange={(flow) => onChange({ flow })} />
-      <RangeField label="Spacing" value={value.spacing} min={1} max={100} suffix="%" ariaLabel={`${label} spacing`} onChange={(spacing) => onChange({ spacing })} />
-      <RangeField label="Smoothing" value={value.smoothing} min={1} max={10} suffix="×" ariaLabel={`${label} smoothing`} onChange={(smoothing) => onChange({ smoothing })} />
+      <RangeField label="Opacity" value={Math.round(value.opacity * 100)} min={1} max={100} suffix="%" ariaLabel={`${label} opacity`} defaultValue={Math.round(defaults.opacity * 100)} onChange={(percent) => onChange({ opacity: percent / 100 })} />
+      <RangeField label="Flow" value={value.flow} min={1} max={100} suffix="%" ariaLabel={`${label} flow`} defaultValue={defaults.flow} onChange={(flow) => onChange({ flow })} />
+      <RangeField label="Spacing" value={value.spacing} min={1} max={100} suffix="%" ariaLabel={`${label} spacing`} defaultValue={defaults.spacing} onChange={(spacing) => onChange({ spacing })} />
+      <RangeField label="Smoothing" value={value.smoothing} min={1} max={10} suffix="×" ariaLabel={`${label} smoothing`} defaultValue={defaults.smoothing} onChange={(smoothing) => onChange({ smoothing })} />
     </div>
 
     <div className="space-y-1.5">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Edge</p>
-      <RangeField label="Softness" value={value.softness} min={0} max={100} suffix="%" ariaLabel={`${label} softness`} onChange={(softness) => onChange({ softness })} />
-      <RangeField label="Feather" value={value.feather} min={0} max={100} suffix="%" ariaLabel={`${label} feather`} onChange={(feather) => onChange({ feather })} />
+      <RangeField label="Softness" value={value.softness} min={0} max={100} suffix="%" ariaLabel={`${label} softness`} defaultValue={defaults.softness} onChange={(softness) => onChange({ softness })} />
+      <RangeField label="Feather" value={value.feather} min={0} max={100} suffix="%" ariaLabel={`${label} feather`} defaultValue={defaults.feather} onChange={(feather) => onChange({ feather })} />
     </div>
 
     <div className="space-y-1.5">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Shape dynamics</p>
-      <RangeField label="Size jitter" value={value.sizeJitter} min={0} max={100} suffix="%" ariaLabel={`${label} size jitter`} onChange={(sizeJitter) => onChange({ sizeJitter })} />
-      <RangeField label="Opacity jitter" value={value.opacityJitter} min={0} max={100} suffix="%" ariaLabel={`${label} opacity jitter`} onChange={(opacityJitter) => onChange({ opacityJitter })} />
-      {(value.sizeJitter > 0 || value.opacityJitter > 0) && <RangeField label="Jitter floor" value={value.jitterMinimum} min={0} max={100} suffix="%" ariaLabel={`${label} jitter floor`} onChange={(jitterMinimum) => onChange({ jitterMinimum })} />}
-      <RangeField label="Scatter" value={value.scatter} min={0} max={100} suffix="%" ariaLabel={`${label} scatter`} onChange={(scatter) => onChange({ scatter })} />
-      <RangeField label="Angle jitter" value={value.angleJitter} min={0} max={100} suffix="%" ariaLabel={`${label} angle jitter`} onChange={(angleJitter) => onChange({ angleJitter })} />
-      <RangeField label="Roundness jitter" value={value.roundnessJitter} min={0} max={100} suffix="%" ariaLabel={`${label} roundness jitter`} onChange={(roundnessJitter) => onChange({ roundnessJitter })} />
+      <RangeField label="Size jitter" value={value.sizeJitter} min={0} max={100} suffix="%" ariaLabel={`${label} size jitter`} defaultValue={defaults.sizeJitter} onChange={(sizeJitter) => onChange({ sizeJitter })} />
+      <RangeField label="Opacity jitter" value={value.opacityJitter} min={0} max={100} suffix="%" ariaLabel={`${label} opacity jitter`} defaultValue={defaults.opacityJitter} onChange={(opacityJitter) => onChange({ opacityJitter })} />
+      {(value.sizeJitter > 0 || value.opacityJitter > 0) && <RangeField label="Jitter floor" value={value.jitterMinimum} min={0} max={100} suffix="%" ariaLabel={`${label} jitter floor`} defaultValue={defaults.jitterMinimum} onChange={(jitterMinimum) => onChange({ jitterMinimum })} />}
+      <RangeField label="Scatter" value={value.scatter} min={0} max={100} suffix="%" ariaLabel={`${label} scatter`} defaultValue={defaults.scatter} onChange={(scatter) => onChange({ scatter })} />
+      <RangeField label="Angle jitter" value={value.angleJitter} min={0} max={100} suffix="%" ariaLabel={`${label} angle jitter`} defaultValue={defaults.angleJitter} onChange={(angleJitter) => onChange({ angleJitter })} />
+      <RangeField label="Roundness jitter" value={value.roundnessJitter} min={0} max={100} suffix="%" ariaLabel={`${label} roundness jitter`} defaultValue={defaults.roundnessJitter} onChange={(roundnessJitter) => onChange({ roundnessJitter })} />
       <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Fade out tail</span><input aria-label={`${label} fade out`} type="checkbox" checked={value.fadeOut} onChange={(event) => onChange({ fadeOut: event.target.checked })} className="h-3.5 w-3.5 accent-[var(--accent)]" /></label>
     </div>
 
@@ -241,7 +282,8 @@ function OptionGroup({ label, ariaLabel, options, value, onChange }: { label: st
   return <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span className="shrink-0">{label}</span><div role="group" aria-label={ariaLabel} className="flex flex-wrap justify-end gap-1">{options.map((option) => <button key={option.value} type="button" aria-label={`${ariaLabel} ${option.label}`} aria-pressed={value === option.value} onClick={() => onChange(option.value)} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2.5">{option.label}</button>)}</div></div>;
 }
 
-function EraserOptions({ value, onChange, onClear, canClear }: { value: EditorEraserSettings; onChange: (patch: Partial<EditorEraserSettings>) => void; onClear: () => void; canClear: boolean }) {
+function EraserOptions({ value, onChange, onClear, onReset, canClear }: { value: EditorEraserSettings; onChange: (patch: Partial<EditorEraserSettings>) => void; onClear: () => void; onReset: () => void; canClear: boolean }) {
+  const defaults = EDITOR_TOOL_OPTIONS_DEFAULT.eraser;
   const square = value.shape === "square";
   return <div className="space-y-2">
     <div className="space-y-1.5">
@@ -253,16 +295,17 @@ function EraserOptions({ value, onChange, onClear, canClear }: { value: EditorEr
     </div>
     <OptionGroup label="Mode" ariaLabel="Eraser mode" options={[{ value: "brush", label: "Brush" }, { value: "stroke", label: "Stroke" }]} value={value.mode} onChange={(mode) => onChange({ mode: mode as EditorEraserSettings["mode"] })} />
     <OptionGroup label="Nib" ariaLabel="Eraser nib" options={[{ value: "round", label: "Round" }, { value: "square", label: "Square" }]} value={value.shape} onChange={(shape) => onChange({ shape: shape as EditorBrushShape })} />
-    <RangeField label="Size" value={value.size} min={10} max={600} suffix="px" ariaLabel="Eraser size" onChange={(size) => onChange({ size })} />
-    <RangeField label="Hardness" value={value.hardness} min={0} max={100} suffix="%" ariaLabel="Eraser hardness" onChange={(hardness) => onChange({ hardness })} />
-    <RangeField label="Opacity" value={value.opacity} min={1} max={100} suffix="%" ariaLabel="Eraser opacity" onChange={(opacity) => onChange({ opacity })} />
-    <RangeField label="Flow" value={value.flow} min={1} max={100} suffix="%" ariaLabel="Eraser flow" onChange={(flow) => onChange({ flow })} />
-    <RangeField label="Spacing" value={value.spacing} min={1} max={100} suffix="%" ariaLabel="Eraser spacing" onChange={(spacing) => onChange({ spacing })} />
+    <RangeField label="Size" value={value.size} min={10} max={600} suffix="px" ariaLabel="Eraser size" defaultValue={defaults.size} onChange={(size) => onChange({ size })} />
+    <RangeField label="Hardness" value={value.hardness} min={0} max={100} suffix="%" ariaLabel="Eraser hardness" defaultValue={defaults.hardness} onChange={(hardness) => onChange({ hardness })} />
+    <RangeField label="Opacity" value={value.opacity} min={1} max={100} suffix="%" ariaLabel="Eraser opacity" defaultValue={defaults.opacity} onChange={(opacity) => onChange({ opacity })} />
+    <RangeField label="Flow" value={value.flow} min={1} max={100} suffix="%" ariaLabel="Eraser flow" defaultValue={defaults.flow} onChange={(flow) => onChange({ flow })} />
+    <RangeField label="Spacing" value={value.spacing} min={1} max={100} suffix="%" ariaLabel="Eraser spacing" defaultValue={defaults.spacing} onChange={(spacing) => onChange({ spacing })} />
     {square && <>
-      <RangeField label="Angle" value={value.angle} min={-180} max={180} suffix="°" ariaLabel="Eraser angle" onChange={(angle) => onChange({ angle })} />
-      <RangeField label="Roundness" value={value.roundness} min={0} max={100} suffix="%" ariaLabel="Eraser roundness" onChange={(roundness) => onChange({ roundness })} />
+      <RangeField label="Angle" value={value.angle} min={-180} max={180} suffix="°" ariaLabel="Eraser angle" defaultValue={defaults.angle} onChange={(angle) => onChange({ angle })} />
+      <RangeField label="Roundness" value={value.roundness} min={0} max={100} suffix="%" ariaLabel="Eraser roundness" defaultValue={defaults.roundness} onChange={(roundness) => onChange({ roundness })} />
     </>}
     <p className="text-[9px] leading-relaxed text-text-muted">Brush mode paints a soft eraser nib that builds up as you drag. Stroke mode clears any whole stroke whose points fall under the nib. Hardness 0% is fully feathered; higher flow erases more per pass. Locked layers are never erased.</p>
+    <button type="button" aria-label="Reset eraser to its default" onClick={onReset} className="w-full rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-text-secondary outline-none hover:border-accent hover:bg-accent/10">Reset eraser to default</button>
     <button type="button" aria-label="Clear erasures on this layer" disabled={!canClear} onClick={onClear} className="w-full rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-text-primary outline-none hover:border-accent hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40">Clear erasures on this layer</button>
   </div>;
 }
@@ -271,16 +314,17 @@ function EraserOptions({ value, onChange, onClear, canClear }: { value: EditorEr
 function TextToolOptions({ value, onChange }: { value: EditorTextToolSettings; onChange: (patch: Partial<EditorTextToolSettings>) => void }) {
   return <div className="space-y-2.5">
     <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">A new text layer starts with</p>
-    <RangeField label="Size" value={value.fontSize} min={20} max={400} suffix="px" ariaLabel="Text tool font size" onChange={(fontSize) => onChange({ fontSize })} />
+    <RangeField label="Size" value={value.fontSize} min={20} max={400} suffix="px" ariaLabel="Text tool font size" defaultValue={EDITOR_TOOL_OPTIONS_DEFAULT.text.fontSize} onChange={(fontSize) => onChange({ fontSize })} />
     <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary">Font<select aria-label="Text tool font family" value={value.fontFamily} onChange={(event) => onChange({ fontFamily: event.target.value })} className="max-w-[150px] rounded-lg border border-border bg-bg px-1.5 py-1 text-[10px] text-text-primary outline-none">{TEXT_TOOL_FONTS.map((font) => <option key={font.label} value={font.value}>{font.label}</option>)}</select></label>
     <OptionGroup label="Weight" ariaLabel="Text tool weight" options={[{ value: "300", label: "Light" }, { value: "400", label: "Regular" }, { value: "700", label: "Bold" }, { value: "900", label: "Black" }]} value={String(value.fontWeight)} onChange={(weight) => onChange({ fontWeight: Number(weight) })} />
     <OptionGroup label="Align" ariaLabel="Text tool alignment" options={[{ value: "left", label: "Left" }, { value: "center", label: "Centre" }, { value: "right", label: "Right" }]} value={value.textAlign} onChange={(textAlign) => onChange({ textAlign: textAlign as EditorTextToolSettings["textAlign"] })} />
-    <RangeField label="Letter spacing" value={value.letterSpacing} min={0} max={40} suffix="px" ariaLabel="Text tool letter spacing" onChange={(letterSpacing) => onChange({ letterSpacing })} />
+    <RangeField label="Letter spacing" value={value.letterSpacing} min={0} max={40} suffix="px" ariaLabel="Text tool letter spacing" defaultValue={EDITOR_TOOL_OPTIONS_DEFAULT.text.letterSpacing} onChange={(letterSpacing) => onChange({ letterSpacing })} />
     <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Colour</span><div className="flex items-center gap-1">
       <button type="button" aria-label="Text tool follow the toolbar colour" aria-pressed={value.color === null} onClick={() => onChange({ color: null })} className="rounded-lg border border-border px-2 py-1 text-[9px] outline-none hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3">Toolbar</button>
       <input aria-label="Text tool colour" type="color" value={value.color ?? "#111111"} onChange={(event) => onChange({ color: event.target.value })} className="h-7 w-10 rounded-lg border border-border p-0.5" />
     </div></div>
     <Swatches value={value.color ?? "#111111"} ariaLabel="Text tool colour swatch" onPick={(color) => onChange({ color })} />
+    <button type="button" aria-label="Reset text tool to its default" onClick={() => onChange(EDITOR_TOOL_OPTIONS_DEFAULT.text)} className="w-full rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-text-secondary outline-none hover:border-accent hover:bg-accent/10">Reset text tool to default</button>
     <p className="text-[9px] leading-relaxed text-text-muted">These values are written into every new text layer; existing text keeps its own font and colour. Pick Toolbar to follow the foreground colour again.</p>
   </div>;
 }
@@ -336,6 +380,7 @@ function GradientOptions({ value, onChange }: { value: EditorGradientToolSetting
       </div>
     </div>
     <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Reverse the ramp</span><input aria-label="Gradient reverse" type="checkbox" checked={value.reverse} onChange={(event) => onChange({ reverse: event.target.checked })} className="h-3.5 w-3.5 accent-[var(--accent)]" /></label>
+    <button type="button" aria-label="Reset gradient to its default" onClick={() => onChange({ type: EDITOR_TOOL_OPTIONS_DEFAULT.gradient.type, presetId: EDITOR_TOOL_OPTIONS_DEFAULT.gradient.presetId, reverse: EDITOR_TOOL_OPTIONS_DEFAULT.gradient.reverse })} className="w-full rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-text-secondary outline-none hover:border-accent hover:bg-accent/10">Reset gradient to default</button>
     <p className="text-[9px] leading-relaxed text-text-muted">Pick a shape and preset, then drag on the canvas to lay the gradient. Drag again on a selected gradient layer to re-aim it; edit its stops under Gradient below.</p>
   </div>;
 }
@@ -506,19 +551,22 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
             {(activeTool === "brush" || activeTool === "pencil") && <BrushOptions
               label={activeTool === "brush" ? "Brush" : "Pencil"}
               value={activeTool === "brush" ? toolOptions.brush : toolOptions.pencil}
+              defaults={activeTool === "brush" ? EDITOR_TOOL_OPTIONS_DEFAULT.brush : EDITOR_TOOL_OPTIONS_DEFAULT.pencil}
               onChange={(patch) => onUpdateToolOptions(activeTool === "brush" ? { brush: patch } : { pencil: patch })}
               onReset={() => onUpdateToolOptions(activeTool === "brush" ? { brush: EDITOR_TOOL_OPTIONS_DEFAULT.brush } : { pencil: EDITOR_TOOL_OPTIONS_DEFAULT.pencil })}
             />}
             {activeTool === "eraser" && <EraserOptions
               value={toolOptions.eraser}
               onChange={(patch) => onUpdateToolOptions({ eraser: patch })}
+              onReset={() => onUpdateToolOptions({ eraser: EDITOR_TOOL_OPTIONS_DEFAULT.eraser })}
               onClear={onClearErasures}
               canClear={!!selectedLayer && !selectedLayer.locked && selectedLayer.erasures.length > 0}
             />}
             {activeTool === "pen" && <div className="space-y-2">
-              <label className="block text-[10px] text-text-secondary">Path width<span className="float-right font-semibold text-text-primary">{toolOptions.pen.width}px</span><input aria-label="Pen path width" type="range" min="1" max="60" value={toolOptions.pen.width} onChange={(event) => onUpdateToolOptions({ pen: { width: Number(event.target.value) } })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label>
+              <RangeField label="Path width" value={toolOptions.pen.width} min={1} max={60} suffix="px" ariaLabel="Pen path width" defaultValue={EDITOR_TOOL_OPTIONS_DEFAULT.pen.width} onChange={(width) => onUpdateToolOptions({ pen: { width } })} />
               <div role="group" aria-label="Pen width presets" className="flex flex-wrap gap-1">{[1, 3, 6, 12, 24].map((width) => <button key={width} type="button" aria-label={`Pen width ${width} pixels`} aria-pressed={toolOptions.pen.width === width} onClick={() => onUpdateToolOptions({ pen: { width } })} className="flex-1 rounded-lg border border-border px-1 py-1 text-[9px] outline-none hover:border-accent aria-pressed:border-accent aria-pressed:bg-accent/15 [@media(pointer:coarse)]:min-h-11">{width}</button>)}</div>
               <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Cap</span><div role="group" aria-label="Pen cap" className="flex gap-1">{(["round", "butt", "square"] as const).map((cap) => <button key={cap} type="button" aria-label={`Pen cap ${cap}`} aria-pressed={toolOptions.pen.cap === cap} onClick={() => onUpdateToolOptions({ pen: { cap } })} className="rounded-lg border border-border px-2 py-1 capitalize aria-pressed:border-accent aria-pressed:bg-accent/15">{cap}</button>)}</div></div>
+              <button type="button" aria-label="Reset pen to its default" onClick={() => onUpdateToolOptions({ pen: EDITOR_TOOL_OPTIONS_DEFAULT.pen })} className="w-full rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-text-secondary outline-none hover:border-accent hover:bg-accent/10">Reset pen to default</button>
               <p className="text-[9px] leading-relaxed text-text-muted">These values are saved as this tool&apos;s defaults for the next path you draw.</p>
             </div>}
             {activeTool === "gradient" && <GradientOptions
@@ -693,7 +741,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
             <GradientEditor gradient={selectedLayer.gradient} onChange={onUpdateGradient} />
           </Section>}
           <Section title="Appearance" open={openSection === "Appearance"} onToggle={() => toggleSection("Appearance")}>
-            <div className="space-y-3"><div className="flex items-center gap-2"><span className="text-[10px] text-text-secondary">Flip</span><button type="button" aria-label="Flip horizontal" title="Flip horizontal" onClick={() => onFlip("horizontal")} disabled={selectedLayer.locked} className="flex h-7 w-7 items-center justify-center rounded-xl text-text-secondary outline-none transition-colors hover:bg-bg hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35"><FlipHorizontal2 size={14} strokeWidth={1.9} aria-hidden="true" /></button><button type="button" aria-label="Flip vertical" title="Flip vertical" onClick={() => onFlip("vertical")} disabled={selectedLayer.locked} className="flex h-7 w-7 items-center justify-center rounded-xl text-text-secondary outline-none transition-colors hover:bg-bg hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35"><FlipVertical2 size={14} strokeWidth={1.9} aria-hidden="true" /></button></div><label className="block text-[10px] text-text-secondary">Blend mode<select aria-label={`Blend mode for ${selectedLayer.name}`} value={selectedLayer.blendMode} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { blendMode: event.target.value as "normal" | "multiply" | "screen" | "overlay" })} className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-primary"><option value="normal">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option></select></label><label className="block text-[10px] text-text-secondary">Opacity<span className="float-right font-semibold text-text-primary">{selectedLayer.opacity}%</span><input aria-label="Adjustment opacity" type="range" min="0" max="100" value={selectedLayer.opacity} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { opacity: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label><label className="block text-[10px] text-text-secondary">Fill<span className="float-right font-semibold text-text-primary">{selectedLayer.fillOpacity}%</span><input aria-label="Adjustment fill" type="range" min="0" max="100" value={selectedLayer.fillOpacity} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { fillOpacity: Number(event.target.value) })} className="mt-2 h-1.5 w-full cursor-pointer accent-[var(--accent)]" /></label></div>
+            <div className="space-y-3"><div className="flex items-center gap-2"><span className="text-[10px] text-text-secondary">Flip</span><button type="button" aria-label="Flip horizontal" title="Flip horizontal" onClick={() => onFlip("horizontal")} disabled={selectedLayer.locked} className="flex h-7 w-7 items-center justify-center rounded-xl text-text-secondary outline-none transition-colors hover:bg-bg hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35"><FlipHorizontal2 size={14} strokeWidth={1.9} aria-hidden="true" /></button><button type="button" aria-label="Flip vertical" title="Flip vertical" onClick={() => onFlip("vertical")} disabled={selectedLayer.locked} className="flex h-7 w-7 items-center justify-center rounded-xl text-text-secondary outline-none transition-colors hover:bg-bg hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35"><FlipVertical2 size={14} strokeWidth={1.9} aria-hidden="true" /></button></div><label className="block text-[10px] text-text-secondary">Blend mode<select aria-label={`Blend mode for ${selectedLayer.name}`} value={selectedLayer.blendMode} disabled={selectedLayer.locked} onChange={(event) => onUpdateLayer(selectedLayer.id, { blendMode: event.target.value as "normal" | "multiply" | "screen" | "overlay" })} className="mt-1 w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-primary"><option value="normal">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option></select></label><div className={selectedLayer.locked ? "pointer-events-none opacity-50" : undefined}><RangeField label="Opacity" value={selectedLayer.opacity} min={0} max={100} suffix="%" ariaLabel="Adjustment opacity" defaultValue={100} onChange={(opacity) => onUpdateLayer(selectedLayer.id, { opacity })} /></div><div className={selectedLayer.locked ? "pointer-events-none opacity-50" : undefined}><RangeField label="Fill" value={selectedLayer.fillOpacity} min={0} max={100} suffix="%" ariaLabel="Adjustment fill" defaultValue={100} onChange={(fillOpacity) => onUpdateLayer(selectedLayer.id, { fillOpacity })} /></div></div>
           </Section>
           </>}
         </div>

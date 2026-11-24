@@ -13,6 +13,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   Part II — do not add editor detail to §6. Old anchors (`#unified-editor-vision`, `#editor-implementation-plan`,
   `#editor-plan-from-audit`) stay in `PLAN.md` as empty placeholders so existing links resolve.
 
+## Owner standing instructions
+- **Full code-writing permission is granted for this repository** (owner, 2026-11-24): write and change code directly, without asking for approval per file or per step.
+- `Plan/PLAN.md` is the single plan file and the owner refreshes it about every five hours; re-read it at the start of a turn and continue from its next item.
+- Push finished work to `main` in the same turn it is validated (owner directive 5 in the plan).
+
 ## Stack
 - Monorepo (`npm` workspaces). App lives in `apps/web`.
 - Next.js 16 (App Router) + React 19, Fabric.js 7, Supabase, deployed as a Cloudflare Worker via OpenNext (`npm run cf:build --workspace=apps/web`).

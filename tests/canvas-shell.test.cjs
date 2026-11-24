@@ -1177,7 +1177,7 @@ test("Adjustments panel exposes per-tool options for the active tool", () => {
   assert.match(source, /const \[eraserCursor, setEraserCursor\]/);
   assert.match(source, /activeTool === "eraser" \? "none" : undefined/);
   assert.match(adjustmentsPanel, /activeTool === "pen"/);
-  assert.match(adjustmentsPanel, /aria-label="Pen path width"/);
+  assert.match(adjustmentsPanel, /ariaLabel="Pen path width"/);
   assert.match(adjustmentsPanel, /aria-label=\{`Pen cap \$\{cap\}`\}/);
   // The panel opens even without a selected layer so tool options stay reachable.
   assert.match(layersPanel, /aria-label="Open Adjustments panel" title="Open Adjustments" onClick=\{onOpenAdjustments\}/);

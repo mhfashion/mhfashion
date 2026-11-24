@@ -1182,6 +1182,31 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — Every slider in the Adjustments panel has a number field, and every tool box resets
+
+Plan E21 items 1 and 8, the part that needed no new control family. The panel had four sliders that could only be
+dragged; a brush size of 137 px was unreachable, and only the Brush/Pencil box could go back to its defaults.
+
+- **One control.** `RangeField` in `EditorAdjustmentsPanel.tsx` is now the only `type="range"` in the panel. It
+  draws the label, a number field and the slider, so all 34 slider uses (Brush, Pencil, Eraser, Pen, Gradient,
+  Text, Appearance) gained the field at once.
+- **Typing is safe.** The field keeps what is typed in a draft until blur, so clearing "100" to type "40" is not
+  read as 0 and written back; every value passes `snap`, which bounds it to the slider's range and lands it on the
+  slider's step. Typing 999 into brush size stores 400.
+- **Keys and mouse.** ArrowUp / ArrowDown step by one `step`; Shift steps ten times. Double-click returns the field
+  to the tool's default (brush 52 px, eraser 120 px, pen 5 px, text 110 px, opacity and fill 100%). The tooltip says
+  so, and the slider follows the field while it changes.
+- **Reset on every box.** Pen, Eraser, Gradient and Text now have the same "Reset … to default" button the Brush
+  and Pencil box already had; each writes the shared `EDITOR_TOOL_OPTIONS_DEFAULT` group, so a reset cannot drift
+  from the factory value.
+- **Phone.** The number field is 64 × 44 px under `pointer: coarse` (27 px on a mouse), and the 256 px panel keeps
+  it inside its edge with no horizontal overflow.
+- Verified in Chromium at 1440 × 900 and 390 × 844 touch: 12 sliders, 12 matching number fields, no slider without
+  one; brush size 52 → 53 with ArrowUp → 63 with Shift+ArrowUp → 53 with Shift+ArrowDown; 999 clamped to 400;
+  double-click back to 52; all four resets present; console clean. `tests/editor-tool-options.test.cjs` asserts one
+  range input, the `${ariaLabel} value` field, the Shift ×10 step, the double-click reset and the four reset buttons;
+  `tests/canvas-shell.test.cjs` now finds the pen width by its `ariaLabel` prop.
+
 ### 2026-11-22 — Download my design (PNG at 300 dpi, and SVG)
 
 The customer had no copy of the artwork: the press bundle was the only file, and it is an admin document.
