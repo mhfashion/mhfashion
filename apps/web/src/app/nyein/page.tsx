@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { ArrowRight, BadgeCheck, Heart, Palette } from "lucide-react";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import CategoryRow from "@/components/CategoryRow";
 import ProductStrip from "@/components/ProductStrip";
 import { getProductsBySubBrand } from "@/lib/products";
@@ -112,7 +111,6 @@ export default async function NyeinPage() {
           </section>
         </div>
       </div>
-      <Footer />
     </main>
   );
 }

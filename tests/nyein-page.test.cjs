@@ -10,7 +10,8 @@ const home = read("apps/web/src/app/page.tsx");
 const footer = read("apps/web/src/components/Footer.tsx");
 
 test("the Nyein page wears the home page's UI", () => {
-  for (const component of ["Header", "Footer", "CategoryRow"]) {
+  // Everything but the full footer: that one belongs to the home page alone (Plan, 2026-11-12).
+  for (const component of ["Header", "CategoryRow"]) {
     assert.match(nyein, new RegExp(`import ${component} from "@/components/${component}"`), `reuses ${component}`);
     assert.match(home, new RegExp(`import ${component} from "@/components/${component}"`), `home also uses ${component}`);
   }
@@ -57,5 +58,21 @@ test("the footer carries every promised block, on a phone too", () => {
   }
   assert.doesNotMatch(footer, /hidden md:block/, "no width hides the footer");
   assert.match(footer, /pb-\[calc\(4\.5rem\+env\(safe-area-inset-bottom\)\)\] md:pb-6/, "and the fixed bottom nav never covers its last row");
-  assert.match(nyein, /<Footer \/>/);
+  assert.match(home, /<Footer \/>/);
+});
+
+test("the full footer renders on the home page alone", () => {
+  // The owner's rule: the complete links/payment footer is the home page's, and every other screen ends with the
+  // compact CopyrightBar from the root layout. Moving the full footer onto /nyein, then onto every shopper page,
+  // was the same mistake twice - both reverted.
+  const { readdirSync } = require("node:fs");
+  const walk = (dir) => readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((entry) => {
+    const child = `${dir}/${entry.name}`;
+    return entry.isDirectory() ? walk(child) : [child];
+  });
+  const owners = walk("apps/web/src/app")
+    .filter((file) => file.endsWith(".tsx") && /<Footer \/>/.test(read(file)))
+    .sort();
+  assert.deepEqual(owners, ["apps/web/src/app/page.tsx"], "only the home page mounts the full footer");
+  assert.match(read("apps/web/src/app/layout.tsx"), /<CopyrightBar \/>/, "the other screens keep the copyright strip");
 });

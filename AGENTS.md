@@ -376,6 +376,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `hidden md:block` back on it. A phone shows the footer above the fixed `MobileBottomNav`; keep
   `pb-[calc(4.5rem+env(safe-area-inset-bottom))]` (with `md:pb-6`) so the last row stays tappable.
 - The labels live in `apps/web/src/lib/i18n.tsx` (`nav.*`, `footer.*`); they already read Contact Form, Shipping
+- **The full `Footer` is the home page's alone** (owner's rule, Plan 2026-11-12). Every other screen ends with the
+  compact `CopyrightBar` from `apps/web/src/app/layout.tsx`, which is a `<footer>` too — so count "MYANMAR PAYMENT"
+  in the rendered text, not `<footer>` tags, when you check. Two passes put the full footer on `/nyein` and then on
+  every shopper page; both were reverted. `tests/nyein-page.test.cjs` fails if any file other than
+  `apps/web/src/app/page.tsx` mounts it.
   Info and Returns & Exchanges, matching the owner's list.
 
 ## Brushes belong to the editor, not the dashboard

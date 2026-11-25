@@ -1182,6 +1182,18 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — The footer stays on the home page
+
+The Nyein page had picked up the full `Footer` (brand, SHOP/HELP/LEGAL, newsletter, payment blocks) along with the
+home page's layout. That is not the rule: the complete footer belongs to `/` only, and every other screen ends with
+the compact copyright strip that `apps/web/src/app/layout.tsx` renders through `CopyrightBar`.
+
+`/nyein` no longer mounts `Footer`. A pass that then put it on every shopper page was reverted as well, so the rule
+is back to where the plan states it. Checked in Chromium: `/` shows the full panel, `/nyein`, `/cart`, `/guide`,
+`/products` and `/faq` show only "© 2026 MH Fashion. All rights reserved."
+`tests/nyein-page.test.cjs` asserts that `apps/web/src/app/page.tsx` is the only file that renders `<Footer />`, and
+that the layout keeps `<CopyrightBar />`.
+
 ### 2026-11-21 — One product box for the shop and for Nyein
 
 The home page and the Nyein page drew different product boxes. Home used `ProductCard` in the shop's frame; Nyein
