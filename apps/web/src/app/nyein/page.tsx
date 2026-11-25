@@ -139,7 +139,7 @@ export default async function NyeinPage() {
           </section>
         </div>
       </div>
-      <Footer alwaysVisible />
+      <Footer />
     </main>
   );
 }

@@ -37,6 +37,7 @@ test("the footer carries every promised block, on a phone too", () => {
   for (const brand of ["KBZPay", "Wave Pay", "AYA Pay", "App Store", "Google Play", "Visa", "Mastercard", "TikTok"]) {
     assert.match(footer, new RegExp(brand), `footer lists ${brand}`);
   }
-  assert.match(footer, /alwaysVisible \? "block" : "hidden md:block"/, "the phone shows it when asked");
-  assert.match(nyein, /<Footer alwaysVisible \/>/, "and the Nyein page asks");
+  assert.doesNotMatch(footer, /hidden md:block/, "no width hides the footer");
+  assert.match(footer, /pb-\[calc\(4\.5rem\+env\(safe-area-inset-bottom\)\)\] md:pb-6/, "and the fixed bottom nav never covers its last row");
+  assert.match(nyein, /<Footer \/>/);
 });

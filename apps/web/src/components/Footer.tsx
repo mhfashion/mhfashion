@@ -2,10 +2,12 @@
 
 import { useI18n } from "@/lib/i18n";
 
-export default function Footer({ alwaysVisible = false }: { alwaysVisible?: boolean } = {}) {
+export default function Footer() {
   const { t } = useI18n();
   return (
-    <footer className={`${alwaysVisible ? "block" : "hidden md:block"} px-6 md:px-8 pt-6 border-t border-border mt-6`}>
+    // Shown at every width: the owner listed these blocks as page content, so a phone gets them too. The extra
+    // bottom padding keeps the last row clear of the fixed MobileBottomNav.
+    <footer className="px-6 md:px-8 pt-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6 border-t border-border mt-6">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-5 pb-5 border-b border-border">
         <div className="col-span-2 md:col-span-1">
           <p className="font-bold text-sm mb-2">MH FASHION.</p>

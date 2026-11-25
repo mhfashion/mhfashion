@@ -355,6 +355,14 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 ## The print canvas element
 - `<canvas aria-label="Blank print canvas">` is a **layout box**, not a bitmap: the artwork paints in the SVG layers above it and nothing calls `getContext`. Its backing store is `PRINT_CANVAS_BACKING_SPEC` (900x1080 = 972k px) because a real 4500x5400 store is 24.3 M px (~97 MB) and older iOS refuses a canvas above 16.7 M px. The print size lives in `PRINT_CANVAS_SPEC` and the `data-canvas-*` attributes, so keep those when changing the display size. Verified: backing 900x1080, attributes 4500/5400/300, on-screen box unchanged.
 
+## Footer blocks are page content
+- The owner lists the footer blocks (FB/IG/TikTok/YT, SHOP, HELP, LEGAL, NEWSLETTER, MYANMAR PAYMENT, DOWNLOAD OUR
+  APP, INTERNATIONAL PAYMENT) as things the page must show, so `Footer` renders at every width — do not put
+  `hidden md:block` back on it. A phone shows the footer above the fixed `MobileBottomNav`; keep
+  `pb-[calc(4.5rem+env(safe-area-inset-bottom))]` (with `md:pb-6`) so the last row stays tappable.
+- The labels live in `apps/web/src/lib/i18n.tsx` (`nav.*`, `footer.*`); they already read Contact Form, Shipping
+  Info and Returns & Exchanges, matching the owner's list.
+
 ## Brushes belong to the editor, not the dashboard
 - Owner instruction (2026-11-21): brushes are working tools that live behind the editor, so there is no
   `/admin/brushes` module. `EDITOR_BRUSH_PRESETS` in `apps/web/src/lib/editor-layers.ts` plus the Brush box in

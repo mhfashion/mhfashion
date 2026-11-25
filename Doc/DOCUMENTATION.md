@@ -1182,6 +1182,20 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — The footer shows on a phone, everywhere
+
+The owner kept listing the footer blocks — FB/IG/TikTok/YT, SHOP, HELP, LEGAL, NEWSLETTER, MYANMAR PAYMENT,
+DOWNLOAD OUR APP, INTERNATIONAL PAYMENT — as page content they could not see. The blocks were all present in
+`Footer.tsx`; the footer itself was `hidden md:block`, so every phone hid it and the blocks read as missing.
+
+- `Footer` is now shown at every width. The extra `pb-[calc(4.5rem+env(safe-area-inset-bottom))]` keeps its last row
+  clear of the fixed `MobileBottomNav`, and `md:pb-6` restores the desktop spacing.
+- The `alwaysVisible` prop added earlier is gone; nothing has to opt in any more.
+- Verified in Chromium at 390 × 844 and 1440 × 900 on both `/` and `/nyein`: all 36 blocks (including Contact Form,
+  Shipping Info, Returns & Exchanges, KBZPay/Wave Pay/AYA Pay, App Store/Google Play, Visa/Mastercard) are painted
+  and have non-zero boxes, and the bottom nav sits below the last row. `tests/nyein-page.test.cjs` now fails if the
+  footer hides at any width or loses that padding.
+
 ### 2026-11-21 — The Nyein page wears the home page, but nothing on it can be edited
 
 The owner asked for the Nyein destination to look and feel exactly like the home page while behaving differently:

@@ -1107,6 +1107,11 @@ This section records the current repository state and overrides earlier draft bu
   hides the footer below `md`. Verified in Chromium: `/nyein` 200 at 1440 × 900 and 390 × 844, every footer block
   present at both widths, no sideways scroll, console clean; `tests/nyein-page.test.cjs` holds the parity, the
   read-only rules and the footer blocks.
+  **Footer fix 2026-11-21 (owner):** the owner kept listing the footer blocks as missing. They were in `Footer.tsx`
+  all along; the footer was `hidden md:block`, so a phone hid it. It now shows at every width (with
+  `pb-[calc(4.5rem+env(safe-area-inset-bottom))]` to clear `MobileBottomNav`), so `/`, `/nyein` and every other page
+  carry FB/IG/TikTok/YT, SHOP, HELP, LEGAL, NEWSLETTER, KBZPay/Wave Pay/AYA Pay, App Store/Google Play and
+  Visa/Mastercard at 390 px as well as 1440 px.
 - `/guide` and `/guide/[slug]` — server-rendered categorized Guide/blog listing and detail pages with Supabase/starter-data fallback, cover images, metadata and readable article layouts.
 - `/products/[slug]` — compact marketplace-style product detail with gallery, actual catalog details table, options, reviews, related products and Buy Now/Add to Cart/Edit Design actions.
 - `/create` — browser-local Fabric.js editor prototype with responsive desktop/phone workspace, tools, layers, text/elements, Product and separate Mockup controls. No site copyright strip or Footer is shown in this editor workspace.
