@@ -15,8 +15,8 @@ import {
 } from "lucide-react";
 import AdSlotBanner from "@/components/AdSlotBanner";
 import Header from "@/components/Header";
-import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
+import GuidePostGrid from "@/components/guide/GuidePostGrid";
 import { filterGuidePosts, getGuideCatalog, type GuideCategory } from "@/lib/guides";
 import { guideMetadata } from "@/lib/guide-metadata";
 
@@ -170,22 +170,25 @@ export default async function GuidePage({ searchParams }: PageProps) {
             </div>
 
             <section id="articles" aria-labelledby="articles-heading" className="scroll-mt-24">
-              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 id="articles-heading" className="border-l-4 border-accent pl-3 text-lg font-black sm:text-xl"><GuideLabel id="guide.latest" fallback="Latest Guides" /></h2>
-                  <p className="mt-1 pl-4 text-xs text-text-muted">{posts.length} {posts.length === 1 ? "post" : "posts"}{activeCategory ? ` in ${activeCategory.name}` : ""}</p>
-                </div>
-                <div className="flex items-center justify-end">
-                  <Link href={guideUrl("", "")} className="hidden text-xs font-semibold text-accent sm:inline-flex sm:items-center">View All Posts <ArrowRight size={14} className="ml-1" /></Link>
-                </div>
+              <div className="mb-3">
+                <h2 id="articles-heading" className="border-l-4 border-accent pl-3 text-lg font-black sm:text-xl"><GuideLabel id="guide.latest" fallback="Latest Guides" /></h2>
+                <p className="mt-1 pl-4 text-xs text-text-muted">{posts.length} {posts.length === 1 ? "post" : "posts"}{activeCategory ? ` in ${activeCategory.name}` : ""}</p>
               </div>
 
               {catalog.source === "unavailable" ? (
                 <div className="rounded-2xl border border-border bg-bg-surface px-6 py-12 text-center" role="status"><BookOpen size={26} className="mx-auto mb-4 text-text-muted" /><h3 className="text-lg font-bold">Posts are temporarily unavailable.</h3></div>
               ) : posts.length ? (
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
-                  {posts.map((post, index) => <GuideCard key={post.id} post={post} categoryName={catalog.categories.find((category) => category.slug === post.categorySlug)?.name ?? "Guide"} index={index} />)}
-                </div>
+                <>
+                  {/* Without JavaScript "See more" cannot run, so every card shows at once. */}
+                  <noscript>
+                    <style>{`[data-guide-card="more"]{display:block !important}`}</style>
+                  </noscript>
+                  <GuidePostGrid
+                    key={`${selectedCategory}|${query}|${posts.length}`}
+                    posts={posts}
+                    categoryNames={Object.fromEntries(catalog.categories.map((category) => [category.slug, category.name]))}
+                  />
+                </>
               ) : (
                 <div className="rounded-2xl border border-border bg-bg-surface px-6 py-12 text-center"><Search size={26} className="mx-auto mb-4 text-text-muted" /><h3 className="text-lg font-bold">No guides match your search.</h3></div>
               )}

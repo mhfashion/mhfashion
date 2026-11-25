@@ -16,7 +16,7 @@ import {
 import Header from "@/components/Header";
 import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
-import { getGuideCatalog, getGuidePostBySlug } from "@/lib/guides";
+import { getGuideCatalog, getGuidePostBySlug, relatedGuidePosts } from "@/lib/guides";
 import { resolveGuideProductLinks } from "@/lib/guide-products";
 import { getProductsBySlugs } from "@/lib/products";
 import GuideShopLook from "@/components/guide/GuideShopLook";
@@ -79,7 +79,9 @@ export default async function GuideArticlePage({ params }: PageProps) {
 
   const category = catalog.categories.find((item) => item.slug === post.categorySlug);
   const categoryNames = new Map(catalog.categories.map((item) => [item.slug, item.name]));
-  const related = catalog.posts.filter((item) => item.slug !== post.slug && item.categorySlug === post.categorySlug).slice(0, 3);
+  // Related first by category, then by the products both posts sell, then anything else: an article stays
+  // inside its own guide when it can, and still gets cards when its category has nothing else to offer.
+  const related = relatedGuidePosts(catalog.posts, post, 4);
   const linkedProducts = await getProductsBySlugs(post.productLinks.map((link) => link.slug));
   const linkedBySlug = new Map(linkedProducts.map((product) => [product.slug, product]));
   const shopLook = await resolveGuideProductLinks(post.productLinks, (productSlug) => linkedBySlug.get(productSlug) ?? null);
@@ -158,7 +160,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
 
             <GuideShopLook links={shopLook} />
 
-            {related.length > 0 && <section aria-labelledby="related-heading" className="mt-10 border-t border-border pt-8"><div className="mb-5 flex items-center justify-between"><h2 id="related-heading" className="border-l-4 border-accent pl-3 text-xl font-black"><GuideLabel id="guide.keepExploring" fallback="Keep exploring" /></h2><Link href={categoryUrl} className="text-xs font-semibold text-accent">View all <ArrowRight size={14} className="ml-1 inline" /></Link></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{related.map((item, index) => <GuideCard key={item.id} post={item} categoryName={categoryNames.get(item.categorySlug) ?? "Guide"} index={index} />)}</div></section>}
+            {related.length > 0 && <section aria-labelledby="related-heading" className="mt-10 border-t border-border pt-8"><div className="mb-5 flex items-center justify-between"><h2 id="related-heading" className="border-l-4 border-accent pl-3 text-xl font-black"><GuideLabel id="guide.keepExploring" fallback="Keep exploring" /></h2><Link href={categoryUrl} className="text-xs font-semibold text-accent">View all <ArrowRight size={14} className="ml-1 inline" /></Link></div><div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">{related.map((item, index) => <GuideCard key={item.id} post={item} categoryName={categoryNames.get(item.categorySlug) ?? "Guide"} index={index} />)}</div></section>}
           </div>
         </div>
       </main>

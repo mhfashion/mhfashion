@@ -4235,3 +4235,32 @@ Checks: `npx tsc -p apps/web/tsconfig.json --noEmit` clean, `eslint` clean on th
 new panels; the touch test expects the seven rail buttons). The nine pattern tiles were rendered in
 Chromium and inspected as an image: every tile covers its canvas, and the wave rows span the full width
 (the first version only reached a quarter of it).
+
+## 2026-11-21 — Guide: "See more" under the post boxes, related posts under an article
+
+The owner asked for two changes to the Guide section:
+
+1. **No "View All Posts" link.** The link sat at the top-right of the "Latest posts" heading, above the
+   grid, and looked like a second navigation row. It is gone. The grid now shows eight cards and a
+   **See more** pill sits centred under the boxes, carrying the number of posts still hidden; each press
+   reveals another eight and the pill disappears when nothing is left. The grid moved into
+   `components/guide/GuidePostGrid.tsx` (client) with `GUIDE_GRID_PAGE_SIZE = 8`.
+   Every card is still server-rendered into the HTML — the cards past the first page carry
+   `data-guide-card="more"` and the `hidden` class — so crawlers and the category pages keep every
+   article link, and a `<noscript>` style in `app/guide/page.tsx` shows them all when JavaScript is off.
+   Switching category or running a search remounts the grid (`key`), so the count starts again from
+   eight instead of carrying the previous reveal depth.
+2. **Related post boxes under an article.** The section under an article used to list only posts from
+   the same category, capped at three, so the newest post in a thin category showed nothing and every
+   article in a full one repeated the same three cards. `relatedGuidePosts(posts, post, limit)` in
+   `lib/guides.ts` now ranks same-category posts first, then posts that sell the same products, then
+   anything else, drops the article itself, and takes four. The article grid uses the same square card
+   and the same 2 / 4 column rhythm as the landing grid.
+
+Checks: `tsc --noEmit` clean; `eslint` clean on the changed files (two pre-existing warnings only);
+`node --test tests/*.test.cjs` **830 passing, 0 failing** — the guide HTTP test now pins the eight-card
+first page, the See more control, the `<noscript>` fallback, the absence of "View All Posts", and that
+an article's related cards are neither the article itself nor duplicated; `tests/guides.test.cjs`
+covers the ranking with the starter catalogue. In Chromium at 1440x900 and 390x844 (touch) the landing
+grid showed 8 of 12 cards with a "See more 4" pill that expanded to all 12 and then disappeared, and
+`/guide/payment-options-at-checkout` showed four different related cards under "Keep exploring".

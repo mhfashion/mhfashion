@@ -256,3 +256,20 @@ test("live loader filters publication state and ignores malformed or uncategoriz
     assert.ok(guides.calls.some((call) => call.table === table && call.method === "not" && call.args[0] === "published_at"));
   }
 });
+
+test("related posts stay on the article's subject, and the article itself is never one of them", () => {
+  const { relatedGuidePosts, GUIDE_GRID_PAGE_SIZE } = loadGuides();
+  assert.equal(GUIDE_GRID_PAGE_SIZE, 8, "the first page of the landing grid changed size");
+  const catalog = starter();
+  const article = catalog.posts.find((post) => post.categorySlug === "payment-guide");
+  const related = relatedGuidePosts(catalog.posts, article, 4);
+  assert.equal(related.length, 4);
+  assert.ok(!related.some((post) => post.slug === article.slug), "the article listed itself");
+  assert.equal(new Set(related.map((post) => post.slug)).size, 4, "a post was listed twice");
+  assert.equal(related[0].categorySlug, article.categorySlug, "the same guide should come first");
+  assert.ok(related.some((post) => post.categorySlug !== article.categorySlug), "a thin category should borrow from the rest");
+  // A catalogue of two posts still fills the section, and a single post gets nothing.
+  const pair = relatedGuidePosts(catalog.posts.slice(0, 2), catalog.posts[0], 4);
+  assert.equal(pair.length, 1);
+  assert.equal(relatedGuidePosts([catalog.posts[0]], catalog.posts[0], 4).length, 0);
+});

@@ -8,6 +8,7 @@ const card = readFileSync(path.join(ROOT, "apps/web/src/components/guide/GuideCa
 const page = readFileSync(path.join(ROOT, "apps/web/src/app/guide/page.tsx"), "utf8");
 const articlePage = readFileSync(path.join(__dirname, "../apps/web/src/app/guide/[slug]/page.tsx"), "utf8");
 const productCard = readFileSync(path.join(ROOT, "apps/web/src/components/ProductCard.tsx"), "utf8");
+const grid = readFileSync(path.join(ROOT, "apps/web/src/components/guide/GuidePostGrid.tsx"), "utf8");
 
 test("a guide card is the same square box as a product card", () => {
   assert.match(card, /aspect-square/, "the guide card is not square");
@@ -22,7 +23,8 @@ test("the tall cover band and the excerpt are gone from the guide card", () => {
 });
 
 test("the guide grid matches the product grid", () => {
-  assert.match(page, /grid grid-cols-2 gap-2\.5 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4/);
+  assert.match(grid, /grid grid-cols-2 gap-2\.5 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4/);
+  assert.match(page, /<GuidePostGrid/, "the landing page no longer renders the grid component");
 });
 
 test("the Other Guide row opens a list of posts, not one article", () => {

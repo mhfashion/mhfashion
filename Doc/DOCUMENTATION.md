@@ -16,6 +16,28 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
+### 2026-11-21 — Guide landing shows "See more" under the boxes; articles carry related posts
+
+- **What the owner asked for.** Drop the "View All Posts" link in the Guide header and put a "see more"
+  under the post boxes instead; and keep showing other, related post boxes below an article.
+- **Landing grid.** `apps/web/src/components/guide/GuidePostGrid.tsx` renders every card the server sent,
+  hides the ones past `GUIDE_GRID_PAGE_SIZE` (8) with the `hidden` class and `data-guide-card="more"`, and
+  puts a centred **See more** pill (with the remaining count) under the grid; each press reveals another
+  eight. The pill and the header link are gone from `app/guide/page.tsx`, which instead renders a
+  `<noscript>` style that shows every card when JavaScript is off. A `key` built from category, query and
+  post count remounts the grid so a filter change starts again at eight cards.
+- **Related posts.** `relatedGuidePosts(posts, post, limit = 4)` in `lib/guides.ts` ranks same-category
+  posts first (4 points), then posts sharing a product link (2 each), keeps catalogue order for ties, and
+  never returns the article itself. `app/guide/[slug]/page.tsx` now uses it and lays the cards out on the
+  same 2 / 4 column grid as the landing page.
+- Files: `apps/web/src/app/guide/page.tsx`, `apps/web/src/app/guide/[slug]/page.tsx`,
+  `apps/web/src/components/guide/GuidePostGrid.tsx`, `apps/web/src/lib/guides.ts`,
+  `tests/guide-http.test.cjs`, `tests/guide-card.test.cjs`, `tests/guides.test.cjs`.
+- Validation: TypeScript clean; ESLint clean (two pre-existing warnings); `node --test tests/*.test.cjs`
+  **830/830**; guide HTTP suite 5/5 against the running server; Chromium at 1440×900 and 390×844 with
+  touch showed 8 of 12 cards + "See more 4" → all 12 with the pill gone, and four different related cards
+  under the payment article.
+
 ### 2026-11-18 — Text Free Transform now hugs the glyph ink, not the font line box
 
 - The owner reported again that both earlier text fixes were still not right, with the Free Transform box the more obvious one: the outline sat well away from the text, so the box looked about twice the height of the letters.

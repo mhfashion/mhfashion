@@ -30,6 +30,13 @@ test("guide landing serves article content and categories without JavaScript", a
   assert.equal(new Set(result.articleLinks).size, 12);
   assert.match(result.visible, /<h1\b/);
   assert.match(result.html, /MH Fashion Guide — Products, Design &amp; Payment/);
+  // The owner asked for "See more" under the boxes instead of a "View All Posts" link in the header.
+  assert.doesNotMatch(result.visible, /View All Posts/);
+  assert.match(result.visible, /data-guide-see-more/, "the grid has no See more control");
+  assert.match(result.html, /<noscript>/, "without JavaScript nothing would reveal the rest of the grid");
+  const more = [...result.visible.matchAll(/data-guide-card="(shown|more)"/g)].map((match) => match[1]);
+  assert.equal(more.filter((state) => state === "shown").length, 8, "the first page of the grid changed size");
+  assert.equal(more.filter((state) => state === "more").length, 4);
 });
 
 test("guide category and text search compose on the server", async () => {
@@ -54,6 +61,11 @@ test("article serves full text, table of contents, related guides and crawler me
   assert.match(result.visible, /On this page/);
   assert.match(result.visible, /Cash on delivery is not part of the plan/);
   assert.match(result.visible, /Keep exploring/);
+  // The other posts under the article are related to it and never the article itself.
+  const relatedSection = result.visible.split(/id="related-heading"/)[1] ?? "";
+  const relatedLinks = [...new Set([...relatedSection.matchAll(/href="(\/guide\/[^"?#]+)"/g)].map((match) => match[1]))];
+  assert.ok(relatedLinks.length >= 3, `only ${relatedLinks.length} related cards under the article`);
+  assert.ok(!relatedLinks.includes("/guide/payment-options-at-checkout"), "the article links itself as related");
   const head = result.html.split("</head>")[0];
   assert.match(head, /<title>MH Fashion payment and checkout guide<\/title>/);
   assert.match(head, /name="description"/);

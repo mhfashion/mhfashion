@@ -363,3 +363,25 @@ export function filterGuidePosts(
     return searchableText.includes(normalizedQuery);
   });
 }
+
+/** Cards the landing grid shows before "See more". */
+export const GUIDE_GRID_PAGE_SIZE = 8;
+
+/**
+ * Posts to put under an article: same category first, then posts that sell the same products, then any
+ * other post. The old rule was "same category only", which left the section empty for the newest post in a
+ * category and repeated the same three cards forever.
+ */
+export function relatedGuidePosts(posts: GuidePost[], post: GuidePost, limit = 4): GuidePost[] {
+  const productSlugs = new Set(post.productLinks.map((link) => link.slug));
+  return posts
+    .filter((item) => item.slug !== post.slug)
+    .map((item, index) => {
+      const sharedProducts = item.productLinks.filter((link) => productSlugs.has(link.slug)).length;
+      const sameCategory = item.categorySlug === post.categorySlug ? 4 : 0;
+      return { item, index, rank: sameCategory + sharedProducts * 2 };
+    })
+    .sort((a, b) => b.rank - a.rank || a.index - b.index)
+    .slice(0, Math.max(0, limit))
+    .map(({ item }) => item);
+}
