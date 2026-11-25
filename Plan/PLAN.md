@@ -1097,7 +1097,16 @@ This section records the current repository state and overrides earlier draft bu
 - `/popular` — best-selling products only; no filter controls; responsive product grid.
 - `/collections` — collection/category browsing page with compact horizontal category cards on phone.
 - `/mh-fashion` — MH Fashion collection page with category navigation, search/sort controls, responsive grid and sidebar filters. The Price Range fieldset/slider has been intentionally removed; Category, Size and In Stock controls remain presentational until filter behavior is connected.
-- `/nyein` — separate Nyein destination placeholder awaiting its final content/layout direction.
+- `/nyein` — separate Nyein destination. **Built 2026-11-21 (owner):** the page wears the home page's UI/UX —
+  the same `Header`, hero gradient and shape, `CategoryRow`, two product strips, the two promo tiles and `Footer` —
+  but nothing on it can be edited: no `AdSlotBanner`, no "Start Designing" and no `/create` link, the second promo
+  tile is a plain panel, and the strips read `getProductsBySubBrand(NYEIN_BRAND)` so only ready-made pieces appear
+  (five skeleton cards while the catalogue is empty, so the layout still reads as home). The footer shows at every
+  width here (`<Footer alwaysVisible />`) because the owner listed its blocks — FB/IG/TikTok/YT, SHOP, HELP, LEGAL,
+  NEWSLETTER, KBZPay/Wave Pay/AYA Pay, App Store/Google Play, Visa/Mastercard — as page content, and the home page
+  hides the footer below `md`. Verified in Chromium: `/nyein` 200 at 1440 × 900 and 390 × 844, every footer block
+  present at both widths, no sideways scroll, console clean; `tests/nyein-page.test.cjs` holds the parity, the
+  read-only rules and the footer blocks.
 - `/guide` and `/guide/[slug]` — server-rendered categorized Guide/blog listing and detail pages with Supabase/starter-data fallback, cover images, metadata and readable article layouts.
 - `/products/[slug]` — compact marketplace-style product detail with gallery, actual catalog details table, options, reviews, related products and Buy Now/Add to Cart/Edit Design actions.
 - `/create` — browser-local Fabric.js editor prototype with responsive desktop/phone workspace, tools, layers, text/elements, Product and separate Mockup controls. No site copyright strip or Footer is shown in this editor workspace.
@@ -1173,7 +1182,8 @@ This section records the current repository state and overrides earlier draft bu
 - Implement secure Post Admin and other admin modules.
 - Connect production mockup assets, R2 private asset routes, licensed fonts/text assets and upload flows.
 - Finish production-grade pixel editing, real masks/merge, node editing, AI tools and editor automated tests.
-- Replace placeholder Nyein content and account data with finalized requirements.
+- Replace account data with finalized requirements. The Nyein page is built (see `/nyein` above); its
+  products still need the Nyein brief and a real catalogue.
 - Add final SEO/structured-data, accessibility and phone/desktop visual QA as pages evolve.
 
 
