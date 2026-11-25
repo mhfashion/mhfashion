@@ -1383,9 +1383,15 @@ This section records the current repository state and overrides earlier draft bu
 - **The menu box no longer repeats "Editor Guide" (2026-11-21).** The `editor-guide` category was already
   a row in the menu box, so the extra shortcut row read "Editor Guide" twice (desktop sidebar and phone
   chip), which looks like a bug. That shortcut row is now labelled **Other Guide** in
-  `app/guide/page.tsx` (both) and in `app/guide/[slug]/page.tsx`; it keeps its `/guide/editor-guide` href
-  and its `data-guide-editor` hook. `tests/guide-card.test.cjs` asserts the label appears twice and the
-  article page shows it once, so a third copy or a relapse is caught.
+  `app/guide/page.tsx` (both) and in `app/guide/[slug]/page.tsx`, and it keeps its `data-guide-editor`
+  hook. It no longer opens an article (`/guide/editor-guide`): the owner wants every guide row to show
+  **posts**, so the row resolves an "other" category from the catalogue (`otherGuide`) and lists its
+  posts, falling back to the full post list (`/guide#articles`) when the catalogue has no such category.
+  The article page follows the same rule, so a reload of that page lists posts too.
+- **The guide filter header has no Clear control (2026-11-21).** The row above the post grid keeps only
+  "View All Posts"; the owner did not want a "Clear" link, so do not add it back.
+  `tests/guide-card.test.cjs` asserts the row is a listing (never `/guide/editor-guide`) and that no
+  "Clear" control is rendered.
 - **The guide hero is compact (2026-11-21).** `min-h-[96px]` on a phone, `sm:min-h-[124px]`,
   `lg:min-h-[132px]`, with the heading at `text-lg / sm:text-2xl / lg:text-[26px]`. The 196px desktop
   banner and the 5xl heading are gone; the banner is roughly 200px tall at 1440px wide.

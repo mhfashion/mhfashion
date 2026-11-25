@@ -25,17 +25,23 @@ test("the guide grid matches the product grid", () => {
   assert.match(page, /grid grid-cols-2 gap-2\.5 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4/);
 });
 
-test("the guide menu box carries an Editor Guide entry", () => {
+test("the Other Guide row opens a list of posts, not one article", () => {
   assert.equal(page.split("data-guide-editor").length - 1, 2, "expected the sidebar row and the phone chip");
-  assert.match(page, /href="\/guide\/editor-guide"/);
+  assert.doesNotMatch(page, /href="\/guide\/editor-guide"/, "the row is not a link to the editor article");
+  assert.match(page, /const otherGuideHref = otherGuide \? guideUrl\(otherGuide\.slug, query\) : guideUrl\("", query\);/, "the row lists the catch-all category, or every post");
+  assert.match(articlePage, /const otherGuideHref = otherGuide \? `\/guide\?category=\$\{encodeURIComponent\(otherGuide\.slug\)\}#articles` : "\/guide#articles";/);
+});
+
+test("the guide page has no Clear control", () => {
+  assert.doesNotMatch(page, />\s*Clear</, "the filter reset came back");
+  assert.doesNotMatch(page, /aria-label="Clear/);
 });
 
 test("the guide menu never shows two Editor Guides", () => {
-  // The category list already carries Editor Guide; the extra shortcut row is the other one.
+  // The category list already carries Editor Guide, so the extra row is the catch-all one, named by the catalogue.
   assert.equal(page.split(">Editor Guide</span>").length - 1, 0, "the phone chip still reads Editor Guide");
-  assert.equal((page.match(/Other Guide/g) || []).length, 2, "the sidebar row and the phone chip both say Other Guide");
-  assert.equal(articlePage.split("> Other Guide</Link>").length - 1, 1, "and so does the article page's menu box");
-  assert.equal(articlePage.split("Other Guide").length - 1, 1, "only the shortcut row is renamed there");
+  assert.equal((page.match(/otherGuideName/g) || []).length >= 2, true, "the row is rendered from the catalogue name");
+  assert.equal((articlePage.match(/otherGuideName/g) || []).length >= 2, true, "the article page's row takes the catalogue name too");
 });
 
 test("the guide hero stays compact", () => {

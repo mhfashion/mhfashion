@@ -786,6 +786,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `isDesignEditable` reads `subBrand` as well as `isCustomizable`, so a Nyein row is ready-made even when the
   column is unset. Ready-made products hide the Edit design action and show `READY_MADE_NOTE` instead.
 
+## Guide menu (`apps/web/src/app/guide/page.tsx`, `guide/[slug]/page.tsx`)
+- The row under the categories reads **Other Guide** and must open a **post list**, like every other guide row.
+  It resolves `otherGuide` from the catalogue (`/other/i` on slug or name) and links to that category's listing,
+  falling back to `/guide#articles`. Never point it at `/guide/editor-guide`: that is one article, not a guide.
+- The filter header above the post grid has **no "Clear" link** — the owner removed it. Only "View All Posts" stays.
+- `data-guide-editor` is the hook the HTTP tests strip; keep it on the row.
+
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
   `tests/canvas-shell.test.cjs` fails if they come back.

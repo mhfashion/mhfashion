@@ -1182,6 +1182,17 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — Other Guide lists posts, and the filter header loses "Clear"
+
+The extra row under the guide categories read "Other Guide" but still opened the editor-guide article, so it looked
+nothing like the rows around it. It now behaves like every other guide: the row looks up a catch-all category in the
+catalogue and links to that category's post list, and when the catalogue has no such category it links to the full
+post list (`/guide#articles`). The article page's menu box follows the same rule, so the row is never a link to a
+single article.
+
+The `Clear` link that appeared beside "Latest Guides" when a search or category filter was active is removed; the
+header keeps only "View All Posts". `tests/guide-card.test.cjs` covers both rules.
+
 ### 2026-11-21 — The footer stays on the home page
 
 The Nyein page had picked up the full `Footer` (brand, SHOP/HELP/LEGAL, newsletter, payment blocks) along with the

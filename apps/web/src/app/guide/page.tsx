@@ -12,7 +12,6 @@ import {
   Shirt,
   Sparkles,
   Star,
-  X,
 } from "lucide-react";
 import AdSlotBanner from "@/components/AdSlotBanner";
 import Header from "@/components/Header";
@@ -92,6 +91,11 @@ export default async function GuidePage({ searchParams }: PageProps) {
   const posts = filterGuidePosts(catalog.posts, selectedCategory, query);
   const featured = !selectedCategory && !query ? catalog.posts.find((post) => post.featured) ?? catalog.posts[0] : undefined;
   const categoryCounts = new Map(catalog.categories.map((category) => [category.slug, catalog.posts.filter((post) => post.categorySlug === category.slug).length]));
+  // "Other Guide" opens a post list like every other guide, never a single article. When the catalogue has its own
+  // catch-all category this row shows that category's posts; otherwise it falls back to the full post list.
+  const otherGuide = catalog.categories.find((category) => /other/i.test(category.slug) || /other/i.test(category.name));
+  const otherGuideName = otherGuide?.name ?? "Other Guide";
+  const otherGuideHref = otherGuide ? guideUrl(otherGuide.slug, query) : guideUrl("", query);
 
   return (
     <div>
@@ -116,9 +120,9 @@ export default async function GuidePage({ searchParams }: PageProps) {
                   {category.name}
                 </Link>
               ))}
-              <Link href="/guide/editor-guide" data-guide-editor className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg">
+              <Link href={otherGuideHref} data-guide-editor className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold ${otherGuide && selectedCategory === otherGuide.slug ? "bg-accent/10 text-accent" : "hover:bg-bg"}`}>
                 <span className="flex h-7 w-7 items-center justify-center text-text-secondary"><Pencil size={16} aria-hidden="true" /></span>
-                Other Guide
+                {otherGuideName}
               </Link>
               <div className="my-2 border-t border-border" />
               <Link href="/faq" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> FAQ</Link>
@@ -154,9 +158,9 @@ export default async function GuidePage({ searchParams }: PageProps) {
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><BookOpen size={13} /></span>
                 <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">All Guides</span>
               </Link>
-              <Link href="/guide/editor-guide" data-guide-editor className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4">
+              <Link href={otherGuideHref} data-guide-editor className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Pencil size={13} /></span>
-                <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">Other Guide</span>
+                <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">{otherGuideName}</span>
               </Link>
               {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
               <Link href="/faq" className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4">
@@ -172,7 +176,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
                   <p className="mt-1 pl-4 text-xs text-text-muted">{posts.length} {posts.length === 1 ? "post" : "posts"}{activeCategory ? ` in ${activeCategory.name}` : ""}</p>
                 </div>
                 <div className="flex items-center justify-end">
-                  {(query || selectedCategory) ? <Link href="/guide#articles" className="flex items-center gap-1 text-xs font-semibold text-accent"><X size={13} /> Clear</Link> : <Link href={guideUrl("", "")} className="hidden text-xs font-semibold text-accent sm:inline-flex sm:items-center">View All Posts <ArrowRight size={14} className="ml-1" /></Link>}
+                  <Link href={guideUrl("", "")} className="hidden text-xs font-semibold text-accent sm:inline-flex sm:items-center">View All Posts <ArrowRight size={14} className="ml-1" /></Link>
                 </div>
               </div>
 

@@ -21,7 +21,12 @@ test("guide landing serves article content and categories without JavaScript", a
   assert.match(result.visible, /Payment Guide/);
   assert.match(result.visible, /How MH Fashion products are organized/);
   assert.match(result.visible, /Editor Guide/);
-  assert.ok(result.visible.includes('href="/guide/editor-guide"'), "the Editor Guide is missing from the guide menu");
+  const menuRows = [...result.visible.matchAll(/<a\b[^>]*data-guide-editor[^>]*>/g)].map((match) => match[0]);
+  assert.ok(menuRows.length >= 1, "the Other Guide row is missing from the guide menu");
+  for (const row of menuRows) {
+    assert.ok(!row.includes('href="/guide/editor-guide"'), "the Other Guide row must list posts, not open one article");
+    assert.match(row, /href="\/guide(\?category=[^"]*)?#articles"/, "the row opens a post list");
+  }
   assert.equal(new Set(result.articleLinks).size, 12);
   assert.match(result.visible, /<h1\b/);
   assert.match(result.html, /MH Fashion Guide — Products, Design &amp; Payment/);
@@ -35,7 +40,7 @@ test("guide category and text search compose on the server", async () => {
   const query = await page("/guide?category=payment-guide&q=KBZPay");
   assert.equal(query.response.status, 200);
   assert.deepEqual([...new Set(query.articleLinks)], ["/guide/payment-options-at-checkout"]);
-  assert.match(query.visible, /Clear/);
+  assert.ok(!/>\s*Clear</.test(query.visible), "the guide filter header should carry no Clear control");
   const empty = await page("/guide?q=keyword-that-does-not-exist");
   assert.equal(empty.response.status, 200);
   assert.match(empty.visible, /No guides match your search/);
