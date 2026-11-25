@@ -344,7 +344,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 ## Deployment (important)
 - Production deploys run through `.github/workflows/deploy-cloudflare.yml` on push to `main`.
 - The job's **first step** verifies the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets. If either is missing it exits 1 and every later step is skipped, so **the Cloudflare Worker is never deployed**.
-- As of 2026-11-18 the repository has **no Actions secrets configured**, so every `main` deploy has failed at that step. A merged change does not reach production until those two secrets are added in GitHub → Settings → Secrets and variables → Actions.
+- As of 2026-11-18 the repository had **no Actions secrets configured**, so the GitHub workflow's deploy step failed. A merged change still reaches production: the Cloudflare **Workers Builds** integration deploys `main` on its own. Verified 2026-11-21 — push `93d8ffe` appeared at `https://mhfashion.mhfashionmm.workers.dev` about two minutes later (`/nyein` served the new footer class). Check the live URL before blaming a deploy.
 
 ## CI notes
 - The `Workers Builds: mhfashion` check fails on **every** branch, including `main` (`f0b20ab`) and every PR branch. It is a Cloudflare-side build, not the GitHub workflow above, and it fails identically on unmodified commits. Do not treat it as a regression from your change.
