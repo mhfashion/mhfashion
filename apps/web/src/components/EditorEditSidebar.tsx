@@ -3,7 +3,9 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Grid3x3,
   ImagePlus,
+  Images,
   Search,
   Shapes,
   LayoutTemplate,
@@ -24,16 +26,21 @@ import type {
   DesignLibraryLayer,
   DesignLibraryText,
 } from "@/lib/editor-design-library";
+import { MH_PATTERN_LAYERS } from "@/lib/editor-pattern-library";
+import { MH_PHOTO_LIBRARY } from "@/lib/editor-photo-library";
+import type { PhotoLibraryEntry } from "@/lib/editor-photo-library";
 import { formatByteSize } from "@/lib/editor-upload";
 
-type SidebarSection = "Designs" | "Elements" | "Text" | "Upload" | "Image Create";
+type SidebarSection = "Designs" | "Elements" | "Photos" | "Patterns" | "Text" | "Uploads" | "Image Create";
 
 const PANEL_WIDTH = "min(17rem, 86vw)";
 const SIDEBAR_TOOLS: { label: SidebarSection; Icon: typeof LayoutTemplate }[] = [
   { label: "Designs", Icon: LayoutTemplate },
   { label: "Elements", Icon: Shapes },
+  { label: "Photos", Icon: Images },
+  { label: "Patterns", Icon: Grid3x3 },
   { label: "Text", Icon: Type },
-  { label: "Upload", Icon: Upload },
+  { label: "Uploads", Icon: Upload },
   { label: "Image Create", Icon: Sparkles },
 ];
 
@@ -74,6 +81,24 @@ function ElementCard({ layer, onAdd }: { layer: DesignLibraryLayer; onAdd: () =>
   );
 }
 
+function PhotoCard({ photo, onAdd }: { photo: PhotoLibraryEntry; onAdd: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      title={photo.name}
+      aria-label={"Add " + photo.name + " photo to the canvas"}
+      className={CARD_BUTTON}
+    >
+      <span className={CARD_FRAME}>
+        {/* The photo is a remote placeholder until licensed stock lands in R2. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={photo.url} alt="" loading="lazy" className="h-full w-full object-cover" />
+      </span>
+    </button>
+  );
+}
+
 function SearchField({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
   return (
     <label className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-bg px-2.5 text-text-secondary [@media(pointer:coarse)]:h-11">
@@ -100,6 +125,7 @@ type PanelProps = {
   onAddDesign: (design: DesignLibraryEntry) => void;
   onAddElement: (layer: DesignLibraryLayer) => void;
   onAddText: (text?: DesignLibraryText | null) => void;
+  onAddPhoto: (photo: PhotoLibraryEntry) => void;
   onUploadImage: (file: File) => void;
 };
 
@@ -110,6 +136,7 @@ function PanelContent({
   onAddDesign,
   onAddElement,
   onAddText,
+  onAddPhoto,
   onUploadImage,
 }: PanelProps) {
   const [search, setSearch] = useState("");
@@ -150,6 +177,43 @@ function PanelContent({
     );
   }
 
+  if (section === "Photos") {
+    const photos = MH_PHOTO_LIBRARY.filter((photo) => !needle || photo.name.toLowerCase().includes(needle));
+    return (
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+        <SearchField value={search} onChange={setSearch} placeholder="Search photos" />
+        <SectionHeading>Shop photo library</SectionHeading>
+        <div aria-label="Photo library" className="grid grid-cols-2 gap-2">
+          {photos.map((photo) => (
+            <PhotoCard key={photo.id} photo={photo} onAdd={() => onAddPhoto(photo)} />
+          ))}
+        </div>
+        {photos.length === 0 && <p className="text-[10px] text-text-muted">No photo matches that search.</p>}
+        {MH_PHOTO_LIBRARY.some((photo) => photo.placeholder) && (
+          <p className="text-[10px] leading-relaxed text-text-muted">
+            Placeholder stock: licensed photographs replace these when the R2 photo library is connected.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (section === "Patterns") {
+    const patterns = MH_PATTERN_LAYERS.filter((layer) => !needle || layer.name.toLowerCase().includes(needle));
+    return (
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+        <SearchField value={search} onChange={setSearch} placeholder="Search patterns" />
+        <SectionHeading>Pattern fills</SectionHeading>
+        <div aria-label="Pattern library" className="grid grid-cols-2 gap-2">
+          {patterns.map((layer) => (
+            <ElementCard key={layer.id} layer={layer} onAdd={() => onAddElement(layer)} />
+          ))}
+        </div>
+        {patterns.length === 0 && <p className="text-[10px] text-text-muted">No pattern matches that search.</p>}
+      </div>
+    );
+  }
+
   if (section === "Text") {
     const textLayers = MH_DESIGN_TEXT_LAYERS.filter((layer) => !needle || layer.name.toLowerCase().includes(needle));
     return (
@@ -173,7 +237,7 @@ function PanelContent({
     );
   }
 
-  if (section === "Upload") {
+  if (section === "Uploads") {
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <label className="flex min-h-20 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-accent bg-accent/10 px-3 text-center text-xs font-semibold text-accent outline-none hover:bg-accent/15 focus-within:ring-2 focus-within:ring-accent">
@@ -245,6 +309,7 @@ export default function EditorEditSidebar({
   onAddDesign,
   onAddElement,
   onAddText,
+  onAddPhoto,
   onUploadImage,
 }: {
   open: boolean;
@@ -254,6 +319,7 @@ export default function EditorEditSidebar({
   onAddDesign: (design: DesignLibraryEntry) => void;
   onAddElement: (layer: DesignLibraryLayer) => void;
   onAddText: (text?: DesignLibraryText | null) => void;
+  onAddPhoto: (photo: PhotoLibraryEntry) => void;
   onUploadImage: (file: File) => void;
 }) {
   const [railVisible, setRailVisible] = useState(false);
@@ -315,6 +381,7 @@ export default function EditorEditSidebar({
             onAddDesign={onAddDesign}
             onAddElement={onAddElement}
             onAddText={onAddText}
+            onAddPhoto={onAddPhoto}
             onUploadImage={onUploadImage}
           />
         </aside>

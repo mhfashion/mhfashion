@@ -874,6 +874,21 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The filter header above the post grid has **no "Clear" link** — the owner removed it. Only "View All Posts" stays.
 - `data-guide-editor` is the hook the HTTP tests strip; keep it on the row.
 
+## Edit sidebar rail (`apps/web/src/components/EditorEditSidebar.tsx`)
+- The rail order is **Designs, Elements, Photos, Patterns, Text, Uploads, Image Create**, and
+  `tests/canvas-shell.test.cjs` pins that order; `tests/editor-touch.cjs` pins the seven
+  `Open <Section> in Edit sidebar` labels.
+- Photos come from `lib/editor-photo-library.ts` (`MH_PHOTO_LIBRARY`, placeholder Lorem Picsum stock with
+  `placeholder: true`) and enter the canvas through `addCanvasPhoto` in `EditorCanvas`, which builds an
+  image layer with `imageLayerBox`. Patterns come from `lib/editor-pattern-library.ts`
+  (`MH_PATTERN_LIBRARY` -> `MH_PATTERN_LAYERS`) and enter through the Elements path, because a pattern is
+  a shape layer.
+- Pattern `d` strings must stay inside the 1000 x 1200 artwork space: unclipped diagonal bars made the
+  layer bounds reach -1200..2194 and hung the transform box a canvas-width off each side. Tile widths
+  also have to be computed, not hand-counted (the first wave tile covered a quarter of the canvas).
+- Adding a canvas insertion means bumping the `revealLayersStack();` count assertion in
+  `tests/canvas-shell.test.cjs` (it is 6: text, element, design, photo, upload, gradient).
+
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
   `tests/canvas-shell.test.cjs` fails if they come back.

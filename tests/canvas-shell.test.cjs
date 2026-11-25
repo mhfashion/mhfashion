@@ -807,7 +807,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /function toggleEditSidebar\(\)[\s\S]*?matchMedia\("\(max-width: 767px\)"\)[\s\S]*?setLayersOpen\(false\)/);
   assert.match(source, /const closeSidebarsBeforeTheyOverlap = \(event: MediaQueryListEvent\)[\s\S]*?setLayersOpen\(false\)[\s\S]*?setEditSidebarOpen\(false\)/);
   assert.match(source, /addEventListener\("change", closeSidebarsBeforeTheyOverlap\)/);
-  assert.match(source, /<EditorEditSidebar[\s\S]*?open=\{editSidebarOpen\}[\s\S]*?onAddDesign=\{addCanvasDesign\}[\s\S]*?onAddElement=\{addCanvasElementLayer\}[\s\S]*?onAddText=\{addCanvasTextLayer\}[\s\S]*?onUploadImage=\{addCanvasUpload\}/);
+  assert.match(source, /<EditorEditSidebar[\s\S]*?open=\{editSidebarOpen\}[\s\S]*?onAddDesign=\{addCanvasDesign\}[\s\S]*?onAddElement=\{addCanvasElementLayer\}[\s\S]*?onAddText=\{addCanvasTextLayer\}[\s\S]*?onAddPhoto=\{addCanvasPhoto\}[\s\S]*?onUploadImage=\{addCanvasUpload\}/);
   assert.match(editSidebar, /aria-label=\{activeSection \+ " editor sidebar"\}/);
   assert.match(editSidebar, /data-dock-side="left"/);
   assert.match(editSidebar, /\{railVisible && \(/);
@@ -825,9 +825,19 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /border-border bg-bg px-3 text-text-primary/);
   assert.match(editSidebar, /"Open " \+ label \+ " in Edit sidebar"/);
   assert.match(editSidebar, /setActiveSection\(section\)/);
-  for (const label of ["Designs", "Elements", "Text", "Upload", "Image Create"]) {
+  for (const label of ["Designs", "Elements", "Photos", "Patterns", "Text", "Uploads", "Image Create"]) {
     assert.match(editSidebar, new RegExp(`label: "${label}"`));
   }
+  // The owner asked for Photos and Patterns as their own categories, in this rail order.
+  const railOrder = [...editSidebar.matchAll(/\{ label: "(\w[\w ]*)", Icon:/g)].map((match) => match[1]);
+  assert.deepEqual(railOrder, ["Designs", "Elements", "Photos", "Patterns", "Text", "Uploads", "Image Create"]);
+  assert.match(editSidebar, /Search photos/);
+  assert.match(editSidebar, /aria-label="Photo library"/);
+  assert.match(editSidebar, /onAddPhoto\(photo\)/);
+  assert.match(editSidebar, /Search patterns/);
+  assert.match(editSidebar, /aria-label="Pattern library"/);
+  assert.match(editSidebar, /MH_PHOTO_LIBRARY/);
+  assert.match(editSidebar, /MH_PATTERN_LAYERS/);
   assert.match(editSidebar, /Search designs/);
   assert.match(editSidebar, /MH Fashion designs/);
   assert.match(editSidebar, /Search elements/);
@@ -937,7 +947,7 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(source, /const hotspot = "2 2"/);
   // Every sidebar addition must be reachable in the Layers stack.
   assert.match(source, /function revealLayersStack\(\)[\s\S]*?min-width: 768px[\s\S]*?setLayersOpen\(true\)/);
-  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 5, "Only explicit text, element, design, upload and gradient insertion reveals Layers");
+  assert.equal((source.match(/revealLayersStack\(\);/g) ?? []).length, 6, "Only explicit text, element, design, photo, upload and gradient insertion reveals Layers");
   assert.match(layersPanel, /EditorLayerPreview paths=\{layer\.shape\?\.paths\} shapeStyle=\{layer\.shape \? resolveEditorShapeStyle\(layer\.shape\) : null\} text=\{layer\.text\} image=\{layer\.image\}/);
   assert.match(toolsBar, /aria-label="Swap foreground and background colors"/);
   assert.match(source, /canvasLayerTransforms/);
@@ -960,6 +970,16 @@ test("Sidebar catalogs come from the MH Fashion design library and uploads honou
   assert.match(designLibrary, /designLayerToEditorLayer/);
   assert.match(designLibrary, /designToEditorLayers/);
   assert.match(designLibrary, /pending-r2-endpoint/, "R2 SVG listing is still the pending source");
+  // Photos and Patterns are their own libraries, and a pattern is a shape layer the canvas already knows.
+  const photoLibrary = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-photo-library.ts"), "utf8");
+  const patternLibrary = readFileSync(path.join(__dirname, "../apps/web/src/lib/editor-pattern-library.ts"), "utf8");
+  assert.match(photoLibrary, /export const MH_PHOTO_LIBRARY: PhotoLibraryEntry\[\]/);
+  assert.match(photoLibrary, /placeholder: true/, "placeholder stock is marked, not passed off as licensed");
+  assert.match(patternLibrary, /export const MH_PATTERN_LIBRARY: PatternLibraryEntry\[\]/);
+  assert.match(patternLibrary, /export function patternToDesignLayer/);
+  assert.match(patternLibrary, /export const MH_PATTERN_LAYERS/);
+  assert.match(source, /function addCanvasPhoto\(photo: PhotoLibraryEntry\)/);
+  assert.match(source, /createEditorImageLayer\(id, photo\.name, \{/);
   // Uploads are reduced to the registered KB/MB policy before they reach the canvas.
   assert.match(uploadSource, /export const UPLOAD_MAX_BYTES/);
   assert.match(uploadSource, /await createImageBitmap\(file\)/);

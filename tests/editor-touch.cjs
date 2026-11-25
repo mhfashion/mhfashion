@@ -413,8 +413,10 @@ async function main() {
     assert.deepEqual(editRail, [
       "Open Designs in Edit sidebar",
       "Open Elements in Edit sidebar",
+      "Open Photos in Edit sidebar",
+      "Open Patterns in Edit sidebar",
       "Open Text in Edit sidebar",
-      "Open Upload in Edit sidebar",
+      "Open Uploads in Edit sidebar",
       "Open Image Create in Edit sidebar",
     ], "The phone Edit toggle opens the section rail first");
     await tap('button[aria-label="Open Text in Edit sidebar"]');

@@ -103,6 +103,7 @@ import type {
   DesignLibraryLayer,
   DesignLibraryText,
 } from "@/lib/editor-design-library";
+import type { PhotoLibraryEntry } from "@/lib/editor-photo-library";
 import {
   UPLOAD_MAX_BYTES,
   compressImageUpload,
@@ -2687,6 +2688,29 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     revealLayersStack();
   }
 
+  // A photo from the sidebar is already on a URL, so it enters the canvas the way an upload does:
+  // an image layer fitted to the print area, selected, with the Layers stack revealed.
+  function addCanvasPhoto(photo: PhotoLibraryEntry) {
+    const id = claimLayerId();
+    const box = imageLayerBox(photo.width, photo.height);
+    setLayers((current) => [
+      createEditorImageLayer(id, photo.name, {
+        src: photo.url,
+        byteSize: 0,
+        sourceWidth: photo.width,
+        sourceHeight: photo.height,
+        ...box,
+      }),
+      ...current,
+    ]);
+    setSelectedLayerId(id);
+    setSelectedLayerIds([id]);
+    setSelectedTarget("artwork");
+    setEditingTextLayerId(null);
+    setToolNotice(`${photo.name} photo added to the canvas.`);
+    revealLayersStack();
+  }
+
   async function addCanvasUpload(file: File) {
     try {
       const compressed = await compressImageUpload(file);
@@ -3342,6 +3366,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           onAddDesign={addCanvasDesign}
           onAddElement={addCanvasElementLayer}
           onAddText={addCanvasTextLayer}
+          onAddPhoto={addCanvasPhoto}
           onUploadImage={addCanvasUpload}
         />
         {adjustmentsOpen && <EditorAdjustmentsPanel

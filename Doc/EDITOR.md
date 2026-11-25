@@ -273,8 +273,10 @@ section:
 |---|---|
 | Designs | MH Fashion designs, each added to the canvas as layers |
 | Elements | the individual layers of those designs as thumbnail cards, plus a search field |
+| Photos | a photo library of thumbnail cards, each added as an image layer fitted to the print area |
+| Patterns | nine generated pattern fills, each added as a full-canvas shape layer |
 | Text | `Add Text` and the text layers that exist in the designs |
-| Upload | upload an image to the canvas, and the images already uploaded |
+| Uploads | upload an image to the canvas, and the images already uploaded |
 | Image Create | a prompt field for generated images |
 
 The rail stays visible while a panel is open, and choosing another rail item swaps the panel content.
@@ -282,6 +284,19 @@ Anything added here also appears in the Layers box.
 
 The design library is a local placeholder until the storage endpoint exists
 (`DESIGN_LIBRARY_STATUS = "pending-r2-endpoint"` in `lib/editor-design-library.ts`).
+
+**Photos** (`lib/editor-photo-library.ts`) is a nine-entry stock library. Until licensed photographs are
+bought, every entry points at Lorem Picsum with a fixed seed and carries `placeholder: true`, and the panel
+says so in a footnote. Adding one calls `addCanvasPhoto`, which builds an image layer with the entry's URL
+and its own pixel size through `imageLayerBox`, so the photo lands fitted to the print area exactly like an
+upload. Replacing the `url` with an R2 object and clearing `placeholder` is the whole migration.
+
+**Patterns** (`lib/editor-pattern-library.ts`) are generated, not stored: dots, micro dots, diagonal
+stripes, hairlines, grid, waves, checker, crosses and terrazzo, each a `d` string that already tiles the
+1000 x 1200 artwork space. A pattern is a shape layer (`patternToDesignLayer`), so it enters the canvas
+through the Elements path and the customer can move, scale and rotate it with the tools they already have.
+The tiles are trimmed to the canvas rectangle — an unclipped diagonal stripe doubled the layer's bounds and
+hung the transform box a canvas-width off each side.
 
 ## 15. Undo, state and the draft
 

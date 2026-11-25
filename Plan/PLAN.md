@@ -4209,3 +4209,29 @@ the owner's step (documented in `App/README.md`).
 
 `App` is now an allowed repository-root entry in `tests/repo-layout.test.cjs`, and the app is described
 in `Doc/APP.md`.
+
+## 2026-11-21 — Edit sidebar: Photos and Patterns join Designs, Elements, Text, Uploads and Image Create
+
+The owner asked for two more categories in the Edit sidebar rail, so the rail now reads **Designs,
+Elements, Photos, Patterns, Text, Uploads, Image Create** (the old "Upload" label became "Uploads" to
+match the rest of the list).
+
+- **Photos** (`lib/editor-photo-library.ts`, `MH_PHOTO_LIBRARY`) — nine thumbnail cards with a search
+  field. Adding one calls `addCanvasPhoto` in `EditorCanvas`, which builds an image layer from the
+  photo's URL and pixel size through `imageLayerBox`, so it lands fitted to the print area exactly as an
+  upload does, is selected, and reveals the Layers stack. The entries are placeholder stock (Lorem
+  Picsum, fixed seeds, `placeholder: true`) until licensed photographs are bought; the panel says so, and
+  the migration is "point `url` at the R2 object and clear the flag".
+- **Patterns** (`lib/editor-pattern-library.ts`, `MH_PATTERN_LIBRARY` / `MH_PATTERN_LAYERS`) — nine
+  generated fills: dots, micro dots, diagonal stripes, hairlines, grid, waves, checker, crosses,
+  terrazzo. Each is a `d` string that already tiles the 1000 x 1200 artwork space, wrapped by
+  `patternToDesignLayer` into a shape layer, so it enters the canvas through the existing element path
+  and can be moved, scaled and rotated with the normal tools. The tiles are trimmed to the canvas
+  rectangle: the first diagonal-stripe version drew unclipped parallelograms whose bounds reached from
+  -1200 to 2194, which would have hung the transform box a canvas-width off each side.
+
+Checks: `npx tsc -p apps/web/tsconfig.json --noEmit` clean, `eslint` clean on the four changed files,
+`node --test tests/*.test.cjs` **829 passing, 0 failing** (the shell test now pins the rail order and the
+new panels; the touch test expects the seven rail buttons). The nine pattern tiles were rendered in
+Chromium and inspected as an image: every tile covers its canvas, and the wave rows span the full width
+(the first version only reached a quarter of it).
