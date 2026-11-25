@@ -47,7 +47,7 @@ test("ready-made products stay buyable: no editor link, no draft artwork", () =>
 
 test("the Nyein page lists the Nyein brand from the catalogue", () => {
   assert.match(nyein, /getProductsBySubBrand\(NYEIN_BRAND\)/);
-  assert.match(nyein, /ProductCard/);
+  assert.match(nyein, /NyeinPieceCard/);
   assert.equal(/placeholder|ready for the layout and content direction/i.test(nyein), false);
   assert.match(products, /export async function getProductsBySubBrand/);
   assert.match(products, /\.ilike\("sub_brand", subBrand\)/);

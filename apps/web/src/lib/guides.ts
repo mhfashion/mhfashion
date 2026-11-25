@@ -285,6 +285,10 @@ async function loadGuideCatalog(): Promise<GuideCatalog> {
       .map((row) => parseGuidePost(row as GuidePostRow, categorySlugsById))
       .filter((post): post is GuidePost => post !== null);
 
+    // An empty posts table (categories published, nothing written yet) must not blank the Guide page:
+    // the built-in catalogue carries the size, editor, product, design, payment and delivery guides.
+    if (!posts.length) return GUIDE_STARTER_CATALOG;
+
     return { categories, posts, source: "supabase" };
   } catch (error) {
     console.error("getGuideCatalog failed:", error);

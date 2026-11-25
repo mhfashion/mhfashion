@@ -1182,6 +1182,21 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — Nyein boxes carry Buy / Add to Cart, and the Guide page keeps its articles
+
+Two owner reports, both fixed.
+
+- **Nyein boxes were empty placeholders.** The strips now render `NyeinPieceCard`, which shows the piece, its price
+  and two buttons — Buy (adds the piece and opens the cart) and Add to Cart (adds the piece and confirms with
+  "Added to Cart"). Because the catalogue carries no Nyein rows yet, `lib/nyein-pieces.ts` supplies eight ready-made
+  pieces with `isCustomizable: "none"`; the catalogue takes over, with product-page links, as soon as it has Nyein
+  rows. Nothing on a card opens the editor. Verified in Chromium: 10 cards, each with both buttons; Add to Cart put
+  "Nyein Oversized Tee" in `mh-fashion-cart-items` and the cart page listed it; Buy landed on `/cart` with the piece.
+- **The Guide page listed only its categories.** Production had the guide tables but no published posts, and the
+  loader treated that as a finished empty catalogue, so no article appeared. It now falls back to the built-in
+  handbook (12 articles across six categories: Editor, Size, Product, Design, Payment, Delivery) whenever the live
+  posts list is empty, and a live post still wins over the handbook when one exists.
+
 ### 2026-11-21 — The footer shows on a phone, everywhere
 
 The owner kept listing the footer blocks — FB/IG/TikTok/YT, SHOP, HELP, LEGAL, NEWSLETTER, MYANMAR PAYMENT,

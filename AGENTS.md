@@ -355,6 +355,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 ## The print canvas element
 - `<canvas aria-label="Blank print canvas">` is a **layout box**, not a bitmap: the artwork paints in the SVG layers above it and nothing calls `getContext`. Its backing store is `PRINT_CANVAS_BACKING_SPEC` (900x1080 = 972k px) because a real 4500x5400 store is 24.3 M px (~97 MB) and older iOS refuses a canvas above 16.7 M px. The print size lives in `PRINT_CANVAS_SPEC` and the `data-canvas-*` attributes, so keep those when changing the display size. Verified: backing 900x1080, attributes 4500/5400/300, on-screen box unchanged.
 
+## Nyein pieces and the guide catalogue
+- Nyein boxes are `NyeinPieceCard`, never `ProductCard`: the owner wants Buy and Add to Cart on every box. The card
+  adds through `useCart()`, takes the price from `formatRangeKs`, and never links to `/create`. `lib/nyein-pieces.ts`
+  supplies eight `isCustomizable: "none"` pieces until the catalogue has Nyein rows; then the catalogue wins and the
+  card links to `/products/<slug>`.
+- `getGuideCatalog` falls back to `GUIDE_STARTER_CATALOG` when the live `guide_posts` table returns no published
+  rows. A live-but-empty table used to blank the Guide page, which the owner reported as "only the size guide exists".
+  A published live post still replaces the handbook.
+
 ## Footer blocks are page content
 - The owner lists the footer blocks (FB/IG/TikTok/YT, SHOP, HELP, LEGAL, NEWSLETTER, MYANMAR PAYMENT, DOWNLOAD OUR
   APP, INTERNATIONAL PAYMENT) as things the page must show, so `Footer` renders at every width — do not put

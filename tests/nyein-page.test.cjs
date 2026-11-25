@@ -10,13 +10,31 @@ const home = read("apps/web/src/app/page.tsx");
 const footer = read("apps/web/src/components/Footer.tsx");
 
 test("the Nyein page wears the home page's UI", () => {
-  for (const component of ["Header", "Footer", "CategoryRow", "ProductCard"]) {
+  for (const component of ["Header", "Footer", "CategoryRow"]) {
     assert.match(nyein, new RegExp(`import ${component} from "@/components/${component}"`), `reuses ${component}`);
     assert.match(home, new RegExp(`import ${component} from "@/components/${component}"`), `home also uses ${component}`);
   }
   assert.match(nyein, /getProductsBySubBrand\(NYEIN_BRAND\)/);
+  assert.match(nyein, /NyeinPieceCard/, "the boxes are Nyein's own card");
   assert.match(nyein, /rounded-2xl bg-gradient-to-r from-\[#efffdc\]/, "the same hero gradient as home");
   assert.match(nyein, /max-w-\[1480px\]/, "and the same page width");
+});
+
+test("every Nyein box can be bought or added to the cart", () => {
+  const card = read("apps/web/src/components/NyeinPieceCard.tsx");
+  const pieces = read("apps/web/src/lib/nyein-pieces.ts");
+  assert.match(card, /useCart\(\)/);
+  assert.match(card, /addItem\(piece\)/);
+  assert.match(card, /data-nyein-buy=/);
+  assert.match(card, /data-nyein-cart=/);
+  assert.match(card, /t\("product\.buy"\)/);
+  assert.match(card, /t\("product\.addToCart"\)/);
+  assert.match(card, /window\.location\.href = "\/cart"/);
+  assert.doesNotMatch(card, /\/create/, "a ready-made piece never opens the editor");
+  const count = (pieces.match(/slug: "/g) || []).length;
+  assert.ok(count >= 8, `the shelf carries pieces to buy, found ${count}`);
+  assert.match(pieces, /isCustomizable: "none"/);
+  assert.match(nyein, /catalogue\.length \? catalogue : NYEIN_PIECES/, "the catalogue takes over when it has Nyein rows");
 });
 
 test("nothing on the Nyein page can be edited", () => {

@@ -186,10 +186,24 @@ test("guide search normalizes whitespace and case and searches article body", ()
   assert.equal(guides.filterGuidePosts(catalog.posts, "", "unfindable-keyword").length, 0);
 });
 
-test("successful empty live catalog never resurrects starter posts", async (t) => {
+test("a live catalog with no published posts falls back to the handbook", async (t) => {
   configureSupabase(t);
   const catalog = await loadGuides().getGuideCatalog();
-  assert.deepEqual(catalog, { categories: [], posts: [], source: "supabase" });
+  assert.equal(catalog.source, "starter");
+  assert.ok(catalog.posts.length >= 12, "the Guide page keeps its articles");
+  assert.ok(new Set(catalog.posts.map((post) => post.categorySlug)).size >= 6, "across every category");
+});
+
+test("published live posts win over the handbook", async (t) => {
+  configureSupabase(t);
+  const data = starter();
+  const category = data.categories[0];
+  const catalog = await loadGuides({
+    guide_categories: { data: [category], error: null },
+    guide_posts: { data: [livePost(data.posts[0], category)], error: null },
+  }).getGuideCatalog();
+  assert.equal(catalog.source, "supabase");
+  assert.deepEqual(catalog.posts.map((post) => post.slug), [data.posts[0].slug]);
 });
 
 test("only explicit missing-table error codes allow starter fallback", async (t) => {
