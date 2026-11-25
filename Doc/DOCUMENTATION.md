@@ -1182,6 +1182,20 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — The handbook can finally be published to the database
+
+The Guide page reads `guide_categories` / `guide_posts` whenever those tables exist, and nothing in the app ever wrote
+them, so a deployed site rendered an empty handbook no matter what the code said. `guides.ts` deliberately keeps an
+empty live catalogue empty (see "successful empty live catalog never resurrects starter posts"), so the fix is to seed
+the tables rather than to resurrect the starter posts at render time.
+
+- `apps/web/src/lib/guide-seed.ts` — `guideSeedRows(catalog, publishedAt)` maps the starter catalogue to the exact row
+  shapes the loader parses, keeping the starter ids so re-running updates posts in place. A post pointing at an unknown
+  category throws instead of writing an orphan.
+- `scripts/seed-guide.cjs` (`npm run guide:seed`) upserts both tables with the service-role key. Without
+  `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` it prints the rows and writes nothing; `--dry-run` does the same
+  deliberately.
+
 ### 2026-11-24 — A gradient layer's angle is a number, not only a drag
 
 The gradient axis could only be set by dragging, so nudging it to exactly 45° was guesswork.
