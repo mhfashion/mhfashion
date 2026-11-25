@@ -4323,28 +4323,31 @@ Cart, with no Edit Design and no ready-made line in the box; a preview page rend
 with the default groups (Size, Color, Material, Fit Type, Sleeve, GSM) and with an admin subset (Size +
 one-colour Color + Print Method + MH Cuttings), confirming an unticked attribute leaves no box behind.
 
-## 2026-11-21 — Jersey mapping removed; the dashboard lives behind the menu (owner request)
+## 2026-11-21 — Jersey mapping removed; the dashboard's sidebar hides behind a menu button (owner request)
 
 1. **Jersey mapping is gone for now.** The owner wants jersey panels uploaded with the post itself later,
    so the mapping screen, its tab inside Posts, its route and its helpers were deleted:
    `app/admin/jersey/page.tsx`, `components/admin/AdminJersey.tsx`, `lib/admin-jersey.ts`,
    `tests/admin-jersey.test.cjs`, the `jersey` module in `ADMIN_MODULES`, and the `/admin/jersey` entry in
-   `public/manus-routes.json`. **To be specified:** the future shape — a panel quad per garment region
-   attached to a T-shirt post, with the worn photo uploaded alongside the post artwork. The seed types
-   (`JerseyStyle`, `JerseyPanel`, `jerseyStyles` in `lib/admin-demo-data.ts`) are kept as data only; no
-   screen reads them until the owner describes the upload flow.
-2. **The storefront reaches the admin through a menu button, the way a video site does.** `SiteMenu.tsx`
-   is a hamburger at the left of the desktop header that opens a left-hand guide drawer (Shop, Help,
-   Admin) and is the only storefront link to `/admin`; the phone drawer lists the same Admin group. The
-   drawer is portalled to `<body>` because the header pill's backdrop blur would otherwise become the
-   containing block of a fixed child and trap the panel inside the pill.
-3. **One nav list.** `lib/admin-nav.ts` (`ADMIN_NAV`) feeds the shell's sidebar, the storefront menu and
-   the phone drawer, so a module cannot appear in one and be missing from another; `AdminShell` keeps only
-   the icon map. `tests/admin-menu.test.cjs` pins that, pins "no shop page links straight to `/admin`", and
-   pins that Jersey mapping is deleted rather than hidden.
+   `public/manus-routes.json`. **To be specified by the owner:** the future shape — a panel quad per
+   garment region attached to a T-shirt post, with the worn photo uploaded alongside the post artwork. The
+   seed types (`JerseyStyle`, `JerseyPanel`, `jerseyStyles` in `lib/admin-demo-data.ts`) are kept as data
+   only; no screen reads them until the owner describes the upload flow.
+2. **The dashboard hides its navigation behind the menu icon, the way a video site does.** In
+   `AdminShell`, the ☰ button in the admin top bar is now the toggle at every width (it used to appear on
+   phones only): clicking it slides the 224 px sidebar in or out, Escape closes it and returns focus to the
+   button, and the closed panel is `inert` so Tab cannot reach it. Closed, the main column takes the full
+   width. The panel starts closed, so the dashboard opens as a clean page with one ☰ in the corner.
+3. **Scope correction.** The first attempt put the menu on the *storefront* header (a `SiteMenu` drawer in
+   `Header.tsx`); the owner asked for the **admin dashboard** only, so that drawer was deleted and the
+   storefront header/mobile drawer were restored to their previous commit. Nothing on the shop surface
+   changed.
+4. **One nav list.** `lib/admin-nav.ts` (`ADMIN_NAV`) feeds the shell's sidebar rows and matches
+   `ADMIN_MODULES`, the permission list, one-to-one; `AdminShell` keeps only the icon map.
 
-Checks: `tsc --noEmit` clean; `eslint` 0 errors (the same warnings as before); `node --test
-tests/*.test.cjs` **832 passing, 0 failing**. In Chromium at 1440x950 the menu button opens a 320px
-full-height drawer with headings Shop / Help / Admin and all 16 admin links, Escape closes it and returns
-focus to the button; at 390x844 the phone drawer carries the same Admin group. `/admin/posts` has no
-Jersey mapping tab and `/admin/jersey` answers **404**.
+Checks: `tsc --noEmit` clean; `eslint` 0 errors (one pre-existing warning); `node --test
+tests/*.test.cjs` **832 passing, 0 failing**, including `tests/admin-menu.test.cjs` (the toggle, the
+`inert` panel, the two nav lists matching, and Jersey mapping deleted rather than hidden). In Chromium at
+1440x900 on `/admin/posts`: closed → sidebar 0 px wide and `inert`, main 1425 px; open → sidebar 224 px and
+main 1201 px; Escape closes and focus returns to the ☰; picking a row navigates and leaves the panel
+closed. `/admin/jersey` answers **404**.

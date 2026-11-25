@@ -8,7 +8,6 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
-import { ADMIN_NAV } from "@/lib/admin-nav";
 import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
 import { useI18n } from "@/lib/i18n";
@@ -225,12 +224,6 @@ export default function MobileNav() {
           <GroupHeading>{t("footer.legal")}</GroupHeading>
           {LEGAL_LINKS.map((link) => (
             <LinkRow key={link.href} {...link} onClick={close} />
-          ))}
-
-          {/* The dashboard lives behind this drawer, not on the shop surface. */}
-          <GroupHeading>Admin</GroupHeading>
-          {ADMIN_NAV.map((entry) => (
-            <LinkRow key={entry.id} label={entry.label} href={entry.href} onClick={close} />
           ))}
 
           <GroupHeading>{t("footer.newsletter")}</GroupHeading>

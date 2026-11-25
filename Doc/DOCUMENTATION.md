@@ -2012,22 +2012,26 @@ check) rendered the same component twice: with `optionGroups={null}` the groups 
 Fit Type, Sleeve, GSM; with an admin subset the groups were Size, Color (single value, preselected),
 Print Method and MH Cuttings, with no Material/Fit/Sleeve/GSM box at all.
 
-## The dashboard is behind the menu (2026-11-21)
+## The dashboard's sidebar hides behind the menu icon (2026-11-21)
 
-`SiteMenu.tsx` puts a hamburger at the left of the desktop header; it opens a left guide drawer with
-three groups — **Shop**, **Help** and **Admin** — and the phone's drawer carries the same Admin group.
-That drawer is the only place the storefront links to `/admin`; no shop page (header, footer, bottom bar)
-links to the dashboard directly, which `tests/admin-menu.test.cjs` enforces.
+The admin's ☰ button in `AdminShell`'s top bar is now the sidebar toggle on **every** width; it used to be
+phone-only, with the sidebar permanently open on desktop. Clicking it slides the 224 px panel in or out:
+closed, the aside collapses to zero width and the main column takes the full page; open, the aside is a
+sticky column beside it. The panel starts closed, so a module opens as a clean page with one ☰ in the
+corner. Escape closes it and returns focus to the button, and the closed panel carries `inert` so Tab
+cannot walk links nobody can see.
 
-The drawer is rendered through `createPortal(document.body)`: the header pill uses `backdrop-blur`, and a
-filter on an ancestor makes it the containing block for `position: fixed` children, which shrank the
-drawer to the pill's own box (320x55 px) in the first build. Escape closes it and moves focus back to the
-button.
+The width animation needs fixed-width content: the aside animates `w-0 ↔ w-[224px]` with `overflow-hidden`
+around an inner `w-[224px]` column, otherwise every row would reflow while the panel slides.
 
-`lib/admin-nav.ts` exports `ADMIN_NAV`; `AdminShell` maps those entries onto icons for its sidebar, and the
-storefront and phone menus read the same list, so the three cannot drift apart. `ADMIN_MODULES` in
-`lib/admin-demo-data.ts` stays the permission list and matches `ADMIN_NAV` one-to-one.
+`lib/admin-nav.ts` exports `ADMIN_NAV`; `AdminShell` maps those entries onto icons, and `ADMIN_MODULES` in
+`lib/admin-demo-data.ts` (the permission list) matches it one-to-one, so the sidebar cannot drift from the
+permissions.
 
 Jersey mapping has been removed: the Posts tab, `/admin/jersey`, `AdminJersey.tsx` and `lib/admin-jersey.ts`
-are deleted and the route is gone from `manus-routes.json`. The owner will specify a panel-per-region upload that
-travels with the post; until then the seed types in `lib/admin-demo-data.ts` are data only.
+are deleted and the route is gone from `manus-routes.json`. The owner will specify a panel-per-region upload
+that travels with the post; until then the seed types in `lib/admin-demo-data.ts` are data only.
+
+Scope note: an earlier revision of this change put a menu drawer on the **storefront** header. The owner
+wanted the **admin dashboard** changed, so that drawer (`SiteMenu.tsx`) was deleted and `Header.tsx` /
+`MobileNav.tsx` were restored. The shop surface is unchanged.

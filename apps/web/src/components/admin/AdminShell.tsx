@@ -7,7 +7,6 @@ import { ArrowRight, BarChart3, Bell, Box, CircleHelp, ClipboardList, Globe2, Ho
 import { getDemoAdminSession, signOutDemoAdmin, type AdminDemoSession } from "@/lib/admin-demo-auth";
 import { ADMIN_NAV } from "@/lib/admin-nav";
 import type { AdminModuleId } from "@/lib/admin-demo-data";
-import { useMediaQuery } from "@/lib/use-media-query";
 
 const NAV_ICONS: Record<AdminModuleId, LucideIcon> = {
   dashboard: House,
@@ -65,13 +64,14 @@ export default function AdminShell({
   const router = useRouter();
   const [admin, setAdmin] = useState<AdminDemoSession | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  // The navigation starts hidden behind the menu button on every width, the way a video site's guide does.
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const isPhone = useMediaQuery("(max-width: 767px)");
   const sidebarRef = useRef<HTMLElement | null>(null);
   const navButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  // On a phone the sidebar is a drawer. Closed, it is off-screen but still in the document, so it has to be
-  // inert or Tab walks links nobody can see; open, it takes the focus and Escape gives it back.
+  // Closed, the sidebar is off-screen (phone) or collapsed to zero width (desktop) but still in the
+  // document, so it has to be inert or Tab walks links nobody can see; open, it takes focus and Escape
+  // gives it back to the menu button.
   const closeSidebar = useCallback(() => {
     setSidebarOpen(false);
     navButtonRef.current?.focus();
@@ -119,8 +119,10 @@ export default function AdminShell({
             ref={sidebarRef}
             id="admin-sidebar"
             tabIndex={-1}
-            inert={isPhone && !sidebarOpen}
-            className={`fixed inset-y-0 left-0 z-[70] flex w-[224px] shrink-0 flex-col bg-[#11171b] text-white shadow-xl outline-none transition-transform duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 md:shadow-none ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+            inert={!sidebarOpen}
+            className={`fixed inset-y-0 left-0 z-[70] flex shrink-0 flex-col overflow-hidden bg-[#11171b] text-white shadow-xl outline-none transition-all duration-200 md:sticky md:top-0 md:h-screen md:shadow-none ${sidebarOpen ? "w-[224px] translate-x-0" : "w-0 -translate-x-full md:translate-x-0"}`}>
+            {/* Fixed-width content so the collapse animates the panel instead of reflowing every row. */}
+            <div className="flex h-full w-[224px] flex-col">
             <div className="flex h-[72px] items-center justify-between border-b border-white/[0.07] px-5">
               <Link href="/admin" className="flex flex-col leading-none" aria-label="MH Fashion admin dashboard">
                 <span className="text-[18px] font-black tracking-tight"><span className="text-[#8bd340]">MH</span> FASHION<span className="text-[#8bd340]">.</span></span>
@@ -156,11 +158,12 @@ export default function AdminShell({
                 <button type="button" onClick={handleSignOut} aria-label="Sign out of demo account" title="Sign out" className="rounded-lg p-1.5 text-[#89939a] hover:bg-white/10 hover:text-white"><LogOut size={15} /></button>
               </div>
             </div>
+            </div>
           </aside>
 
           <div className="min-w-0 flex-1">
             <header className="sticky top-0 z-40 flex h-[64px] items-center gap-3 border-b border-[#e8ebef] bg-white/95 px-3 backdrop-blur sm:px-5 lg:px-7">
-              <button ref={navButtonRef} type="button" aria-label="Open navigation" aria-expanded={sidebarOpen} aria-controls="admin-sidebar" onClick={() => setSidebarOpen(true)} className="rounded-xl p-2 text-[#566070] hover:bg-[#f2f4f6] md:hidden"><Menu size={19} /></button>
+              <button ref={navButtonRef} type="button" aria-label={sidebarOpen ? "Close navigation" : "Open navigation"} aria-expanded={sidebarOpen} aria-controls="admin-sidebar" data-admin-nav-toggle onClick={() => setSidebarOpen((value) => !value)} className="rounded-xl p-2 text-[#566070] hover:bg-[#f2f4f6]"><Menu size={19} /></button>
               {search ?? <div className="hidden text-[11px] font-semibold text-[#7b8492] sm:block">{heading}</div>}
               <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2.5">
                 <span className="hidden rounded-full bg-[#fff5dd] px-2.5 py-1.5 text-[9px] font-bold tracking-wide text-[#946b12] sm:inline">PREVIEW MODE</span>

@@ -1,5 +1,5 @@
-// The dashboard is reached through the header's menu button, and Jersey mapping is gone until it comes
-// back as part of a post upload.
+// The dashboard hides its navigation behind the header's menu button, and Jersey mapping is gone until it
+// comes back as part of a post upload.
 const assert = require("node:assert/strict");
 const { existsSync, readFileSync } = require("node:fs");
 const path = require("node:path");
@@ -25,37 +25,32 @@ function loadModule(relativePath) {
 }
 
 const read = (relativePath) => readFileSync(path.join(ROOT, relativePath), "utf8");
-const header = read("apps/web/src/components/Header.tsx");
-const menu = read("apps/web/src/components/SiteMenu.tsx");
-const mobileNav = read("apps/web/src/components/MobileNav.tsx");
+const shell = read("apps/web/src/components/admin/AdminShell.tsx");
 const adminNav = read("apps/web/src/lib/admin-nav.ts");
 const adminPosts = read("apps/web/src/components/admin/AdminPosts.tsx");
 
-test("the header menu is the way in, and the drawer lists every admin section", () => {
-  assert.match(header, /import SiteMenu from "\.\/SiteMenu"/);
-  assert.match(header, /<SiteMenu \/>/);
-  assert.match(menu, /data-site-menu-button/);
-  assert.match(menu, /aria-expanded=\{open\}/);
-  assert.match(menu, /createPortal\(/);
-  assert.match(menu, /\{ADMIN_NAV\.map\(\(entry\) => \(/);
-  assert.match(menu, /data-admin-link=\{entry\.id\}/);
-  assert.match(menu, /event\.key !== "Escape"/, "Escape must close the drawer");
-  assert.match(mobileNav, /ADMIN_NAV\.map/);
+test("the admin sidebar starts hidden behind a menu button on every width", () => {
+  assert.match(shell, /const \[sidebarOpen, setSidebarOpen\] = useState\(false\)/);
+  assert.match(shell, /data-admin-nav-toggle/);
+  assert.match(shell, /aria-expanded=\{sidebarOpen\}/);
+  assert.match(shell, /onClick=\{\(\) => setSidebarOpen\(\(value\) => !value\)\}/);
+  assert.match(shell, /inert=\{!sidebarOpen\}/);
+  assert.match(shell, /sidebarOpen \? "w-\[224px\] translate-x-0" : "w-0 -translate-x-full md:translate-x-0"/);
+  const toggle = shell.slice(shell.indexOf("data-admin-nav-toggle") - 400, shell.indexOf("data-admin-nav-toggle"));
+  assert.equal(toggle.includes("md:hidden"), false, "the menu button must stay visible on desktop");
+  assert.match(shell, /Close navigation|Open navigation/);
+  assert.match(shell, /event\.key === "Escape"/);
 });
 
-test("no shop surface links to the dashboard without the menu", () => {
-  for (const file of [
-    "apps/web/src/components/Header.tsx",
-    "apps/web/src/components/HeaderActions.tsx",
-    "apps/web/src/components/MobileNav.tsx",
-    "apps/web/src/components/Footer.tsx",
-    "apps/web/src/components/MobileBottomNav.tsx",
-  ]) {
-    assert.equal(read(file).includes('href="/admin'), false, `${file} links straight to the dashboard`);
-  }
+test("the storefront is untouched by the dashboard's menu", () => {
+  const header = read("apps/web/src/components/Header.tsx");
+  assert.equal(header.includes("SiteMenu"), false);
+  assert.equal(existsSync(path.join(ROOT, "apps/web/src/components/SiteMenu.tsx")), false);
+  const mobileNav = read("apps/web/src/components/MobileNav.tsx");
+  assert.equal(mobileNav.includes("ADMIN_NAV"), false);
 });
 
-test("one nav list feeds the shell, the storefront menu and the permissions", () => {
+test("one nav list feeds the shell's rows and the permission list", () => {
   const admin = loadModule("apps/web/src/lib/admin-demo-data.ts");
   const nav = loadModule("apps/web/src/lib/admin-nav.ts");
   assert.deepEqual(
