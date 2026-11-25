@@ -1198,7 +1198,11 @@ Two owner reports, both fixed.
   posts list is empty, and a live post still wins over the handbook when one exists. Production also returned 500 for
   every guide article, so the loader now asks Supabase for `select("*")` (a column the deploy expects but a drifted
   table lacks fails the whole query) and every failure — missing table, denied role, dropped connection, schema
-  drift, unusable client — serves the handbook instead of an empty page.
+  drift, unusable client — serves the handbook instead of an empty page. The live table turned out to be an old seed
+  of the handbook: it lacks the size guide and the editor guide, and still publishes a retired "The planned editor
+  flow" page. The catalogue now merges, keeping every live post first (it wins on its slug) and filling each slug the
+  table does not answer from the handbook, so the shipped guides are never missing. Production went from zero
+  articles to twelve, with every article page answering 200.
 
 ### 2026-11-21 — The footer shows on a phone, everywhere
 

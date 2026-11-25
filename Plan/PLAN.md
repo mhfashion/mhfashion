@@ -1118,6 +1118,9 @@ This section records the current repository state and overrides earlier draft bu
   **Guide listing 2026-11-21 (owner):** production showed only guide categories because its `guide_posts` table has
   no published rows. `getGuideCatalog` now falls back to the built-in handbook (12 articles across Editor, Size,
   Product, Design, Payment and Delivery) whenever live posts are empty, and a live post still wins when present.
+  **Guide merge 2026-11-21:** the production table is a stale seed (no size guide, no editor guide, plus a retired
+  planned-editor-flow page), so the catalogue merges live posts with the handbook gaps. Production serves 12
+  articles, all 200.
 - `/guide` and `/guide/[slug]` — server-rendered categorized Guide/blog listing and detail pages with Supabase/starter-data fallback, cover images, metadata and readable article layouts.
 - `/products/[slug]` — compact marketplace-style product detail with gallery, actual catalog details table, options, reviews, related products and Buy Now/Add to Cart/Edit Design actions.
 - `/create` — browser-local Fabric.js editor prototype with responsive desktop/phone workspace, tools, layers, text/elements, Product and separate Mockup controls. No site copyright strip or Footer is shown in this editor workspace.

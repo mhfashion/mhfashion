@@ -365,6 +365,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   A published live post still replaces the handbook. Any live failure (error code of any kind, unusable client) also
   serves the handbook; `select("*")` is used on purpose because naming a column a drifted production table lacks
   failed the whole listing and 500'd every article page.
+- Live posts and the handbook are **merged**, not either/or: live posts keep their place (and win on a slug
+  collision), and every handbook slug the live table does not answer is appended. The production table is an old
+  seed with no size guide or editor guide, and still carries a retired planned-editor-flow post; the merge keeps the
+  shipped guides visible until someone republishes the rows.
 
 ## Footer blocks are page content
 - The owner lists the footer blocks (FB/IG/TikTok/YT, SHOP, HELP, LEGAL, NEWSLETTER, MYANMAR PAYMENT, DOWNLOAD OUR
