@@ -1,62 +1,145 @@
 import type { Metadata } from "next";
-import { ArrowRight, BadgeCheck, ShoppingBag } from "lucide-react";
+import { ArrowRight, BadgeCheck, Heart, Palette, Shirt } from "lucide-react";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import CategoryRow from "@/components/CategoryRow";
 import ProductCard from "@/components/ProductCard";
 import { getProductsBySubBrand } from "@/lib/products";
 import { NYEIN_BRAND } from "@/lib/product-editing";
+import type { Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Nyein — MH Fashion",
-  description: "Nyein ready-made pieces. Buy them exactly as shown — the design is already printed, so there is nothing to customise.",
+  description:
+    "Nyein ready-made pieces from MH Fashion. Printed exactly as shown, so there is nothing to customise.",
 };
 
+const SKELETON_COUNT = 5;
+
+function NyeinStrip({ products }: { products: Product[] }) {
+  if (!products.length) {
+    return (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {Array.from({ length: SKELETON_COUNT }, (_, index) => (
+          <div key={index} className="overflow-hidden rounded-xl border border-border bg-bg-surface p-1.5">
+            <div className="flex aspect-square items-center justify-center rounded-lg bg-bg">
+              <Shirt size={30} className="text-text-faint" />
+            </div>
+            <p className="mt-1 text-[9px] text-text-muted sm:text-[10px]">Nyein piece</p>
+            <p className="mt-1 rounded-md bg-bg px-1.5 py-1 text-center text-[8px] font-bold text-text-faint">Printing soon</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {products.slice(0, 5).map((product) => (
+        <div key={product.id} className="rounded-xl border border-border bg-bg-surface p-1.5 shadow-sm">
+          <ProductCard product={product} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default async function NyeinPage() {
-  const products = await getProductsBySubBrand(NYEIN_BRAND);
+  const pieces = await getProductsBySubBrand(NYEIN_BRAND);
+  const popular = pieces.slice(0, 5);
+  const arrivals = [...pieces].reverse().slice(0, 5);
 
   return (
-    <div>
+    <main>
       <Header />
-      <main className="w-full bg-bg px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+      <div className="w-full bg-bg px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
         <div className="mx-auto max-w-[1480px]">
-          <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdc] via-[#dbf6bb] to-[#b9ea7d] px-4 py-5 sm:px-10 sm:py-10">
-            <div className="relative z-10 max-w-xl">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#3f8213] sm:text-xs sm:tracking-[0.18em]">MH Fashion · Brand</p>
-              <h1 className="mt-2 text-2xl font-black leading-[0.95] text-[#22421a] sm:mt-3 sm:text-5xl">Nyein.<br /><span className="text-[#4f9d16]">Ready to wear.</span></h1>
-              <p className="mt-2 max-w-md text-[10px] leading-relaxed text-[#355128] sm:mt-4 sm:text-sm">Nyein pieces are printed as shown. Pick your size and colour and buy — there is no design to edit.</p>
-              <a href="#nyein-products" className="mt-3 inline-flex items-center rounded-full bg-accent px-3 py-1.5 text-[10px] font-bold text-accent-foreground sm:mt-5 sm:px-4 sm:py-2.5 sm:text-xs">Shop Nyein <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" /></a>
+          <section className="relative isolate min-h-[155px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdc] via-[#dcf4bc] to-[#b6e773] px-4 py-4 text-[#172810] sm:min-h-[250px] sm:px-10 sm:py-10 lg:min-h-[300px] lg:px-12">
+            <div className="relative z-10 max-w-[68%] sm:max-w-[47%]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4c9d16] sm:text-xs sm:tracking-[0.18em]">Nyein · MH Fashion</p>
+              <h1 className="mt-2 text-2xl font-black leading-[0.95] tracking-tight sm:mt-3 sm:text-5xl lg:text-6xl">
+                Print-on-demand
+                <br />
+                <span className="text-[#4d9e16]">for the few.</span>
+              </h1>
+              <p className="mt-2 max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-4 sm:text-sm">
+                For those who don&apos;t follow the crowd. Every Nyein piece is printed exactly as shown, so there is nothing to customise.
+              </p>
+              <a
+                href="#nyein-pieces"
+                className="mt-3 inline-flex items-center rounded-full bg-[#55a918] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:px-4 sm:py-2.5 sm:text-xs"
+              >
+                Shop Nyein pieces
+                <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" />
+              </a>
             </div>
-            <BadgeCheck className="absolute bottom-4 right-4 text-[#4e9d13]/70 sm:bottom-7 sm:right-7" size={34} />
+            <div className="absolute -right-10 -top-12 h-52 w-52 rounded-full bg-[#95d64a]/60 blur-sm sm:-right-12 sm:-top-24 sm:h-80 sm:w-80" />
+            <div className="absolute bottom-[-75px] right-[15%] hidden h-80 w-52 rotate-[-6deg] rounded-[44%] bg-white/80 shadow-xl sm:block">
+              <div className="absolute left-1/2 top-20 -translate-x-1/2 text-center text-3xl font-black leading-none text-[#4d9e16]">
+                NYEIN
+                <br />
+                <span className="text-sm">READY-MADE</span>
+              </div>
+            </div>
+            <div className="absolute bottom-3 right-3 text-2xl font-black italic leading-tight text-[#37770e]/80 sm:bottom-8 sm:right-7 sm:text-4xl">
+              Printed
+              <br />
+              As Shown
+            </div>
+            <BadgeCheck className="absolute bottom-3 left-4 text-[#37770e]/70 sm:bottom-8" size={20} />
           </section>
 
-          <section id="nyein-products" className="mt-6">
-            <div className="mb-4 flex items-end justify-between">
-              <div>
-                <h2 className="text-xl font-black"><span className="text-accent">{products.length}</span> Nyein pieces</h2>
-                <p className="mt-1 text-xs text-text-muted">Sold as shown · no design editing</p>
-              </div>
-              <span className="rounded-full bg-accent/10 px-3 py-1.5 text-[10px] font-bold text-accent">Ready-made</span>
-            </div>
+          <CategoryRow />
 
-            {products.length ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-                {products.map((product) => (
-                  <div key={product.id} className="aspect-square overflow-hidden rounded-xl border border-border bg-bg-surface p-1.5 shadow-sm sm:p-2.5">
-                    <ProductCard product={product} />
-                  </div>
-                ))}
+          <section className="mb-6" id="nyein-pieces">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-sm font-black sm:text-base">
+                <Heart size={17} className="text-accent" /> Popular Nyein pieces
+              </h2>
+              <span className="text-[10px] font-semibold text-text-muted sm:text-xs">Ready-made</span>
+            </div>
+            <NyeinStrip products={popular} />
+          </section>
+
+          <section className="mb-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-sm font-black sm:text-base">
+                <Palette size={17} className="text-accent" /> New Nyein arrivals
+              </h2>
+              <span className="text-[10px] font-semibold text-text-muted sm:text-xs">No design editing</span>
+            </div>
+            <NyeinStrip products={arrivals} />
+          </section>
+
+          <section className="mb-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <a href="/categories/t-shirts" className="group relative min-h-[150px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#f5f5f2] to-[#dfe8d9] p-5 text-[#172810] sm:p-7">
+              <div className="relative z-10">
+                <h2 className="text-xl font-black sm:text-2xl">Premium Cotton T-Shirts</h2>
+                <p className="mt-1 text-xs text-[#4a5a44]">Soft · Breathable · Durable</p>
+                <span className="mt-5 inline-flex rounded-full bg-accent px-3 py-2 text-[10px] font-bold text-accent-foreground">
+                  Shop Now <ArrowRight size={13} className="ml-1" />
+                </span>
               </div>
-            ) : (
-              <div className="rounded-2xl border border-border bg-bg-surface p-10 text-center">
-                <ShoppingBag size={28} className="mx-auto text-text-muted" />
-                <p className="mt-3 text-sm font-bold">Nyein pieces are on the way.</p>
-                <p className="mt-1 text-xs text-text-muted">Products appear here once they carry the <span className="font-semibold">Nyein</span> brand in the catalogue.</p>
-                <a href="/new" className="mt-4 inline-flex items-center rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">Browse new arrivals <ArrowRight size={13} className="ml-1.5" /></a>
-              </div>
-            )}
+              <div className="absolute -bottom-20 right-[-10px] h-48 w-48 rounded-full bg-white/80" />
+              <span className="absolute bottom-5 right-9 text-4xl font-black text-[#85ad69]/60">NY</span>
+            </a>
+            <div className="relative min-h-[150px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#d7f5a8] via-[#79bf20] to-[#4e9e12] p-5 text-white sm:p-7">
+              <p className="text-xs font-bold uppercase tracking-[0.15em] text-white/80">Nyein</p>
+              <h2 className="mt-2 text-2xl font-black">
+                Printed once.
+                <br />
+                Kept forever.
+              </h2>
+              <p className="mt-1 text-xs text-white/85">The design is already on the piece — nothing to edit.</p>
+              <span className="mt-4 inline-flex rounded-full bg-white px-3 py-2 text-[10px] font-bold text-[#4e9e12]">
+                Ready-made only
+              </span>
+            </div>
           </section>
         </div>
-      </main>
-    </div>
+      </div>
+      <Footer alwaysVisible />
+    </main>
   );
 }

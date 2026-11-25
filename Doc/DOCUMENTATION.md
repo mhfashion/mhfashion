@@ -1182,6 +1182,24 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — The Nyein page wears the home page, but nothing on it can be edited
+
+The owner asked for the Nyein destination to look and feel exactly like the home page while behaving differently:
+its content is ready-made, so nothing there is editable.
+
+- `/nyein` now uses the same chrome and rhythm as `/`: `Header`, the same green hero gradient and decorative
+  shapes, `CategoryRow`, two product strips, the two promo tiles and `Footer`.
+- It is deliberately not editable: no `AdSlotBanner` slots, no "Start Designing" button, no `/create` link, and the
+  right-hand promo tile is a plain panel instead of a link. The strips list `getProductsBySubBrand(NYEIN_BRAND)`, so
+  only ready-made pieces appear; five skeleton cards stand in while the catalogue is empty so the page still reads
+  as home.
+- `Footer` gained `alwaysVisible`: the home page keeps hiding the footer below `md` (the phone uses the bottom nav),
+  while the Nyein page shows it at every width, because the owner listed its blocks as page content — FB/IG/TikTok/YT,
+  SHOP, HELP, LEGAL, NEWSLETTER, MYANMAR PAYMENT (KBZPay, Wave Pay, AYA Pay), DOWNLOAD OUR APP, INTERNATIONAL PAYMENT
+  (Visa, Mastercard).
+- Verified in Chromium at 1440 × 900 and 390 × 844: HTTP 200, every footer block present at both widths, no sideways
+  scroll, console clean. `tests/nyein-page.test.cjs` guards the parity, the read-only rules and the footer blocks.
+
 ### 2026-11-21 — Brushes leave the dashboard
 
 The owner pointed out that brushes are working tools of the editor, not shop administration, and that the

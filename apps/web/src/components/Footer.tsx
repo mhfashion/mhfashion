@@ -2,10 +2,10 @@
 
 import { useI18n } from "@/lib/i18n";
 
-export default function Footer() {
+export default function Footer({ alwaysVisible = false }: { alwaysVisible?: boolean } = {}) {
   const { t } = useI18n();
   return (
-    <footer className="hidden md:block px-6 md:px-8 pt-6 border-t border-border mt-6">
+    <footer className={`${alwaysVisible ? "block" : "hidden md:block"} px-6 md:px-8 pt-6 border-t border-border mt-6`}>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-5 pb-5 border-b border-border">
         <div className="col-span-2 md:col-span-1">
           <p className="font-bold text-sm mb-2">MH FASHION.</p>
