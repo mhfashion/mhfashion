@@ -37,6 +37,19 @@ test("a closed path, a one-point path and the none shape draw no markers", () =>
   assert.deepEqual(lib.editorPenEndMarkers({ d: "", penPath: { anchors, closed: false } }), [], "paths from before the setting draw none");
 });
 
+test("a closed path takes its own fill, and can be left unfilled", () => {
+  const defaults = lib.EDITOR_TOOL_OPTIONS_DEFAULT.pen;
+  assert.equal(defaults.fillClosed, true, "closed paths stay filled as before");
+  assert.equal(defaults.fillColor, null, "and follow the pen colour until one is picked");
+  const chosen = lib.normalizeEditorToolOptions({ pen: { fillClosed: false, fillColor: "#12ab34" } }).pen;
+  assert.equal(chosen.fillClosed, false);
+  assert.equal(chosen.fillColor, "#12ab34");
+  assert.equal(lib.normalizeEditorToolOptions({ pen: { fillColor: "red" } }).pen.fillColor, null, "a bad colour falls back");
+  assert.match(canvas, /fill: close && toolOptions\.pen\.fillClosed \? toolOptions\.pen\.fillColor \?\? foregroundColor : "none"/);
+  assert.match(panel, /aria-label="Fill closed paths"/);
+  assert.match(panel, /aria-label="Pen closed path fill colour"/);
+});
+
 test("the tool, the canvas, the panel and the preview agree on the setting", () => {
   assert.match(panel, /aria-label="Pen end shape"/, "the pen box offers the control");
   assert.match(panel, /aria-label={`Pen end shape \$\{shape\}`}/);

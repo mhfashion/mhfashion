@@ -1182,6 +1182,17 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — A closed pen path has its own fill
+
+Closed paths were always filled with the pen colour and there was no way to say otherwise (plan E21 item 4).
+
+- `EditorPenSettings.fillClosed` (default `true`, so existing drawings keep their look) and `fillColor`
+  (default `null`, meaning the pen colour) are normalised with the rest of the pen options; a colour that is not a
+  six-digit hex falls back to `null`.
+- The canvas fills a closed path with `fillColor ?? foregroundColor` only when `fillClosed` is on, and leaves an open
+  path unfilled.
+- The Pen box carries a "Fill closed" toggle that hides the colour input when it is off.
+
 ### 2026-11-24 — Pen paths can carry end shapes
 
 A drawn path had a cap, a join and a dash pattern, but its two ends were always plain. The pen now offers

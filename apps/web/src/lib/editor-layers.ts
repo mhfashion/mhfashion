@@ -73,6 +73,10 @@ export type EditorPenSettings = {
   style: EditorPenLineStyle;
   /** Marker drawn at both ends of an open path. */
   ends: EditorPenEndShape;
+  /** Whether a closed path is filled at all. */
+  fillClosed: boolean;
+  /** Fill colour for a closed path; null follows the pen colour. */
+  fillColor: string | null;
 };
 
 export type EditorPenEndShape = "none" | "arrow" | "circle" | "square" | "bar";
@@ -154,7 +158,7 @@ export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
   brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0, spacing: 8, flow: 100, smoothing: 3, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   eraser: { mode: "brush", shape: "round", size: 120, hardness: 60, opacity: 100, flow: 100, spacing: 12, angle: 0, roundness: 100 },
-  pen: { width: 5, cap: "round", join: "round", style: "solid", ends: "none" },
+  pen: { width: 5, cap: "round", join: "round", style: "solid", ends: "none", fillClosed: true, fillColor: null },
   gradient: { type: "linear", presetId: "black-white", reverse: false },
   text: { fontSize: 110, fontFamily: EDITOR_TEXT_FONT_FAMILY, fontWeight: 700, textAlign: "center", color: null, letterSpacing: 0, wrapWidth: DEFAULT_TEXT_WRAP_WIDTH, lineHeight: EDITOR_TEXT_DEFAULT_LINE_HEIGHT },
 };
@@ -226,6 +230,8 @@ export function normalizeEditorToolOptions(input: Partial<EditorToolOptions> | u
       join: input?.pen?.join === "miter" || input?.pen?.join === "bevel" ? input.pen.join : "round",
       style: input?.pen?.style === "dash" || input?.pen?.style === "dot" ? input.pen.style : "solid",
       ends: EDITOR_PEN_END_SHAPES.includes(input?.pen?.ends as EditorPenEndShape) ? input!.pen!.ends as EditorPenEndShape : "none",
+      fillClosed: typeof input?.pen?.fillClosed === "boolean" ? input.pen.fillClosed : true,
+      fillColor: typeof input?.pen?.fillColor === "string" && /^#[0-9a-f]{6}$/i.test(input.pen.fillColor) ? input.pen.fillColor : null,
     },
     gradient: normalizeEditorGradientToolSettings(input?.gradient),
     text: normalizeEditorTextToolSettings(input?.text),

@@ -1948,7 +1948,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     setLayers((current) => appendEditorShapePaths(current, selectedLayer.id, [
       {
         d: pathData,
-        fill: close ? foregroundColor : "none",
+        fill: close && toolOptions.pen.fillClosed ? toolOptions.pen.fillColor ?? foregroundColor : "none",
         stroke: foregroundColor,
         strokeWidth: toolOptions.pen.width,
         dash: penDashArray(toolOptions.pen.style, toolOptions.pen.width),

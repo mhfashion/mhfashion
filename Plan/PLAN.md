@@ -3478,7 +3478,16 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    all agree. Verified: the Line row toggles (`aria-pressed`), `tests/editor-tool-options.test.cjs` holds the
    dash maths, the normaliser and the renderer wiring. A drawn dotted path was not captured in the browser this
    turn (the probe never got a layer selected), so a pixel check of the stroke is still worth doing.
-   **Open:** end shapes for open paths, and a separate fill for closed paths.
+   *End shapes and closed-path fill built 2026-11-24.* `EditorPenSettings` gains `ends` (none / arrow / circle /
+   square / bar) and `fillClosed` + `fillColor`, all normalised so old settings keep their plain, filled behaviour.
+   `editorPenEndMarkers(path)` is the only source of marker geometry: it returns both ends with a size that scales
+   with the stroke and an angle pointing away from the path, and returns none for a closed, single-anchor or
+   `none` path. A drawn path records `ends` and its fill, so changing the pen afterwards leaves it alone; a closed
+   path fills with `fillColor`, or the pen colour when none is picked, and `none` when "Fill closed" is off. The Pen
+   box now reads Path width, presets, Cap, Join, Fill closed, Ends, Line.
+   Verified in Chromium at 1440 × 900: the Pen box renders the two rows, `Pen end shape circle` presses and clears
+   `none`, and "Fill closed" turns off and removes the colour input, console clean. **Open:** a pixel check of a
+   drawn path's stroke and markers — the probe still fails to finish a path with synthetic pointer events.
 5. **Shape box:** defaults for fill, stroke, width and corner radius, star points and polygon sides, and a hint
    for the modifier keys (Shift keeps proportions, Alt draws from the centre). Today it holds only the presets.
    *Hint and modifiers built 2026-11-24.* The canvas honoured neither key before: a shape drag now makes the shape
