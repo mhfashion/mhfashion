@@ -6,12 +6,12 @@ import { useCurrency } from "@/lib/currency-context";
 import { useI18n } from "@/lib/i18n";
 import { useWishlist } from "@/lib/wishlist-context";
 
-export default function ProductCard({ product, boxed = false }: { product: Product; boxed?: boolean }) {
+export default function ProductCard({ product, boxed = false, href }: { product: Product; boxed?: boolean; href?: string }) {
   const wishlist = useWishlist();
   const favorited = wishlist.has(product.id);
   const { formatRangeKs } = useCurrency();
   const { t } = useI18n();
-  const productUrl = `/products/${product.slug}`;
+  const productUrl = href ?? `/products/${product.slug}`;
 
   return (
     <article className={`group flex h-full aspect-square min-h-0 flex-col ${boxed ? "rounded-xl border border-border/70 bg-bg p-2 shadow-sm transition-colors hover:border-accent/50 sm:p-2.5" : ""}`}>

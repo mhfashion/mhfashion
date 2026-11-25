@@ -3,11 +3,10 @@ import { ArrowRight, BadgeCheck, Heart, Palette } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CategoryRow from "@/components/CategoryRow";
-import NyeinPieceCard from "@/components/NyeinPieceCard";
+import ProductStrip from "@/components/ProductStrip";
 import { getProductsBySubBrand } from "@/lib/products";
 import { NYEIN_PIECES } from "@/lib/nyein-pieces";
 import { NYEIN_BRAND } from "@/lib/product-editing";
-import type { Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,16 +15,6 @@ export const metadata: Metadata = {
   description:
     "Nyein ready-made pieces from MH Fashion. Printed exactly as shown, so there is nothing to customise.",
 };
-
-function NyeinStrip({ products, linked }: { products: Product[]; linked: boolean }) {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-      {products.map((piece) => (
-        <NyeinPieceCard key={piece.id} piece={piece} href={linked ? `/products/${piece.slug}` : undefined} />
-      ))}
-    </div>
-  );
-}
 
 export default async function NyeinPage() {
   const catalogue = await getProductsBySubBrand(NYEIN_BRAND);
@@ -83,7 +72,7 @@ export default async function NyeinPage() {
               </h2>
               <span className="text-[10px] font-semibold text-text-muted sm:text-xs">Ready-made</span>
             </div>
-            <NyeinStrip products={popular} linked={linked} />
+            <ProductStrip products={popular} href={linked ? undefined : "/products"} />
           </section>
 
           <section className="mb-6">
@@ -93,7 +82,7 @@ export default async function NyeinPage() {
               </h2>
               <span className="text-[10px] font-semibold text-text-muted sm:text-xs">No design editing</span>
             </div>
-            <NyeinStrip products={arrivals} linked={linked} />
+            <ProductStrip products={arrivals} href={linked ? undefined : "/products"} />
           </section>
 
           <section className="mb-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">

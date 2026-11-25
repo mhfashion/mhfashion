@@ -118,7 +118,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               ))}
               <Link href="/guide/editor-guide" data-guide-editor className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg">
                 <span className="flex h-7 w-7 items-center justify-center text-text-secondary"><Pencil size={16} aria-hidden="true" /></span>
-                Editor Guide
+                Other Guide
               </Link>
               <div className="my-2 border-t border-border" />
               <Link href="/faq" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> FAQ</Link>
@@ -156,7 +156,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
               </Link>
               <Link href="/guide/editor-guide" data-guide-editor className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Pencil size={13} /></span>
-                <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">Editor Guide</span>
+                <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">Other Guide</span>
               </Link>
               {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
               <Link href="/faq" className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4">

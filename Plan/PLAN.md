@@ -1151,11 +1151,27 @@ This section records the current repository state and overrides earlier draft bu
   `rounded-xl border bg-bg-surface p-1.5 sm:p-2.5` shell as `ProductCard`, and the grid is the product
   grid (`grid-cols-2 sm:grid-cols-3 xl:grid-cols-4`). The old cover-plus-excerpt card stood about twice
   as tall as a product tile. Do not reintroduce the `aspect-[1.9/1]` cover band or the excerpt.
+- **Nyein sells through the shop's own product box (2026-11-21).** The Nyein page drew a home-made
+  `NyeinPieceCard` (its own Buy / Add to Cart pair), so its boxes looked and behaved differently from the
+  home page's. Both pages now render `components/ProductStrip.tsx`, which wraps `ProductCard` in the same
+  frame: same image area, wishlist heart, price range and one Buy link that opens the product page. The
+  Nyein-only card is deleted (`data-nyein-buy` / `data-nyein-cart` are gone). The difference stays where it
+  belongs: inside the product page, a Nyein piece has no **Edit design** action (`isDesignEditable` reads
+  `subBrand` as well as `isCustomizable`), and its own attributes are what the shopper fills in.
+  When the catalogue has no Nyein rows the page still falls back to `NYEIN_PIECES`, whose slugs are not in
+  the database, so `ProductCard` gained an optional `href` and the fallback shelf points at `/products`
+  instead of opening a 404.
 - **The Editor Guide sits in the guide menu box (2026-11-21).** `app/guide/page.tsx` links
   `/guide/editor-guide` from the desktop menu box (a row after the categories, marked `data-guide-editor`)
   and from the phone shortcut row (second chip, so it is visible without scrolling). The HTTP test counts
   only the article grid (`data-guide-editor` anchors are stripped) so the menu link cannot break the
   category-filter assertions.
+- **The menu box no longer repeats "Editor Guide" (2026-11-21).** The `editor-guide` category was already
+  a row in the menu box, so the extra shortcut row read "Editor Guide" twice (desktop sidebar and phone
+  chip), which looks like a bug. That shortcut row is now labelled **Other Guide** in
+  `app/guide/page.tsx` (both) and in `app/guide/[slug]/page.tsx`; it keeps its `/guide/editor-guide` href
+  and its `data-guide-editor` hook. `tests/guide-card.test.cjs` asserts the label appears twice and the
+  article page shows it once, so a third copy or a relapse is caught.
 - **The guide hero is compact (2026-11-21).** `min-h-[96px]` on a phone, `sm:min-h-[124px]`,
   `lg:min-h-[132px]`, with the heading at `text-lg / sm:text-2xl / lg:text-[26px]`. The 196px desktop
   banner and the 5xl heading are gone; the banner is roughly 200px tall at 1440px wide.

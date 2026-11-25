@@ -1182,6 +1182,37 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — One product box for the shop and for Nyein
+
+The home page and the Nyein page drew different product boxes. Home used `ProductCard` in the shop's frame; Nyein
+used its own `NyeinPieceCard`, with a different add-to-cart pair. The same shopper saw two behaviours for the same
+kind of shelf.
+
+`components/ProductStrip.tsx` now owns the shelf: the same grid, the same bordered frame, `ProductCard` inside, and
+an optional badge row for the home page's BEST SELLER / TRENDING / POPULAR labels. Both pages render it, so the
+boxes look and behave the same: an image area, a wishlist heart, the name, the price range and one Buy link that
+opens the product page. `NyeinPieceCard` is deleted.
+
+What differs stays inside the product page, where it belongs. `isDesignEditable` now reads the brand as well as the
+flag, so a Nyein piece is ready-made even when its catalogue row never set `is_customizable = 'none'`, and the page
+shows no Edit design action and the ready-made note instead. The attributes the shopper fills in are the piece's
+own. When the catalogue has no Nyein rows the page still falls back to `NYEIN_PIECES`, whose slugs are not in the
+database, so `ProductCard` gained an optional `href` and that shelf points at `/products` rather than a 404.
+
+Tests: `tests/nyein-page.test.cjs` (one shelf component, no editor path on either card) and
+`tests/nyein-brand.test.cjs` (a Nyein row is not design-editable).
+
+### 2026-11-21 — The guide menu stops repeating "Editor Guide"
+
+The guide menu box listed every category, and `editor-guide` is one of them, and then added its own shortcut row
+that also read "Editor Guide". Two identical rows sat one under the other on the desktop sidebar, and two identical
+chips opened the phone strip.
+
+The shortcut row is now labelled **Other Guide** in `app/guide/page.tsx` (sidebar and phone chip) and in
+`app/guide/[slug]/page.tsx`. It keeps the `/guide/editor-guide` href and the `data-guide-editor` hook the tests use,
+and the category row keeps its own name, so nothing else moves. `tests/guide-card.test.cjs` counts the label, so a
+third copy or a relapse fails the suite.
+
 ### 2026-11-21 — A dotted pen path paints dotted, and its end markers sit on the path
 
 The plan had claimed the pen's Line and Ends settings reached the paint. A pixel check found they did not.

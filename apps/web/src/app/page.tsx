@@ -8,16 +8,10 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import AdSlotBanner from "@/components/AdSlotBanner";
 import CategoryRow from "@/components/CategoryRow";
-import ProductCard from "@/components/ProductCard";
-import type { Product } from "@/lib/types";
+import ProductStrip from "@/components/ProductStrip";
 import { getNewArrivals, getBestSellers } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
-
-function ProductStrip({ products }: { products: Product[] }) {
-  if (!products.length) return <div className="rounded-xl border border-border bg-bg-surface px-5 py-10 text-center text-xs text-text-muted">Products will appear here soon.</div>;
-  return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{products.slice(0, 5).map((product, index) => <div key={product.id} className="relative rounded-xl border border-border bg-bg-surface p-2.5 shadow-sm"><span className={`absolute left-3 top-3 z-10 rounded-full px-2 py-1 text-[9px] font-bold text-white ${index === 0 ? "bg-[#f4b718]" : "bg-accent"}`}>{index === 0 ? "BEST SELLER" : index === 1 ? "TRENDING" : "POPULAR"}</span><ProductCard product={product} /></div>)}</div>;
-}
 
 export default async function HomePage() {
   const [newArrivals, bestSellers] = await Promise.all([getNewArrivals(6), getBestSellers(6)]);
@@ -39,8 +33,8 @@ export default async function HomePage() {
 
           <AdSlotBanner slot="home-strip" />
 
-          <section className="mb-6"><div className="mb-3 flex items-center justify-between"><h2 className="flex items-center gap-2 text-sm font-black sm:text-base"><Heart size={17} className="text-accent" /> Popular Products</h2><a href="/products" className="text-[10px] font-semibold text-accent sm:text-xs">View All <ArrowRight size={13} className="ml-1 inline" /></a></div><ProductStrip products={bestSellers.length ? bestSellers : products} /></section>
-          <section className="mb-6"><div className="mb-3 flex items-center justify-between"><h2 className="flex items-center gap-2 text-sm font-black sm:text-base"><Palette size={17} className="text-accent" /> New Arrivals</h2><a href="/products?new=true" className="text-[10px] font-semibold text-accent sm:text-xs">View All <ArrowRight size={13} className="ml-1 inline" /></a></div><ProductStrip products={newArrivals.length ? newArrivals : products} /></section>
+          <section className="mb-6"><div className="mb-3 flex items-center justify-between"><h2 className="flex items-center gap-2 text-sm font-black sm:text-base"><Heart size={17} className="text-accent" /> Popular Products</h2><a href="/products" className="text-[10px] font-semibold text-accent sm:text-xs">View All <ArrowRight size={13} className="ml-1 inline" /></a></div><ProductStrip products={bestSellers.length ? bestSellers : products} badges /></section>
+          <section className="mb-6"><div className="mb-3 flex items-center justify-between"><h2 className="flex items-center gap-2 text-sm font-black sm:text-base"><Palette size={17} className="text-accent" /> New Arrivals</h2><a href="/products?new=true" className="text-[10px] font-semibold text-accent sm:text-xs">View All <ArrowRight size={13} className="ml-1 inline" /></a></div><ProductStrip products={newArrivals.length ? newArrivals : products} badges /></section>
 
           <AdSlotBanner slot="home-lower" />
           <section className="mb-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]"><a href="/categories/t-shirts" className="group relative min-h-[150px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#f5f5f2] to-[#dfe8d9] p-5 sm:p-7"><div className="relative z-10"><h2 className="text-xl font-black sm:text-2xl">Premium Cotton T-Shirts</h2><p className="mt-1 text-xs text-text-secondary">Soft · Breathable · Durable</p><span className="mt-5 inline-flex rounded-full bg-accent px-3 py-2 text-[10px] font-bold text-accent-foreground">Shop Now <ArrowRight size={13} className="ml-1" /></span></div><div className="absolute -bottom-20 right-[-10px] h-48 w-48 rounded-full bg-white/80" /><span className="absolute bottom-5 right-9 text-4xl font-black text-[#85ad69]/60">MH</span></a><a href="/account" className="relative min-h-[150px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#d7f5a8] via-[#79bf20] to-[#4e9e12] p-5 text-white sm:p-7"><p className="text-xs font-bold uppercase tracking-[0.15em] text-white/80">Rewards</p><h2 className="mt-2 text-2xl font-black">Get Rewards<br />with MH Points!</h2><p className="mt-1 text-xs text-white/85">Shop more, earn more.</p><span className="mt-4 inline-flex rounded-full bg-white px-3 py-2 text-[10px] font-bold text-[#4e9e12]">Learn More <ArrowRight size={13} className="ml-1" /></span><SparkleDecoration /></a></section>

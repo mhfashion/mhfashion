@@ -33,6 +33,7 @@ test("a ready-made product is not design-editable", () => {
   assert.equal(editing.isDesignEditable({ isCustomizable: "full" }), true);
   assert.equal(editing.isDesignEditable({ isCustomizable: "partial" }), true);
   assert.equal(editing.isDesignEditable({}), true, "an unknown flag keeps the editor");
+  assert.equal(editing.isDesignEditable({ subBrand: "Nyein" }), false, "a Nyein piece is ready-made even without the flag");
 });
 
 test("ready-made products stay buyable: no editor link, no draft artwork", () => {
@@ -47,7 +48,8 @@ test("ready-made products stay buyable: no editor link, no draft artwork", () =>
 
 test("the Nyein page lists the Nyein brand from the catalogue", () => {
   assert.match(nyein, /getProductsBySubBrand\(NYEIN_BRAND\)/);
-  assert.match(nyein, /NyeinPieceCard/);
+  assert.match(nyein, /ProductStrip/);
+  assert.match(nyein, /<ProductStrip products=\{popular\}/, "the shelf is the shop's own");
   assert.equal(/placeholder|ready for the layout and content direction/i.test(nyein), false);
   assert.match(products, /export async function getProductsBySubBrand/);
   assert.match(products, /\.ilike\("sub_brand", subBrand\)/);

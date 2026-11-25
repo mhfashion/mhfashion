@@ -6,6 +6,7 @@ const test = require("node:test");
 const ROOT = path.join(__dirname, "..");
 const card = readFileSync(path.join(ROOT, "apps/web/src/components/guide/GuideCard.tsx"), "utf8");
 const page = readFileSync(path.join(ROOT, "apps/web/src/app/guide/page.tsx"), "utf8");
+const articlePage = readFileSync(path.join(__dirname, "../apps/web/src/app/guide/[slug]/page.tsx"), "utf8");
 const productCard = readFileSync(path.join(ROOT, "apps/web/src/components/ProductCard.tsx"), "utf8");
 
 test("a guide card is the same square box as a product card", () => {
@@ -27,6 +28,14 @@ test("the guide grid matches the product grid", () => {
 test("the guide menu box carries an Editor Guide entry", () => {
   assert.equal(page.split("data-guide-editor").length - 1, 2, "expected the sidebar row and the phone chip");
   assert.match(page, /href="\/guide\/editor-guide"/);
+});
+
+test("the guide menu never shows two Editor Guides", () => {
+  // The category list already carries Editor Guide; the extra shortcut row is the other one.
+  assert.equal(page.split(">Editor Guide</span>").length - 1, 0, "the phone chip still reads Editor Guide");
+  assert.equal((page.match(/Other Guide/g) || []).length, 2, "the sidebar row and the phone chip both say Other Guide");
+  assert.equal(articlePage.split("> Other Guide</Link>").length - 1, 1, "and so does the article page's menu box");
+  assert.equal(articlePage.split("Other Guide").length - 1, 1, "only the shortcut row is renamed there");
 });
 
 test("the guide hero stays compact", () => {

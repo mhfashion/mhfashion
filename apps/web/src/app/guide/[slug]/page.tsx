@@ -107,7 +107,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
             <nav aria-label="Guide navigation" className="rounded-2xl border border-border bg-bg-surface p-2">
               <Link href="/guide#articles" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-bold text-accent hover:bg-bg"><BookOpen size={17} /> <GuideLabel id="guide.allGuides" fallback="All Guides" /></Link>
               {catalog.categories.map((item) => <Link key={item.id} href={`/guide?category=${item.slug}#articles`} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg ${item.slug === post.categorySlug ? "bg-accent/10 text-accent" : ""}`}><CategoryIcon slug={item.slug} /> {item.name}</Link>)}
-              <Link href="/guide/editor-guide" data-guide-editor className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg ${post.slug === "editor-guide" ? "bg-accent/10 text-accent" : ""}`}><Pencil size={17} /> Editor Guide</Link>
+              <Link href="/guide/editor-guide" data-guide-editor className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg ${post.slug === "editor-guide" ? "bg-accent/10 text-accent" : ""}`}><Pencil size={17} /> Other Guide</Link>
               <div className="my-2 border-t border-border" />
               <Link href="/faq" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> FAQ</Link>
             </nav>

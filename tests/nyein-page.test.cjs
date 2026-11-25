@@ -15,22 +15,22 @@ test("the Nyein page wears the home page's UI", () => {
     assert.match(home, new RegExp(`import ${component} from "@/components/${component}"`), `home also uses ${component}`);
   }
   assert.match(nyein, /getProductsBySubBrand\(NYEIN_BRAND\)/);
-  assert.match(nyein, /NyeinPieceCard/, "the boxes are Nyein's own card");
+  assert.match(nyein, /import ProductStrip from "@\/components\/ProductStrip"/, "the boxes are the shop's own product card");
   assert.match(nyein, /rounded-2xl bg-gradient-to-r from-\[#efffdc\]/, "the same hero gradient as home");
   assert.match(nyein, /max-w-\[1480px\]/, "and the same page width");
 });
 
-test("every Nyein box can be bought or added to the cart", () => {
-  const card = read("apps/web/src/components/NyeinPieceCard.tsx");
+test("every Nyein box is the home page's own product box", () => {
+  const strip = read("apps/web/src/components/ProductStrip.tsx");
+  const card = read("apps/web/src/components/ProductCard.tsx");
   const pieces = read("apps/web/src/lib/nyein-pieces.ts");
-  assert.match(card, /useCart\(\)/);
-  assert.match(card, /addItem\(piece\)/);
-  assert.match(card, /data-nyein-buy=/);
-  assert.match(card, /data-nyein-cart=/);
+  // One shelf component for both pages, so the two can never drift apart again.
+  assert.match(strip, /import ProductCard from "@\/components\/ProductCard"/);
+  assert.match(home, /import ProductStrip from "@\/components\/ProductStrip"/);
+  assert.match(card, /const productUrl = href \?\? `\/products\/\$\{product\.slug\}`/);
   assert.match(card, /t\("product\.buy"\)/);
-  assert.match(card, /t\("product\.addToCart"\)/);
-  assert.match(card, /window\.location\.href = "\/cart"/);
-  assert.doesNotMatch(card, /\/create/, "a ready-made piece never opens the editor");
+  assert.doesNotMatch(strip, /\/create/, "a ready-made piece never opens the editor");
+  assert.doesNotMatch(card, /\/create/, "and neither does a shop product");
   const count = (pieces.match(/slug: "/g) || []).length;
   assert.ok(count >= 8, `the shelf carries pieces to buy, found ${count}`);
   assert.match(pieces, /isCustomizable: "none"/);

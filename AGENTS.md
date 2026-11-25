@@ -771,6 +771,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   per anchor and `Input.dispatchKeyEvent` Enter to commit. Pick the tool options in **separate** evaluate ticks
   (React batches one task, so three `.click()`s in one call keep only the last change).
 
+## Product shelves and the Nyein brand
+- `components/ProductStrip.tsx` is the only shelf: both the home page and `/nyein` render it, so the two can
+  never drift apart. `badges` adds home's BEST SELLER / TRENDING / POPULAR labels; `href` overrides where every
+  card link points (the Nyein page falls back to `NYEIN_PIECES`, whose slugs are not in the database, and points
+  those cards at `/products` instead of a 404).
+- `NyeinPieceCard` was deleted on purpose: it gave the Nyein page its own Buy / Add to Cart pair, and the boxes
+  no longer matched the home page. Do not recreate a per-brand card.
+- `isDesignEditable` reads `subBrand` as well as `isCustomizable`, so a Nyein row is ready-made even when the
+  column is unset. Ready-made products hide the Edit design action and show `READY_MADE_NOTE` instead.
+
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
   `tests/canvas-shell.test.cjs` fails if they come back.
