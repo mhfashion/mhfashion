@@ -69,10 +69,6 @@ function normalizeText(value: string): string {
   return value.toLocaleLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function unavailableCatalog(): GuideCatalog {
-  return { categories: [], posts: [], source: "unavailable" };
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -244,16 +240,14 @@ async function loadGuideCatalog(): Promise<GuideCatalog> {
     const [categoriesResult, postsResult] = await Promise.all([
       supabase
         .from("guide_categories")
-        .select("id, slug, name, description")
+        .select("*")
         .eq("status", "published")
         .not("published_at", "is", null)
         .lte("published_at", publicationTime)
         .order("created_at", { ascending: true }),
       supabase
         .from("guide_posts")
-        .select(
-          "id, category_id, slug, title, excerpt, cover_image_url, sections, reading_minutes, featured, published_at, seo_title, seo_description, product_links"
-        )
+        .select("*")
         .eq("status", "published")
         .not("published_at", "is", null)
         .lte("published_at", publicationTime)
@@ -268,11 +262,13 @@ async function loadGuideCatalog(): Promise<GuideCatalog> {
       return GUIDE_STARTER_CATALOG;
     }
     if (categoriesResult.error || postsResult.error) {
+      // A schema drift, a permission change or a slow query must not blank the Guide page: the built-in
+      // handbook is the content the shop means to publish anyway.
       console.error(
-        "getGuideCatalog failed:",
+        "getGuideCatalog failed, serving the handbook:",
         categoriesResult.error?.message ?? postsResult.error?.message
       );
-      return unavailableCatalog();
+      return GUIDE_STARTER_CATALOG;
     }
 
     const categories = (categoriesResult.data ?? [])
@@ -291,8 +287,8 @@ async function loadGuideCatalog(): Promise<GuideCatalog> {
 
     return { categories, posts, source: "supabase" };
   } catch (error) {
-    console.error("getGuideCatalog failed:", error);
-    return unavailableCatalog();
+    console.error("getGuideCatalog failed, serving the handbook:", error);
+    return GUIDE_STARTER_CATALOG;
   }
 }
 

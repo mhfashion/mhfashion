@@ -115,7 +115,7 @@ test("the admin summary names the products, or says there are none", () => {
 test("the guide model reads product links from the row and repairs what it cannot use", () => {
   const source = readFileSync(path.join(ROOT, "apps/web/src/lib/guides.ts"), "utf8");
   assert.match(source, /productLinks: normalizeGuideProductLinks\(value\.product_links\)/, "the row's jsonb is normalised on read");
-  assert.match(source, /seo_description, product_links/, "the query asks for the column");
+  assert.match(source, /\.select\("\*"\)/, "select * keeps a drifted schema readable");
   assert.match(source, /productLinks: GuideProductLink\[\]/, "every post carries the list, empty when it sells nothing");
   const starter = readFileSync(path.join(ROOT, "apps/web/src/lib/guide-starter.ts"), "utf8");
   assert.equal(starter.match(/productLinks: \[\]/g).length, 12, "each starter post declares an empty list");

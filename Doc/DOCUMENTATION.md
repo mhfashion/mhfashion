@@ -1195,7 +1195,10 @@ Two owner reports, both fixed.
 - **The Guide page listed only its categories.** Production had the guide tables but no published posts, and the
   loader treated that as a finished empty catalogue, so no article appeared. It now falls back to the built-in
   handbook (12 articles across six categories: Editor, Size, Product, Design, Payment, Delivery) whenever the live
-  posts list is empty, and a live post still wins over the handbook when one exists.
+  posts list is empty, and a live post still wins over the handbook when one exists. Production also returned 500 for
+  every guide article, so the loader now asks Supabase for `select("*")` (a column the deploy expects but a drifted
+  table lacks fails the whole query) and every failure — missing table, denied role, dropped connection, schema
+  drift, unusable client — serves the handbook instead of an empty page.
 
 ### 2026-11-21 — The footer shows on a phone, everywhere
 

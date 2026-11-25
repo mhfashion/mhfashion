@@ -362,7 +362,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   card links to `/products/<slug>`.
 - `getGuideCatalog` falls back to `GUIDE_STARTER_CATALOG` when the live `guide_posts` table returns no published
   rows. A live-but-empty table used to blank the Guide page, which the owner reported as "only the size guide exists".
-  A published live post still replaces the handbook.
+  A published live post still replaces the handbook. Any live failure (error code of any kind, unusable client) also
+  serves the handbook; `select("*")` is used on purpose because naming a column a drifted production table lacks
+  failed the whole listing and 500'd every article page.
 
 ## Footer blocks are page content
 - The owner lists the footer blocks (FB/IG/TikTok/YT, SHOP, HELP, LEGAL, NEWSLETTER, MYANMAR PAYMENT, DOWNLOAD OUR

@@ -206,25 +206,23 @@ test("published live posts win over the handbook", async (t) => {
   assert.deepEqual(catalog.posts.map((post) => post.slug), [data.posts[0].slug]);
 });
 
-test("only explicit missing-table error codes allow starter fallback", async (t) => {
+test("every live-catalogue failure serves the handbook", async (t) => {
   configureSupabase(t);
   suppressExpectedErrors(t);
-  for (const code of ["42P01", "PGRST205"]) {
+  // A missing table, a denied role, a dropped connection and a schema drift all used to blank the page.
+  for (const code of ["42P01", "PGRST205", "42501", "PGRST301", "08006", "42703"]) {
     const catalog = await loadGuides({ guide_posts: { data: null, error: { code, message: "Fixture" } } }).getGuideCatalog();
-    assert.equal(catalog.source, "starter");
-  }
-  for (const code of ["42501", "PGRST301", "08006", "PGRST116"]) {
-    const catalog = await loadGuides({ guide_posts: { data: null, error: { code, message: "Fixture" } } }).getGuideCatalog();
-    assert.deepEqual(catalog, { categories: [], posts: [], source: "unavailable" });
+    assert.equal(catalog.source, "starter", `code ${code} keeps the handbook`);
+    assert.ok(catalog.posts.length >= 12);
   }
 });
 
-test("invalid Supabase configuration is a controlled unavailable state", async (t) => {
+test("an unusable Supabase client serves the handbook too", async (t) => {
   configureSupabase(t);
   suppressExpectedErrors(t);
   const catalog = await loadGuides({}, { throwOnCreate: true }).getGuideCatalog();
-  assert.equal(catalog.source, "unavailable");
-  assert.equal(catalog.posts.length, 0);
+  assert.equal(catalog.source, "starter");
+  assert.ok(catalog.posts.length >= 12);
 });
 
 test("live loader filters publication state and ignores malformed or uncategorized posts", async (t) => {
