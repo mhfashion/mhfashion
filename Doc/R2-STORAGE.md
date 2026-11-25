@@ -1,5 +1,10 @@
 # R2 storage — what to put in the bucket and how
 
+> **Plan in progress (2026-11-24):** this document describes the public bucket `mh-fashion-assets`. Customer and order files will
+> live in a second, private bucket, `mh-fashion-private`, because R2 makes a bucket public as a whole. The full prefix list,
+> key rules, retention and backups are in `Plan/PLAN.md` section 12.2. Do not put anything about a customer or an order in the
+> public bucket.
+
 MH Fashion serves product mockups, design files and post artwork from one Cloudflare R2
 bucket. This is the contract the code already expects; follow it and nothing has to change in
 the app.
@@ -50,8 +55,7 @@ mh-fashion-assets/
 │   ├── manifest.json                                  ← the font list the editor reads (3.2b)
 │   └── <font-slug>/<style>.woff2                      ← one file per weight and style
 ├── designs/<design-slug>.svg                          ← design library source files
-├── posts/<post-slug>.svg                              ← T-shirt post artwork
-└── orders/<order-id>/<file>.svg                       ← copies of what the press received
+└── posts/<post-slug>.svg                              ← T-shirt post artwork
 ```
 
 The two mockup sets are separate on purpose: the catalogue shows a styled 4:5 photo, the editor
@@ -120,6 +124,8 @@ still tries that path after `mockups/product/...`, so nothing breaks — move th
 `mockups/product/` when convenient. The editor does not read the flat layout.
 
 ### 3.2 Designs — `designs/<design-slug>.svg`
+
+> Target layout (`Plan/PLAN.md` §12.2): `designs/<design-slug>/design.svg` plus a `meta.json`. The catalogue builder already reads the folder form.
 
 - one SVG per design, artwork space 1000 × 1200 units
 - each element must be its own `<g id="...">` so the editor can list it as a layer
@@ -208,6 +214,8 @@ Rules the editor enforces (a bad entry is skipped and named, never fatal — the
 - ≤ 2 MB (`MAX_POST_SVG_BYTES`)
 
 ### 3.4 Orders — `orders/<order-id>/...`
+
+> **Moved:** order files belong in the private bucket `mh-fashion-private` (`Plan/PLAN.md` §12.2), never in the public one. Nothing is written to `orders/` in `mh-fashion-assets`.
 
 Optional server-side copy of the "Print files ZIP" contents, so a job survives a browser
 reset: `<order-id>/<design-file>.svg`, `<design-file>-mockup.svg`, `manifest.json`.

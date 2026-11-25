@@ -528,22 +528,8 @@ form is retired; the pattern below is the only one, and `Doc/R2-STORAGE.md` is i
 no upload path exists in the storefront or the editor. The upload form generates the key from the
 product, the look and the file type, so a key is never typed and cannot drift from the pattern.
 
-```
-mockups/product/<product-slug>/<look>.<webp|png|jpg>    catalogue photos, 4:5
-mockups/editor/<garment-slug>/<look>.<webp|png|jpg>     editor panel photos, 1:1
-mockups/3d/<product-slug>/<look>.<webp|png|jpg>         3D renders (reserved)
-models/<product-slug>.glb                               3D garment models (reserved)
-designs/<design-slug>.svg                               design library artwork
-posts/<post-slug>.svg                                   T-shirt post artwork
-orders/<order-id>/...                                   copy of the print bundle
-jersey-mockups/{jersey_style_id}/worn_photo.png + mapping_zones.json
-brushes/{brush_id}/texture.png
-elements/v1/manifest.json, elements/v1/{slug}.svg (planned, R2 not connected)
-fonts/v1/manifest.json, fonts/v1/{font_id}.woff2 (planned; license-cleared files only)
-text-styles/v1/manifest.json, text-styles/v1/previews/{slug}.webp (planned)
-products/categories/{slug}.png, products/banners/{id}.png
-uploads/{user_id}/{upload_id}/original.jpg, upscaled.jpg
-```
+**The complete list of every key, in both buckets, is the tables in 12.2.2.** The key rules and the look rule
+below apply to all of them.
 
 `<look>` is the attribute combination that actually changes the picture: for the catalogue
 `colour[-fit][-sleeve]`, for the editor `colour[-gsm]`. **Size is never part of a look** — the same
@@ -569,8 +555,8 @@ address from it. This replaces the earlier "future private serving contract" (`/
 
 **Parts.**
 1. **One Worker, one file (owner rule, 2026-11-23).** The service is a separate Cloudflare Worker whose whole code is
-   `Worker/assets.ts`; nothing else lives in `Worker/`. It exports `fetch` (the read and admin routes) and
-   `scheduled` (the rebuild). The builders are named exports of that file so tests can import them. It may import the
+   `Worker/assets.ts`; nothing else lives in `Worker/`. It exports `fetch` (the admin and private routes, and the read routes
+   once it takes them over), `queue` (the rebuild on an R2 event) and `scheduled` (the hourly safety net). The builders are named exports of that file so tests can import them. It may import the
    app's pure rules by relative path (for example `../apps/web/src/lib/editor-fonts.ts` and
    `../apps/web/src/lib/search-text.ts`), which wrangler bundles, so each rule exists once. Its configuration is
    `wrangler.assets.jsonc` at the repository root (the site's own stays in `apps/web/wrangler.jsonc`) and holds the
@@ -692,15 +678,242 @@ Supabase Auth).
 | # | Question | Recommendation |
 |---|---|---|
 | R2-1 | Are public files served by the bucket's own address or through the Worker? | **Decided 2026-11-23:** public files from the bucket address with a CORS rule for the site; the Worker for the JSON and for every private file |
-| R2-2 | How often does the scheduled rebuild run? | **Decided 2026-11-23:** every five minutes, plus the admin "Rescan" button for an immediate refresh |
+| R2-2 | How often does the scheduled rebuild run? | **Decided 2026-11-23:** every five minutes, plus the admin "Rescan" button for an immediate refresh *(Superseded by R2-9 in 12.2.14 once events are on: the cron becomes an hourly safety net.)* |
 | R2-3 | Where does an asset's description (`meta.json`) live? | **Decided 2026-11-23:** beside the asset in R2 for now; it moves into the database with the rest of the admin data |
-| R2-4 | Where does the Worker live and how is it addressed? | **Decided 2026-11-23:** `Worker/assets.ts` (one file), configured by `wrangler.assets.jsonc` at the root and deployed by its own workflow; addressed by a subdomain of the site (for example `assets.<site-domain>`), or by its workers.dev address until a domain is set, in `NEXT_PUBLIC_ASSETS_API_URL` |
+| R2-4 | Where does the Worker live and how is it addressed? | **Decided 2026-11-23, clarified 2026-11-24:** `Worker/assets.ts` (one file), configured by `wrangler.assets.jsonc` at the root and deployed by its own workflow. It holds what the site's own Worker cannot (the `scheduled` and `queue` handlers, the admin writes and the private routes). The read routes already built under `/api/assets/` in the app keep serving the same JSON from the site's own address (no CORS) until the Worker takes them over; both use the same libraries, so the answers are identical. When the Worker serves them it is addressed by a subdomain of the site (for example `assets.<site-domain>`), or by its workers.dev address until a domain is set, in `NEXT_PUBLIC_ASSETS_API_URL` |
 
 **Depends on:** the R2 binding, the cron trigger and the variables in `wrangler.assets.jsonc`; the workflow
 `deploy-assets-worker.yml`; and Supabase Auth with a server-side admin check for the write and issues routes.
 
 Naming: lowercase, hyphens; UUIDs for system-generated assets, slugs for
 catalog-facing items.
+
+### 12.2 R2 storage plan — what is stored, where and how  *(decided 2026-11-24)*
+
+This is the complete plan for every byte the platform keeps in R2: which files exist, which bucket they sit in,
+who writes and reads them, how they are named, how long they are kept, how they are backed up and checked. It
+replaces the key list that used to sit in section 12. `Doc/R2-STORAGE.md` stays the how-to for the shop; where it
+differs from this section, this section is the target and the document is updated when the change is built.
+
+**What was checked (2026-11-24).**
+- R2 public access is switched on **per bucket** (a custom domain or the r2.dev address), not per folder. A public
+  bucket exposes everything in it, so nothing private can sit beside the public mockups.
+- Cloudflare's price list: storage $0.015 per GB-month; Class A operations (writes and **lists**) $4.50 per million;
+  Class B operations (reads) $0.36 per million; free every month: 10 GB, 1 million Class A and 10 million Class B;
+  data leaving R2 is free.
+- R2 can send a message to a Queue when an object is created or deleted, filtered by prefix and suffix; two rules
+  for the same event may not overlap. R2 also has lifecycle rules that expire objects under a prefix after a number
+  of days. No object versioning appeared in the pages reviewed, so none is relied on.
+- In the built code (`apps/web/src/lib`): `AssetStore` handles text only (`get` returns a string, `put` takes a
+  string); the catalogue builders read `<kind>/<slug>/meta.json` for fonts, designs, elements, brushes and text
+  styles; `buildMockupCatalogue` takes the first folder under `mockups/` as the product slug; the rebuild writes
+  its snapshots (`catalog/<kind>.json`, issues included) into the same store it lists.
+
+#### 12.2.1 Three buckets
+
+| Bucket | Public? | Holds | Reached by |
+|---|---|---|---|
+| `mh-fashion-assets` | Yes, through a custom domain: cached by Cloudflare, CORS for the site | files every visitor may fetch | browsers directly; code through the binding `MH_FASHION_ASSETS` |
+| `mh-fashion-private` | **Never**: no custom domain, no r2.dev | anything about a customer, an order, a licence, and the service's own snapshots | only code holding the binding `MH_FASHION_PRIVATE`, after an access check |
+| `mh-fashion-backup` | Never | copies written by the backup workflow only | the backup workflow; the owner when restoring |
+
+Local development uses wrangler's local R2 simulation, so no development buckets exist in the cloud.
+
+#### 12.2.2 Every prefix
+
+**Public bucket `mh-fashion-assets`** (nothing in it is secret; a visitor may guess any key).
+
+| Key pattern | What it is | Accepted file | Written by | Cache class |
+|---|---|---|---|---|
+| `mockups/product/<product-slug>/<look>.<webp\|png\|jpg>` | catalogue photo, 4:5 | WebP up to 200 KB (PNG, JPG up to 400 KB) | admin form, or by hand until the form exists | revalidate |
+| `mockups/editor/<garment-slug>/<look>.<webp\|png\|jpg>` | editor panel photo, square, flat | same | same | revalidate |
+| `mockups/editor/<garment-slug>/meta.json` | the garment's design areas (editor plan E23) | JSON up to 20 KB | admin tool of E23 | revalidate |
+| `mockups/3d/<product-slug>/<look>.<webp\|png\|jpg>` | 3D render (reserved) | same | same | revalidate |
+| `models/<product-slug>.glb` | 3D garment model (reserved) | GLB up to 5 MB | by hand | revalidate |
+| `fonts/<font-slug>/<style>.woff2` | the font the browser shows | woff2 up to 1 MB | by hand, later the admin form | immutable |
+| `fonts/<font-slug>/<style>.ttf` or `.otf` | the outline file for the text bend (editor plan D14) | up to 5 MB | same | immutable |
+| `fonts/<font-slug>/meta.json` | name, shelf, styles, scripts, licence, on/off | JSON up to 20 KB | same | revalidate |
+| `fonts/manifest.json` | the older hand-edited font list, honoured until every font has a `meta.json` | JSON | by hand | revalidate |
+| `designs/<design-slug>/design.svg` + `meta.json` | design library artwork; each element is a top-level `<g id>` so it lists as a layer | SVG up to 2 MB, cleaned | admin form, or by hand | revalidate |
+| `elements/<element-slug>/element.svg` + `meta.json` | one reusable shape | SVG up to 200 KB, cleaned | same | revalidate |
+| `brushes/<brush-slug>/tip.png` or `tip.svg` + `meta.json` | a brush tip | PNG up to 512 × 512 px and 200 KB, or SVG up to 100 KB | the owner, by hand | immutable |
+| `text-styles/<style-slug>/meta.json` | a text style is data: its effect stack; it is painted live, so there are no image files | JSON up to 20 KB | admin | revalidate |
+| `textures/<texture-slug>/texture.png` + `meta.json` | a grain mask for the Distress effect (editor plan E18, later) | PNG up to 2048 px and 1 MB | by hand | immutable |
+| `posts/<post-slug>.svg` | T-shirt post artwork | SVG up to 2 MB, cleaned | admin form | revalidate |
+| `jersey-mockups/<jersey-style-slug>/worn_photo.png` and `mapping_zones.json` | the Jersey mapping tool's photo and zones | PNG up to 1 MB, JSON up to 50 KB | admin | revalidate |
+| `site/categories/<slug>.webp`, `site/banners/<id>.webp` | category and banner pictures | WebP up to 300 KB | admin | revalidate |
+
+**Private bucket `mh-fashion-private`.**
+
+| Key pattern | What it is | Accepted file | Written by | Read by |
+|---|---|---|---|---|
+| `catalog/<kind>.json` | the snapshot for `fonts`, `designs`, `elements`, `brushes`, `text-styles`, `mockups`, with its `issues` list | JSON | the rebuild only | the asset routes; the admin issues route; the public route strips `issues` |
+| `uploads/tmp/<user-id>/<upload-id>.<webp\|jpg\|png>` | a customer photo that is not yet part of a saved design | the compressed working copy, up to 6 MB (3000 px on a phone) | the upload route | the same customer |
+| `uploads/<user-id>/<upload-id>.<webp\|jpg\|png>` | the photo once a design that uses it is saved | same | promoted from `tmp` on Save | the same customer; the press through the order copy |
+| `saved/<user-id>/<design-id>/thumbnail.webp` | the My designs thumbnail | WebP up to 100 KB, about 600 px | the browser at Save, through the route | the same customer |
+| `orders/<order-id>/<file>` | the frozen copy of what the press receives: `print-sheet-<order>.html`, `invoice-<order>.html`, `print-spec-<order>.csv`, `measurements-<order>.csv`, `manifest.json`, `delivery-<order>.json`, and per design `designs/<design>-<look>.svg` and `...-mockup.svg` (the names in `Doc/PRINT-BUNDLE.md`) | the files themselves; the ZIP is not stored | the server at Buy, once | admins and the press, through the Worker |
+| `licences/<font-slug>/<file>.pdf` | proof of the right to use a font commercially | PDF up to 5 MB | the owner | admins |
+
+A `meta.json` is the description of its folder; the catalogue builder reads it and lists the folder without it as an
+issue.
+
+#### 12.2.3 Key rules
+
+1. Lower-case ASCII `a-z`, `0-9`, `-`, `.`, `_` only. No spaces, no accents, no Myanmar script in a key; the Myanmar
+   name of anything lives in its `meta.json`, so a key never depends on how a browser encodes a URL.
+2. A slug matches `^[a-z0-9]+(-[a-z0-9]+)*$`. A key is at most 200 characters (the built `isSafeAssetKey` allows 512;
+   the rule here is stricter and is what the admin form produces).
+3. The extension is the real type: `.webp`, `.png`, `.jpg`, `.svg`, `.woff2`, `.ttf`, `.otf`, `.glb`, `.json`, `.pdf`,
+   `.csv`, `.html`.
+4. No personal data in a key: no name, phone or address. Customers are identified by their UUID only.
+5. `..`, a leading or doubled `/`, a backslash and a URL are refused everywhere (`isSafeAssetKey`).
+6. The upload form, the Worker and the pre-upload check all build keys from **one function**, so no key is typed and
+   none can drift. It is a pure function with a test per pattern in the tables above.
+7. A replaced file whose old copy may still be cached gets a new name (`regular-2.woff2`, as `Doc/R2-STORAGE.md`
+   already says), or its cache class is `revalidate`.
+
+#### 12.2.4 Cache classes
+
+| Class | `Cache-Control`, set when the file is written | Used for |
+|---|---|---|
+| immutable | `public, max-age=31536000, immutable` | fonts, brush tips, textures: a changed file gets a new name |
+| revalidate | `public, max-age=300, stale-while-revalidate=86400` | mockups, designs, elements, posts, `meta.json`, site pictures: a replaced file shows within about five minutes |
+| catalogue JSON | `public, max-age=60, stale-while-revalidate=600` (built in `asset-routes.ts`) | the JSON the routes return |
+| private | `private, no-store` | everything in `mh-fashion-private` |
+
+#### 12.2.5 How a file gets in
+
+1. **Admin upload (after Supabase Auth).** The admin form sends the file and its fields to the Worker route
+   `PUT /api/admin/assets`. The Worker checks the admin role, checks the type by the file's first bytes, checks the
+   size and (for images) the pixel size, cleans SVG (scripts, event attributes, external references removed),
+   builds the key from the fields (rule 6), writes the file with its content type and cache class, records a
+   `sha256` and the uploader in the object's custom metadata, writes `meta.json`, and the rebuild refreshes the
+   catalogue. A key that already exists is refused unless the form says "replace".
+2. **By hand (until the admin form exists).** The owner puts files into the public bucket by following
+   `Doc/R2-STORAGE.md`. Before uploading, the owner runs the pre-upload check (`npm run assets:check <folder>`, the
+   fonts check extended to every kind), which uses the same key function and the same validators as the Worker. The
+   rebuild picks the files up (12.2.9).
+3. **Customer files (private).** The browser re-encodes a photo (which drops its EXIF data, including any location)
+   and sends it to `POST /api/uploads` with the customer's token. The Worker checks the type by its first bytes,
+   the size and the pixel size, limits the number of uploads per customer per hour, and writes it under
+   `uploads/tmp/<user-id>/`. Save promotes the files a design uses to `uploads/<user-id>/`; the rest of `tmp` expires
+   after 24 hours (12.2.7).
+4. **Order files (private).** At Buy the server writes each file of `orders/<order-id>/` **once**. The Worker refuses
+   a second write to an existing order key. Each carries its `sha256`, which is checked when it is read.
+5. **Snapshots (private).** Only the rebuild writes `catalog/<kind>.json`, and only when the result changed (the
+   built rebuild already does this).
+6. **Large files.** Every file here is far below the single-request limit, so no multipart upload is needed; the size
+   limits in the tables are the rule.
+
+#### 12.2.6 How a file is read
+
+- **Public files** are fetched by the browser from the custom domain, cached by Cloudflare. Reading a public file
+  costs a Class B operation only on a cache miss.
+- **Catalogue JSON** comes from the asset routes (section 12.1), which read the snapshot (one read) and cache it.
+  Nothing lists the bucket while a visitor waits: a listing is a Class A operation and a live scan would also read
+  one `meta.json` per asset.
+- **Private files** are returned only by the Worker, after it has checked who is asking: a customer gets their own
+  uploads, thumbnails and designs; an admin gets order files and licences. There are no presigned links, so no key
+  ever leaves the server.
+- **The press bundle ZIP** is built on request (in the Worker or the browser) from the stored order files, never
+  stored, so there is one copy of each file.
+
+#### 12.2.7 Kept for how long, and deleting
+
+| What | Kept | Then |
+|---|---|---|
+| `uploads/tmp/` | 24 hours | a lifecycle rule on the prefix expires it (to be set in the dashboard when the bucket exists) |
+| `uploads/<user-id>/` and `saved/` | while the design that uses them exists | a design deleted by the customer is soft-deleted; its files are purged after 30 days (editor plan E1) |
+| `orders/<order-id>/` | for the life of the order, and for the legal retention period | the owner sets the period with the legal review (editor plan, "Inputs only the owner can supply"); until then nothing is deleted |
+| `licences/` | as long as the font is in use, then kept | never purged automatically |
+| public assets | until an admin turns them off | switching off sets `enabled: false` in `meta.json` and keeps the file; **permanent delete** is a separate admin action offered after 30 days |
+| `catalog/` | until the next rebuild | overwritten |
+
+Account deletion removes `uploads/<user-id>/` and `saved/<user-id>/` for designs no order uses; orders keep their own
+copies.
+
+#### 12.2.8 Backups
+
+R2 versioning is not relied on (12.2 "What was checked"), so a deleted or overwritten file is gone unless it was
+copied.
+- A **weekly scheduled workflow** (`.github/workflows/backup-assets.yml`) copies both live buckets to
+  `mh-fashion-backup` with `rclone`, keeping the last four weekly copies; the workflow is the only writer.
+- `orders/` and `licences/` are also copied **monthly to a place outside the Cloudflare account** (decision R2-8),
+  because the same account can lose both the live and the backup bucket.
+- An admin delete of any public asset is soft (12.2.7), which covers the usual accident.
+- Restoring is a documented procedure in `Doc/R2-STORAGE.md`, written when the workflow is built, with a restore
+  test once before launch.
+
+#### 12.2.9 What triggers a catalogue rebuild
+
+1. **A change event.** R2 event notifications on `mh-fashion-assets` send a message to the Queue
+   `mh-fashion-asset-events` when an object is created or deleted. There is one rule per source prefix (`fonts/`,
+   `designs/`, `elements/`, `brushes/`, `text-styles/`, `mockups/`) so the rules never overlap, and the Worker's
+   `queue` handler rebuilds that kind, so a new file appears within seconds. Snapshots live in the other bucket, so
+   a rebuild cannot trigger itself.
+2. **The admin "Rescan" button**, for an immediate refresh.
+3. **A safety-net cron, hourly**, in case an event is lost.
+This replaces the five-minute rhythm of R2-2 once the events are on.
+
+#### 12.2.10 Cost
+
+At today's prices (12.2 "What was checked"): public assets are a few hundred megabytes, which sits inside the free
+10 GB, and reads are cached so Class B stays far below the free 10 million a month. Reading a snapshot instead of
+listing keeps Class A low. As an assumption to check against real orders: 5,000 orders at about 12 MB each is about
+60 GB, which is about $0.90 a month of storage; at 100 GB stored the bill is about $1.50 a month. Bandwidth is free.
+The risk is not the bill but a loop that lists the bucket on every request, which the snapshot design prevents.
+
+#### 12.2.11 Checks
+
+- `npm run assets:check <folder>` (before an upload): key rules, file types and sizes, `meta.json` fields, a licence
+  entry for every font, duplicates.
+- The issues route and panel (section 12.1): every skipped entry with its key and reason.
+- A weekly size report per prefix (a handful of list operations) in the admin, so growth is seen early.
+- Tests: the key function, the file-type check, the SVG cleaner, the access rules (a customer cannot read another
+  customer's key; an admin can read an order), and the lifecycle of an upload from `tmp` to promoted.
+
+#### 12.2.12 What the built code must change
+
+Written from reading `apps/web/src/lib` on 2026-11-24, so the next session knows exactly what differs:
+1. **`AssetStore` is text-only.** Images, fonts and photos are binary. It needs `getObject(key)` (a stream with its
+   content type, size and ETag), `putObject(key, body, { contentType, cacheControl, customMetadata, sha256 })` and
+   `head(key)`, while the text methods the catalogue uses stay.
+2. **Two stores.** The rebuild must read sources from the public bucket and write snapshots to the private one;
+   today it uses one store for both, and the snapshot (with its `issues`) would be public.
+3. **`ASSET_KEY_PREFIXES`** must also cover `models/`, `textures/`, `posts/`, `jersey-mockups/` and `site/` in the public
+   bucket, and `uploads/`, `saved/`, `orders/`, `licences/` in the private one, each with its own allow-list.
+4. **`buildMockupCatalogue` groups on the first folder only**, so it would list `product`, `editor` and `3d` as product
+   slugs. It must group on the kind folder, then the product or garment slug, then the look.
+5. **Designs use the folder form.** `Doc/R2-STORAGE.md` still says `designs/<design-slug>.svg`; the builder expects
+   `designs/<design-slug>/meta.json`. The folder form is the target; the checker lists any single-file design so it can
+   be moved.
+6. **The R2 store's `put`** writes every object as `application/json`; it must take the content type and cache class
+   from the caller.
+7. **`Doc/R2-STORAGE.md`** claims everything is public and lists `orders/` in the public tree; it is corrected now
+   (see the note at its top) and rewritten when the private bucket exists.
+
+#### 12.2.13 Moving from today
+
+1. Create `mh-fashion-private` and bind it as `MH_FASHION_PRIVATE`; create `mh-fashion-backup`. Nothing customer-related
+   has been written to R2 yet, so there is nothing to move.
+2. Keep reading `fonts/manifest.json` and any flat mockup keys until the shop has uploaded in the new form.
+3. Move each single-file design into its folder (`designs/<slug>/design.svg` plus a `meta.json`) with the checker's list.
+4. Apply the changes in 12.2.12 in the order 1, 2, 3, 4, 6, then 5.
+5. Add the event rules and the Queue (12.2.9), the lifecycle rule for `uploads/tmp/`, and the backup workflow.
+
+#### 12.2.14 Decisions
+
+| # | Question | Decision |
+|---|---|---|
+| R2-5 | One bucket or separate buckets for public and private files? | **Decided 2026-11-24:** separate. R2 makes a bucket public as a whole, so customer and order files get `mh-fashion-private`, never public, reachable only through a Worker after an access check. |
+| R2-6 | Where do the catalogue snapshots live? | **Decided 2026-11-24:** in the private bucket, so the `issues` list is never public. |
+| R2-7 | Is a customer's original photo kept? | **Decided 2026-11-24:** no. Only the compressed working copy is kept (editor plan D8); an original is stored only if the press asks for originals. |
+| R2-8 | How are backups made? | **Decided 2026-11-24:** weekly copy of both buckets to `mh-fashion-backup`, monthly copy of `orders/` and `licences/` to a place outside the Cloudflare account; the owner picks that place. |
+| R2-9 | How is a catalogue refreshed after a change? | **Decided 2026-11-24:** by an R2 event to a Queue and the Worker's `queue` handler, with an hourly cron as the safety net and the admin Rescan button; this replaces R2-2's five-minute rhythm once the events are on. |
+
+**Depends on:** the two bindings and the Queue in `wrangler.assets.jsonc`; the event rules and the lifecycle rule created in
+the dashboard; Supabase Auth for every private route and for the admin writes; the owner's choice of an off-account
+backup place.
 
 ## 13. Open / Deferred
 
@@ -1069,6 +1282,7 @@ browser-local demo data (section 16 P0).
 - 2026-11-22: Added §12.1, the R2 asset service: a Worker reads R2 through a binding and returns JSON catalogues (fonts, designs, elements, brushes, mockups), with snapshots, scheduled rebuilds, admin writes after Auth, private files only through the Worker, and an S3-ready store interface. Replaces the earlier future serving contract.
 - 2026-11-23: Decided R2-1 to R2-3 (§12.1). Editor plan: decided D1, D2, D4 to D9, D14 and D15; designed the saved design and order hand-off (E1), the Hoodie (E9) and design areas (E23); added the order of work (5.1) and the list of inputs only the owner can supply.
 - 2026-11-23: `Plan/` reduced to one file: the editor plan became Part II of this file and the separate editor plan file was removed. Added the repository layout and file rules (SQL only in `SQL/`, documents only in `Doc/`, one file in `Worker/` and in `Plan/`), the §17 search plan, and the Worker-file design in §12.1 (R2-4). Section 6 now points to Part II.
+- 2026-11-24: Added §12.2, the R2 storage plan: three buckets (public, private, backup), every prefix with its file type, limit, writer, reader and cache class, key rules, how files get in and are read, retention, backups, rebuild events, cost, checks, the changes the built asset code needs, and decisions R2-5 to R2-9. The old key list in section 12 now points to it.
 
 
 
@@ -2905,7 +3119,7 @@ used by the editor yet, and the editor's draft is browser-only.
    `platform_settings`.
 2. **No pictures inside the row.** Today an image layer carries its photo as a data URL, which is too large for
    a row and for browser storage. Before a design is saved, each photo is sent to private R2 through the Worker
-   (`uploads/<user-id>/<upload-id>/`, Part I §12.1, rollout step 4) and the layer keeps only that key.
+   (`uploads/tmp/<user-id>/` and, once the design is saved, `uploads/<user-id>/<upload-id>.<ext>`, Part I §12.1 and §12.2, rollout step 4) and the layer keeps only that key.
    Fonts are stored by slug, never as files.
 3. **Who may see it.** Row-level security lets a customer select, insert and update only rows with their own
    `user_id`, with a `with check` on writes; nobody else can read a design. The admin order view and the press
@@ -3718,6 +3932,7 @@ The plan author has decided every open design question above. These are facts th
 7. Real devices for the E2 pass: at least one Android phone and one iPhone.
 8. Which effects the press confirms print safely on dark garments (E18).
 9. The legal review of the terms, privacy and cookie pages (Part I §13).
+10. The place outside the Cloudflare account for the monthly backup of order files and licences (R2-8), and the legal retention period for order files (Part I §12.2.7).
 
 #### Owner decisions recorded (2026-11-21)
 
