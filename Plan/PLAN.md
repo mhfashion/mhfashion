@@ -908,7 +908,9 @@ those rules before an upload. The type check of §12.2.5 is built as well: `asse
 first bytes (png, jpg, webp, woff2, ttf, otf, glb, pdf, svg, json, csv, html), reads the pixel size of a PNG, JPEG or
 WebP, and `cleanSvg` removes scripts, event attributes and external references; `checkAssetContent(key, bytes)` applies
 them with the brush 512 px and texture 2048 px limits, and the check script reports a cleaning as a note and a
-mislabeled or oversized file as a problem. Remaining: the bindings, the Queue and
+mislabeled or oversized file as a problem. The event side of §12.2.9 is prepared: `asset-events.ts` holds
+`ASSET_SOURCE_RULES` (one non-overlapping prefix per kind), `kindForAssetKey` and `kindsForAssetKeys`, and
+`rebuildAssetCatalogues(..., kinds)` rebuilds only the kinds a queue message names. Remaining: the bindings, the Queue and
 the event rules (12.2.9), the upload and order routes, and the backup workflow — all of which need the buckets to exist.
 
 #### 12.2.13 Moving from today

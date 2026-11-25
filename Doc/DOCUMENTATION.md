@@ -1232,6 +1232,11 @@ a file named `.svg` that is really a PNG is refused, and an SVG that needs clean
 check script reads bytes rather than text for this reason. `tests/asset-file-type.test.cjs` covers every signature, the
 three image headers, the cleaner and the refusals, and the script test covers a mislabeled file and an oversized brush.
 
+The rebuild can now be aimed (Plan §12.2.9). `apps/web/src/lib/asset-events.ts` holds `ASSET_SOURCE_RULES`, one
+non-overlapping prefix per catalogue, with `kindForAssetKey(key)` and `kindsForAssetKeys(keys)` for a batch; the tests
+assert no rule shadows another. `rebuildAssetCatalogues(buckets, now, log, kinds)` takes that list, so an R2 event
+rebuilds one kind and leaves the other snapshots untouched, which is what the Worker's `queue` handler will pass.
+
 ### 2026-11-21 — The footer stays on the home page
 
 The Nyein page had picked up the full `Footer` (brand, SHOP/HELP/LEGAL, newsletter, payment blocks) along with the

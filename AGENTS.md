@@ -816,6 +816,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   attributes and external `href`s. `checkAssetContent(key, bytes)` combines them with the shape's size and pixel limits
   (brush 512 px, texture 2048 px) and returns the cleaned SVG plus notes; the check script prints a note and keeps the
   file, and refuses a mislabeled or oversized one.
+- `asset-events.ts` maps a changed key to the catalogue it changes (`ASSET_SOURCE_RULES`, `kindForAssetKey`,
+  `kindsForAssetKeys`) for the R2 → Queue → `queue` handler of Plan §12.2.9. `rebuildAssetCatalogues(buckets, now, log,
+  kinds)` takes that list, so one event rebuilds one kind and leaves the other snapshots alone.
 
 ## Guide menu (`apps/web/src/app/guide/page.tsx`, `guide/[slug]/page.tsx`)
 - The row under the categories reads **Other Guide** and must open a **post list**, like every other guide row.

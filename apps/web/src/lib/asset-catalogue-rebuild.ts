@@ -22,9 +22,11 @@ export async function rebuildAssetCatalogues(
   buckets: AssetBuckets,
   now: Date = new Date(),
   log: (message: string) => void = (message) => console.log(message),
+  /** The kinds a queue message touched; the whole set when a schedule or a rescan runs. */
+  only: readonly AssetCatalogueKind[] = ASSET_CATALOGUE_KINDS,
 ): Promise<CatalogueRebuildSummary> {
   const kinds: CatalogueRebuild[] = [];
-  for (const kind of ASSET_CATALOGUE_KINDS) {
+  for (const kind of only) {
     const { written, catalogue } = await writeAssetCatalogue(buckets.public, buckets.private, kind, now);
     const entry = { kind, written, items: catalogue.items.length, issues: catalogue.issues.length };
     kinds.push(entry);
