@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ArrowRight, Mail } from "lucide-react";
+import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { CONTACT_EMAIL, type InfoPage as InfoPageContent } from "@/lib/storefront-info";
 
@@ -7,7 +8,7 @@ export function infoPageMetadata(page: InfoPageContent): Metadata {
   return { title: `${page.title} — MH Fashion`, description: page.lead };
 }
 
-export default function InfoPage({ page }: { page: InfoPageContent }) {
+export default function InfoPage({ page, footer = true }: { page: InfoPageContent; footer?: boolean }) {
   return (
     <div>
       <Header />
@@ -53,6 +54,7 @@ export default function InfoPage({ page }: { page: InfoPageContent }) {
           </section>
         </div>
       </main>
+      {footer ? <Footer /> : null}
     </div>
   );
 }

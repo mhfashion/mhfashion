@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ShieldAlert } from "lucide-react";
+import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import ContactForm from "@/components/ContactForm";
 import { CONTACT_EMAIL } from "@/lib/storefront-info";
@@ -52,6 +53,6 @@ export default function ContactPage() {
           </section>
         </aside>
       </div>
-    </div></main></div>
+    </div></main><Footer /></div>
   );
 }

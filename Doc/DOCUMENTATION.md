@@ -1182,6 +1182,21 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — The footer sits under every shopper page
+
+Only `/` and `/nyein` rendered the footer. Everything a shopper opens from the boxes did not: the product page, the
+cart, checkout, the wishlist, search, the collections, the info pages, the guide and the 404. So the shop looked
+finished on two pages and unfinished everywhere it sent a customer.
+
+Every storefront route now renders the one `Footer` component. `InfoPage` (about, shipping, returns, privacy, terms,
+cookie policy, FAQ) gained a `footer` prop so the size guide can render it after its size charts instead of in the
+middle. `not-found.tsx` got the footer too, so a box whose piece is missing still looks like the shop. `/create`
+(the editor) and `/admin` keep a full-height page with no footer, and `/best-sellers` is a redirect, so both are
+exempt.
+
+Verified by loading each route in Chromium and counting `<footer>` elements (one on all of them), and by
+`tests/nyein-page.test.cjs`, which now walks every storefront `page.tsx` and fails when one loses the footer.
+
 ### 2026-11-21 — One product box for the shop and for Nyein
 
 The home page and the Nyein page drew different product boxes. Home used `ProductCard` in the shop's frame; Nyein

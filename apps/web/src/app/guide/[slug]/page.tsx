@@ -13,6 +13,7 @@ import {
   Shirt,
   Sparkles,
 } from "lucide-react";
+import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
@@ -159,6 +160,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
         </div>
       </main>
 
+      <Footer />
     </div>
     </>
   );

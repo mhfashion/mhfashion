@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Heart, ShoppingBag, Trash2 } from "lucide-react";
+import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
 import { useWishlist } from "@/lib/wishlist-context";
@@ -75,6 +76,7 @@ export default function WishlistPage() {
           <p role="status" aria-live="polite" data-wishlist-notice className="sr-only">{notice}</p>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

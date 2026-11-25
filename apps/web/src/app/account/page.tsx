@@ -24,6 +24,7 @@ import {
   User,
   Wallet,
 } from "lucide-react";
+import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { useCurrency } from "@/lib/currency-context";
 import { useTheme } from "@/lib/theme-context";
@@ -460,6 +461,7 @@ export default function AccountPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </main>
   );
 }
