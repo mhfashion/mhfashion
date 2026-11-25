@@ -674,7 +674,10 @@ may read a private key (the owner of `uploads/`, `saved/`; an admin for everythi
 (9 tests) drives `handleRequest`, `handleQueue` and `handleScheduled` over memory buckets: the read route and its 304,
 the unbound answer, an admin upload that builds the key and writes the file and its `meta.json`, the 401/403/409/400
 refusals, an SVG stored cleaned, the private file for its owner and an admin only, and the queue rebuilding one kind.
-A `wrangler deploy --dry-run` bundles it (48 KiB) with both bindings, the queue and the cron.
+A `wrangler deploy --dry-run` bundles it (48 KiB) with both bindings, the queue and the cron. Every write and every
+private read is rate limited per caller (30 and 120 a minute, counted in the isolate — `WORKER_RATE_LIMITS`), which is
+what part 11 asks; `tests/assets-worker.test.cjs` exhausts the allowance and checks the 429 and that a second admin
+keeps its own.
 
 **Customer uploads, order files and the backup built 2026-11-25 (12.2.5 items 3 and 4, 12.2.7, 12.2.8).**
 `lib/asset-upload.ts` holds the hourly quota (`uploads/tmp/<user>/quota.json`, twenty an hour), the temporary key

@@ -227,3 +227,30 @@ test("an R2 event body is read in every shape it arrives in", () => {
   );
   assert.deepEqual(worker.keysFromQueueMessage(null), []);
 });
+
+test("an admin who floods the write route is stopped, and the limiter counts per caller", async () => {
+  worker.resetWorkerRateLimits();
+  const buckets = storeLib.createMemoryAssetBuckets();
+  const upload = (viewer) =>
+    worker.handleRequest(
+      request("/api/admin/assets", jsonBody({
+        shape: "element",
+        vars: { slug: "arrow", file: "element", ext: "svg" },
+        data: base64(Buffer.from(SVG)),
+        replace: true,
+      })),
+      {},
+      { buckets, viewer },
+    );
+
+  for (let index = 0; index < worker.WORKER_RATE_LIMITS.adminWrite.limit; index += 1) {
+    assert.equal((await upload(admin)).status, 200, `write ${index + 1} is allowed`);
+  }
+  const blocked = await upload(admin);
+  assert.equal(blocked.status, 429);
+  assert.equal((await blocked.json()).error, "rate_limited");
+
+  const other = { id: "admin-2", role: "admin" };
+  assert.equal((await upload(other)).status, 200, "another admin keeps its own allowance");
+  worker.resetWorkerRateLimits();
+});

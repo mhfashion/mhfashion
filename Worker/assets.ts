@@ -44,6 +44,35 @@ export type AssetsDeps = {
 export type QueueMessage = { body: unknown; ack?: () => void; retry?: () => void };
 export type QueueBatch = { messages: QueueMessage[] };
 
+/** Plan §12.1 part 11: the write and private routes are rate limited. Per isolate, keyed by the caller. */
+export const WORKER_RATE_LIMITS = {
+  adminWrite: { limit: 30, windowMs: 60_000 },
+  privateRead: { limit: 120, windowMs: 60_000 },
+} as const;
+
+const rateWindows = new Map<string, { count: number; resetAt: number }>();
+
+/** False once a caller has used its allowance for the window; true otherwise. */
+export function checkWorkerRateLimit(
+  key: string,
+  rule: { limit: number; windowMs: number } = WORKER_RATE_LIMITS.adminWrite,
+  now: number = Date.now(),
+): boolean {
+  const existing = rateWindows.get(key);
+  if (!existing || existing.resetAt <= now) {
+    if (rateWindows.size > 5000) rateWindows.clear();
+    rateWindows.set(key, { count: 1, resetAt: now + rule.windowMs });
+    return true;
+  }
+  if (existing.count >= rule.limit) return false;
+  existing.count += 1;
+  return true;
+}
+
+export function resetWorkerRateLimits() {
+  rateWindows.clear();
+}
+
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 
 function json(status: number, payload: unknown, headers: Record<string, string> = {}): Response {
@@ -145,6 +174,9 @@ async function adminUpload(request: Request, env: AssetsEnv, deps: AssetsDeps | 
   const viewer = await viewerFor(request, env, deps);
   if (!viewer) return json(401, { error: "sign_in_required" }, cors(env));
   if (!canWriteAdmin(viewer)) return json(403, { error: "admin_only" }, cors(env));
+  if (!checkWorkerRateLimit(`admin:${viewer.id}`, WORKER_RATE_LIMITS.adminWrite, deps?.now?.().getTime() ?? Date.now())) {
+    return json(429, { error: "rate_limited", retryAfterSeconds: 60 }, cors(env));
+  }
 
   const upload = await readAdminUpload(request);
   if ("error" in upload) return json(400, { error: "bad_request", reason: upload.error }, cors(env));
@@ -183,6 +215,9 @@ async function privateFile(request: Request, env: AssetsEnv, deps: AssetsDeps | 
   const viewer = await viewerFor(request, env, deps);
   if (!viewer) return json(401, { error: "sign_in_required" }, { "cache-control": "private, no-store" });
   if (!canReadPrivateAsset(viewer, key)) return json(403, { error: "not_yours" }, { "cache-control": "private, no-store" });
+  if (!checkWorkerRateLimit(`private:${viewer.id}`, WORKER_RATE_LIMITS.privateRead, deps?.now?.().getTime() ?? Date.now())) {
+    return json(429, { error: "rate_limited", retryAfterSeconds: 60 }, { "cache-control": "private, no-store" });
+  }
   const object = await buckets.private.getObject(key);
   if (!object) return json(404, { error: "not_found", key }, { "cache-control": "private, no-store" });
   // The bytes are already a buffer; the DOM type only names Blob and string parts.

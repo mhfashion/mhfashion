@@ -824,7 +824,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `asset-store-r2.ts` is the Next-only resolver and imports `@opennextjs/cloudflare`; keep that import out of the Worker.
 - Worker routes: `GET /api/assets/<kind>` and `/api/assets/mockups/<slug>` (public, CORS to `ASSETS_SITE_ORIGIN`),
   `GET /api/admin/assets/issues` and `PUT /api/admin/assets` (admin), `GET /api/private/<key>` (owner or admin),
-  `GET /api/assets/issues` (public, but the app's own route is now admin-only). Auth is the Worker's own:
+  `GET /api/assets/issues` (public, but the app's own route is now admin-only). Writes and private reads are rate
+  limited per caller in the isolate (`WORKER_RATE_LIMITS`, 30 and 120 a minute; `resetWorkerRateLimits()` in tests).
+  Auth is the Worker's own:
   `verifySupabaseUser` asks Supabase `/auth/v1/user` with the bearer token; `canReadPrivateAsset` decides the rest.
 - Uploads: `POST /api/uploads` (Supabase token, 2 MB, bytes sniffed, twenty an hour via `uploads/tmp/<user>/quota.json`)
   and `POST /api/uploads/promote` (moves a saved design's photos to `uploads/<user>/`). Order files:
