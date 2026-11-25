@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Search as SearchIcon, X } from "lucide-react";
-import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
 import { getBestSellers, normalizeSearchQuery, searchProducts } from "@/lib/products";
@@ -94,6 +93,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </div>
         </section>
       )}
-    </div></main><Footer /></div>
+    </div></main></div>
   );
 }

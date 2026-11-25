@@ -771,15 +771,6 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   per anchor and `Input.dispatchKeyEvent` Enter to commit. Pick the tool options in **separate** evaluate ticks
   (React batches one task, so three `.click()`s in one call keep only the last change).
 
-## The footer
-- `Footer` renders on every storefront route; only `/admin`, `/create` (full-screen editor) and `/offline` are
-  exempt, plus `/best-sellers`, which is a redirect. `tests/nyein-page.test.cjs` walks `apps/web/src/app` and fails
-  when a shopper page loses it.
-- `InfoPage` takes `footer={false}` when the page appends its own blocks (the size guide's charts), otherwise it
-  would paint the footer in the middle of the page.
-- The footer is a client component, so it is absent from the streamed shell of the 404 route and appears after
-  hydration; check it in the browser, not with `curl`.
-
 ## Product shelves and the Nyein brand
 - `components/ProductStrip.tsx` is the only shelf: both the home page and `/nyein` render it, so the two can
   never drift apart. `badges` adds home's BEST SELLER / TRENDING / POPULAR labels; `href` overrides where every

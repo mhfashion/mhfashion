@@ -59,29 +59,3 @@ test("the footer carries every promised block, on a phone too", () => {
   assert.match(footer, /pb-\[calc\(4\.5rem\+env\(safe-area-inset-bottom\)\)\] md:pb-6/, "and the fixed bottom nav never covers its last row");
   assert.match(nyein, /<Footer \/>/);
 });
-
-test("every shopper page carries the footer", () => {
-  // Only home and Nyein had one until 2026-11-21; a Nyein box then opened a product page, a cart or a
-  // 404 with nothing under the content. Every storefront route now renders the one footer.
-  const { readdirSync } = require("node:fs");
-  const walk = (dir) => readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((entry) => {
-    const child = `${dir}/${entry.name}`;
-    return entry.isDirectory() ? walk(child) : [child];
-  });
-  const skip = /^apps\/web\/src\/app\/(admin|create|offline|api)(\/|$)/;
-  const pages = walk("apps/web/src/app").filter((file) => file.endsWith("/page.tsx") && !skip.test(file));
-  assert.ok(pages.length > 20, `the sweep found only ${pages.length} pages`);
-  for (const file of pages) {
-    const source = read(file);
-    if (/^\s*redirect\(/m.test(source)) continue; // a redirect page has no body of its own
-    assert.ok(/<Footer \/>|footer=\{false\}|InfoPage/.test(source), `${file} shows no footer`);
-  }
-});
-
-test("every page a Nyein box opens carries the same footer", () => {
-  // The box opens /products/<slug>, and a missing piece lands on the 404 page.
-  for (const file of ["apps/web/src/app/products/[slug]/page.tsx", "apps/web/src/app/products/page.tsx", "apps/web/src/app/not-found.tsx"]) {
-    assert.match(read(file), /<Footer \/>/, `${file} dropped the footer`);
-    assert.match(read(file), /import Footer from "@\/components\/Footer"/, `${file} does not import the one footer`);
-  }
-});

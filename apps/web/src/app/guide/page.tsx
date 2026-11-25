@@ -15,7 +15,6 @@ import {
   X,
 } from "lucide-react";
 import AdSlotBanner from "@/components/AdSlotBanner";
-import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
@@ -191,7 +190,6 @@ export default async function GuidePage({ searchParams }: PageProps) {
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 }

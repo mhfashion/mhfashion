@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
-import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import JsonLd from "@/components/JsonLd";
@@ -40,7 +39,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
           <ProductDetailClient product={product} related={related} />
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

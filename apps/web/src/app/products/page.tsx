@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { LayoutGrid } from "lucide-react";
 import AdSlotBanner from "@/components/AdSlotBanner";
-import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
 import { getAllProducts } from "@/lib/products";
@@ -22,6 +21,6 @@ export default async function ProductsPage() {
       ) : (
         <div className="rounded-xl border border-border bg-bg-surface p-10 text-center text-sm text-text-muted">The catalog is not connected on this deployment yet.</div>
       )}
-    </div></main><Footer /></div>
+    </div></main></div>
   );
 }
