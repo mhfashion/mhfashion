@@ -18,4 +18,9 @@
   //   { "binding": "MH_FASHION_ASSETS", "bucket_name": "mh-fashion-assets" },
   //   { "binding": "MH_FASHION_PRIVATE", "bucket_name": "mh-fashion-private" }
   // ]
+  // A durable rate-limit counter (Plan §16 P1-9). Create the namespace with
+  // `npx wrangler kv namespace create mh-fashion-rate-limit`, then add:
+  // "kv_namespaces": [
+  //   { "binding": "RATE_LIMIT_KV", "id": "<the namespace id>" }
+  // ]
 }

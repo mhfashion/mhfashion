@@ -69,15 +69,43 @@ real per-item weights.
 
 ## Sending it
 
-The endpoint is read from `NEXT_PUBLIC_MH_DELIVERY_URL` (`MH_DELIVERY_QUOTE_ENDPOINT` in
-`delivery.ts`). It is empty until MH Delivery hands over the URL and a token, so nothing is sent
-today — the file is downloaded and forwarded instead.
+`POST /api/delivery/quote` sends this payload to MH Delivery and answers with the fee. Set the two
+variables on the site's Worker (Cloudflare → Workers → mhfashion → Settings → Variables):
+
+| Variable | What it is |
+|---|---|
+| `MH_DELIVERY_URL` | the base address; the route posts to `<url>/quote` (falls back to `NEXT_PUBLIC_MH_DELIVERY_URL`) |
+| `MH_DELIVERY_TOKEN` | the bearer token MH Delivery issued |
+
+The body is `{ "request": <the JSON above>, "subtotalKs": 63000 }`; `subtotalKs` is optional and is
+what the shop's own free-delivery threshold is measured against.
+
+The answer (`lib/delivery-quote.ts`, `quoteDelivery`) is always a fee:
+
+```json
+{ "feeKs": 3200, "service": "MH Express", "etaDays": "1", "source": "courier", "weightGrams": 3000 }
+```
+
+When the courier is not configured, too slow (8 s), answers a bad status or a body without `feeKs`,
+the answer comes from the shop's own table with `"source": "table"` and a `note` that names the
+reason, so checkout never blocks on the courier:
+
+```json
+{ "feeKs": 2500, "service": "MH Delivery · standard", "etaDays": "1-2", "source": "table",
+  "weightGrams": 1000, "note": "the courier did not answer (not_configured), so the shop's own table priced this" }
+```
+
+`DELIVERY_FEE_TABLE` is the shop's starting default: Yangon 2,500 Ks for the first kilogram and
+1,000 Ks for each started one (1–2 days), Mandalay and Nay Pyi Taw 3,500 Ks + 1,200 Ks (2–3 days),
+everywhere else 4,500 Ks + 1,500 Ks (3–5 days), free from 150,000 Ks. Change the table once MH
+Delivery confirms its rates.
+
+The route is rate limited to 30 calls a minute per address (`RATE_LIMITS.deliveryQuote`).
 
 ```bash
-curl -X POST "$MH_DELIVERY_URL/quote" \
-  -H "Authorization: Bearer $MH_DELIVERY_TOKEN" \
+curl -X POST "$SITE/api/delivery/quote" \
   -H "Content-Type: application/json" \
-  --data @delivery-mh1086.json
+  --data '{"request": '"$(cat delivery-mh1086.json)"', "subtotalKs": 63000}'
 ```
 
 ## Still to confirm with MH Delivery

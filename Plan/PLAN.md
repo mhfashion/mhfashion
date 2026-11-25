@@ -1540,9 +1540,19 @@ proposal, not an approved order.
 
 ### P1 — before launch
 
-5. **Delivery fee.** The MH Delivery API contract, behaviour when the API is down, per-product
-   weight and package size, the Myanmar region/township address structure, and the DHL placeholder.
-   The payload already exists (`Doc/MH-DELIVERY.md`); nothing is sent yet.
+5. **Delivery fee.** **Quote route shipped 2026-11-25:** `POST /api/delivery/quote` sends the payload
+   `delivery.ts` already built to `<MH_DELIVERY_URL>/quote` with `MH_DELIVERY_TOKEN`, and answers
+   `{ feeKs, service, etaDays, source, weightGrams }`. `lib/delivery-quote.ts` holds the whole rule: a
+   billable weight in whole kilograms from the first one, the shop's own fee table (Yangon 2,500 Ks for
+   the first kilogram and 1,000 Ks for each started one, 1–2 days; Mandalay and Nay Pyi Taw 3,500 +
+   1,200; everywhere else 4,500 + 1,500; free from 150,000 Ks), and the fallback — a missing endpoint, an
+   8-second timeout, a bad status or a body without `feeKs` all answer from the table with `source:
+   "table"` and a note naming the reason, so checkout never blocks on the courier. The route is rate
+   limited to 30 calls a minute. `tests/delivery-fee.test.cjs` covers the weight bands, every city
+   band, the free threshold, the courier's answer (against a real local HTTP server, including the
+   `feeKs: "3,200"` string form), the timeout, the 500, the empty body and the fallback note.
+   **Still open:** the MH Delivery account and token (the route answers from the table until they are
+   set), the confirmed response shape, and the township code question.
 6. **Print file quality checks.** **Layer checks shipped 2026-11-21:** `lib/print-quality.ts` reads the
    saved design and reports artwork that cannot print as drawn — a layer past the print area (error;
    rotation is measured on the layer's real corner box) and a sliver of artwork under 3 mm or 0.2 cm²
@@ -1609,8 +1619,12 @@ proposal, not an approved order.
    the footer.
 9. ~~**Rate limiting / abuse protection**~~ — **done 2026-11-21**: `lib/rate-limit.ts` is a fixed-window
    limiter held in module memory, and `enforceRateLimit` guards every payment route (`intent`, `status`,
-   `simulate`, `webhook`). It bounds one isolate per client, not a site-wide quota: a durable counter
-   (KV or Durable Objects) is still needed for that, and the upload/AI/contact paths are not public yet.
+   `simulate`, `webhook`). **Durable counter wired 2026-11-25:** `kvRateLimitStore` already existed; the
+   limiter now resolves the Worker's `RATE_LIMIT_KV` namespace itself (`ensureDurableStore`, once per
+   isolate) and keeps module memory only when the binding is absent, so the allowance holds across
+   isolates as soon as the namespace is created and bound. The upload route (`RATE_LIMITS.upload`, 40 a
+   minute) and the new delivery quote route (30 a minute) are guarded too. **Still open:** creating the
+   `mh-fashion-rate-limit` KV namespace and uncommenting the binding in `apps/web/wrangler.jsonc`.
 10. **Testing.** **Automated coverage shipped:** `checkout`, `payments`, `admin-pricing`,
     `admin-orders`, `order-archive`, `order-qr`, `rate-limit`, `print-quality` and the storefront suites
     run under `node --test`, and `tests/storefront-e2e.cjs` drives the production build over CDP at
@@ -4081,6 +4095,7 @@ Counted on 2026-11-22 from the files themselves (each file run on its own, passi
 | `tests/client-error-log.test.cjs` | 15 |
 | `tests/contact-messages.test.cjs` | 8 |
 | `tests/delivery-quote.test.cjs` | 5 |
+| `tests/delivery-fee.test.cjs` | 5 |
 | `tests/guide-card.test.cjs` | 5 |
 | `tests/guide-http.test.cjs` | 5 |
 | `tests/guide-products.test.cjs` | 17 |

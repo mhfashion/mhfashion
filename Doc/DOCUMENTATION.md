@@ -1912,3 +1912,15 @@ Evidence (2026-11-17): merged `main` production build passed; lint completed wit
 Evidence (Pen follow-up, 2026-11-17): production build passed; lint completed with 0 errors / 25 warnings; `node --test tests/*.test.cjs` passed **55/55**, including canvas-shell **16/16**; and `git diff --check` passed. Focused Chromium confirmed the same Pen cursor/hotspot before the first anchor, after each anchor, and after both Finish and Close path; Pen stayed selected and began a new path after either completion.
 
 Evidence (Pen Bézier visual refinement, 2026-11-18): production build passed; lint completed with 0 errors / 25 warnings; all repository Node tests passed **55/55**; Pen geometry and canvas-shell tests passed **21/21**; and `git diff --check` passed. Focused production Chromium confirmed no idle instruction box, visible in/out Bézier endpoints on a drag-created anchor, a 1.5px live preview with Finish/Close/Cancel actions, and a saved-path handle drag changing the cubic SVG path data.
+
+The delivery fee is quoted, not guessed (Plan §16 P1-5). `apps/web/src/lib/delivery-quote.ts` posts the payload
+`delivery.ts` already built to `<MH_DELIVERY_URL>/quote` with `MH_DELIVERY_TOKEN`, and when the courier is not
+configured, too slow (8 s), or answers a body without `feeKs`, it answers from `DELIVERY_FEE_TABLE` with
+`source: "table"` and a note naming the reason, so checkout always has a number. `POST /api/delivery/quote` is the
+route, rate limited to 30 calls a minute. `tests/delivery-fee.test.cjs` runs the courier path against a real local
+HTTP server (including a `"3,200"` fee string and a 50 ms timeout) and the table path for every band.
+
+The rate limiter now reaches for a durable counter itself: `enforceRateLimit` resolves the Worker's `RATE_LIMIT_KV`
+namespace once per isolate (`ensureDurableStore`) and keeps module memory only when the binding is absent, so the
+existing `kvRateLimitStore` starts working as soon as the namespace exists. The upload route (40 a minute) and the
+delivery quote route (30 a minute) are guarded beside the payment routes.

@@ -839,6 +839,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   create or update workflow ... without workflow scope`. They are kept verbatim in `Doc/ASSETS-WORKER-DEPLOY.md`; a
   token with `workflow` scope (or the GitHub web editor) must add them. Do not `git add` them into a push again until
   the token has that scope, or the whole push is rejected.
+- Delivery fee: `lib/delivery-quote.ts` + `POST /api/delivery/quote` (Plan §16 P1-5). The courier is
+  `MH_DELIVERY_URL` / `MH_DELIVERY_TOKEN`; every failure (no endpoint, 8 s timeout, non-200, no `feeKs`) falls back
+  to `DELIVERY_FEE_TABLE` with `source: "table"` and a note, so checkout never blocks. Change the table, not the
+  callers, when MH Delivery confirms its rates.
+- Rate limiting: `enforceRateLimit` resolves `RATE_LIMIT_KV` from the Workers context once per isolate
+  (`ensureDurableStore` in `lib/rate-limit.ts`); without the binding it stays on module memory. The binding is
+  commented in `apps/web/wrangler.jsonc` until the namespace exists.
 - `asset-events.ts` maps a changed key to the catalogue it changes (`ASSET_SOURCE_RULES`, `kindForAssetKey`,
   `kindsForAssetKeys`) for the R2 → Queue → `queue` handler of Plan §12.2.9. `rebuildAssetCatalogues(buckets, now, log,
   kinds)` takes that list, so one event rebuilds one kind and leaves the other snapshots alone.

@@ -126,8 +126,28 @@ export function clientKey(request: Request): string {
   return headers.get("x-real-ip")?.trim() || "unknown";
 }
 
+let storeResolved = false;
+
+/**
+ * Use the Worker's `RATE_LIMIT_KV` namespace when it is bound, once per isolate. Without the binding
+ * (local `next start`, tests) the limiter keeps its module-memory counters.
+ */
+async function ensureDurableStore(): Promise<void> {
+  if (storeResolved) return;
+  storeResolved = true;
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const context = (await getCloudflareContext({ async: true })) as unknown as { env?: Record<string, unknown> };
+    const kv = context?.env?.RATE_LIMIT_KV;
+    if (kv) activeStore = kvRateLimitStore(kv as RateLimitKv);
+  } catch {
+    // No Workers context: module memory is the allowance.
+  }
+}
+
 /** Returns a 429 response when the client is over the rule, or null when the request may proceed. */
 export async function enforceRateLimit(request: Request, bucket: string, rule: RateLimitRule): Promise<NextResponse | null> {
+  await ensureDurableStore();
   const result = await checkRateLimitAsync(`${bucket}:${clientKey(request)}`, rule);
   if (result.allowed) return null;
   return NextResponse.json(
@@ -145,4 +165,8 @@ export const RATE_LIMITS = {
   paymentStatus: { limit: 120, windowMs: 60_000 },
   /** A provider retries a webhook, so the window is wider and the limit generous. */
   paymentWebhook: { limit: 60, windowMs: 60_000 },
+  /** A photo upload is a write to R2 and a quota read; the upload route also counts per customer. */
+  upload: { limit: 40, windowMs: 60_000 },
+  /** A delivery quote may be a courier call; the checkout asks once per address change. */
+  deliveryQuote: { limit: 30, windowMs: 60_000 },
 } satisfies Record<string, RateLimitRule>;

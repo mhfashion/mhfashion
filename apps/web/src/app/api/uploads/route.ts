@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sniffAssetType } from "@/lib/asset-file-type";
 import { supabaseEnvFromProcess, verifySupabaseUser } from "@/lib/asset-session";
+import { RATE_LIMITS, enforceRateLimit } from "@/lib/rate-limit";
 import { resolveAssetBuckets } from "@/lib/asset-store-r2";
 import { checkUpload, nextUploadQuota, readUploadQuota, uploadQuotaKey } from "@/lib/asset-upload";
 
@@ -37,6 +38,9 @@ async function readBody(request: Request): Promise<{ data: Uint8Array; ext?: str
  * the size and the pixel size, and the file lands under `uploads/tmp/<user-id>/` until a design keeps it.
  */
 export async function POST(request: Request) {
+  const limited = await enforceRateLimit(request, "uploads", RATE_LIMITS.upload);
+  if (limited) return limited;
+
   const buckets = await resolveAssetBuckets();
   if (!buckets) return badRequest("assets_unbound", "the asset buckets are not bound in this environment", 503);
 
