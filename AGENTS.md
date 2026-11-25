@@ -1064,6 +1064,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - A fine-grained PAT pasted into the chat came back `401 Bad credentials` on both `git push` and
   `GET /api/user` (GitHub revokes tokens it finds in public content, and the conversation may be
   logged), so ask for a fresh `Contents: write` token rather than reusing a pasted one.
+- The owner's replacement PAT (fine-grained, `Contents: write`, **no** `Workflow` permission) pushed
+  ordinary commits to `main` fine and was rejected only for `.github/workflows/*`:
+  `refusing to allow a Personal Access Token to create or update workflow ... without workflow scope`.
+  Keep the two asset workflows untracked until a token with the Workflows permission arrives; a failed
+  attempt needs `git reset --soft HEAD~1 && git reset` to put the files back to untracked.
 - To push without persisting the credential, pass a write-capable token inline and leave
   `origin` alone, so the read-only URL in `.git/config` is never overwritten:
   `git push "https://x-access-token:$TOKEN@github.com/mhfashion/mhfashion.git" HEAD:main`
