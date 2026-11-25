@@ -1182,6 +1182,20 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — Brushes leave the dashboard
+
+The owner pointed out that brushes are working tools of the editor, not shop administration, and that the
+dashboard was the wrong home for them.
+
+- `/admin/brushes`, `AdminBrushes.tsx`, `lib/admin-brushes.ts`, the `brushes` list in the admin demo store and its
+  test are removed; the module no longer appears in `ADMIN_MODULES` or the dashboard navigation, and the route
+  returns 404.
+- The editor keeps the whole brush: `EDITOR_BRUSH_PRESETS` (Hard round, Soft round, Spray, Chalk, Marker, Ink,
+  Airbrush) and the Brush box's Tip, Size, Opacity, Softness, Feather, Spacing, Flow, Smoothing, jitter, Angle and
+  blend controls. Nothing the admin screen offered was used by the editor, so no behaviour changed.
+- `tests/brush-home.test.cjs` asserts both halves: the dashboard has no Brushes entry and the editor shelf is
+  intact.
+
 ### 2026-11-24 — A closed pen path has its own fill
 
 Closed paths were always filled with the pen colour and there was no way to say otherwise (plan E21 item 4).

@@ -1390,6 +1390,13 @@ proposal, not an approved order.
     and 390x844 touch: add, duplicate refusal, switch off, move up, edit (id locked), delete, and 390/390
     with no sideways scroll; `tests/admin-brushes.test.cjs` covers the seed, the read repair, every
     validation rule, upsert/remove/toggle/move and the module registration.
+    **Removed 2026-11-21 (owner):** "brushes are things that should work from behind the editor", so the module
+    left the dashboard. `/admin/brushes`, `AdminBrushes.tsx`, `lib/admin-brushes.ts`, the `brushes` data in the demo
+    store and `tests/admin-brushes.test.cjs` are gone; `tests/brush-home.test.cjs` keeps the dashboard free of it and
+    the editor's brush shelf present. The editor's Brush box already owns the whole brush: Tip (round/square), Size,
+    Opacity, Softness, Feather, Spacing, Flow, Smoothing, jitter, Angle, blend and seven presets (Hard round, Soft
+    round, Spray, Chalk, Marker, Ink, Airbrush), so nothing was lost. Verified in Chromium: `/admin` lists no Brushes
+    and `/admin/brushes` returns 404, while the Brush box shows the seven presets, Round pressed and size 52.
     **Pricing Management (web grid + phone cards), Attribute Management, the Delivery Settlement
     Report and Loyalty rules shipped 2026-11-21** (4.5.1, §9, §16); Brush Management stays blocked on
     the editor. `/admin/loyalty` holds the §9 economy (300 daily that expire after 24h, 100 per AI

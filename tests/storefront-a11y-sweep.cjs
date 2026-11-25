@@ -148,7 +148,7 @@ async function main() {
   // The admin dashboard is behind the demo session, so it needs its own pass with the session seeded.
   const ADMIN_ROUTES = [
     "/admin", "/admin/orders", "/admin/products", "/admin/designs", "/admin/posts", "/admin/ads",
-    "/admin/pricing", "/admin/attributes", "/admin/brushes", "/admin/settlements", "/admin/loyalty",
+    "/admin/pricing", "/admin/attributes", "/admin/settlements", "/admin/loyalty",
     "/admin/customers", "/admin/inventory", "/admin/messages", "/admin/promotions", "/admin/reports",
     "/admin/jersey", "/admin/settings",
   ];

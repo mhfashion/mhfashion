@@ -355,6 +355,13 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 ## The print canvas element
 - `<canvas aria-label="Blank print canvas">` is a **layout box**, not a bitmap: the artwork paints in the SVG layers above it and nothing calls `getContext`. Its backing store is `PRINT_CANVAS_BACKING_SPEC` (900x1080 = 972k px) because a real 4500x5400 store is 24.3 M px (~97 MB) and older iOS refuses a canvas above 16.7 M px. The print size lives in `PRINT_CANVAS_SPEC` and the `data-canvas-*` attributes, so keep those when changing the display size. Verified: backing 900x1080, attributes 4500/5400/300, on-screen box unchanged.
 
+## Brushes belong to the editor, not the dashboard
+- Owner instruction (2026-11-21): brushes are working tools that live behind the editor, so there is no
+  `/admin/brushes` module. `EDITOR_BRUSH_PRESETS` in `apps/web/src/lib/editor-layers.ts` plus the Brush box in
+  `EditorAdjustmentsPanel.tsx` (Tip, Size, Opacity, Softness, Feather, Spacing, Flow, Smoothing, jitter, Angle,
+  blend) are the whole brush shelf. `tests/brush-home.test.cjs` guards both facts.
+- Do not reintroduce brush management in the admin; a shop-wide brush needs the editor picker to read it first.
+
 ## Pen end shapes (`apps/web/src/lib/editor-layers.ts`)
 - `EditorPenSettings.ends` (`none | arrow | circle | square | bar`) is stored on each drawn path as `EditorShapePath.ends`,
   and `editorPenEndMarkers(path)` is the only source of marker geometry — the preview paints from it.

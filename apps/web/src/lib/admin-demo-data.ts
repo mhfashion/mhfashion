@@ -35,7 +35,6 @@ export type AdminModuleId =
   | "ads"
   | "pricing"
   | "attributes"
-  | "brushes"
   | "settlements"
   | "loyalty"
   | "jersey"
@@ -481,33 +480,6 @@ export type AdminTeamMember = {
   active: boolean;
 };
 
-/**
- * Plan §10 brush assets: one grayscale PNG per brush at `brushes/<id>/texture.png`, the same file for
- * the stroke and the picker thumbnail. R2 is not connected, so the module keeps the settings and shows
- * the key the upload will use.
- */
-export const ADMIN_BRUSH_SHELVES = ["Ink", "Marker", "Paint", "Texture", "Calligraphy"] as const;
-export type AdminBrushShelf = (typeof ADMIN_BRUSH_SHELVES)[number];
-
-export const ADMIN_BRUSH_TIPS = ["round", "square"] as const;
-export type AdminBrushTip = (typeof ADMIN_BRUSH_TIPS)[number];
-
-export type AdminBrush = {
-  /** Also the R2 folder: `brushes/<id>/texture.png`. */
-  id: string;
-  name: string;
-  shelf: AdminBrushShelf;
-  tip: AdminBrushTip;
-  /** Default stroke width in artwork units. */
-  size: number;
-  /** Percent of the tip diameter between stamps: 100 leaves no gap. */
-  spacing: number;
-  opacity: number;
-  /** 0 is a hard edge, 1 is as soft as the editor can paint. */
-  softness: number;
-  enabled: boolean;
-};
-
 export type AdminSettings = {
   storeName: string;
   supportEmail: string;
@@ -641,7 +613,6 @@ export type AdminDemoData = {
   priceHistory: AdminPriceHistoryEntry[];
   promotions: AdminPromotion[];
   ads: AdminAd[];
-  brushes: AdminBrush[];
   /** How long each banner stays up when a place has several live ones. */
   adsRotationSeconds: number;
   team: AdminTeamMember[];
@@ -657,7 +628,6 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "ads", label: "Ads" },
   { id: "pricing", label: "Pricing" },
   { id: "attributes", label: "Attributes" },
-  { id: "brushes", label: "Brushes" },
   { id: "settlements", label: "Settlements" },
   { id: "loyalty", label: "Loyalty" },
   { id: "jersey", label: "Jersey" },
@@ -1826,53 +1796,6 @@ export function createSeedAds(): AdminAd[] {
   return [];
 }
 
-/**
- * Four brushes so the module opens on something real. They are the shapes the editor can already
- * paint; the texture file is named, not uploaded, until R2 is connected.
- */
-export function createSeedBrushes(): AdminBrush[] {
-  return [
-    { id: "ink-round", name: "Ink · round", shelf: "Ink", tip: "round", size: 52, spacing: 8, opacity: 0.92, softness: 0, enabled: true },
-    { id: "marker-square", name: "Marker · square", shelf: "Marker", tip: "square", size: 84, spacing: 12, opacity: 0.8, softness: 0.1, enabled: true },
-    { id: "watercolour-wash", name: "Watercolour wash", shelf: "Paint", tip: "round", size: 160, spacing: 22, opacity: 0.45, softness: 0.85, enabled: true },
-    { id: "chalk-grain", name: "Chalk grain", shelf: "Texture", tip: "square", size: 120, spacing: 30, opacity: 0.6, softness: 0.55, enabled: false },
-  ];
-}
-
-/** A saved brush that cannot be drawn with is dropped; a missing number takes the editor default. */
-export function normalizeBrushes(raw: unknown): AdminBrush[] {
-  if (!Array.isArray(raw)) return createSeedBrushes();
-  const seen = new Set<string>();
-  const brushes: AdminBrush[] = [];
-  for (const entry of raw) {
-    if (!entry || typeof entry !== "object") continue;
-    const brush = entry as Partial<AdminBrush>;
-    const id = typeof brush.id === "string" ? brush.id.trim() : "";
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || seen.has(id)) continue;
-    const name = typeof brush.name === "string" ? brush.name.trim() : "";
-    if (!name) continue;
-    const shelf = ADMIN_BRUSH_SHELVES.includes(brush.shelf as AdminBrushShelf) ? (brush.shelf as AdminBrushShelf) : "Ink";
-    const tip = ADMIN_BRUSH_TIPS.includes(brush.tip as AdminBrushTip) ? (brush.tip as AdminBrushTip) : "round";
-    const size = Number(brush.size);
-    const spacing = Number(brush.spacing);
-    const opacity = Number(brush.opacity);
-    const softness = Number(brush.softness);
-    seen.add(id);
-    brushes.push({
-      id,
-      name,
-      shelf,
-      tip,
-      size: Number.isFinite(size) ? Math.min(400, Math.max(4, Math.round(size))) : 52,
-      spacing: Number.isFinite(spacing) ? Math.min(200, Math.max(1, Math.round(spacing))) : 8,
-      opacity: Number.isFinite(opacity) ? Math.min(1, Math.max(0.05, opacity)) : 0.9,
-      softness: Number.isFinite(softness) ? Math.min(1, Math.max(0, softness)) : 0,
-      enabled: brush.enabled !== false,
-    });
-  }
-  return brushes;
-}
-
 export function createAdminDemoData(now = Date.now()): AdminDemoData {
   const random = seededRandom(20261121);
   const products: AdminProduct[] = SEED_PRODUCTS.map((product) => ({
@@ -2039,7 +1962,6 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     priceHistory: [],
     promotions,
     ads: createSeedAds(),
-    brushes: createSeedBrushes(),
     adsRotationSeconds: DEFAULT_ADS_ROTATION_SECONDS,
     team,
     settings: {
@@ -2111,7 +2033,6 @@ export function readAdminDemoData(): AdminDemoData {
           ads: Array.isArray(parsed.ads)
             ? parsed.ads.filter((ad) => ad?.mediaType === "image" || ad?.mediaType === "video")
             : createSeedAds(),
-          brushes: normalizeBrushes(parsed.brushes),
           adsRotationSeconds: normalizeAdsRotationSeconds(parsed.adsRotationSeconds),
           orders,
           tshirtPosts: Array.isArray(parsed.tshirtPosts)
