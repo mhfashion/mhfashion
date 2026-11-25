@@ -3482,8 +3482,16 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    draft until blur (clearing "100" is not read as 0), and every value passes `snap`, which bounds it and lands
    it on the slider's step; 999 typed into brush size stores 400. ArrowUp/ArrowDown step once, Shift steps ten,
    double-click returns the field to that tool's default. The field is 44 px tall on touch. Verified in Chromium
-   at 1440 × 900 and 390 × 844. Still open: the photo panel's sliders (`EditorPhotoAdjustments.tsx`), which E22
-   moves onto the same control.
+   at 1440 × 900 and 390 × 844.
+   *The photo panel joined the same control 2026-11-21.* `RangeField` now lives in
+   `components/EditorRangeField.tsx`, so the Adjustments panel and `EditorPhotoAdjustments.tsx` share one
+   implementation and there is exactly **one** `type="range"` in the editor's source. All 48 photo adjustments
+   use it, including the five tone-curve points and the eight colour-mixer bands (previously bare range inputs),
+   and every field carries a double-click reset to Camera Raw's neutral (`levelsWhite` 100, `levelsGamma` 1,
+   grading shadows hue 220, highlights hue 45, blending 50, grain size 25, channel 100, the rest 0).
+   Verified in Chromium at 1440 × 900 with an uploaded photo: 13 sliders and 13 number fields in Basic, typing
+   1.5 into "Photo exposure value" moved the slider to 1.5, a double-click put it back to 0, the Tone Curve and
+   the Color Mixer render 5 and 8 of each, and the console stayed clean.
 2. **Shortcut keys:** V Move, H Hand, B Brush, N Pencil, P Pen, T Text, E Eraser, U Shape, G Gradient, I
    Eyedropper, `[` and `]` for brush size, X to swap colours, D for the default colours; each is shown in the
    tool tooltip and is ignored while a field has focus (the same rule as E13).

@@ -749,6 +749,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - A `Runtime.evaluate` click has no user activation, so `window.open` returns null there and you get the
   download fallback. Drive the button with `Input.dispatchMouseEvent` when testing the popup path.
 
+## Slider controls (`components/EditorRangeField.tsx`)
+- `RangeField` is the editor's **only** range input: a label, a `${ariaLabel} value` number field and the slider.
+  Both `EditorAdjustmentsPanel.tsx` and `EditorPhotoAdjustments.tsx` import it. Do not reintroduce a local
+  slider or a bare `type="range"` — `tests/editor-tool-options.test.cjs` counts them and fails.
+- The number field holds typed text in a draft until blur, so clearing it is not read as 0; every committed
+  value passes `snap` (bounds + slider step). ArrowUp/Down step once, Shift steps ten, double-click returns
+  `defaultValue` when one is given.
+- Photo fields get the Camera Raw neutral, not a blind 0: white point 100, gamma 1, shadows hue 220, highlights
+  hue 45, blending 50, grain size 25, channel 100.
+
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
   `tests/canvas-shell.test.cjs` fails if they come back.

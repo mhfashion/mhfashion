@@ -23,6 +23,8 @@ const {
 } = lib.exports;
 
 const panel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
+const rangeField = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorRangeField.tsx"), "utf8");
+const photoPanel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorPhotoAdjustments.tsx"), "utf8");
 const canvas = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorCanvas.tsx"), "utf8");
 
 test("a gradient layer's axis can be set by angle without losing its length", () => {
@@ -114,15 +116,17 @@ test("the pen joins corners and draws dashed or dotted lines", () => {
 });
 
 test("every panel slider carries a number field that steps, jumps ten with Shift and resets", () => {
-  // One range input, inside RangeField: a slider anywhere else would be missing its number field.
-  assert.equal((panel.match(/type="range"/g) ?? []).length, 1);
-  assert.match(panel, /aria-label=\{`\$\{ariaLabel\} value`\}/);
-  assert.match(panel, /event\.shiftKey \? 10 : 1/, "Shift steps ten times");
-  assert.match(panel, /onDoubleClick=\{\(\) => \{ if \(defaultValue !== undefined\) commit\(defaultValue\); \}\}/);
+  // One range input in the whole editor, inside RangeField: a slider anywhere else is missing its number field.
+  assert.equal((rangeField.match(/type="range"/g) ?? []).length, 1);
+  assert.equal((panel.match(/type="range"/g) ?? []).length, 0, "the Adjustments panel only uses the shared field");
+  assert.equal((photoPanel.match(/type="range"/g) ?? []).length, 0, "the Photo panel only uses the shared field");
+  assert.match(rangeField, /aria-label=\{`\$\{ariaLabel\} value`\}/);
+  assert.match(rangeField, /event\.shiftKey \? 10 : 1/, "Shift steps ten times");
+  assert.match(rangeField, /onDoubleClick=\{\(\) => \{ if \(defaultValue !== undefined\) commit\(defaultValue\); \}\}/);
   // Values are bounded and land on the slider's own step before they are written back.
-  assert.match(panel, /const stepped = step > 0 \? Math\.round\(\(bounded - min\) \/ step\) \* step \+ min : bounded;/);
+  assert.match(rangeField, /const stepped = step > 0 \? Math\.round\(\(bounded - min\) \/ step\) \* step \+ min : bounded;/);
   // Typing is held in a draft, so clearing a field is not read as zero.
-  assert.match(panel, /const \[draft, setDraft\] = useState<string \| null>\(null\);/);
+  assert.match(rangeField, /const \[draft, setDraft\] = useState<string \| null>\(null\);/);
   // Plan E21 item 8: every tool box can go back to its defaults.
   assert.match(panel, /aria-label="Reset pen to its default"/);
   assert.match(panel, /aria-label="Reset eraser to its default"/);
@@ -131,6 +135,19 @@ test("every panel slider carries a number field that steps, jumps ten with Shift
   assert.match(panel, /aria-label=\{`Reset \$\{label\} to its default`\}/);
   // The brush and pencil share one box, so each passes the defaults of the tool it is showing.
   assert.match(panel, /defaults=\{activeTool === "brush" \? EDITOR_TOOL_OPTIONS_DEFAULT\.brush : EDITOR_TOOL_OPTIONS_DEFAULT\.pencil\}/);
+});
+
+test("the photo panel's sliders are the shared field, with a reset to the neutral value", () => {
+  // Plan E21 item 1 had left these behind at a bare range input.
+  assert.match(photoPanel, /import \{ RangeField \} from "@\/components\/EditorRangeField"/);
+  assert.doesNotMatch(photoPanel, /function Slider\(/, "no second slider implementation");
+  assert.ok((photoPanel.match(/<RangeField /g) ?? []).length >= 40, "every adjustment uses it");
+  assert.match(photoPanel, /min=\{-5\} max=\{5\} step=\{0\.05\} suffix=" EV" ariaLabel="Photo exposure"/);
+  assert.match(photoPanel, /ariaLabel="Photo levels white point" defaultValue=\{100\}/, "double-click returns Camera Raw's neutral");
+  assert.match(photoPanel, /ariaLabel="Photo levels gamma" defaultValue=\{1\}/);
+  assert.match(photoPanel, /ariaLabel="Grading shadows hue" defaultValue=\{220\}/);
+  assert.match(photoPanel, /ariaLabel=\{`Photo curve point \$\{index \+ 1\}`/, "the curve points carry a number field too");
+  assert.match(photoPanel, /ariaLabel=\{`Color mixer \$\{band\} \$\{mixerMode\.toLowerCase\(\)\}`/, "the mixer bands too");
 });
 
 test("normalizing tool options keeps the Text group and fills it in for old drafts", () => {

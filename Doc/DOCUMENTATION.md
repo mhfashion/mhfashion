@@ -1182,6 +1182,24 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — One slider control for the whole editor, photo panel included
+
+Plan E21 item 1 asks that every slider come with a number field. The Adjustments panel has had that since
+2026-11-24, but the photo panel (`EditorPhotoAdjustments.tsx`) kept its own `Slider`: a bare range input with
+the number printed beside it, no typing, no stepping, no reset, so the two halves of the panel looked and
+behaved differently.
+
+`RangeField` now lives in `components/EditorRangeField.tsx` and both panels import it, which leaves exactly one
+`type="range"` in the editor source. All 48 photo adjustments use it, the five tone-curve points and the eight
+colour-mixer bands included (they were plain range inputs inside a label), and each one double-clicks back to
+Camera Raw's neutral rather than always to zero: white point 100, gamma 1, shadows hue 220, highlights hue 45,
+blending 50, grain size 25, channel 100.
+
+Verified in Chromium at 1440x900 with an uploaded photo: 13 sliders and 13 number fields in Basic, typing 1.5
+into "Photo exposure value" moved the slider to 1.5, a double-click restored 0, Tone Curve showed 5 and Color
+Mixer 8, console clean. `tests/editor-tool-options.test.cjs` holds the shared field to the only range input and
+the photo panel to none of its own.
+
 ### 2026-11-21 — Nyein boxes carry Buy / Add to Cart, and the Guide page keeps its articles
 
 Two owner reports, both fixed.

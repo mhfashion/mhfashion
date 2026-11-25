@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { EditorArtworkLayer, EditorImageContent, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
 import { autoPhotoAdjustments, MIXER_BANDS, MIXER_BAND_COLORS, neutralPhotoAdjustments } from "@/lib/photo-adjustments";
+import { RangeField } from "@/components/EditorRangeField";
 
 // The basic panel is grouped and collapsible:
 // controls, 0 as neutral for every presence/tone slider, Exposure in stops, and
@@ -29,16 +30,6 @@ function Group({ title, open, onToggle, children }: { title: string; open: boole
       </button>
       {open && <div className="space-y-2.5 border-t border-border/60 p-2.5">{children}</div>}
     </section>
-  );
-}
-
-function Slider({ label, value, min, max, step = 1, suffix = "", ariaLabel, onChange }: { label: string; value: number; min: number; max: number; step?: number; suffix?: string; ariaLabel: string; onChange: (value: number) => void }) {
-  const shown = step < 1 ? value.toFixed(2) : String(Math.round(value));
-  return (
-    <label className="block text-[10px] text-text-secondary">
-      <span className="flex items-center justify-between"><span>{label}</span><span className="font-semibold text-text-primary">{shown}{suffix}</span></span>
-      <input aria-label={ariaLabel} type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} onDoubleClick={() => onChange(0)} className="mt-1.5 h-1.5 w-full cursor-pointer accent-[var(--accent)]" />
-    </label>
   );
 }
 
@@ -131,30 +122,32 @@ export default function EditorPhotoAdjustments({ image, selectedLayer, onUpdateI
       </div>
 
       <Group title="Basic" open={isOpen("basic")} onToggle={() => toggleGroup("basic")}>
-        <Slider label="Temperature" value={image.temperature ?? 0} min={-100} max={100} ariaLabel="Photo temperature" onChange={(temperature) => onUpdateImage({ temperature })} />
+        <RangeField label="Temperature" value={image.temperature ?? 0} min={-100} max={100} ariaLabel="Photo temperature" onChange={(temperature) => onUpdateImage({ temperature })} defaultValue={0} />
         <p className="-mt-1 text-[8px] uppercase tracking-wide text-text-muted">Blue · Neutral · Yellow</p>
-        <Slider label="Tint" value={image.tint ?? 0} min={-100} max={100} ariaLabel="Photo tint" onChange={(tint) => onUpdateImage({ tint })} />
+        <RangeField label="Tint" value={image.tint ?? 0} min={-100} max={100} ariaLabel="Photo tint" onChange={(tint) => onUpdateImage({ tint })} defaultValue={0} />
         <p className="-mt-1 text-[8px] uppercase tracking-wide text-text-muted">Green · Neutral · Magenta</p>
-        <Slider label="Exposure" value={image.exposure ?? 0} min={-5} max={5} step={0.05} suffix=" EV" ariaLabel="Photo exposure" onChange={(exposure) => onUpdateImage({ exposure })} />
-        <Slider label="Contrast" value={image.contrast ?? 0} min={-100} max={100} ariaLabel="Photo contrast" onChange={(contrast) => onUpdateImage({ contrast })} />
-        <Slider label="Highlights" value={image.highlights ?? 0} min={-100} max={100} ariaLabel="Photo highlights" onChange={(highlights) => onUpdateImage({ highlights })} />
-        <Slider label="Shadows" value={image.shadows ?? 0} min={-100} max={100} ariaLabel="Photo shadows" onChange={(shadows) => onUpdateImage({ shadows })} />
-        <Slider label="Whites" value={image.whites ?? 0} min={-100} max={100} ariaLabel="Photo whites" onChange={(whites) => onUpdateImage({ whites })} />
-        <Slider label="Blacks" value={image.blacks ?? 0} min={-100} max={100} ariaLabel="Photo blacks" onChange={(blacks) => onUpdateImage({ blacks })} />
-        <Slider label="Texture" value={image.texture ?? 0} min={-100} max={100} ariaLabel="Photo texture" onChange={(texture) => onUpdateImage({ texture })} />
-        <Slider label="Clarity" value={image.clarity ?? 0} min={-100} max={100} ariaLabel="Photo clarity" onChange={(clarity) => onUpdateImage({ clarity })} />
-        <Slider label="Dehaze" value={image.dehaze ?? 0} min={-100} max={100} ariaLabel="Photo dehaze" onChange={(dehaze) => onUpdateImage({ dehaze })} />
-        <Slider label="Vibrance" value={image.vibrance ?? 0} min={-100} max={100} ariaLabel="Photo vibrance" onChange={(vibrance) => onUpdateImage({ vibrance })} />
-        <Slider label="Saturation" value={image.saturation ?? 0} min={-100} max={100} ariaLabel="Photo saturation" onChange={(saturation) => onUpdateImage({ saturation })} />
+        <RangeField label="Exposure" value={image.exposure ?? 0} min={-5} max={5} step={0.05} suffix=" EV" ariaLabel="Photo exposure" onChange={(exposure) => onUpdateImage({ exposure })} defaultValue={0} />
+        <RangeField label="Contrast" value={image.contrast ?? 0} min={-100} max={100} ariaLabel="Photo contrast" onChange={(contrast) => onUpdateImage({ contrast })} defaultValue={0} />
+        <RangeField label="Highlights" value={image.highlights ?? 0} min={-100} max={100} ariaLabel="Photo highlights" onChange={(highlights) => onUpdateImage({ highlights })} defaultValue={0} />
+        <RangeField label="Shadows" value={image.shadows ?? 0} min={-100} max={100} ariaLabel="Photo shadows" onChange={(shadows) => onUpdateImage({ shadows })} defaultValue={0} />
+        <RangeField label="Whites" value={image.whites ?? 0} min={-100} max={100} ariaLabel="Photo whites" onChange={(whites) => onUpdateImage({ whites })} defaultValue={0} />
+        <RangeField label="Blacks" value={image.blacks ?? 0} min={-100} max={100} ariaLabel="Photo blacks" onChange={(blacks) => onUpdateImage({ blacks })} defaultValue={0} />
+        <RangeField label="Texture" value={image.texture ?? 0} min={-100} max={100} ariaLabel="Photo texture" onChange={(texture) => onUpdateImage({ texture })} defaultValue={0} />
+        <RangeField label="Clarity" value={image.clarity ?? 0} min={-100} max={100} ariaLabel="Photo clarity" onChange={(clarity) => onUpdateImage({ clarity })} defaultValue={0} />
+        <RangeField label="Dehaze" value={image.dehaze ?? 0} min={-100} max={100} ariaLabel="Photo dehaze" onChange={(dehaze) => onUpdateImage({ dehaze })} defaultValue={0} />
+        <RangeField label="Vibrance" value={image.vibrance ?? 0} min={-100} max={100} ariaLabel="Photo vibrance" onChange={(vibrance) => onUpdateImage({ vibrance })} defaultValue={0} />
+        <RangeField label="Saturation" value={image.saturation ?? 0} min={-100} max={100} ariaLabel="Photo saturation" onChange={(saturation) => onUpdateImage({ saturation })} defaultValue={0} />
       </Group>
 
       <Group title="Tone Curve" open={isOpen("curve")} onToggle={() => toggleGroup("curve")}>
-        <Slider label="Highlights" value={image.curveHighlights ?? 0} min={-100} max={100} ariaLabel="Tone curve highlights" onChange={(curveHighlights) => onUpdateImage({ curveHighlights })} />
-        <Slider label="Lights" value={image.curveLights ?? 0} min={-100} max={100} ariaLabel="Tone curve lights" onChange={(curveLights) => onUpdateImage({ curveLights })} />
-        <Slider label="Darks" value={image.curveDarks ?? 0} min={-100} max={100} ariaLabel="Tone curve darks" onChange={(curveDarks) => onUpdateImage({ curveDarks })} />
-        <Slider label="Shadows" value={image.curveShadows ?? 0} min={-100} max={100} ariaLabel="Tone curve shadows" onChange={(curveShadows) => onUpdateImage({ curveShadows })} />
+        <RangeField label="Highlights" value={image.curveHighlights ?? 0} min={-100} max={100} ariaLabel="Tone curve highlights" onChange={(curveHighlights) => onUpdateImage({ curveHighlights })} defaultValue={0} />
+        <RangeField label="Lights" value={image.curveLights ?? 0} min={-100} max={100} ariaLabel="Tone curve lights" onChange={(curveLights) => onUpdateImage({ curveLights })} defaultValue={0} />
+        <RangeField label="Darks" value={image.curveDarks ?? 0} min={-100} max={100} ariaLabel="Tone curve darks" onChange={(curveDarks) => onUpdateImage({ curveDarks })} defaultValue={0} />
+        <RangeField label="Shadows" value={image.curveShadows ?? 0} min={-100} max={100} ariaLabel="Tone curve shadows" onChange={(curveShadows) => onUpdateImage({ curveShadows })} defaultValue={0} />
         <CurveGraph points={curves} onChange={setCurvePoint} />
-        <div className="space-y-1">{curves.map((point, index) => <label key={index} className="block text-[9px] text-text-secondary">Point {index + 1}<input aria-label={`Photo curve point ${index + 1}`} type="range" min="0" max="100" value={point} onChange={(event) => setCurvePoint(index, Number(event.target.value))} className="ml-2 inline-block h-1.5 w-[calc(100%-3.5rem)] cursor-pointer align-middle accent-[var(--accent)]" /></label>)}</div>
+        <div className="space-y-1">{curves.map((point, index) => (
+          <RangeField key={index} label={`Point ${index + 1}`} value={point} min={0} max={100} ariaLabel={`Photo curve point ${index + 1}`} defaultValue={[0, 25, 50, 75, 100][index]} onChange={(value) => setCurvePoint(index, value)} />
+        ))}</div>
         <button type="button" aria-label="Reset photo curves" onClick={() => onUpdateImage({ curves: [0, 25, 50, 75, 100], curveShadows: 0, curveDarks: 0, curveLights: 0, curveHighlights: 0 })} className="min-h-8 w-full rounded-lg border border-border text-[9px] font-semibold transition hover:border-accent">Linear reset</button>
       </Group>
 
@@ -164,61 +157,61 @@ export default function EditorPhotoAdjustments({ image, selectedLayer, onUpdateI
         </div>
         <div className="space-y-1.5">
           {MIXER_BANDS.map((band, index) => (
-            <label key={band} className="flex items-center gap-2 text-[10px] text-text-secondary">
-              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: MIXER_BAND_COLORS[index] }} aria-hidden="true" />
-              <span className="w-14 capitalize">{band}</span>
-              <input aria-label={`Color mixer ${band} ${mixerMode.toLowerCase()}`} type="range" min={-100} max={100} value={mixerValues[index] ?? 0} onChange={(event) => setMixerBand(index, Number(event.target.value))} className="h-1.5 flex-1 cursor-pointer accent-[var(--accent)]" />
-              <span className="w-8 text-right font-semibold text-text-primary">{mixerValues[index] ?? 0}</span>
-            </label>
+            <div key={band} className="flex items-start gap-2">
+              <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: MIXER_BAND_COLORS[index] }} aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <RangeField label={band} value={mixerValues[index] ?? 0} min={-100} max={100} ariaLabel={`Color mixer ${band} ${mixerMode.toLowerCase()}`} defaultValue={0} onChange={(value) => setMixerBand(index, value)} />
+              </div>
+            </div>
           ))}
         </div>
       </Group>
 
       <Group title="Color Grading" open={isOpen("grading")} onToggle={() => toggleGroup("grading")}>
         <p className="text-[9px] font-semibold text-text-primary">Shadows</p>
-        <Slider label="Hue" value={image.splitShadowHue ?? 220} min={0} max={360} suffix="°" ariaLabel="Grading shadows hue" onChange={(splitShadowHue) => onUpdateImage({ splitShadowHue })} />
-        <Slider label="Saturation" value={image.splitShadowSat ?? 0} min={0} max={100} ariaLabel="Grading shadows saturation" onChange={(splitShadowSat) => onUpdateImage({ splitShadowSat })} />
+        <RangeField label="Hue" value={image.splitShadowHue ?? 220} min={0} max={360} suffix="°" ariaLabel="Grading shadows hue" defaultValue={220} onChange={(splitShadowHue) => onUpdateImage({ splitShadowHue })} />
+        <RangeField label="Saturation" value={image.splitShadowSat ?? 0} min={0} max={100} ariaLabel="Grading shadows saturation" onChange={(splitShadowSat) => onUpdateImage({ splitShadowSat })} defaultValue={0} />
         <p className="text-[9px] font-semibold text-text-primary">Midtones</p>
-        <Slider label="Hue" value={image.splitMidHue ?? 0} min={0} max={360} suffix="°" ariaLabel="Grading midtones hue" onChange={(splitMidHue) => onUpdateImage({ splitMidHue })} />
-        <Slider label="Saturation" value={image.splitMidSat ?? 0} min={0} max={100} ariaLabel="Grading midtones saturation" onChange={(splitMidSat) => onUpdateImage({ splitMidSat })} />
+        <RangeField label="Hue" value={image.splitMidHue ?? 0} min={0} max={360} suffix="°" ariaLabel="Grading midtones hue" onChange={(splitMidHue) => onUpdateImage({ splitMidHue })} defaultValue={0} />
+        <RangeField label="Saturation" value={image.splitMidSat ?? 0} min={0} max={100} ariaLabel="Grading midtones saturation" onChange={(splitMidSat) => onUpdateImage({ splitMidSat })} defaultValue={0} />
         <p className="text-[9px] font-semibold text-text-primary">Highlights</p>
-        <Slider label="Hue" value={image.splitHighlightHue ?? 45} min={0} max={360} suffix="°" ariaLabel="Grading highlights hue" onChange={(splitHighlightHue) => onUpdateImage({ splitHighlightHue })} />
-        <Slider label="Saturation" value={image.splitHighlightSat ?? 0} min={0} max={100} ariaLabel="Grading highlights saturation" onChange={(splitHighlightSat) => onUpdateImage({ splitHighlightSat })} />
-        <Slider label="Blending" value={image.splitBlending ?? 50} min={0} max={100} ariaLabel="Grading blending" onChange={(splitBlending) => onUpdateImage({ splitBlending })} />
-        <Slider label="Balance" value={image.splitBalance ?? 0} min={-100} max={100} ariaLabel="Grading balance" onChange={(splitBalance) => onUpdateImage({ splitBalance })} />
+        <RangeField label="Hue" value={image.splitHighlightHue ?? 45} min={0} max={360} suffix="°" ariaLabel="Grading highlights hue" defaultValue={45} onChange={(splitHighlightHue) => onUpdateImage({ splitHighlightHue })} />
+        <RangeField label="Saturation" value={image.splitHighlightSat ?? 0} min={0} max={100} ariaLabel="Grading highlights saturation" onChange={(splitHighlightSat) => onUpdateImage({ splitHighlightSat })} defaultValue={0} />
+        <RangeField label="Blending" value={image.splitBlending ?? 50} min={0} max={100} ariaLabel="Grading blending" defaultValue={50} onChange={(splitBlending) => onUpdateImage({ splitBlending })} />
+        <RangeField label="Balance" value={image.splitBalance ?? 0} min={-100} max={100} ariaLabel="Grading balance" onChange={(splitBalance) => onUpdateImage({ splitBalance })} defaultValue={0} />
       </Group>
 
       <Group title="Levels" open={isOpen("levels")} onToggle={() => toggleGroup("levels")}>
-        <Slider label="Black point" value={image.levelsBlack ?? 0} min={0} max={100} ariaLabel="Photo levels black point" onChange={(levelsBlack) => onUpdateImage({ levelsBlack })} />
-        <Slider label="White point" value={image.levelsWhite ?? 100} min={0} max={100} ariaLabel="Photo levels white point" onChange={(levelsWhite) => onUpdateImage({ levelsWhite })} />
-        <Slider label="Gamma" value={image.levelsGamma ?? 1} min={0.1} max={3} step={0.05} ariaLabel="Photo levels gamma" onChange={(levelsGamma) => onUpdateImage({ levelsGamma })} />
+        <RangeField label="Black point" value={image.levelsBlack ?? 0} min={0} max={100} ariaLabel="Photo levels black point" onChange={(levelsBlack) => onUpdateImage({ levelsBlack })} defaultValue={0} />
+        <RangeField label="White point" value={image.levelsWhite ?? 100} min={0} max={100} ariaLabel="Photo levels white point" defaultValue={100} onChange={(levelsWhite) => onUpdateImage({ levelsWhite })} />
+        <RangeField label="Gamma" value={image.levelsGamma ?? 1} min={0.1} max={3} step={0.05} ariaLabel="Photo levels gamma" defaultValue={1} onChange={(levelsGamma) => onUpdateImage({ levelsGamma })} />
       </Group>
 
       <Group title="Selective Color" open={isOpen("selective")} onToggle={() => toggleGroup("selective")}>
-        <Slider label="Cyan" value={image.selectiveCyan ?? 0} min={-100} max={100} ariaLabel="Selective color cyan" onChange={(selectiveCyan) => onUpdateImage({ selectiveCyan })} />
-        <Slider label="Magenta" value={image.selectiveMagenta ?? 0} min={-100} max={100} ariaLabel="Selective color magenta" onChange={(selectiveMagenta) => onUpdateImage({ selectiveMagenta })} />
-        <Slider label="Yellow" value={image.selectiveYellow ?? 0} min={-100} max={100} ariaLabel="Selective color yellow" onChange={(selectiveYellow) => onUpdateImage({ selectiveYellow })} />
-        <Slider label="Black" value={image.selectiveBlack ?? 0} min={-100} max={100} ariaLabel="Selective color black" onChange={(selectiveBlack) => onUpdateImage({ selectiveBlack })} />
+        <RangeField label="Cyan" value={image.selectiveCyan ?? 0} min={-100} max={100} ariaLabel="Selective color cyan" onChange={(selectiveCyan) => onUpdateImage({ selectiveCyan })} defaultValue={0} />
+        <RangeField label="Magenta" value={image.selectiveMagenta ?? 0} min={-100} max={100} ariaLabel="Selective color magenta" onChange={(selectiveMagenta) => onUpdateImage({ selectiveMagenta })} defaultValue={0} />
+        <RangeField label="Yellow" value={image.selectiveYellow ?? 0} min={-100} max={100} ariaLabel="Selective color yellow" onChange={(selectiveYellow) => onUpdateImage({ selectiveYellow })} defaultValue={0} />
+        <RangeField label="Black" value={image.selectiveBlack ?? 0} min={-100} max={100} ariaLabel="Selective color black" onChange={(selectiveBlack) => onUpdateImage({ selectiveBlack })} defaultValue={0} />
       </Group>
 
       <Group title="Channel Mixer" open={isOpen("channel")} onToggle={() => toggleGroup("channel")}>
-        <Slider label="Hue" value={image.hue ?? 0} min={-180} max={180} suffix="°" ariaLabel="Photo hue" onChange={(hue) => onUpdateImage({ hue })} />
-        <Slider label="Red" value={image.red ?? 100} min={0} max={200} suffix="%" ariaLabel="Photo red channel" onChange={(red) => onUpdateImage({ red })} />
-        <Slider label="Green" value={image.green ?? 100} min={0} max={200} suffix="%" ariaLabel="Photo green channel" onChange={(green) => onUpdateImage({ green })} />
-        <Slider label="Blue" value={image.blue ?? 100} min={0} max={200} suffix="%" ariaLabel="Photo blue channel" onChange={(blue) => onUpdateImage({ blue })} />
+        <RangeField label="Hue" value={image.hue ?? 0} min={-180} max={180} suffix="°" ariaLabel="Photo hue" onChange={(hue) => onUpdateImage({ hue })} defaultValue={0} />
+        <RangeField label="Red" value={image.red ?? 100} min={0} max={200} suffix="%" ariaLabel="Photo red channel" defaultValue={100} onChange={(red) => onUpdateImage({ red })} />
+        <RangeField label="Green" value={image.green ?? 100} min={0} max={200} suffix="%" ariaLabel="Photo green channel" defaultValue={100} onChange={(green) => onUpdateImage({ green })} />
+        <RangeField label="Blue" value={image.blue ?? 100} min={0} max={200} suffix="%" ariaLabel="Photo blue channel" defaultValue={100} onChange={(blue) => onUpdateImage({ blue })} />
       </Group>
 
       <Group title="Detail" open={isOpen("detail")} onToggle={() => toggleGroup("detail")}>
-        <Slider label="Sharpening" value={image.sharpen ?? 0} min={0} max={100} ariaLabel="Photo sharpening" onChange={(sharpen) => onUpdateImage({ sharpen })} />
-        <Slider label="Noise Reduction" value={image.noiseReduction ?? 0} min={0} max={100} ariaLabel="Photo noise reduction" onChange={(noiseReduction) => onUpdateImage({ noiseReduction })} />
-        <Slider label="Color Noise Reduction" value={image.colorNoiseReduction ?? 0} min={0} max={100} ariaLabel="Photo color noise reduction" onChange={(colorNoiseReduction) => onUpdateImage({ colorNoiseReduction })} />
-        <Slider label="Blur" value={image.blur ?? 0} min={0} max={20} suffix="px" ariaLabel="Photo blur" onChange={(blur) => onUpdateImage({ blur })} />
+        <RangeField label="Sharpening" value={image.sharpen ?? 0} min={0} max={100} ariaLabel="Photo sharpening" onChange={(sharpen) => onUpdateImage({ sharpen })} defaultValue={0} />
+        <RangeField label="Noise Reduction" value={image.noiseReduction ?? 0} min={0} max={100} ariaLabel="Photo noise reduction" onChange={(noiseReduction) => onUpdateImage({ noiseReduction })} defaultValue={0} />
+        <RangeField label="Color Noise Reduction" value={image.colorNoiseReduction ?? 0} min={0} max={100} ariaLabel="Photo color noise reduction" onChange={(colorNoiseReduction) => onUpdateImage({ colorNoiseReduction })} defaultValue={0} />
+        <RangeField label="Blur" value={image.blur ?? 0} min={0} max={20} suffix="px" ariaLabel="Photo blur" onChange={(blur) => onUpdateImage({ blur })} defaultValue={0} />
       </Group>
 
       <Group title="Effects" open={isOpen("effects")} onToggle={() => toggleGroup("effects")}>
-        <Slider label="Vignette" value={image.vignette ?? 0} min={0} max={100} suffix="%" ariaLabel="Photo vignette" onChange={(vignette) => onUpdateImage({ vignette })} />
-        <Slider label="Grain" value={image.grain ?? 0} min={0} max={100} suffix="%" ariaLabel="Photo grain" onChange={(grain) => onUpdateImage({ grain })} />
-        <Slider label="Grain size" value={image.grainSize ?? 25} min={0} max={100} ariaLabel="Photo grain size" onChange={(grainSize) => onUpdateImage({ grainSize })} />
+        <RangeField label="Vignette" value={image.vignette ?? 0} min={0} max={100} suffix="%" ariaLabel="Photo vignette" onChange={(vignette) => onUpdateImage({ vignette })} defaultValue={0} />
+        <RangeField label="Grain" value={image.grain ?? 0} min={0} max={100} suffix="%" ariaLabel="Photo grain" onChange={(grain) => onUpdateImage({ grain })} defaultValue={0} />
+        <RangeField label="Grain size" value={image.grainSize ?? 25} min={0} max={100} ariaLabel="Photo grain size" defaultValue={25} onChange={(grainSize) => onUpdateImage({ grainSize })} />
         {(vignetteOn || grainOn) && <button type="button" aria-label="Clear photo effects" onClick={() => onUpdateImage({ vignette: 0, grain: 0 })} className="min-h-8 w-full rounded-lg border border-border text-[9px] font-semibold transition hover:border-rose-400">Clear effects</button>}
       </Group>
 
@@ -232,8 +225,8 @@ export default function EditorPhotoAdjustments({ image, selectedLayer, onUpdateI
           const config = PRIMARY_LABELS[primary];
           return <div key={primary} className="space-y-1.5">
             <p className="flex items-center gap-1.5 text-[9px] font-semibold text-text-primary"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: config.color }} aria-hidden="true" />{primary} Primary</p>
-            <Slider label="Hue" value={image[config.hue] ?? 0} min={-100} max={100} ariaLabel={`${primary} primary hue`} onChange={(value) => onUpdateImage({ [config.hue]: value } as PhotoAdjustmentUpdate)} />
-            <Slider label="Saturation" value={image[config.saturation] ?? 0} min={-100} max={100} ariaLabel={`${primary} primary saturation`} onChange={(value) => onUpdateImage({ [config.saturation]: value } as PhotoAdjustmentUpdate)} />
+            <RangeField label="Hue" value={image[config.hue] ?? 0} min={-100} max={100} ariaLabel={`${primary} primary hue`} onChange={(value) => onUpdateImage({ [config.hue]: value } as PhotoAdjustmentUpdate)} defaultValue={0} />
+            <RangeField label="Saturation" value={image[config.saturation] ?? 0} min={-100} max={100} ariaLabel={`${primary} primary saturation`} onChange={(value) => onUpdateImage({ [config.saturation]: value } as PhotoAdjustmentUpdate)} defaultValue={0} />
           </div>;
         })}
       </Group>
@@ -249,7 +242,7 @@ export default function EditorPhotoAdjustments({ image, selectedLayer, onUpdateI
           <Toggle label={image.aiEnhanced ? "AI Enhanced" : "AI Enhance"} pressed={image.aiEnhanced === true} ariaLabel="AI Enhance photo" onClick={() => onUpdateImage({ aiEnhanced: !image.aiEnhanced })} />
           <label className="flex min-h-11 flex-col justify-center rounded-lg border border-border px-2 py-1 text-[10px] font-semibold">Smart Filter<select aria-label="Smart filter" value={image.smartFilter ?? "none"} onChange={(event) => onUpdateImage({ smartFilter: event.target.value as NonNullable<EditorImageContent["smartFilter"]> })} className="mt-1 rounded border border-border bg-bg px-1 py-1 text-[10px] font-normal"><option value="none">None</option><option value="clarity">Clarity</option><option value="cinematic">Cinematic</option><option value="vintage">Vintage</option><option value="bw">B&amp;W</option><option value="warm">Warm</option><option value="cool">Cool</option></select></label>
         </div>
-        {(image.smartFilter ?? "none") !== "none" && <Slider label="Filter intensity" value={image.smartFilterIntensity ?? 100} min={0} max={100} suffix="%" ariaLabel="Smart filter intensity" onChange={(smartFilterIntensity) => onUpdateImage({ smartFilterIntensity })} />}
+        {(image.smartFilter ?? "none") !== "none" && <RangeField label="Filter intensity" value={image.smartFilterIntensity ?? 100} min={0} max={100} suffix="%" ariaLabel="Smart filter intensity" defaultValue={100} onChange={(smartFilterIntensity) => onUpdateImage({ smartFilterIntensity })} />}
         <div className="grid grid-cols-2 gap-1.5">
           <button type="button" aria-label={selectedLayer.mask ? "Edit photo layer mask" : "Add photo layer mask"} onClick={() => selectedLayer.mask ? onSelectMask() : onAddMask(selectedLayer.id)} className="min-h-11 rounded-lg border border-border px-2 py-2 text-[10px] font-semibold transition hover:border-accent">{selectedLayer.mask ? "Edit Layer Mask" : "Add Layer Mask"}</button>
           {selectedLayer.mask && <button type="button" aria-label="Remove photo layer mask" onClick={() => onRemoveMask(selectedLayer.id)} className="min-h-11 rounded-lg border border-border px-2 py-2 text-[10px] font-semibold transition hover:border-rose-400">Remove Mask</button>}
