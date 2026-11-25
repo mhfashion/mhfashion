@@ -1,0 +1,35 @@
+{
+  // Plan §12.1 part 1 and §12.2.1: the asset service is its own Worker, and this is its whole
+  // configuration. The site's own configuration stays in apps/web/wrangler.jsonc.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mh-fashion-assets",
+  "main": "Worker/assets.ts",
+  "compatibility_date": "2025-04-01",
+  "observability": {
+    "enabled": true
+  },
+  // Two buckets (Plan §12.2.1): the public one is served from its own domain, the private one only
+  // through this Worker after the access check.
+  "r2_buckets": [
+    { "binding": "MH_FASHION_ASSETS", "bucket_name": "mh-fashion-assets" },
+    { "binding": "MH_FASHION_PRIVATE", "bucket_name": "mh-fashion-private" }
+  ],
+  // Plan §12.2.9: R2 event notifications on the public bucket send to this queue, and the Worker's
+  // `queue` handler rebuilds only the kind a message names. The bucket-side rules are created in the
+  // dashboard (one rule per source prefix) because they are bucket configuration, not Worker code.
+  "queues": {
+    "consumers": [
+      { "queue": "mh-fashion-asset-events", "max_batch_size": 10, "max_retries": 3, "dead_letter_queue": "mh-fashion-asset-events-dlq" }
+    ],
+    "producers": [{ "binding": "ASSET_EVENTS", "queue": "mh-fashion-asset-events" }]
+  },
+  // The safety net (R2-9): an hourly full pass, in case an event was lost.
+  "triggers": {
+    "crons": ["0 * * * *"]
+  },
+  "vars": {
+    "ASSETS_SITE_ORIGIN": "https://mhfashionmm.com",
+    "SUPABASE_URL": "https://YOUR-PROJECT.supabase.co",
+    "SUPABASE_ANON_KEY": "YOUR-ANON-KEY"
+  }
+}

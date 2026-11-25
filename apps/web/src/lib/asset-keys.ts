@@ -1,8 +1,8 @@
 // Plan §12.2.3 rule 6: the upload form, the Worker and the pre-upload check all build a key from this
 // one pure function, so no key is typed and none can drift from the tables in §12.2.2. Every shape is
 // data: a bucket, the extensions it accepts, its size limit and the segments of the key.
-import { isSafeAssetKey, type AssetBucketName } from "@/lib/asset-store";
-import { cleanSvg, imageSize, sniffAssetType, type AssetFileType } from "@/lib/asset-file-type";
+import { isSafeAssetKey, type AssetBucketName } from "./asset-store";
+import { cleanSvg, imageSize, sniffAssetType, type AssetFileType } from "./asset-file-type";
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** A user, order or design id: a UUID or a slug, never a name or a phone number (§12.2.3 rule 4). */
@@ -47,7 +47,8 @@ export const ASSET_SHAPES = {
   "upload-tmp": { bucket: "private", extensions: ["webp", "jpg", "png"], maxBytes: 6_000_000, path: ["uploads", "tmp", "{id}", "{file}"] },
   upload: { bucket: "private", extensions: ["webp", "jpg", "png"], maxBytes: 6_000_000, path: ["uploads", "{id}", "{file}"] },
   "saved-thumbnail": { bucket: "private", extensions: [], maxBytes: 100_000, path: ["saved", "{id}", "{design}", "thumbnail.webp"] },
-  "order-file": { bucket: "private", extensions: ["html", "csv", "json", "svg"], maxBytes: 20_000_000, path: ["orders", "{id}", "{file}"] },
+  "order-file": { bucket: "private", extensions: ["html", "csv", "json"], maxBytes: 20_000_000, path: ["orders", "{id}", "{file}"] },
+  "order-design": { bucket: "private", extensions: ["svg"], maxBytes: 20_000_000, path: ["orders", "{id}", "designs", "{file}.{ext}"] },
   licence: { bucket: "private", extensions: ["pdf"], maxBytes: 5_000_000, path: ["licences", "{slug}", "{file}"] },
 } as const satisfies Record<string, AssetShape>;
 
@@ -153,6 +154,20 @@ const TYPE_BY_EXTENSION: Record<string, AssetFileType> = {
   csv: "csv",
   html: "html",
 };
+
+/** The shapes whose folder carries a `meta.json` describing the asset (Plan §12.2.2). */
+const META_SHAPES: readonly AssetShapeId[] = ["font", "design", "element", "brush", "texture", "mockup"];
+
+/**
+ * The `meta.json` that describes the folder a key sits in, or `null` when the shape has none. The admin
+ * write uses it to keep the description beside the file, so a new asset appears in the catalogue.
+ */
+export function metaKeyForAssetKey(key: string): string | null {
+  const identified = identifyAssetKey(key);
+  if (!identified || !META_SHAPES.includes(identified.shape)) return null;
+  const parts = key.split("/");
+  return [...parts.slice(0, -1), "meta.json"].join("/");
+}
 
 export type AssetContentCheck =
   | { ok: true; shape: AssetShapeId; type: AssetFileType; notes: string[]; cleaned?: string }

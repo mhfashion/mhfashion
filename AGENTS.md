@@ -816,6 +816,29 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   attributes and external `href`s. `checkAssetContent(key, bytes)` combines them with the shape's size and pixel limits
   (brush 512 px, texture 2048 px) and returns the cleaned SVG plus notes; the check script prints a note and keeps the
   file, and refuses a mislabeled or oversized one.
+- **The asset service is its own Worker** (Plan §12.1): `Worker/assets.ts` (one file) exports `fetch`, `queue` and
+  `scheduled`, configured by `wrangler.assets.jsonc` at the root and deployed by `.github/workflows/deploy-assets-worker.yml`.
+  It imports the app's rules by **relative** path, so the shared libs (`asset-store`, `asset-file-type`, `asset-keys`,
+  `asset-catalogue`, `asset-routes`, `asset-catalogue-rebuild`, `asset-events`, `asset-access`, `asset-session`,
+  `asset-store-cloudflare`) must not use `@/lib` aliases — wrangler's bundler only resolves relative paths here.
+  `asset-store-r2.ts` is the Next-only resolver and imports `@opennextjs/cloudflare`; keep that import out of the Worker.
+- Worker routes: `GET /api/assets/<kind>` and `/api/assets/mockups/<slug>` (public, CORS to `ASSETS_SITE_ORIGIN`),
+  `GET /api/admin/assets/issues` and `PUT /api/admin/assets` (admin), `GET /api/private/<key>` (owner or admin),
+  `GET /api/assets/issues` (public, but the app's own route is now admin-only). Auth is the Worker's own:
+  `verifySupabaseUser` asks Supabase `/auth/v1/user` with the bearer token; `canReadPrivateAsset` decides the rest.
+- Uploads: `POST /api/uploads` (Supabase token, 2 MB, bytes sniffed, twenty an hour via `uploads/tmp/<user>/quota.json`)
+  and `POST /api/uploads/promote` (moves a saved design's photos to `uploads/<user>/`). Order files:
+  `order-assets.ts` (`orderFileKey`, `orderDesignKey`, `writeOrderFiles`, which refuses a second write).
+- `tests/assets-worker.test.cjs` drives the Worker over memory buckets (`handleRequest(request, env, { buckets, viewer })`),
+  and `npx wrangler deploy --dry-run --config wrangler.assets.jsonc` verifies the bundle. A dry run creates `.wrangler/`
+  at the root; delete it, or `tests/repo-layout.test.cjs` fails.
+- `deploy-assets-worker.yml` fails on every push until `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` exist (the
+  repository still has no Actions secrets) — that is the same missing-secret failure as the site deploy, not a code fault.
+- **The session token cannot push a workflow file.** `.github/workflows/deploy-assets-worker.yml` and
+  `backup-assets.yml` are written but a push that creates them returns `refusing to allow a Personal Access Token to
+  create or update workflow ... without workflow scope`. They are kept verbatim in `Doc/ASSETS-WORKER-DEPLOY.md`; a
+  token with `workflow` scope (or the GitHub web editor) must add them. Do not `git add` them into a push again until
+  the token has that scope, or the whole push is rejected.
 - `asset-events.ts` maps a changed key to the catalogue it changes (`ASSET_SOURCE_RULES`, `kindForAssetKey`,
   `kindsForAssetKeys`) for the R2 → Queue → `queue` handler of Plan §12.2.9. `rebuildAssetCatalogues(buckets, now, log,
   kinds)` takes that list, so one event rebuilds one kind and leaves the other snapshots alone.

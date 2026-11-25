@@ -1,8 +1,8 @@
 // Plan §12.1 parts 3 and 4: turn what is in the asset bucket into one JSON catalogue per kind.
 // The builders are pure (a store in, a catalogue out) so a test can drive them with an in-memory
 // bucket, and so the Worker route only has to fetch the snapshot this writes.
-import { assertSafeAssetKey, isSafeAssetKey, type AssetStore } from "@/lib/asset-store";
-import { parseEditorFontManifest, type EditorFontEntry } from "@/lib/editor-fonts";
+import { assertSafeAssetKey, isSafeAssetKey, type AssetStore } from "./asset-store";
+import { parseEditorFontManifest, type EditorFontEntry } from "./editor-fonts";
 
 export const ASSET_CATALOGUE_KINDS = ["fonts", "designs", "elements", "brushes", "text-styles", "mockups"] as const;
 export type AssetCatalogueKind = (typeof ASSET_CATALOGUE_KINDS)[number];

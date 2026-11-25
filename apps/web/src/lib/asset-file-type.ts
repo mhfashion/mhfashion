@@ -129,3 +129,25 @@ export function cleanSvg(svg: string): CleanedSvg {
 
   return { svg: cleaned, removed };
 }
+
+/** The content type a stored file is served with, taken from its bytes, never from the request. */
+export const MIME_BY_TYPE: Record<AssetFileType, string> = {
+  webp: "image/webp",
+  png: "image/png",
+  jpg: "image/jpeg",
+  svg: "image/svg+xml",
+  woff2: "font/woff2",
+  ttf: "font/ttf",
+  otf: "font/otf",
+  glb: "model/gltf-binary",
+  json: "application/json; charset=utf-8",
+  pdf: "application/pdf",
+  csv: "text/csv; charset=utf-8",
+  html: "text/html; charset=utf-8",
+};
+
+/** The `sha256` recorded on every write (Plan §12.2.5), as lower-case hex. */
+export async function sha256Hex(data: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", data as unknown as ArrayBuffer);
+  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
+}

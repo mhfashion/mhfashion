@@ -7,8 +7,8 @@ import {
   type AssetCatalogue,
   type AssetCatalogueIssue,
   type AssetCatalogueKind,
-} from "@/lib/asset-catalogue";
-import type { AssetStore } from "@/lib/asset-store";
+} from "./asset-catalogue";
+import type { AssetStore } from "./asset-store";
 
 /** The snapshot store: the private bucket, or null when it is not bound in this environment. */
 export type AssetSnapshotSource = AssetStore | null;

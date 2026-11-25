@@ -1,8 +1,8 @@
 // Plan §12.1 parts 4, 5 and 12, §12.2.9: one rebuild pass over every kind, so a scheduled trigger, a
 // queue message, an admin rescan and a test all run the same code. Sources are read from the public
 // bucket; snapshots are written to the private one. The logging line per kind is the observability part.
-import { ASSET_CATALOGUE_KINDS, writeAssetCatalogue, type AssetCatalogueKind } from "@/lib/asset-catalogue";
-import type { AssetBuckets } from "@/lib/asset-store";
+import { ASSET_CATALOGUE_KINDS, writeAssetCatalogue, type AssetCatalogueKind } from "./asset-catalogue";
+import type { AssetBuckets } from "./asset-store";
 
 export type CatalogueRebuild = {
   kind: AssetCatalogueKind;

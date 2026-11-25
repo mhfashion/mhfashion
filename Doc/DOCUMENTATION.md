@@ -1237,6 +1237,18 @@ non-overlapping prefix per catalogue, with `kindForAssetKey(key)` and `kindsForA
 assert no rule shadows another. `rebuildAssetCatalogues(buckets, now, log, kinds)` takes that list, so an R2 event
 rebuilds one kind and leaves the other snapshots untouched, which is what the Worker's `queue` handler will pass.
 
+The asset service itself is now written (Plan §12.1): `Worker/assets.ts` is the one file, exporting `fetch`, `queue` and
+`scheduled`, with `wrangler.assets.jsonc` at the root (both R2 bindings, the queue, the hourly cron) and
+`.github/workflows/deploy-assets-worker.yml` (kept in `Doc/ASSETS-WORKER-DEPLOY.md` until a token with the `workflow`
+scope can create it). It answers the read routes, the admin write (`PUT /api/admin/assets`,
+which builds the key, checks the bytes, writes the file and its `meta.json` and rebuilds that kind), the admin issues
+route and the private file route; `asset-session.ts` verifies the Supabase token and `asset-access.ts` decides who may
+read a private key. Customer photos go through `app/api/uploads` (`lib/asset-upload.ts`: the hourly quota, the temporary
+key, `promoteUploads` on Save), and an order's frozen copy through `lib/order-assets.ts`, which names its documents as
+`Doc/PRINT-BUNDLE.md` does and refuses a second write. `.github/workflows/backup-assets.yml` copies both buckets weekly.
+`tests/assets-worker.test.cjs` (9 tests) and `tests/asset-upload.test.cjs` / `tests/order-assets.test.cjs` cover them,
+and a `wrangler deploy --dry-run` bundles the Worker with its bindings.
+
 ### 2026-11-21 — The footer stays on the home page
 
 The Nyein page had picked up the full `Footer` (brand, SHOP/HELP/LEGAL, newsletter, payment blocks) along with the

@@ -661,9 +661,36 @@ it loads today; when the binding lands the same code reads the service with no f
 running server: `/create` requests `/api/assets/fonts` only (no `/fonts/manifest.json` when no bucket address is
 configured), the picker still lists the eight system fonts, console clean; `tests/editor-fonts.test.cjs` holds the
 source order.
-**Still to build:** the R2 binding in `wrangler.jsonc` (needs the bucket name), the scheduled trigger that
-calls `rebuildAssetCatalogues` (the Worker entry needs a `scheduled` export first), and the admin writes (after
-Supabase Auth).
+**The assets Worker built 2026-11-25 (parts 1, 5, 8, 10, 11 and 12 of this section).** `Worker/assets.ts` is the one
+file: `fetch` answers the read routes (the same JSON as the app's routes, plus the site's CORS header), the admin
+routes (`PUT /api/admin/assets`, `GET /api/admin/assets/issues`) and the private route (`GET /api/private/<key>`);
+`queue` rebuilds the kinds an R2 event names, `scheduled` does the hourly full pass. Every rule is imported by relative
+path from `apps/web/src/lib/asset-*.ts`, so the Worker and the site cannot disagree. `wrangler.assets.jsonc` at the
+root holds both `r2_buckets` bindings, the queue consumer and producer, the hourly cron and the variables;
+`.github/workflows/deploy-assets-worker.yml` deploys on `Worker/**` or a library change (the file is kept in
+`Doc/ASSETS-WORKER-DEPLOY.md` until a token with the `workflow` scope adds it — the session token is refused). The admin check is the Worker's
+own: `asset-session.ts` verifies the Supabase access token against `/auth/v1/user`, and `asset-access.ts` decides who
+may read a private key (the owner of `uploads/`, `saved/`; an admin for everything). `tests/assets-worker.test.cjs`
+(9 tests) drives `handleRequest`, `handleQueue` and `handleScheduled` over memory buckets: the read route and its 304,
+the unbound answer, an admin upload that builds the key and writes the file and its `meta.json`, the 401/403/409/400
+refusals, an SVG stored cleaned, the private file for its owner and an admin only, and the queue rebuilding one kind.
+A `wrangler deploy --dry-run` bundles it (48 KiB) with both bindings, the queue and the cron.
+
+**Customer uploads, order files and the backup built 2026-11-25 (12.2.5 items 3 and 4, 12.2.7, 12.2.8).**
+`lib/asset-upload.ts` holds the hourly quota (`uploads/tmp/<user>/quota.json`, twenty an hour), the temporary key
+builder and `checkUpload`, which applies the same byte, size and pixel rules as the Worker; `promoteUploads` moves a
+saved design's photos from `tmp` to `uploads/<user>/` and refuses any key that is not the caller's.
+`app/api/uploads` and `app/api/uploads/promote` are the routes, both behind the Supabase token.
+`lib/order-assets.ts` names an order's documents as `Doc/PRINT-BUNDLE.md` does (`print-sheet-<order>.html`,
+`manifest.json`, `designs/<design>-<look>.svg`) through the key builder, and `writeOrderFiles` refuses a second write.
+`.github/workflows/backup-assets.yml` copies both buckets weekly to `mh-fashion-backup` and keeps four copies (also
+kept in `Doc/ASSETS-WORKER-DEPLOY.md` until the token can create it). The
+public `/api/assets/issues` route is now admin-only, as §12.2.12 item 2 requires.
+
+**Still to build:** the buckets themselves and the two bindings in `apps/web/wrangler.jsonc` (needs the bucket names),
+the Queue, the event rules and the lifecycle rule in the dashboard, and the `CLOUDFLARE_API_TOKEN` /
+`CLOUDFLARE_ACCOUNT_ID` secrets the two deploy workflows wait for. Supabase Auth must be configured (and an admin role
+set) before the write and private routes answer anything but 401.
 
 **Rollout.**
 1. Read-only service for fonts, brushes, designs and elements, with hand uploads and the scheduled rebuild.

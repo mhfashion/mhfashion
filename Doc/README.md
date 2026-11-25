@@ -11,6 +11,7 @@ test checks that every file here is listed.
 | `PRINT-BUNDLE.md` | the files in an order's press bundle | the bundle changes |
 | `MH-DELIVERY.md` | the MH Delivery quote and order payload | the delivery contract changes |
 | `R2-STORAGE.md` | the R2 bucket layout, key patterns and upload rules | the bucket layout changes |
+| `ASSETS-WORKER-DEPLOY.md` | the two workflow files for the assets Worker and the bucket backup, kept here until a token with the `workflow` scope adds them | they are added to `.github/workflows/` |
 
 Related places: `Plan/PLAN.md` (Part I project plan, Part II editor plan), `SQL/` (numbered migrations),
 `Worker/assets.ts` (the R2 asset Worker, once built), `AGENTS.md` (agent rules) and `README.md` (repository map).

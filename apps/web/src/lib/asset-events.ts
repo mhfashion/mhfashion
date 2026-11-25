@@ -1,7 +1,7 @@
 // Plan §12.2.9: an R2 event names the object that changed, and the Worker's `queue` handler rebuilds only
 // that kind. The rules live here as data so the event rules in the dashboard, the queue handler and the
 // tests all agree on which prefix belongs to which catalogue, and none of them overlap.
-import type { AssetCatalogueKind } from "@/lib/asset-catalogue";
+import type { AssetCatalogueKind } from "./asset-catalogue";
 
 export type AssetSourceRule = { prefix: string; kind: AssetCatalogueKind };
 

@@ -284,19 +284,34 @@ curl -I https://assets.mhfashionmm.com/mockups/editor/t-shirt/default.webp
 Then open a product page: the mockup should switch with the colour, and a missing file should
 fall back to `default` and finally to the catalogue image instead of showing a broken image.
 
-## 6. Server-side uploads (later)
+## 6. Server-side uploads
 
-When the editor or the checkout needs to write files, add a binding instead of exposing keys:
+The code is written (Plan §12.1, §12.2.5); what is missing is the buckets and the bindings.
 
 ```jsonc
-// apps/web/wrangler.jsonc
+// apps/web/wrangler.jsonc — the site's own Worker
 "r2_buckets": [
-  { "binding": "MH_FASHION_ASSETS", "bucket_name": "mh-fashion-assets" }
+  { "binding": "MH_FASHION_ASSETS", "bucket_name": "mh-fashion-assets" },
+  { "binding": "MH_FASHION_PRIVATE", "bucket_name": "mh-fashion-private" }
 ]
 ```
 
-A Worker route can then `env.MH_FASHION_ASSETS.put(key, body)`. Only fall back to the S3 API
-with `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` if you need a tool outside Cloudflare.
+The assets service is its own Worker, `Worker/assets.ts`, configured by `wrangler.assets.jsonc` at the
+repository root (both bindings, the queue, the hourly cron). Once the buckets exist and the
+`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets are set, `.github/workflows/deploy-assets-worker.yml`
+deploys it on a change to `Worker/**` or the shared libraries. Its routes:
+
+| Route | Who | What |
+|---|---|---|
+| `GET /api/assets/<kind>`, `GET /api/assets/mockups/<slug>` | anyone | the catalogue JSON, with the site's CORS header |
+| `GET /api/admin/assets/issues` | admin | the skipped entries and their reasons |
+| `PUT /api/admin/assets` | admin | upload a file and its fields; the key is built, the bytes are checked, the catalogue rebuilds |
+| `GET /api/private/<key>` | the file's owner, or an admin | a private file's bytes, `private, no-store` |
+
+The site itself serves `POST /api/uploads` (a customer's photo, twenty an hour, `uploads/tmp/<user>/`) and
+`POST /api/uploads/promote` (a saved design keeps the photos it uses). Orders are written once, at Buy, by
+`lib/order-assets.ts`. Only fall back to the S3 API with `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` if you
+need a tool outside Cloudflare; `.github/workflows/backup-assets.yml` uses it for the weekly copy.
 
 ## 7. CORS (only if the browser uploads directly)
 
