@@ -49,9 +49,9 @@ const CARD_BUTTON =
 const CARD_FRAME =
   "relative flex aspect-square items-center justify-center overflow-hidden border-b border-border/70 bg-bg-surface";
 
-function ArtworkFrame({ children }: { children: React.ReactNode }) {
+function ArtworkFrame({ children, light = false }: { children: React.ReactNode; light?: boolean }) {
   return (
-    <span className={CARD_FRAME}>
+    <span className={light ? CARD_FRAME + " bg-white" : CARD_FRAME}>
       <svg viewBox={EDITOR_ARTWORK_VIEWBOX} preserveAspectRatio="xMidYMid meet" className="h-full w-full" aria-hidden="true">
         {children}
       </svg>
@@ -75,6 +75,17 @@ function ElementCard({ layer, onAdd }: { layer: DesignLibraryLayer; onAdd: () =>
   return (
     <button type="button" onClick={onAdd} className={CARD_BUTTON} aria-label={"Add " + layer.name + " to the canvas as a layer"}>
       <ArtworkFrame>
+        <EditorLayerPreview paths={layer.paths} text={layer.text} />
+      </ArtworkFrame>
+    </button>
+  );
+}
+
+/** Patterns are dark ink for a white print area, so their tile sits on white, not on the dark card. */
+function PatternCard({ layer, onAdd }: { layer: DesignLibraryLayer; onAdd: () => void }) {
+  return (
+    <button type="button" onClick={onAdd} title={layer.name} aria-label={"Add " + layer.name + " pattern to the canvas"} className={CARD_BUTTON}>
+      <ArtworkFrame light>
         <EditorLayerPreview paths={layer.paths} text={layer.text} />
       </ArtworkFrame>
     </button>
@@ -206,7 +217,7 @@ function PanelContent({
         <SectionHeading>Pattern fills</SectionHeading>
         <div aria-label="Pattern library" className="grid grid-cols-2 gap-2">
           {patterns.map((layer) => (
-            <ElementCard key={layer.id} layer={layer} onAdd={() => onAddElement(layer)} />
+            <PatternCard key={layer.id} layer={layer} onAdd={() => onAddElement(layer)} />
           ))}
         </div>
         {patterns.length === 0 && <p className="text-[10px] text-text-muted">No pattern matches that search.</p>}

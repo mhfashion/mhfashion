@@ -296,7 +296,8 @@ stripes, hairlines, grid, waves, checker, crosses and terrazzo, each a `d` strin
 1000 x 1200 artwork space. A pattern is a shape layer (`patternToDesignLayer`), so it enters the canvas
 through the Elements path and the customer can move, scale and rotate it with the tools they already have.
 The tiles are trimmed to the canvas rectangle — an unclipped diagonal stripe doubled the layer's bounds and
-hung the transform box a canvas-width off each side.
+hung the transform box a canvas-width off each side. Their thumbnail cards sit on a white tile
+(`ArtworkFrame light`): pattern ink is dark, so on the dark card the tiles read as empty squares.
 
 ## 15. Undo, state and the draft
 
