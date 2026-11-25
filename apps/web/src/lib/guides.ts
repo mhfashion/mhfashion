@@ -281,11 +281,23 @@ async function loadGuideCatalog(): Promise<GuideCatalog> {
       .map((row) => parseGuidePost(row as GuidePostRow, categorySlugsById))
       .filter((post): post is GuidePost => post !== null);
 
-    // An empty posts table (categories published, nothing written yet) must not blank the Guide page:
-    // the built-in catalogue carries the size, editor, product, design, payment and delivery guides.
+    // The live table was seeded once and has drifted from the shipped handbook: it is missing whole guides
+    // (the size guide among them) and still carries posts the handbook retired. A live post always wins on its
+    // slug; the handbook fills every slug the table does not answer, so the Guide page never has gaps.
     if (!posts.length) return GUIDE_STARTER_CATALOG;
 
-    return { categories, posts, source: "supabase" };
+    const liveSlugs = new Set(posts.map((post) => post.slug));
+    const missing = GUIDE_STARTER_CATALOG.posts.filter((post) => !liveSlugs.has(post.slug));
+    const liveCategorySlugs = new Set(categories.map((category) => category.slug));
+    const missingCategories = GUIDE_STARTER_CATALOG.categories.filter(
+      (category) => !liveCategorySlugs.has(category.slug)
+    );
+
+    return {
+      categories: [...categories, ...missingCategories],
+      posts: [...posts, ...missing],
+      source: "supabase",
+    };
   } catch (error) {
     console.error("getGuideCatalog failed, serving the handbook:", error);
     return GUIDE_STARTER_CATALOG;

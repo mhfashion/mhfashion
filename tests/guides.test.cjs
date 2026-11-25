@@ -194,16 +194,25 @@ test("a live catalog with no published posts falls back to the handbook", async 
   assert.ok(new Set(catalog.posts.map((post) => post.categorySlug)).size >= 6, "across every category");
 });
 
-test("published live posts win over the handbook", async (t) => {
+test("a live post wins on its slug and the handbook fills the gaps", async (t) => {
   configureSupabase(t);
   const data = starter();
   const category = data.categories[0];
+  const live = livePost(data.posts[0], category);
+  const stale = { ...live, id: "stale", slug: "the-planned-editor-flow", title: "The planned editor flow" };
   const catalog = await loadGuides({
     guide_categories: { data: [category], error: null },
-    guide_posts: { data: [livePost(data.posts[0], category)], error: null },
+    guide_posts: { data: [live, stale], error: null },
   }).getGuideCatalog();
   assert.equal(catalog.source, "supabase");
-  assert.deepEqual(catalog.posts.map((post) => post.slug), [data.posts[0].slug]);
+  assert.equal(catalog.posts[0].slug, data.posts[0].slug, "the live edition is kept first");
+  assert.equal(catalog.posts.filter((post) => post.slug === data.posts[0].slug).length, 1, "never duplicated");
+  assert.ok(catalog.posts.some((post) => post.slug === "how-to-read-the-size-guide"), "the size guide survives a drifted table");
+  assert.ok(catalog.posts.some((post) => post.slug === "the-planned-editor-flow"), "live-only posts are kept");
+  assert.equal(new Set(catalog.posts.map((post) => post.slug)).size, catalog.posts.length);
+  assert.equal(catalog.categories.length, data.categories.length, "a missing live category is filled in");
+  const slugs = new Set(catalog.categories.map((category) => category.slug));
+  assert.ok(catalog.posts.every((post) => slugs.has(post.categorySlug)), "every post keeps a category");
 });
 
 test("every live-catalogue failure serves the handbook", async (t) => {
@@ -238,8 +247,9 @@ test("live loader filters publication state and ignores malformed or uncategoriz
   });
   const catalog = await guides.getGuideCatalog();
   assert.equal(catalog.source, "supabase");
-  assert.equal(catalog.posts.length, 1);
-  assert.equal(catalog.posts[0].slug, valid.slug);
+  assert.equal(catalog.posts[0].slug, valid.slug, "the only live post comes first");
+  assert.equal(catalog.posts.filter((post) => post.slug === valid.slug).length, 1);
+  assert.ok(!catalog.posts.some((post) => ["bad-post", "hidden-post"].includes(post.slug)), "malformed and uncategorized rows never appear");
   for (const table of ["guide_categories", "guide_posts"]) {
     assert.ok(guides.calls.some((call) => call.table === table && call.method === "eq" && call.args[0] === "status" && call.args[1] === "published"));
     assert.ok(guides.calls.some((call) => call.table === table && call.method === "lte" && call.args[0] === "published_at"));
