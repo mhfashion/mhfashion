@@ -19,7 +19,8 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Push finished work to `main` in the same turn it is validated (owner directive 5 in the plan).
 
 ## Stack
-- Monorepo (`npm` workspaces). App lives in `apps/web`.
+- Monorepo (`npm` workspaces). The website lives in `apps/web`; the phone app (Flutter, iOS + Android)
+  lives in `App/` and shares the same Supabase project and the same Worker (see `Doc/APP.md`).
 - Next.js 16 (App Router) + React 19, Fabric.js 7, Supabase, deployed as a Cloudflare Worker via OpenNext (`npm run cf:build --workspace=apps/web`).
 - Node 22 (needed for the built-in `WebSocket` used by the CDP-based browser tests).
 
@@ -101,6 +102,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `/mh-fashion` search input had only a placeholder, and the `/search` idle panel jumped h1 → h3.
 - Add a route to `ROUTES` when a page is added; this sweep is the cheap guard that keeps the outline and
   the control names from rotting.
+
+## The app (`App/`, Flutter)
+- `cd App && flutter test` (39 tests) and `dart analyze` (clean). Flutter 3.50 moved Material out of the
+  framework: import `package:material_ui/material_ui.dart`, not `package:flutter/material.dart`.
+- The app reads the **same** Supabase catalogue (`products` + `product_price_ranges`, the two-query merge
+  from `apps/web/src/lib/products.ts`) and the **same** `/api/delivery/quote`, so nothing is copied and a
+  web change shows up in the app. Never add a local product list.
+- Build-time config only: `--dart-define=SUPABASE_URL=… --dart-define=SUPABASE_ANON_KEY=… --dart-define=SITE_BASE=…`.
+  Without the first two the shop tab says the catalogue is not connected instead of showing an empty shop.
+- No order endpoint exists on the site yet; the app keeps the order on the phone and offers its text.
+  Do not fake a `POST /api/orders` client until the route exists.
+- `App` is an allowed root entry in `tests/repo-layout.test.cjs`; adding another root folder means editing
+  that list.
+- There is no Android SDK, JDK or Xcode in this workspace, so `flutter build apk/ipa` cannot run here.
 
 ## Testing notes
 - `node --test tests/*.test.cjs` reports 460 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
@@ -1031,6 +1046,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - A fine-grained PAT pasted into chat was rejected with `Invalid username or token` and
   `GET /user` returned `401 Bad credentials`, so check the token with the API before
   retrying a push; the length can look right (93 chars) and still be revoked or mistyped.
+- A fine-grained PAT pasted into the chat came back `401 Bad credentials` on both `git push` and
+  `GET /api/user` (GitHub revokes tokens it finds in public content, and the conversation may be
+  logged), so ask for a fresh `Contents: write` token rather than reusing a pasted one.
 - To push without persisting the credential, pass a write-capable token inline and leave
   `origin` alone, so the read-only URL in `.git/config` is never overwritten:
   `git push "https://x-access-token:$TOKEN@github.com/mhfashion/mhfashion.git" HEAD:main`
@@ -1178,6 +1196,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The inline editor's `foreignObject` height uses the wrapped line count and its width uses `wrapWidth ?? TEXT_EDIT_BOX_WIDTH`. Sizing from the newline count clipped soft-wrapped lines below the box, which read as "typing stopped working".
 - The inline editor is wrapped in `<g transform={editingTextLayerTransform}>` because it is a sibling of the artwork layers and must carry the same move/scale/rotate.
 - `editorTextCanvasBounds` composes wrapping with effects (`editorTextPaintPadding`) and decorations (`editorTextDecoration`), so shadows/outlines stay inside the transform box.
+
+## The app (`App/`, Flutter)
+- `cd App && flutter test` (39 tests) and `dart analyze` (clean). Flutter 3.50 moved Material out of the
+  framework: import `package:material_ui/material_ui.dart`, not `package:flutter/material.dart`.
+- The app reads the **same** Supabase catalogue (`products` + `product_price_ranges`, the two-query merge
+  from `apps/web/src/lib/products.ts`) and the **same** `/api/delivery/quote`, so nothing is copied and a
+  web change shows up in the app. Never add a local product list.
+- Build-time config only: `--dart-define=SUPABASE_URL=… --dart-define=SUPABASE_ANON_KEY=… --dart-define=SITE_BASE=…`.
+  Without the first two the shop tab says the catalogue is not connected instead of showing an empty shop.
+- No order endpoint exists on the site yet; the app keeps the order on the phone and offers its text.
+  Do not fake a `POST /api/orders` client until the route exists.
+- `App` is an allowed root entry in `tests/repo-layout.test.cjs`; adding another root folder means editing
+  that list.
+- There is no Android SDK, JDK or Xcode in this workspace, so `flutter build apk/ipa` cannot run here.
 
 ## Testing notes (headless CDP pixel checks)
 - Measure ink against the **white print canvas only**: the page around it is near-black, so any padding in the screenshot clip is read as ink and inflates the box.

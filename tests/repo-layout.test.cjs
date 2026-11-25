@@ -42,7 +42,7 @@ test("Doc holds only Markdown and every file is listed in Doc/README.md", () => 
 
 test("the repository root holds only the allowed entries", () => {
   const allowed = new Set([
-    ".git", ".github", ".gitignore", ".next", "AGENTS.md", "Doc", "Plan", "README.md", "SQL", "Worker", "apps",
+    ".git", ".github", ".gitignore", ".next", "AGENTS.md", "App", "Doc", "Plan", "README.md", "SQL", "Worker", "apps",
     "node_modules", "package-lock.json", "package.json", "scripts", "tests", "wrangler.assets.jsonc",
   ]);
   for (const entry of fs.readdirSync(root)) {

@@ -4178,3 +4178,34 @@ passed on the same build.
 The shop catalogue and the checkout cannot be exercised in this workspace: products come from
 Supabase and `NEXT_PUBLIC_SUPABASE_URL` is unset, so every product list is empty and there is nothing
 to add to a cart. Those flows need the database (E15) before they can be tested end to end.
+
+## 2026-11-21 — The app (`App/`): Flutter for iOS and Android
+
+The shop now has a phone app. It is a Flutter project in `App/` (Flutter 3.50.1 / Dart 3.14), built for
+Android and iOS from one code base, and it shares the web shop's backend rather than copying it:
+
+- **Catalogue** — `SupabaseCatalogRepository` reads the same Supabase project with the public anon key,
+  over the same PostgREST queries `apps/web/src/lib/products.ts` makes (`products`, then
+  `product_price_ranges` merged by id). A product the admin edits on the web is in the app on the next
+  refresh; there is no second catalogue, no sync job and no cache to invalidate.
+- **Delivery** — `SiteDeliveryRepository` posts to the existing `POST /api/delivery/quote`, and falls
+  back to the shop's own fee table (the same bands as `DELIVERY_FEE_TABLE`) when the courier cannot be
+  reached, so the cart always shows a fee.
+- **Money and dates** — grouped kyat (`Ks` / `ကျပ်`), dollars at `usd_rate_ks`, dates in Yangon time.
+- **Screens** — Home (new arrivals), Shop (search + sub-brand filter), Product, Cart, Checkout (address,
+  live quote, total), Account (language EN/MM, currency Ks/$, orders on this phone, wishlist).
+- **State** — one `ChangeNotifier` (`lib/state/app_state.dart`) with the cart, wishlist, orders and the
+  two preferences, written through `KeyValueStore` (`SharedPreferences` on a device, `MemoryStore` in
+  tests), so a cart survives a restart.
+- **Orders** — the web shop has no order endpoint yet, so the app does not invent one: it keeps the
+  order with the shop's `MH…` reference and offers the order text for copying. `PlacedOrder`,
+  `DeliveryAddress` and `OrderLine` already carry what an endpoint needs.
+
+Verification: `cd App && flutter test` → **39 tests passing** (formatting, product parsing, PostgREST
+query shape and search escaping, fee table, quote call and its fallback, cart, order series, restart
+persistence, and the four tabs driven as real widgets), and `dart analyze` → no issues. The Android and
+iOS binaries need the Android SDK / Xcode, which this workspace does not have, so the APK/IPA build is
+the owner's step (documented in `App/README.md`).
+
+`App` is now an allowed repository-root entry in `tests/repo-layout.test.cjs`, and the app is described
+in `Doc/APP.md`.
