@@ -96,7 +96,7 @@ test("the pen joins corners and draws dashed or dotted lines", () => {
   assert.equal(pen.style, "solid");
   // Old saved settings fill the new fields in, and junk falls back to the default.
   const filled = normalizeEditorToolOptions({ pen: { width: 9 } }).pen;
-  assert.deepEqual(filled, { width: 9, cap: "round", join: "round", style: "solid" });
+  assert.deepEqual(filled, { width: 9, cap: "round", join: "round", style: "solid", ends: "none" });
   const kept = normalizeEditorToolOptions({ pen: { join: "miter", style: "dot" } }).pen;
   assert.equal(kept.join, "miter");
   assert.equal(kept.style, "dot");

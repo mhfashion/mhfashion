@@ -71,7 +71,12 @@ export type EditorPenSettings = {
   join: "round" | "miter" | "bevel";
   /** Solid, dashed or dotted stroke. */
   style: EditorPenLineStyle;
+  /** Marker drawn at both ends of an open path. */
+  ends: EditorPenEndShape;
 };
+
+export type EditorPenEndShape = "none" | "arrow" | "circle" | "square" | "bar";
+export const EDITOR_PEN_END_SHAPES: EditorPenEndShape[] = ["none", "arrow", "circle", "square", "bar"];
 
 /**
  * The stroke-dasharray a path is drawn with. Both patterns scale with the pen width, so a 24 px dotted
@@ -149,7 +154,7 @@ export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
   brush: { shape: "round", size: 52, opacity: 0.68, softness: 0, feather: 0, spacing: 8, flow: 100, smoothing: 3, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   eraser: { mode: "brush", shape: "round", size: 120, hardness: 60, opacity: 100, flow: 100, spacing: 12, angle: 0, roundness: 100 },
-  pen: { width: 5, cap: "round", join: "round", style: "solid" },
+  pen: { width: 5, cap: "round", join: "round", style: "solid", ends: "none" },
   gradient: { type: "linear", presetId: "black-white", reverse: false },
   text: { fontSize: 110, fontFamily: EDITOR_TEXT_FONT_FAMILY, fontWeight: 700, textAlign: "center", color: null, letterSpacing: 0, wrapWidth: DEFAULT_TEXT_WRAP_WIDTH, lineHeight: EDITOR_TEXT_DEFAULT_LINE_HEIGHT },
 };
@@ -220,6 +225,7 @@ export function normalizeEditorToolOptions(input: Partial<EditorToolOptions> | u
       cap: input?.pen?.cap === "butt" || input?.pen?.cap === "square" ? input.pen.cap : "round",
       join: input?.pen?.join === "miter" || input?.pen?.join === "bevel" ? input.pen.join : "round",
       style: input?.pen?.style === "dash" || input?.pen?.style === "dot" ? input.pen.style : "solid",
+      ends: EDITOR_PEN_END_SHAPES.includes(input?.pen?.ends as EditorPenEndShape) ? input!.pen!.ends as EditorPenEndShape : "none",
     },
     gradient: normalizeEditorGradientToolSettings(input?.gradient),
     text: normalizeEditorTextToolSettings(input?.text),
@@ -755,8 +761,42 @@ export type EditorShapePath = {
   dash?: string;
   /** Corner join for a drawn path; shapes without it keep the round join. */
   lineJoin?: EditorPenSettings["join"];
+  /** Markers on the two ends of an open path. */
+  ends?: EditorPenEndShape;
   penPath?: EditorPenPath;
 };
+/** One marker at a path end: where it sits, which way it faces, and how big it is. */
+export type EditorPenEndMarker = {
+  kind: Exclude<EditorPenEndShape, "none">;
+  x: number;
+  y: number;
+  /** Degrees, with 0 pointing along +x; the marker points away from the path. */
+  angle: number;
+  size: number;
+};
+
+/**
+ * Markers for both ends of an open path. A closed path has no ends, and a path
+ * with fewer than two anchors has no direction, so both return an empty list.
+ */
+export function editorPenEndMarkers(path: EditorShapePath): EditorPenEndMarker[] {
+  const kind = path.ends;
+  if (!kind || kind === "none" || !path.penPath || path.penPath.closed) return [];
+  const anchors = path.penPath.anchors;
+  if (anchors.length < 2) return [];
+  const size = Math.max(8, (path.strokeWidth ?? 5) * 3);
+  const first = anchors[0];
+  const second = anchors[1];
+  const last = anchors[anchors.length - 1];
+  const beforeLast = anchors[anchors.length - 2];
+  const degrees = (from: { x: number; y: number }, to: { x: number; y: number }) =>
+    (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
+  return [
+    { kind, x: first.x, y: first.y, angle: degrees(second, first), size },
+    { kind, x: last.x, y: last.y, angle: degrees(beforeLast, last), size },
+  ];
+}
+
 export type EditorShapeBuilderMode = "select" | "merge" | "subtract" | "intersect" | "exclude";
 export type EditorShapeLineStyle = "solid" | "dash" | "dot";
 export type EditorShapeShadow = {

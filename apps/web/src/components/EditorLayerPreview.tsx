@@ -2,7 +2,7 @@
 
 import { useId, type SVGProps } from "react";
 import type { EditorGradient, EditorImageContent, EditorShapePath, EditorShapeStyle, EditorTextContent, EditorTextEffect } from "@/lib/editor-layers";
-import { EDITOR_TEXT_FONT_FAMILY, editorTextDecoration, editorTextEffects, editorTextLines, editorTextMetrics, editorTextPresetTransform, mixEditorColors, editorGradientConicWedges, editorGradientDiamondFacets, editorGradientGeometry, roundEditorShapePath, sortEditorGradientStops } from "@/lib/editor-layers";
+import { editorPenEndMarkers, EDITOR_TEXT_FONT_FAMILY, editorTextDecoration, editorTextEffects, editorTextLines, editorTextMetrics, editorTextPresetTransform, mixEditorColors, editorGradientConicWedges, editorGradientDiamondFacets, editorGradientGeometry, roundEditorShapePath, sortEditorGradientStops } from "@/lib/editor-layers";
 import { buildToneTable, colorMatrixValues, grainParams, photoFilterCss, splitToneBands, vignetteParams } from "@/lib/photo-adjustments";
 
 // The print canvas and every preview share one 1000 x 1200 unit artwork space.
@@ -283,6 +283,22 @@ export default function EditorLayerPreview({
           data-editor-shape-style={shapeStyle ? "true" : undefined}
         />
       ))}
+      {shapePaths.map((path, index) => editorPenEndMarkers(path).map((marker, endIndex) => (
+        <g
+          key={`pen-end-${index}-${endIndex}`}
+          data-editor-pen-end={marker.kind}
+          transform={`translate(${marker.x} ${marker.y}) rotate(${marker.angle})`}
+          fill={path.stroke ?? "none"}
+          stroke={path.stroke ?? "none"}
+          strokeWidth={marker.kind === "bar" ? Math.max(1, (path.strokeWidth ?? 5) * 0.8) : 0}
+          pointerEvents="none"
+        >
+          {marker.kind === "arrow" && <path d={`M 0 0 L ${-marker.size} ${-marker.size / 2} L ${-marker.size * 0.6} 0 L ${-marker.size} ${marker.size / 2} Z`} />}
+          {marker.kind === "circle" && <circle r={marker.size / 2} />}
+          {marker.kind === "square" && <rect x={-marker.size / 2} y={-marker.size / 2} width={marker.size} height={marker.size} />}
+          {marker.kind === "bar" && <line x1={0} y1={-marker.size} x2={0} y2={marker.size} />}
+        </g>
+      )))}
       {text && <EditorTextArtwork text={text} idPrefix={effectPrefix} />}
       {image && (
         <g

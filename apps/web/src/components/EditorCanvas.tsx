@@ -1953,6 +1953,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
         strokeWidth: toolOptions.pen.width,
         dash: penDashArray(toolOptions.pen.style, toolOptions.pen.width),
         lineJoin: toolOptions.pen.join,
+        ends: toolOptions.pen.ends,
         penPath,
       },
     ]));

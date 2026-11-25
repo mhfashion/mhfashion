@@ -1182,6 +1182,18 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — Pen paths can carry end shapes
+
+A drawn path had a cap, a join and a dash pattern, but its two ends were always plain. The pen now offers
+`ends`: none, arrow, circle, square or bar (plan E21 item 4).
+
+- `EditorPenSettings.ends` is normalized with the rest of the tool options (`none` default, unknown values fall back),
+  so old saved settings keep drawing plain ends.
+- `editorPenEndMarkers(path)` returns the two markers with the position, the angle pointing away from the path and a
+  size that scales with the stroke width. A closed path, a single-anchor path and the `none` shape return none.
+- The path records the chosen shape at draw time (`EditorShapePath.ends`), and `EditorLayerPreview` paints the markers
+  from the same helper, so an existing drawing does not change when the pen options change later.
+
 ### 2026-11-24 — The handbook can finally be published to the database
 
 The Guide page reads `guide_categories` / `guide_posts` whenever those tables exist, and nothing in the app ever wrote
