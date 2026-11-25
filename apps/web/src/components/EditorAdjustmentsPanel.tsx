@@ -3,7 +3,7 @@
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, FlipHorizontal2, FlipVertical2, Minus, Plus, Trash2 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorGradient, EditorGradientStop, EditorGradientToolSettings, EditorGradientType, EditorLayerPlacement, EditorPenSettings, EditorShapeBuilderMode, EditorShapePreset, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorTextToolSettings, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
-import { createEditorShapePaths, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_TEXT_DEFAULT_LINE_HEIGHT, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
+import { createEditorShapePaths, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_TEXT_DEFAULT_LINE_HEIGHT, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, editorGradientAngle, editorGradientWithAngle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
 import type { EditorTool } from "@/components/EditorToolsBar";
 import EditorPhotoAdjustments from "@/components/EditorPhotoAdjustments";
 import { editorStrokePrintMm, IMAGE_PRINT_LEVEL_LABEL, IMAGE_PRINT_THRESHOLDS, type ImagePrintQuality } from "@/lib/editor-image-ppi";
@@ -435,6 +435,8 @@ function GradientEditor({ gradient, onChange }: { gradient: EditorGradient; onCh
         <span className="text-[9px] text-text-muted">{gradient.stops.length}/{EDITOR_GRADIENT_STOP_LIMIT} stops · double-click a handle to remove</span>
       </div>
     </div>
+
+    {(gradient.type !== "radial" && gradient.type !== "diamond") && <RangeField label="Angle" value={editorGradientAngle(gradient)} min={0} max={360} step={5} suffix="°" ariaLabel="Gradient angle" onChange={(degrees) => onChange(editorGradientWithAngle(gradient, degrees))} />}
 
     {selected && <div className="space-y-2 rounded-lg border border-border/70 bg-bg/60 p-2">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Selected stop</p>

@@ -1145,6 +1145,31 @@ function mixHex(a: string, b: string, t: number): string {
   return `#${[0, 1, 2].map((index) => blend(index).toString(16).padStart(2, "0")).join("")}`;
 }
 
+/** The axis angle in degrees, measured clockwise from the positive x axis. */
+export function editorGradientAngle(gradient: EditorGradient): number {
+  const degrees = (Math.atan2(gradient.y2 - gradient.y1, gradient.x2 - gradient.x1) * 180) / Math.PI;
+  return Math.round((degrees + 360) % 360);
+}
+
+/**
+ * Rotate the axis to `degrees` around its midpoint, keeping the length, so an
+ * angle field can steer a gradient that was dragged in at some other angle.
+ */
+export function editorGradientWithAngle(gradient: EditorGradient, degrees: number): EditorGradient {
+  const radians = (degrees * Math.PI) / 180;
+  const length = Math.hypot(gradient.x2 - gradient.x1, gradient.y2 - gradient.y1) || 500;
+  const half = length / 2;
+  const cx = (gradient.x1 + gradient.x2) / 2;
+  const cy = (gradient.y1 + gradient.y2) / 2;
+  return normalizeEditorGradient({
+    ...gradient,
+    x1: cx - Math.cos(radians) * half,
+    y1: cy - Math.sin(radians) * half,
+    x2: cx + Math.cos(radians) * half,
+    y2: cy + Math.sin(radians) * half,
+  });
+}
+
 export function defaultEditorGradient(): EditorGradient {
   return {
     type: "linear",

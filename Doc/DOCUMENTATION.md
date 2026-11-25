@@ -1182,6 +1182,16 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — A gradient layer's angle is a number, not only a drag
+
+The gradient axis could only be set by dragging, so nudging it to exactly 45° was guesswork.
+
+- `editorGradientAngle(gradient)` reports the axis angle in degrees (clockwise from +x).
+- `editorGradientWithAngle(gradient, degrees)` rotates the axis around its midpoint and keeps its length, then runs
+  through `normalizeEditorGradient`, so the coordinates stay valid.
+- The layer's gradient editor gains an "Angle" slider (`ariaLabel="Gradient angle"`) for every type that has an axis —
+  linear, angle (conic) and reflected. Radial and diamond have no direction, so the control is hidden there.
+
 ### 2026-11-24 — The Text tool owns its default line height
 
 Line height was only adjustable per layer, and the panel hard-coded the 1.2 fallback in two places, so a new text

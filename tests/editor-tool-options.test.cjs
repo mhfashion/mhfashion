@@ -16,11 +16,33 @@ const {
   normalizeEditorTextToolSettings,
   normalizeEditorToolOptions,
   penDashArray,
+  defaultEditorGradient,
   editorGradientFromToolSettings,
+  editorGradientAngle,
+  editorGradientWithAngle,
 } = lib.exports;
 
 const panel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
 const canvas = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorCanvas.tsx"), "utf8");
+
+test("a gradient layer's axis can be set by angle without losing its length", () => {
+  const flat = { ...defaultEditorGradient(), x1: 250, y1: 600, x2: 750, y2: 600 };
+  assert.equal(editorGradientAngle(flat), 0);
+  assert.equal(editorGradientAngle({ ...flat, x1: 500, y1: 600, x2: 500, y2: 100 }), 270);
+
+  const turned = editorGradientWithAngle(flat, 90);
+  assert.equal(editorGradientAngle(turned), 90);
+  assert.equal(Math.round(turned.x1), 500, "the axis is centred on its own midpoint");
+  assert.equal(Math.round(Math.hypot(turned.x2 - turned.x1, turned.y2 - turned.y1)), 500, "the length is kept");
+
+  const back = editorGradientWithAngle(turned, 0);
+  assert.equal(editorGradientAngle(back), 0);
+  assert.equal(Math.round(back.x1), 250);
+  assert.equal(Math.round(back.x2), 750);
+
+  assert.match(panel, /ariaLabel="Gradient angle"/, "the gradient editor offers the angle");
+  assert.match(panel, /editorGradientWithAngle\(gradient, degrees\)/, "the control rotates the real axis");
+});
 
 test("the Text tool carries a default line height into every new layer", () => {
   assert.equal(EDITOR_TEXT_DEFAULT_LINE_HEIGHT, 1.2);
