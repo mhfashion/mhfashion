@@ -17,15 +17,15 @@ function bucket() {
     "fonts/padauk/padauk-400.woff2": "woff2",
     "designs/street-vibes/meta.json": JSON.stringify({ slug: "street-vibes", name: "Street Vibes" }),
     "designs/street-vibes/art.svg": "<svg/>",
-    "mockups/classic-tee/front.webp": "webp",
+    "mockups/product/classic-tee/front.webp": "webp",
     "elements/orphan/arrow.svg": "<svg/>",
   };
 }
 
 test("one pass rebuilds every kind and reports what each one holds", async () => {
-  const store = storeLib.createMemoryAssetStore(bucket());
+  const buckets = storeLib.createMemoryAssetBuckets(bucket());
   const lines = [];
-  const summary = await rebuild.rebuildAssetCatalogues(store, new Date(2026, 10, 22), (line) => lines.push(line));
+  const summary = await rebuild.rebuildAssetCatalogues(buckets, new Date(2026, 10, 22), (line) => lines.push(line));
 
   assert.deepEqual(
     summary.kinds.map((entry) => [entry.kind, entry.items, entry.issues]),
@@ -44,23 +44,24 @@ test("one pass rebuilds every kind and reports what each one holds", async () =>
   assert.match(lines[0], /^assets: fonts rebuilt, 1 item, 0 issues$/);
   assert.match(lines[2], /^assets: elements rebuilt, 0 items, 1 issue$/);
   for (const kind of ["fonts", "designs", "elements", "brushes", "text-styles", "mockups"]) {
-    assert.equal(store.files.has(`catalog/${kind}.json`), true, kind);
+    assert.equal(buckets.private.files.has(`catalog/${kind}.json`), true, kind);
+    assert.equal(buckets.public.files.has(`catalog/${kind}.json`), false, `the ${kind} snapshot must not be public`);
   }
 });
 
 test("a second pass over an unchanged bucket writes nothing", async () => {
-  const store = storeLib.createMemoryAssetStore(bucket());
-  await rebuild.rebuildAssetCatalogues(store, new Date(2026, 10, 22), () => {});
-  const writesBefore = store.writes.length;
-  const summary = await rebuild.rebuildAssetCatalogues(store, new Date(2026, 10, 22, 12), () => {});
+  const buckets = storeLib.createMemoryAssetBuckets(bucket());
+  await rebuild.rebuildAssetCatalogues(buckets, new Date(2026, 10, 22), () => {});
+  const writesBefore = buckets.private.writes.length;
+  const summary = await rebuild.rebuildAssetCatalogues(buckets, new Date(2026, 10, 22, 12), () => {});
   assert.equal(summary.written, 0);
-  assert.equal(store.writes.length, writesBefore);
+  assert.equal(buckets.private.writes.length, writesBefore);
   assert.equal(summary.kinds.every((entry) => entry.written === false), true);
 });
 
 test("an empty bucket still produces six snapshots, each with no items", async () => {
-  const store = storeLib.createMemoryAssetStore({});
-  const summary = await rebuild.rebuildAssetCatalogues(store, new Date(2026, 10, 22), () => {});
+  const buckets = storeLib.createMemoryAssetBuckets({});
+  const summary = await rebuild.rebuildAssetCatalogues(buckets, new Date(2026, 10, 22), () => {});
   assert.equal(summary.written, 6);
   assert.equal(summary.issues, 0);
   for (const kind of summary.kinds) assert.equal(kind.items, 0, kind.kind);

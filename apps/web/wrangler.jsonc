@@ -11,9 +11,11 @@
   "observability": {
     "enabled": true
   }
-  // R2 bindings (for design SVGs, mockups, brushes) will be added here
-  // once the bucket exists, e.g.:
+  // R2 bindings (Plan 12.2.1). Both are required: the public bucket holds the pictures, fonts
+  // and artwork; the private one holds customer files, order files and the catalogue snapshots.
+  // Add them here once the buckets exist:
   // "r2_buckets": [
-  //   { "binding": "MH_FASHION_ASSETS", "bucket_name": "mh-fashion-assets" }
+  //   { "binding": "MH_FASHION_ASSETS", "bucket_name": "mh-fashion-assets" },
+  //   { "binding": "MH_FASHION_PRIVATE", "bucket_name": "mh-fashion-private" }
   // ]
 }

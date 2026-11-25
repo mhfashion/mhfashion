@@ -1,7 +1,8 @@
-// Plan §12.1 parts 4, 5 and 12: one rebuild pass over every kind, so a scheduled trigger, an admin
-// rescan and a test all run the same code. The logging line per kind is the observability part.
+// Plan §12.1 parts 4, 5 and 12, §12.2.9: one rebuild pass over every kind, so a scheduled trigger, a
+// queue message, an admin rescan and a test all run the same code. Sources are read from the public
+// bucket; snapshots are written to the private one. The logging line per kind is the observability part.
 import { ASSET_CATALOGUE_KINDS, writeAssetCatalogue, type AssetCatalogueKind } from "@/lib/asset-catalogue";
-import type { AssetStore } from "@/lib/asset-store";
+import type { AssetBuckets } from "@/lib/asset-store";
 
 export type CatalogueRebuild = {
   kind: AssetCatalogueKind;
@@ -18,13 +19,13 @@ export type CatalogueRebuildSummary = {
 };
 
 export async function rebuildAssetCatalogues(
-  store: AssetStore,
+  buckets: AssetBuckets,
   now: Date = new Date(),
   log: (message: string) => void = (message) => console.log(message),
 ): Promise<CatalogueRebuildSummary> {
   const kinds: CatalogueRebuild[] = [];
   for (const kind of ASSET_CATALOGUE_KINDS) {
-    const { written, catalogue } = await writeAssetCatalogue(store, kind, now);
+    const { written, catalogue } = await writeAssetCatalogue(buckets.public, buckets.private, kind, now);
     const entry = { kind, written, items: catalogue.items.length, issues: catalogue.issues.length };
     kinds.push(entry);
     log(

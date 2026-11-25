@@ -23,6 +23,12 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Next.js 16 (App Router) + React 19, Fabric.js 7, Supabase, deployed as a Cloudflare Worker via OpenNext (`npm run cf:build --workspace=apps/web`).
 - Node 22 (needed for the built-in `WebSocket` used by the CDP-based browser tests).
 
+## Working agreement with the owner
+- **Full code-writing permission (2026-11-25).** Write the code, the tests and the documents directly and push when the
+  work is done. Do not ask for approval per file or per step; ask only when a product decision is genuinely open.
+- The owner updates `Plan/PLAN.md` every five hours. Re-read it at the start of each turn and follow it; items that are
+  still missing will be added later.
+
 ## Commands
 - Build: `npm run build --workspace=apps/web`
 - Type-check: `npx tsc -p apps/web/tsconfig.json --noEmit`
@@ -785,6 +791,21 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   no longer matched the home page. Do not recreate a per-brand card.
 - `isDesignEditable` reads `subBrand` as well as `isCustomizable`, so a Nyein row is ready-made even when the
   column is unset. Ready-made products hide the Edit design action and show `READY_MADE_NOTE` instead.
+
+## Asset store (`apps/web/src/lib/asset-store.ts`)
+- Two buckets, Plan §12.2.1: `mh-fashion-assets` (public — fonts, designs, elements, brushes, text-styles, mockups,
+  models, textures, posts, jersey-mockups, site) and `mh-fashion-private` (catalog snapshots, uploads, saved,
+  orders, licences). `isSafeAssetKey(key, "public" | "private")` refuses a key from the other bucket.
+- Text methods (`get` / `put`) are for `meta.json` and the snapshots. Files use `getObject`, `putObject` (content type,
+  cache class, custom metadata) and `head`. `assetCacheControl(key)` picks the class from the prefix: fonts, brushes and
+  textures are `immutable`, everything else public is `revalidate`, the private bucket is `private, no-store`.
+- The rebuild reads **sources from the public bucket** and writes **snapshots to the private one**
+  (`writeAssetCatalogue(source, snapshots, kind, now)`, `rebuildAssetCatalogues(buckets, ...)`); a snapshot carries the
+  `issues` list, so it must never be public. `resolveAssetBuckets()` needs both bindings and answers `null` otherwise.
+- `buildMockupCatalogue` groups `mockups/<kind>/<slug>/<look>.<ext>` (kind `product` / `editor` / `3d`), so `product` is
+  never read as a product slug. An older flat `mockups/<slug>/<look>.<ext>` is still read as a `product` look and is
+  also listed as an issue telling the shop to move it.
+- Designs use the folder form `designs/<slug>/design.svg` + `meta.json`. A single file under `designs/` is an issue.
 
 ## Guide menu (`apps/web/src/app/guide/page.tsx`, `guide/[slug]/page.tsx`)
 - The row under the categories reads **Other Guide** and must open a **post list**, like every other guide row.

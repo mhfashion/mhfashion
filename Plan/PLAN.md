@@ -892,6 +892,18 @@ Written from reading `apps/web/src/lib` on 2026-11-24, so the next session knows
 7. **`Doc/R2-STORAGE.md`** claims everything is public and lists `orders/` in the public tree; it is corrected now
    (see the note at its top) and rewritten when the private bucket exists.
 
+**Built so far (2026-11-25):** items 1, 2, 3, 4, 5 and 6 of the list above are in the code.
+`asset-store.ts` has `getObject` / `putObject` / `head` beside the text methods, with `assetCacheControl(key)` choosing
+the cache class and the caller supplying the content type; `PUBLIC_ASSET_KEY_PREFIXES` and
+`PRIVATE_ASSET_KEY_PREFIXES` split the allow-lists and `isSafeAssetKey(key, "public" | "private")` enforces them;
+`writeAssetCatalogue(source, snapshots, kind, now)` builds from the public bucket and writes the snapshot to the
+private one (`rebuildAssetCatalogues(buckets, ...)`, `resolveAssetBuckets()` requiring both bindings);
+`buildMockupCatalogue` groups `mockups/<kind>/<slug>/<look>.<ext>` and still reads a flat `mockups/<slug>/<look>`
+as a `product` look, listing it as an issue; a single-file design is listed as an issue and `Doc/R2-STORAGE.md`
+describes the folder form. `tests/asset-store.test.cjs` covers the bucket guards, the cache classes and the binary
+API, and the catalogue tests cover the snapshot location and the grouping. Remaining: the bindings, the Queue and
+the event rules (12.2.9), the upload and order routes, and the backup workflow — all of which need the buckets to exist.
+
 #### 12.2.13 Moving from today
 
 1. Create `mh-fashion-private` and bind it as `MH_FASHION_PRIVATE`; create `mh-fashion-backup`. Nothing customer-related

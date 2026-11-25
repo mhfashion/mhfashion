@@ -10,6 +10,9 @@ import {
 } from "@/lib/asset-catalogue";
 import type { AssetStore } from "@/lib/asset-store";
 
+/** The snapshot store: the private bucket, or null when it is not bound in this environment. */
+export type AssetSnapshotSource = AssetStore | null;
+
 /** JSON is cacheable for a minute and stays usable while the next copy is fetched. */
 export const CATALOGUE_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=600";
 
@@ -76,7 +79,7 @@ function fontPayload(catalogue: AssetCatalogue<unknown>): { fonts: unknown[]; sk
 }
 
 export async function catalogueResponse(
-  store: AssetStore | null,
+  store: AssetSnapshotSource,
   kind: AssetCatalogueKind,
   ifNoneMatch: string | null,
   now: Date = new Date(),
@@ -119,7 +122,7 @@ export type AssetIssuesReport = {
  * the editor is served.
  */
 export async function issuesResponse(
-  store: AssetStore | null,
+  store: AssetSnapshotSource,
   ifNoneMatch: string | null,
 ): Promise<AssetRouteResult> {
   const kinds: AssetIssuesKindReport[] = [];
@@ -156,15 +159,18 @@ export async function issuesResponse(
 }
 
 export async function mockupResponse(
-  store: AssetStore | null,
+  store: AssetSnapshotSource,
   slug: string,
   ifNoneMatch: string | null,
+  kind: string | null = null,
 ): Promise<AssetRouteResult> {
   if (!SLUG_PATTERN.test(slug)) {
     return jsonResult(400, { error: "invalid_slug" }, { "cache-control": "no-store" });
   }
-  const stored = store ? await readAssetCatalogue<{ slug: string; files: string[] }>(store, "mockups") : null;
-  const mockup = stored?.items.find((item) => item.slug === slug);
+  const stored = store
+    ? await readAssetCatalogue<{ slug: string; kind: string; looks: { look: string; files: string[] }[]; files: string[] }>(store, "mockups")
+    : null;
+  const mockup = stored?.items.find((item) => item.slug === slug && (!kind || item.kind === kind));
   if (!mockup) {
     return jsonResult(404, { error: "no_mockups", slug }, { "cache-control": "no-store" });
   }

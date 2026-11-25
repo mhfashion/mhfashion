@@ -21,7 +21,7 @@ function fontBucket() {
 
 async function storeWith(kind, files, snapshotKind = kind) {
   const store = storeLib.createMemoryAssetStore(files);
-  await catalogue.writeAssetCatalogue(store, snapshotKind);
+  await catalogue.writeAssetCatalogue(store, store, snapshotKind);
   return store;
 }
 
@@ -87,22 +87,27 @@ test("the other kinds serve the catalogue itself, not a wrapped list", async () 
   assert.equal("fonts" in payload, false);
 });
 
-test("the mockup route names the files that exist for one product", async () => {
+test("the mockup route names the looks that exist for one product", async () => {
   const store = await storeWith("mockups", {
-    "mockups/classic-tee/front-black.webp": "webp",
-    "mockups/classic-tee/back-white.webp": "webp",
+    "mockups/product/classic-tee/front-black.webp": "webp",
+    "mockups/product/classic-tee/back-white.webp": "webp",
   });
   const result = await routes.mockupResponse(store, "classic-tee", null);
   assert.equal(result.status, 200);
   assert.deepEqual(JSON.parse(result.body), {
     slug: "classic-tee",
-    files: ["mockups/classic-tee/back-white.webp", "mockups/classic-tee/front-black.webp"],
+    kind: "product",
+    looks: [
+      { look: "back-white", files: ["mockups/product/classic-tee/back-white.webp"] },
+      { look: "front-black", files: ["mockups/product/classic-tee/front-black.webp"] },
+    ],
+    files: ["mockups/product/classic-tee/back-white.webp", "mockups/product/classic-tee/front-black.webp"],
   });
   assert.equal((await routes.mockupResponse(store, "classic-tee", result.headers.etag)).status, 304);
 });
 
 test("an unknown product and an impossible slug are answered, never guessed", async () => {
-  const store = await storeWith("mockups", { "mockups/classic-tee/front.webp": "webp" });
+  const store = await storeWith("mockups", { "mockups/product/classic-tee/front.webp": "webp" });
   const missing = await routes.mockupResponse(store, "hoodie", null);
   assert.equal(missing.status, 404);
   assert.equal(JSON.parse(missing.body).error, "no_mockups");
@@ -132,8 +137,8 @@ test("the issues route lists every kind, with the problems the snapshot carries"
     ...fontBucket(),
     "elements/orphan/arrow.svg": "<svg/>",
   });
-  await catalogue.writeAssetCatalogue(store, "fonts", new Date(Date.UTC(2026, 10, 22, 3, 0)));
-  await catalogue.writeAssetCatalogue(store, "elements", new Date(Date.UTC(2026, 10, 22, 3, 0)));
+  await catalogue.writeAssetCatalogue(store, store, "fonts", new Date(Date.UTC(2026, 10, 22, 3, 0)));
+  await catalogue.writeAssetCatalogue(store, store, "elements", new Date(Date.UTC(2026, 10, 22, 3, 0)));
   const result = await routes.issuesResponse(store, null);
   assert.equal(result.status, 200);
   const report = JSON.parse(result.body);
@@ -174,7 +179,7 @@ test("the issues route answers 304 for its own etag and a different one when the
   assert.equal(revalidated.status, 304);
   assert.equal(revalidated.body, "");
 
-  await catalogue.writeAssetCatalogue(store, "elements");
+  await catalogue.writeAssetCatalogue(store, store, "elements");
   const changed = await routes.issuesResponse(store, first.headers.etag);
   assert.equal(changed.status, 200);
   assert.notEqual(changed.headers.etag, first.headers.etag);

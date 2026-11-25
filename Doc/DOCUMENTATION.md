@@ -1193,6 +1193,29 @@ single article.
 The `Clear` link that appeared beside "Latest Guides" when a search or category filter was active is removed; the
 header keeps only "View All Posts". `tests/guide-card.test.cjs` covers both rules.
 
+### 2026-11-25 — The asset store learns files, buckets and kind folders
+
+The asset code could only carry text and had one store, so it could not hold a photo and would have published the
+catalogue snapshots (whose `issues` list names what is broken). It now follows Plan §12.2.12:
+
+- `AssetStore` gained `getObject`, `putObject(key, body, { contentType, cacheControl, customMetadata })` and `head`.
+  `put` still writes JSON for `meta.json` and the snapshots. `assetCacheControl(key)` picks the cache class from the
+  prefix: fonts, brushes and textures are immutable, the rest of the public bucket revalidates, the private bucket is
+  `private, no-store`.
+- The prefixes are split into `PUBLIC_ASSET_KEY_PREFIXES` and `PRIVATE_ASSET_KEY_PREFIXES`, and
+  `isSafeAssetKey(key, "public" | "private")` refuses a key from the other bucket.
+- `writeAssetCatalogue(source, snapshots, kind, now)` builds from the public bucket and writes the snapshot to the
+  private one; `rebuildAssetCatalogues(buckets, ...)` passes both; `resolveAssetBuckets()` returns `null` unless
+  `MH_FASHION_ASSETS` and `MH_FASHION_PRIVATE` are both bound.
+- `buildMockupCatalogue` groups `mockups/<kind>/<slug>/<look>.<ext>`, so `product`, `editor` and `3d` are kinds and
+  never product slugs. An older flat `mockups/<slug>/<look>` is still read as a `product` look and is listed as an
+  issue so the shop can move it.
+- A design stored as one file under `designs/` is listed as an issue; `Doc/R2-STORAGE.md` now documents the folder
+  form (`designs/<slug>/design.svg` plus `meta.json`).
+
+`tests/asset-store.test.cjs` is new (seven tests: bucket guards, cache classes, the binary API, the two memory
+buckets), and the catalogue and rebuild tests cover the snapshot location, the kind grouping and the flat-key issue.
+
 ### 2026-11-21 — The footer stays on the home page
 
 The Nyein page had picked up the full `Footer` (brand, SHOP/HELP/LEGAL, newsletter, payment blocks) along with the

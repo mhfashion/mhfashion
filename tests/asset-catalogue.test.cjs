@@ -113,7 +113,7 @@ test("a listing longer than one page is read to the end", async () => {
 
 test("the snapshot is written once and not rewritten while the bucket is unchanged", async () => {
   const store = storeLib.createMemoryAssetStore(fontBucket({ padauk: fontMeta("padauk", { name: "Padauk" }) }));
-  const first = await catalogue.writeAssetCatalogue(store, "fonts", NOW);
+  const first = await catalogue.writeAssetCatalogue(store, store, "fonts", NOW);
   assert.equal(first.written, true);
   assert.equal(store.files.has("catalog/fonts.json"), true);
   const stored = JSON.parse(store.files.get("catalog/fonts.json"));
@@ -121,7 +121,7 @@ test("the snapshot is written once and not rewritten while the bucket is unchang
   assert.equal(stored.generatedAt, NOW.toISOString());
 
   const later = new Date(2026, 10, 22, 10, 0, 0);
-  const second = await catalogue.writeAssetCatalogue(store, "fonts", later);
+  const second = await catalogue.writeAssetCatalogue(store, store, "fonts", later);
   assert.equal(second.written, false);
   assert.equal(store.writes.filter((key) => key === "catalog/fonts.json").length, 1);
   assert.equal(JSON.parse(store.files.get("catalog/fonts.json")).generatedAt, NOW.toISOString());
@@ -129,9 +129,9 @@ test("the snapshot is written once and not rewritten while the bucket is unchang
 
 test("a changed bucket rewrites the snapshot", async () => {
   const store = storeLib.createMemoryAssetStore(fontBucket({ padauk: fontMeta("padauk", { name: "Padauk" }) }));
-  await catalogue.writeAssetCatalogue(store, "fonts", NOW);
+  await catalogue.writeAssetCatalogue(store, store, "fonts", NOW);
   store.files.set("fonts/padauk/meta.json", fontMeta("padauk", { name: "Padauk New" }));
-  const second = await catalogue.writeAssetCatalogue(store, "fonts", NOW);
+  const second = await catalogue.writeAssetCatalogue(store, store, "fonts", NOW);
   assert.equal(second.written, true);
   assert.equal(JSON.parse(store.files.get("catalog/fonts.json")).items[0].name, "Padauk New");
 });
@@ -160,17 +160,62 @@ test("a design without a name or with a bad slug is reported", async () => {
   assert.deepEqual(result.issues.map((issue) => issue.reason).sort(), ["name is missing", "slug must be lowercase words joined by -"]);
 });
 
-test("a mockup folder lists the looks that exist and skips its meta.json", async () => {
+test("mockups group on the kind folder, then the slug, then the look", async () => {
   const store = storeLib.createMemoryAssetStore({
-    "mockups/classic-tee/meta.json": JSON.stringify({ name: "Classic Tee" }),
-    "mockups/classic-tee/front-black.webp": "webp",
-    "mockups/classic-tee/back-white.webp": "webp",
+    "mockups/product/classic-tee/front-black.webp": "webp",
+    "mockups/product/classic-tee/back-white.webp": "webp",
+    "mockups/editor/classic-tee/front-black.webp": "webp",
+    "mockups/editor/classic-tee/meta.json": JSON.stringify({ areas: [] }),
+    "mockups/3d/classic-tee/front.webp": "webp",
     "mockups/loose.png": "png",
   });
   const result = await catalogue.buildMockupCatalogue(store, NOW);
-  assert.deepEqual(result.items, [{ slug: "classic-tee", files: ["mockups/classic-tee/back-white.webp", "mockups/classic-tee/front-black.webp"] }]);
-  assert.equal(result.issues.length, 1);
-  assert.equal(result.issues[0].key, "mockups/loose.png");
+  assert.deepEqual(
+    result.items.map((item) => [item.kind, item.slug, item.looks.map((look) => look.look)]),
+    [
+      ["3d", "classic-tee", ["front"]],
+      ["editor", "classic-tee", ["front-black"]],
+      ["product", "classic-tee", ["back-white", "front-black"]],
+    ],
+    "product, editor and 3d are kinds, never product slugs",
+  );
+  assert.deepEqual(result.items.find((item) => item.kind === "product").files, [
+    "mockups/product/classic-tee/back-white.webp",
+    "mockups/product/classic-tee/front-black.webp",
+  ]);
+  assert.deepEqual(result.issues.map((issue) => issue.key), ["mockups/loose.png"]);
+});
+
+test("an older flat mockup key is still read, and named so it can be moved", async () => {
+  const store = storeLib.createMemoryAssetStore({
+    "mockups/classic-tee/front.webp": "webp",
+  });
+  const result = await catalogue.buildMockupCatalogue(store, NOW);
+  assert.deepEqual(result.items.map((item) => [item.kind, item.slug, item.files]), [
+    ["product", "classic-tee", ["mockups/classic-tee/front.webp"]],
+  ]);
+  assert.deepEqual(result.issues, [
+    { key: "mockups/classic-tee/front.webp", reason: "flat mockup key; move it to mockups/<kind>/<slug>/<look>.<ext>" },
+  ]);
+});
+
+test("a single-file design is listed so the shop can move it into its folder", async () => {
+  const store = storeLib.createMemoryAssetStore({ "designs/old-design.svg": "<svg/>" });
+  const result = await catalogue.buildFolderCatalogue(store, "designs", NOW);
+  assert.deepEqual(result.items, []);
+  assert.deepEqual(result.issues, [
+    { key: "designs/old-design.svg", reason: "single-file designs asset; move it to designs/<slug>/ plus a meta.json" },
+  ]);
+});
+
+test("the snapshot is built from the public bucket and lands in the private one", async () => {
+  const buckets = storeLib.createMemoryAssetBuckets(fontBucket({ padauk: fontMeta("padauk") }));
+  const result = await catalogue.writeAssetCatalogue(buckets.public, buckets.private, "fonts", NOW);
+  assert.equal(result.written, true);
+  assert.equal(buckets.public.files.has("catalog/fonts.json"), false, "the snapshot must never be public");
+  assert.equal(buckets.private.files.has("catalog/fonts.json"), true);
+  const stored = await catalogue.readAssetCatalogue(buckets.private, "fonts");
+  assert.deepEqual(stored.items.map((font) => font.slug), ["padauk"]);
 });
 
 test("a corrupt snapshot reads as absent, so a reader falls back instead of throwing", async () => {

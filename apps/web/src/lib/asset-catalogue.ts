@@ -26,8 +26,21 @@ export type CatalogueAsset = {
   meta: Record<string, unknown>;
 };
 
-/** A look that really exists for a product, so a page never has to probe for one. */
-export type CatalogueMockup = { slug: string; files: string[] };
+/** One look of a product or garment: the file (or files) painted for that attribute combination. */
+export type CatalogueMockupLook = { look: string; files: string[] };
+
+/**
+ * A product or garment that has mockups, grouped as `mockups/<kind>/<slug>/<look>.<ext>`
+ * (Plan §12.2.12 item 4). `kind` is `product`, `editor` or `3d`; older flat keys
+ * (`mockups/<slug>/<look>.<ext>`) are still read and count as `product`.
+ */
+export type CatalogueMockup = {
+  slug: string;
+  kind: string;
+  looks: CatalogueMockupLook[];
+  /** Every file of every look, sorted, so a caller that only wants the keys keeps working. */
+  files: string[];
+};
 
 export type AssetCatalogueIssue = { key: string; reason: string };
 
@@ -101,6 +114,28 @@ function reportMissingMeta(
     if (keys.includes(`${prefix}${folder}/meta.json`) || reported.has(folder)) continue;
     reported.add(folder);
     issues.push({ key: `${prefix}${folder}/`, reason: "meta.json is missing" });
+  }
+}
+
+/**
+ * A design (or any folder kind) saved as one file directly under the prefix uses the retired layout.
+ * The folder form — `designs/<slug>/design.svg` plus `meta.json` — is the target (Plan §12.2.12 item 5),
+ * so the file is listed here for the shop to move instead of being silently ignored.
+ */
+function reportSingleFileLayout(
+  keys: string[],
+  prefix: string,
+  kind: AssetCatalogueKind,
+  issues: AssetCatalogueIssue[],
+): void {
+  for (const key of keys) {
+    if (!isSafeAssetKey(key)) continue;
+    const rest = key.slice(prefix.length);
+    if (rest.includes("/")) continue;
+    issues.push({
+      key,
+      reason: `single-file ${kind} asset; move it to ${prefix}<slug>/ plus a meta.json`,
+    });
   }
 }
 
@@ -225,6 +260,7 @@ export async function buildFolderCatalogue(
     items.push({ slug, name, files, meta: rest });
   }
 
+  reportSingleFileLayout(keys, prefix, kind, issues);
   reportMissingMeta(keys, prefix, issues);
   return {
     version: 1,
@@ -235,7 +271,14 @@ export async function buildFolderCatalogue(
   };
 }
 
-/** The looks that exist for each product, so the product page picks one instead of probing. */
+/**
+ * The looks that exist for each product or garment, so a page picks one instead of probing.
+ *
+ * The folder layout is `mockups/<kind>/<slug>/<look>.<ext>`: the kind comes first so `product`,
+ * `editor` and `3d` are never mistaken for slugs. A key that still uses the older flat
+ * `mockups/<slug>/<look>.<ext>` form is read as a `product` look until the shop moves it, so an
+ * existing bucket keeps working.
+ */
 export async function buildMockupCatalogue(
   store: AssetStore,
   now: Date = new Date(),
@@ -243,29 +286,55 @@ export async function buildMockupCatalogue(
   const prefix = ASSET_FOLDER_BY_KIND.mockups;
   const keys = await listAllKeys(store, prefix);
   const issues: AssetCatalogueIssue[] = [];
-  const folders = new Map<string, string[]>();
+  const items = new Map<string, { slug: string; kind: string; looks: Map<string, string[]> }>();
 
   for (const key of keys) {
     if (!assertKeyOk(key, issues)) continue;
-    const rest = key.slice(prefix.length);
-    const [slug, ...tail] = rest.split("/");
-    if (!tail.length || !SLUG_PATTERN.test(slug)) {
-      issues.push({ key, reason: "a mockup file must sit in mockups/<product-slug>/" });
+    const parts = key.slice(prefix.length).split("/");
+    let kind: string;
+    let slug: string;
+    let file: string;
+    if (parts.length === 2) {
+      kind = "product";
+      [slug, file] = parts;
+      issues.push({ key, reason: "flat mockup key; move it to mockups/<kind>/<slug>/<look>.<ext>" });
+    } else if (parts.length === 3) {
+      [kind, slug, file] = parts;
+    } else {
+      issues.push({ key, reason: "a mockup file must sit in mockups/<kind>/<slug>/<look>.<ext>" });
       continue;
     }
-    if (tail.length === 1 && tail[0] === "meta.json") continue;
-    folders.set(slug, [...(folders.get(slug) ?? []), key]);
+    if (!SLUG_PATTERN.test(kind) || !SLUG_PATTERN.test(slug)) {
+      issues.push({ key, reason: "the kind and the slug must be lowercase words joined by -" });
+      continue;
+    }
+    if (file === "meta.json") continue;
+    const look = file.replace(/\.[a-z0-9]+$/i, "");
+    if (!look) {
+      issues.push({ key, reason: "the look needs a name before its extension" });
+      continue;
+    }
+    const id = `${kind}/${slug}`;
+    const entry = items.get(id) ?? { slug, kind, looks: new Map<string, string[]>() };
+    entry.looks.set(look, [...(entry.looks.get(look) ?? []), key]);
+    items.set(id, entry);
   }
 
-  return {
-    version: 1,
-    kind: "mockups",
-    generatedAt: now.toISOString(),
-    items: [...folders.entries()]
-      .map(([slug, files]) => ({ slug, files: files.sort() }))
-      .sort((a, b) => a.slug.localeCompare(b.slug)),
-    issues,
-  };
+  const built = [...items.values()]
+    .map((entry) => {
+      const looks = [...entry.looks.entries()]
+        .map(([look, files]) => ({ look, files: files.sort() }))
+        .sort((a, b) => a.look.localeCompare(b.look));
+      return {
+        slug: entry.slug,
+        kind: entry.kind,
+        looks,
+        files: looks.flatMap((look) => look.files).sort(),
+      };
+    })
+    .sort((a, b) => (a.kind === b.kind ? a.slug.localeCompare(b.slug) : a.kind.localeCompare(b.kind)));
+
+  return { version: 1, kind: "mockups", generatedAt: now.toISOString(), items: built, issues };
 }
 
 type AnyCatalogue = AssetCatalogue<EditorFontEntry | CatalogueAsset | CatalogueMockup>;
@@ -309,10 +378,10 @@ function fingerprint(catalogue: AssetCatalogue<unknown>): string {
 }
 
 export async function readAssetCatalogue<T>(
-  store: AssetStore,
+  snapshots: AssetStore,
   kind: AssetCatalogueKind,
 ): Promise<AssetCatalogue<T> | null> {
-  const raw = await store.get(catalogueSnapshotKey(kind));
+  const raw = await snapshots.get(catalogueSnapshotKey(kind));
   if (raw === null) return null;
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -324,19 +393,22 @@ export async function readAssetCatalogue<T>(
 }
 
 /**
- * Build one catalogue and store it as the snapshot the read routes serve. A rebuild that changes
- * nothing writes nothing, so a scheduled run does not churn the object or its cache.
+ * Build one catalogue from the public bucket and store the snapshot in the private one (Plan §12.2.12
+ * item 2): the snapshot carries the `issues` list, which names what is broken and must never be
+ * published. A rebuild that changes nothing writes nothing, so a scheduled run does not churn the
+ * object or its cache.
  */
 export async function writeAssetCatalogue<T>(
-  store: AssetStore,
+  source: AssetStore,
+  snapshots: AssetStore,
   kind: AssetCatalogueKind,
   now: Date = new Date(),
 ): Promise<{ written: boolean; catalogue: AssetCatalogue<T> }> {
-  const catalogue = (await buildAnyCatalogue(store, kind, now)) as AssetCatalogue<T>;
-  const previous = await readAssetCatalogue<T>(store, kind);
+  const catalogue = (await buildAnyCatalogue(source, kind, now)) as AssetCatalogue<T>;
+  const previous = await readAssetCatalogue<T>(snapshots, kind);
   if (previous && fingerprint(previous as AssetCatalogue<unknown>) === fingerprint(catalogue as AssetCatalogue<unknown>)) {
     return { written: false, catalogue: previous };
   }
-  await store.put(catalogueSnapshotKey(kind), JSON.stringify(catalogue, null, 2));
+  await snapshots.put(catalogueSnapshotKey(kind), JSON.stringify(catalogue, null, 2));
   return { written: true, catalogue };
 }

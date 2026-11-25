@@ -71,9 +71,9 @@ test("the R2 contract is documented where the owner can follow it", () => {
     "NEXT_PUBLIC_R2_PUBLIC_URL",
     "mockups/product/<product-slug>/<look>",
     "mockups/editor/<garment-slug>/<look>",
-    "designs/<design-slug>.svg",
+    "designs/<design-slug>/design.svg",
     "posts/<post-slug>.svg",
-    "orders/<order-id>",
+    "mh-fashion-private",
     "npx wrangler r2 bucket create mh-fashion-assets",
     "black-oversized-short-sleeve",
   ]) {

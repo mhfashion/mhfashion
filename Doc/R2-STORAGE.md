@@ -5,9 +5,10 @@
 > key rules, retention and backups are in `Plan/PLAN.md` section 12.2. Do not put anything about a customer or an order in the
 > public bucket.
 
-MH Fashion serves product mockups, design files and post artwork from one Cloudflare R2
-bucket. This is the contract the code already expects; follow it and nothing has to change in
-the app.
+MH Fashion serves product mockups, design files and post artwork from Cloudflare R2. This is the
+contract the code already expects; follow it and nothing has to change in the app. The catalogue
+snapshots (`catalog/*.json`) are **not** in this bucket: they are written to `mh-fashion-private`,
+because their `issues` list names what is broken.
 
 - Bucket: **`mh-fashion-assets`**
 - Public origin (no trailing slash): `NEXT_PUBLIC_R2_PUBLIC_URL`, e.g.
@@ -54,7 +55,8 @@ mh-fashion-assets/
 ├── fonts/
 │   ├── manifest.json                                  ← the font list the editor reads (3.2b)
 │   └── <font-slug>/<style>.woff2                      ← one file per weight and style
-├── designs/<design-slug>.svg                          ← design library source files
+├── designs/<design-slug>/design.svg                   ← design library artwork
+├── designs/<design-slug>/meta.json                    ← its name, shelf and files (3.2)
 └── posts/<post-slug>.svg                              ← T-shirt post artwork
 ```
 
@@ -123,14 +125,29 @@ Photos uploaded before the split live at `mockups/<product-slug>/<look>.webp`. T
 still tries that path after `mockups/product/...`, so nothing breaks — move the files into
 `mockups/product/` when convenient. The editor does not read the flat layout.
 
-### 3.2 Designs — `designs/<design-slug>.svg`
+### 3.2 Designs — `designs/<design-slug>/design.svg` + `meta.json`
 
-> Target layout (`Plan/PLAN.md` §12.2): `designs/<design-slug>/design.svg` plus a `meta.json`. The catalogue builder already reads the folder form.
+The folder form is the only form the catalogue lists (`Plan/PLAN.md` §12.2.12 item 5). A design
+saved as one file directly under `designs/` (`designs/street-wave.svg`) is reported as an issue by
+the rebuild, so it shows up in the admin issues panel until it is moved.
+
+```
+designs/
+  street-wave/
+    design.svg
+    meta.json
+```
+
+`meta.json` carries at least a `slug` and a `name`; anything else it holds is passed through to the
+catalogue unchanged.
+
+```json
+{ "slug": "street-wave", "name": "Street Wave", "files": ["designs/street-wave/design.svg"] }
+```
 
 - one SVG per design, artwork space 1000 × 1200 units
 - each element must be its own `<g id="...">` so the editor can list it as a layer
 - no external fonts or images: convert text to paths or embed the font
-- file name = design slug (`street-wave.svg`)
 
 ### 3.2b Fonts — `fonts/manifest.json` + `fonts/<font-slug>/<style>.woff2`
 
