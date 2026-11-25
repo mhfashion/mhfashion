@@ -806,6 +806,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   never read as a product slug. An older flat `mockups/<slug>/<look>.<ext>` is still read as a `product` look and is
   also listed as an issue telling the shop to move it.
 - Designs use the folder form `designs/<slug>/design.svg` + `meta.json`. A single file under `designs/` is an issue.
+- Keys are built, never typed: `buildAssetKey(shape, vars)` and `identifyAssetKey(key)` in
+  `apps/web/src/lib/asset-keys.ts` work from the `ASSET_SHAPES` table (bucket, extensions, size limit, path), so the
+  admin form, the Worker and the checker cannot drift from Plan §12.2.2. `npm run assets:check -- <folder>` checks a
+  copy of the bucket before an upload with those rules plus the catalogue builders.
 
 ## Guide menu (`apps/web/src/app/guide/page.tsx`, `guide/[slug]/page.tsx`)
 - The row under the categories reads **Other Guide** and must open a **post list**, like every other guide row.

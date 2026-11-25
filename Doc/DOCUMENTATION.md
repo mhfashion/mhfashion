@@ -1216,6 +1216,14 @@ catalogue snapshots (whose `issues` list names what is broken). It now follows P
 `tests/asset-store.test.cjs` is new (seven tests: bucket guards, cache classes, the binary API, the two memory
 buckets), and the catalogue and rebuild tests cover the snapshot location, the kind grouping and the flat-key issue.
 
+Keys are now built, never typed (Plan §12.2.3 rule 6). `apps/web/src/lib/asset-keys.ts` holds `ASSET_SHAPES` — one
+entry per key pattern in §12.2.2, with its bucket, accepted extensions, size limit and path — plus `buildAssetKey(shape,
+vars)`, the reverse `identifyAssetKey(key)` and `checkAssetFile(key, bytes)`. `npm run assets:check -- <folder>`
+(`scripts/check-assets.cjs`, Plan §12.2.11) walks a copy of the bucket, checks every file against those shapes and then
+runs the catalogue builders over it, so it fails on the same reasons the rebuild would report. `tests/asset-keys.test.cjs`
+has a case per shape (build and recognise back, plus the refusals) and `tests/asset-check-script.test.cjs` runs the
+script on a clean folder, a folder with an unshaped file and a licence-less font, and an oversized file.
+
 ### 2026-11-21 — The footer stays on the home page
 
 The Nyein page had picked up the full `Footer` (brand, SHOP/HELP/LEGAL, newsletter, payment blocks) along with the

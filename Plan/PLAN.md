@@ -901,7 +901,10 @@ private one (`rebuildAssetCatalogues(buckets, ...)`, `resolveAssetBuckets()` req
 `buildMockupCatalogue` groups `mockups/<kind>/<slug>/<look>.<ext>` and still reads a flat `mockups/<slug>/<look>`
 as a `product` look, listing it as an issue; a single-file design is listed as an issue and `Doc/R2-STORAGE.md`
 describes the folder form. `tests/asset-store.test.cjs` covers the bucket guards, the cache classes and the binary
-API, and the catalogue tests cover the snapshot location and the grouping. Remaining: the bindings, the Queue and
+API, and the catalogue tests cover the snapshot location and the grouping. Rule 6 of §12.2.3 is built too:
+`apps/web/src/lib/asset-keys.ts` holds `ASSET_SHAPES` with `buildAssetKey` / `identifyAssetKey` / `checkAssetFile`, one
+shape per key pattern in 12.2.2, and `npm run assets:check -- <folder>` (§12.2.11) checks a copy of the bucket with
+those rules before an upload. Remaining: the bindings, the Queue and
 the event rules (12.2.9), the upload and order routes, and the backup workflow — all of which need the buckets to exist.
 
 #### 12.2.13 Moving from today

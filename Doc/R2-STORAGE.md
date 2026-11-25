@@ -199,7 +199,11 @@ Rules the editor enforces (a bad entry is skipped and named, never fatal — the
 | `licence` | required: `name` plus a `url`. A font without a licence is not shipped |
 | `enabled` | `false` hides the font from the picker; designs already using it fall back |
 
-- **Check before you upload:** `npm run fonts:check -- path/to/fonts` reads a local copy of the folder
+- **Check before you upload:** `npm run assets:check -- path/to/bucket-copy` checks a folder that mirrors the
+  bucket (fonts, designs, elements, brushes, text styles, mockups) against every rule in this document and in Plan
+  §12.2: the key shape, the file type, the size limit, a duplicate and the `meta.json` fields. It exits 1 while
+  something is wrong, so it can gate the upload. `npm run fonts:check -- path/to/fonts` does the font-only pass.
+- **Font-only detail:** `npm run fonts:check -- path/to/fonts` reads a local copy of the folder
   with the editor's own parser and prints the picker order, every entry the editor would drop and its
   reason, any listed file that is not in the folder, and any file over 1 MB. It exits 1 while something
   is wrong, so it can gate the upload.

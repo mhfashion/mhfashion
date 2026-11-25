@@ -21,6 +21,7 @@
     "test:admin-data": "node --test tests/admin-demo-data.test.cjs",
     "test:admin-posts": "node --test tests/admin-posts.test.cjs",
     "fonts:check": "node scripts/check-font-manifest.cjs",
+    "assets:check": "node scripts/check-assets.cjs",
     "guide:seed": "node scripts/seed-guide.cjs"
   }
 }
