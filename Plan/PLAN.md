@@ -904,7 +904,11 @@ describes the folder form. `tests/asset-store.test.cjs` covers the bucket guards
 API, and the catalogue tests cover the snapshot location and the grouping. Rule 6 of §12.2.3 is built too:
 `apps/web/src/lib/asset-keys.ts` holds `ASSET_SHAPES` with `buildAssetKey` / `identifyAssetKey` / `checkAssetFile`, one
 shape per key pattern in 12.2.2, and `npm run assets:check -- <folder>` (§12.2.11) checks a copy of the bucket with
-those rules before an upload. Remaining: the bindings, the Queue and
+those rules before an upload. The type check of §12.2.5 is built as well: `asset-file-type.ts` sniffs a file by its
+first bytes (png, jpg, webp, woff2, ttf, otf, glb, pdf, svg, json, csv, html), reads the pixel size of a PNG, JPEG or
+WebP, and `cleanSvg` removes scripts, event attributes and external references; `checkAssetContent(key, bytes)` applies
+them with the brush 512 px and texture 2048 px limits, and the check script reports a cleaning as a note and a
+mislabeled or oversized file as a problem. Remaining: the bindings, the Queue and
 the event rules (12.2.9), the upload and order routes, and the backup workflow — all of which need the buckets to exist.
 
 #### 12.2.13 Moving from today

@@ -1224,6 +1224,14 @@ runs the catalogue builders over it, so it fails on the same reasons the rebuild
 has a case per shape (build and recognise back, plus the refusals) and `tests/asset-check-script.test.cjs` runs the
 script on a clean folder, a folder with an unshaped file and a licence-less font, and an oversized file.
 
+Files are judged by their bytes (Plan §12.2.5). `apps/web/src/lib/asset-file-type.ts` has `sniffAssetType` (png, jpg,
+webp, woff2, ttf, otf, glb, pdf, svg, json, csv, html), `imageSize` (PNG, JPEG, WebP headers) and `cleanSvg`, which
+removes scripts, `on*` attributes and external `href`s while keeping the artwork. `checkAssetContent(key, bytes)` in
+`asset-keys.ts` puts those together with the shape's size limit and its pixel limit (brush 512 px, texture 2048 px), so
+a file named `.svg` that is really a PNG is refused, and an SVG that needs cleaning passes with the change named. The
+check script reads bytes rather than text for this reason. `tests/asset-file-type.test.cjs` covers every signature, the
+three image headers, the cleaner and the refusals, and the script test covers a mislabeled file and an oversized brush.
+
 ### 2026-11-21 — The footer stays on the home page
 
 The Nyein page had picked up the full `Footer` (brand, SHOP/HELP/LEGAL, newsletter, payment blocks) along with the

@@ -24,8 +24,9 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Node 22 (needed for the built-in `WebSocket` used by the CDP-based browser tests).
 
 ## Working agreement with the owner
-- **Full code-writing permission (2026-11-25).** Write the code, the tests and the documents directly and push when the
-  work is done. Do not ask for approval per file or per step; ask only when a product decision is genuinely open.
+- **Full code-writing permission (standing instruction from the owner).** Write the code, the tests and the documents
+  directly and push when the work is done. Do not ask for approval per file or per step; ask only when a product
+  decision is genuinely open, and say what you decided instead of waiting.
 - The owner updates `Plan/PLAN.md` every five hours. Re-read it at the start of each turn and follow it; items that are
   still missing will be added later.
 
@@ -810,6 +811,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `apps/web/src/lib/asset-keys.ts` work from the `ASSET_SHAPES` table (bucket, extensions, size limit, path), so the
   admin form, the Worker and the checker cannot drift from Plan §12.2.2. `npm run assets:check -- <folder>` checks a
   copy of the bucket before an upload with those rules plus the catalogue builders.
+- A file is judged by its bytes, not its name: `asset-file-type.ts` has `sniffAssetType` (png, jpg, webp, woff2, ttf,
+  otf, glb, pdf, svg, json, csv, html), `imageSize` for PNG/JPEG/WebP and `cleanSvg`, which strips scripts, `on*`
+  attributes and external `href`s. `checkAssetContent(key, bytes)` combines them with the shape's size and pixel limits
+  (brush 512 px, texture 2048 px) and returns the cleaned SVG plus notes; the check script prints a note and keeps the
+  file, and refuses a mislabeled or oversized one.
 
 ## Guide menu (`apps/web/src/app/guide/page.tsx`, `guide/[slug]/page.tsx`)
 - The row under the categories reads **Other Guide** and must open a **post list**, like every other guide row.

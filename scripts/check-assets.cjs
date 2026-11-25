@@ -43,6 +43,7 @@ async function main() {
   }
 
   const problems = [];
+  const warnings = [];
   const files = {};
   const seen = new Map();
   for (const entry of entries) {
@@ -51,15 +52,18 @@ async function main() {
       problems.push(`${entry.key}: no shape describes this key (see Plan §12.2.2)`);
       continue;
     }
-    const checked = keyLib.checkAssetFile(entry.key, entry.bytes);
+    const data = readFileSync(path.join(folder, entry.key));
+    const checked = keyLib.checkAssetContent(entry.key, new Uint8Array(data));
     if (!checked.ok) {
       problems.push(`${entry.key}: ${checked.reason}`);
       continue;
     }
+    for (const note of checked.notes) warnings.push(`${entry.key}: the Worker would remove ${note}`);
     const duplicate = seen.get(entry.key.toLowerCase());
     if (duplicate) problems.push(`${entry.key}: twice (also ${duplicate})`);
     seen.set(entry.key.toLowerCase(), entry.key);
-    files[entry.key] = readFileSync(path.join(folder, entry.key), "utf8");
+    // The builders read meta.json; every other file is only listed, so its text is not needed here.
+    files[entry.key] = entry.key.endsWith(".json") ? data.toString("utf8") : "";
   }
 
   const store = storeLib.createMemoryAssetStore(files);
@@ -69,6 +73,10 @@ async function main() {
     console.log(`${kind.padEnd(12)} ${built.items.length} ${built.items.length === 1 ? "item" : "items"}, ${built.issues.length} ${built.issues.length === 1 ? "issue" : "issues"}`);
   }
 
+  if (warnings.length) {
+    console.log(`\n${warnings.length} ${warnings.length === 1 ? "note" : "notes"}:`);
+    for (const warning of warnings) console.log(`  ${warning}`);
+  }
   if (problems.length) {
     console.log(`\n${problems.length} ${problems.length === 1 ? "problem" : "problems"}:`);
     for (const problem of problems) console.log(`  ${problem}`);
