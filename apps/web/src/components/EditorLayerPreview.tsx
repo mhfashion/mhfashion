@@ -275,7 +275,9 @@ export default function EditorLayerPreview({
           fillOpacity={shapeStyle ? shapeStyle.fillOpacity / 100 : undefined}
           stroke={shapeStyle ? shapeStroke : path.stroke ?? "none"}
           strokeWidth={shapeStyle ? shapeStrokeWidth : path.strokeWidth ?? 20}
-          strokeDasharray={shapeStyle ? shapeDash : path.dash}
+          // A drawn path carries its own rhythm (penDashArray scales with the pen width); the shape's
+          // preset dash is only the fallback, so a dotted pen path never paints solid.
+          strokeDasharray={path.dash ?? (shapeStyle ? shapeDash : undefined)}
           strokeLinecap="round"
           strokeLinejoin={path.lineJoin ?? "round"}
           filter={shapeStyle ? shapeFilter : undefined}

@@ -3525,8 +3525,16 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    path fills with `fillColor`, or the pen colour when none is picked, and `none` when "Fill closed" is off. The Pen
    box now reads Path width, presets, Cap, Join, Fill closed, Ends, Line.
    Verified in Chromium at 1440 × 900: the Pen box renders the two rows, `Pen end shape circle` presses and clears
-   `none`, and "Fill closed" turns off and removes the colour input, console clean. **Open:** a pixel check of a
-   drawn path's stroke and markers — the probe still fails to finish a path with synthetic pointer events.
+   `none`, and "Fill closed" turns off and removes the colour input, console clean.
+   *Pixel check done 2026-11-21, and it found two bugs.* Drawing a Dot path with Circle ends at pen width 24 through
+   CDP (three clicks, Enter) and diffing a frame against the same frame with the artwork hidden showed the stroke
+   painting **solid** and both markers parked in the canvas' top-left corner. Causes: a shape layer always resolves
+   a style, so `EditorLayerPreview` preferred the shape's preset dash over the path's own; and `editorPenEndMarkers`
+   returned the anchors' normalized 0..1 coordinates while `editorPenPathData` paints them in the 1000×1200 view.
+   Fixed by letting `path.dash` win (`strokeDasharray={path.dash ?? …}`), storing the pen's `lineStyle` on the path
+   so the Shape box reads a dotted path back as dotted (`defaultEditorShapeStyle`, with a dash-string fallback for
+   older artwork), and mapping the markers into the same view. Re-measured: 11 dots with 9 gaps of 6 px between
+   8 px-tall dots, circle markers 22 px across at both ends, nothing left in the corner, console clean.
 5. **Shape box:** defaults for fill, stroke, width and corner radius, star points and polygon sides, and a hint
    for the modifier keys (Shift keeps proportions, Alt draws from the centre). Today it holds only the presets.
    *Hint and modifiers built 2026-11-24.* The canvas honoured neither key before: a shape drag now makes the shape

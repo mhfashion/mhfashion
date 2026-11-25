@@ -9,9 +9,10 @@ const panel = readFileSync(path.join(__dirname, "../apps/web/src/components/Edit
 const preview = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
 const canvas = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorCanvas.tsx"), "utf8");
 
+// Anchors are normalized; the path view is 1000x1200, so these paint at (100,120) and (300,120).
 const anchors = [
-  { x: 100, y: 100, in: null, out: null },
-  { x: 300, y: 100, in: null, out: null },
+  { x: 0.1, y: 0.1, in: null, out: null },
+  { x: 0.3, y: 0.1, in: null, out: null },
 ];
 
 test("the pen offers the end shapes and defaults to none", () => {
@@ -24,7 +25,8 @@ test("the pen offers the end shapes and defaults to none", () => {
 test("markers sit on both ends and face away from the path", () => {
   const markers = lib.editorPenEndMarkers({ d: "", ends: "arrow", strokeWidth: 10, penPath: { anchors, closed: false } });
   assert.equal(markers.length, 2);
-  assert.deepEqual(markers.map((marker) => [marker.kind, marker.x, marker.y]), [["arrow", 100, 100], ["arrow", 300, 100]]);
+  assert.deepEqual(markers.map((marker) => [marker.kind, marker.x, marker.y]), [["arrow", 100, 120], ["arrow", 300, 120]],
+    "markers sit in the same view space as the path, not at the canvas origin");
   assert.equal(markers[0].angle, 180, "the start marker points back along the line");
   assert.equal(markers[1].angle, 0, "the end marker points forward");
   assert.equal(markers[0].size, 30, "the marker scales with the stroke");

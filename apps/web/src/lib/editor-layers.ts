@@ -765,12 +765,17 @@ export type EditorShapePath = {
   strokeWidth?: number;
   /** Set when the path was drawn with a dashed or dotted pen. */
   dash?: string;
+  /** The pen's line preset, so the Shape box shows the style the path was drawn with. */
+  lineStyle?: EditorPenLineStyle;
   /** Corner join for a drawn path; shapes without it keep the round join. */
   lineJoin?: EditorPenSettings["join"];
   /** Markers on the two ends of an open path. */
   ends?: EditorPenEndShape;
   penPath?: EditorPenPath;
 };
+/** The pen's painting view; `editorPenPathData` scales anchors into it. */
+export const EDITOR_PEN_VIEW_WIDTH = 1000;
+export const EDITOR_PEN_VIEW_HEIGHT = 1200;
 /** One marker at a path end: where it sits, which way it faces, and how big it is. */
 export type EditorPenEndMarker = {
   kind: Exclude<EditorPenEndShape, "none">;
@@ -791,10 +796,13 @@ export function editorPenEndMarkers(path: EditorShapePath): EditorPenEndMarker[]
   const anchors = path.penPath.anchors;
   if (anchors.length < 2) return [];
   const size = Math.max(8, (path.strokeWidth ?? 5) * 3);
-  const first = anchors[0];
-  const second = anchors[1];
-  const last = anchors[anchors.length - 1];
-  const beforeLast = anchors[anchors.length - 2];
+  // Anchors are stored normalized; the path geometry paints them in the 1000x1200 view, so the
+  // markers must be mapped the same way or they land in the canvas corner.
+  const toView = (point: { x: number; y: number }) => ({ x: point.x * EDITOR_PEN_VIEW_WIDTH, y: point.y * EDITOR_PEN_VIEW_HEIGHT });
+  const first = toView(anchors[0]);
+  const second = toView(anchors[1]);
+  const last = toView(anchors[anchors.length - 1]);
+  const beforeLast = toView(anchors[anchors.length - 2]);
   const degrees = (from: { x: number; y: number }, to: { x: number; y: number }) =>
     (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
   return [
@@ -847,7 +855,8 @@ export function defaultEditorShapeStyle(paths: EditorShapePath[]): EditorShapeSt
     fillOpacity: 100,
     stroke: stroked?.stroke ?? "#202124",
     strokeWidth: stroked?.strokeWidth ?? 0,
-    strokeStyle: "solid",
+    // A path drawn with the dotted pen must read back as dotted, or the Shape box turns it solid.
+    strokeStyle: stroked?.lineStyle ?? (stroked?.dash ? (stroked.dash.startsWith("0.01") ? "dot" : "dash") : "solid"),
     cornerRadius: 0,
     shadow: { enabled: false, color: "#000000", offsetX: 12, offsetY: 12, blur: 6, opacity: 0.45 },
     glow: { enabled: false, color: "#d4ff3f", width: 16, opacity: 0.7 },

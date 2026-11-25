@@ -20,6 +20,7 @@ const {
   editorGradientFromToolSettings,
   editorGradientAngle,
   editorGradientWithAngle,
+  defaultEditorShapeStyle,
 } = lib.exports;
 
 const panel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
@@ -111,8 +112,18 @@ test("the pen joins corners and draws dashed or dotted lines", () => {
   assert.equal(penDashArray("dot", 0), "0.6 1.8", "a zero width still draws a dot, never a solid line");
   // The one renderer every view shares (canvas, mockup, PNG/SVG export) paints what the path carries.
   const preview = readFileSync(path.join(__dirname, "..", "apps/web/src/components/EditorLayerPreview.tsx"), "utf8");
-  assert.match(preview, /strokeDasharray=\{shapeStyle \? shapeDash : path\.dash\}/);
+  // A shape layer always resolves a style, so the drawn path's own dash must win or it paints solid.
+  assert.match(preview, /strokeDasharray=\{path\.dash \?\? \(shapeStyle \? shapeDash : undefined\)\}/);
   assert.match(preview, /strokeLinejoin=\{path\.lineJoin \?\? "round"\}/);
+});
+
+test("a pen path keeps its dotted rhythm and the Shape box reads it back", () => {
+  const dotted = { d: "M 0 0 L 10 0", stroke: "#202124", strokeWidth: 24, dash: penDashArray("dot", 24), lineStyle: "dot" };
+  assert.equal(defaultEditorShapeStyle([dotted]).strokeStyle, "dot");
+  // Old artwork (saved before lineStyle) still reads back from the dash string.
+  const legacy = { d: "M 0 0 L 10 0", stroke: "#202124", strokeWidth: 10, dash: penDashArray("dash", 10) };
+  assert.equal(defaultEditorShapeStyle([legacy]).strokeStyle, "dash");
+  assert.equal(defaultEditorShapeStyle([{ d: "M 0 0 L 10 0", stroke: "#202124", strokeWidth: 6 }]).strokeStyle, "solid");
 });
 
 test("every panel slider carries a number field that steps, jumps ten with Shift and resets", () => {

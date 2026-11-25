@@ -1182,6 +1182,26 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-21 — A dotted pen path paints dotted, and its end markers sit on the path
+
+The plan had claimed the pen's Line and Ends settings reached the paint. A pixel check found they did not.
+
+A shape layer always resolves a shape style (`resolveEditorShapeStyle` never returns null), and the preview drew
+`strokeDasharray={shapeStyle ? shapeDash : path.dash}`. Because `defaultEditorShapeStyle` hardcodes `solid`, every
+drawn dashed or dotted path painted as a solid line on the canvas, in the mockup and in the exported PNG/SVG. The
+preview now prefers the path's own dash and falls back to the shape preset, the pen's `lineStyle` is stored on the
+path so the Shape box reads a dotted path back as dotted, and `defaultEditorShapeStyle` derives the style from the
+dash string for artwork saved before that field existed.
+
+Separately, `editorPenEndMarkers` returned the anchors in their stored 0..1 space while `editorPenPathData` paints
+them in the 1000x1200 view, so every arrow, circle, square and bar was drawn in the canvas' top-left corner. Both
+the markers and their facing angles are now mapped into the path view.
+
+Measured at 1440x900 in Chromium, frame-differenced with the artwork hidden: 11 dots with nine 6 px gaps between
+8 px-tall dots, and 22 px circle markers centred on both path ends, with nothing left at the corner. Console clean.
+Tests: `tests/pen-end-shapes.test.cjs` (normalized anchors, markers in the path view) and
+`tests/editor-tool-options.test.cjs` (the path's dash wins, the Shape box reads the style back).
+
 ### 2026-11-21 — One slider control for the whole editor, photo panel included
 
 Plan E21 item 1 asks that every slider come with a number field. The Adjustments panel has had that since

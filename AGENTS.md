@@ -759,6 +759,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Photo fields get the Camera Raw neutral, not a blind 0: white point 100, gamma 1, shadows hue 220, highlights
   hue 45, blending 50, grain size 25, channel 100.
 
+## Pen paths (`lib/editor-pen-path.ts`, `lib/editor-layers.ts`)
+- Anchor coordinates are stored **normalized** (0..1). `editorPenPathData` scales them into a 1000x1200 view, so
+  anything else that positions geometry from `penPath.anchors` must scale the same way —
+  `editorPenEndMarkers` does (`EDITOR_PEN_VIEW_WIDTH/HEIGHT`), and forgetting it parks end markers in the
+  canvas' top-left corner.
+- A shape layer always resolves a style, so a drawn path's own `dash`/`lineStyle` only paints because
+  `EditorLayerPreview` prefers `path.dash ?? shapeDash`. Do not put the shape preset first again: every dotted
+  path then paints solid.
+- Verify pen drawing with real CDP input, not synthetic DOM events: `Input.dispatchMouseEvent` pressed/released
+  per anchor and `Input.dispatchKeyEvent` Enter to commit. Pick the tool options in **separate** evaluate ticks
+  (React batches one task, so three `.click()`s in one call keep only the last change).
+
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
   `tests/canvas-shell.test.cjs` fails if they come back.

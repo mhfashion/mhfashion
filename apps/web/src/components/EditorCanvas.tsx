@@ -1952,6 +1952,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
         stroke: foregroundColor,
         strokeWidth: toolOptions.pen.width,
         dash: penDashArray(toolOptions.pen.style, toolOptions.pen.width),
+        lineStyle: toolOptions.pen.style,
         lineJoin: toolOptions.pen.join,
         ends: toolOptions.pen.ends,
         penPath,
