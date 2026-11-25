@@ -5,27 +5,33 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BarChart3, Bell, Box, CircleHelp, ClipboardList, Globe2, House, Inbox, Layers3, LogOut, Megaphone, Menu, Newspaper, Package, Percent, Crown, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
 import { getDemoAdminSession, signOutDemoAdmin, type AdminDemoSession } from "@/lib/admin-demo-auth";
+import { ADMIN_NAV } from "@/lib/admin-nav";
 import type { AdminModuleId } from "@/lib/admin-demo-data";
 import { useMediaQuery } from "@/lib/use-media-query";
 
-const NAV: { id: AdminModuleId; label: string; href: string; icon: LucideIcon }[] = [
-  { id: "dashboard", label: "Dashboard", href: "/admin", icon: House },
-  { id: "orders", label: "Orders", href: "/admin/orders", icon: ClipboardList },
-  { id: "products", label: "Products", href: "/admin/products", icon: Package },
-  { id: "designs", label: "Designs", href: "/admin/designs", icon: Layers3 },
-  { id: "posts", label: "Posts", href: "/admin/posts", icon: Newspaper },
-  { id: "ads", label: "Ads", href: "/admin/ads", icon: Megaphone },
-  { id: "pricing", label: "Pricing", href: "/admin/pricing", icon: Tags },
-  { id: "attributes", label: "Attributes", href: "/admin/attributes", icon: SlidersHorizontal },
-  { id: "settlements", label: "Settlements", href: "/admin/settlements", icon: HandCoins },
-  { id: "loyalty", label: "Loyalty", href: "/admin/loyalty", icon: Crown },
-  { id: "customers", label: "Customers", href: "/admin/customers", icon: Users },
-  { id: "inventory", label: "Inventory", href: "/admin/inventory", icon: Box },
-  { id: "promotions", label: "Promotions", href: "/admin/promotions", icon: Percent },
-  { id: "reports", label: "Reports", href: "/admin/reports", icon: BarChart3 },
-  { id: "messages", label: "Messages", href: "/admin/messages", icon: Inbox },
-  { id: "settings", label: "Settings", href: "/admin/settings", icon: Settings },
-];
+const NAV_ICONS: Record<AdminModuleId, LucideIcon> = {
+  dashboard: House,
+  orders: ClipboardList,
+  products: Package,
+  designs: Layers3,
+  posts: Newspaper,
+  ads: Megaphone,
+  pricing: Tags,
+  attributes: SlidersHorizontal,
+  settlements: HandCoins,
+  loyalty: Crown,
+  customers: Users,
+  inventory: Box,
+  promotions: Percent,
+  reports: BarChart3,
+  messages: Inbox,
+  settings: Settings,
+};
+
+const NAV: { id: AdminModuleId; label: string; href: string; icon: LucideIcon }[] = ADMIN_NAV.map((entry) => ({
+  ...entry,
+  icon: NAV_ICONS[entry.id],
+}));
 
 export function AdminAvatar({ initials, small = false }: { initials: string; small?: boolean }) {
   return (

@@ -121,8 +121,11 @@ test("a returned delivery with a cost above its fee shows a negative margin", ()
 
 test("Delivery Settlement is registered, routed and states the settle-once rule", () => {
   assert.ok(admin.ADMIN_MODULES.some((module) => module.id === "settlements" && module.label === "Settlements"));
+  // The shell's sidebar and the storefront menu share one list.
   const shell = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminShell.tsx"), "utf8");
-  assert.match(shell, /id: "settlements", label: "Settlements", href: "\/admin\/settlements"/);
+  const nav = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/admin-nav.ts"), "utf8");
+  assert.match(shell, /ADMIN_NAV\.map\(\(entry\) => \(/);
+  assert.match(nav, /id: "settlements", label: "Settlements", href: "\/admin\/settlements"/);
   assert.ok(existsSync(path.join(__dirname, "..", "apps/web/src/app/admin/settlements/page.tsx")));
   const source = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminSettlements.tsx"), "utf8");
   for (const marker of [

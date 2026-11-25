@@ -37,7 +37,6 @@ export type AdminModuleId =
   | "attributes"
   | "settlements"
   | "loyalty"
-  | "jersey"
   | "customers"
   | "inventory"
   | "promotions"
@@ -630,7 +629,6 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "attributes", label: "Attributes" },
   { id: "settlements", label: "Settlements" },
   { id: "loyalty", label: "Loyalty" },
-  { id: "jersey", label: "Jersey" },
   { id: "customers", label: "Customers" },
   { id: "inventory", label: "Inventory" },
   { id: "promotions", label: "Promotions" },

@@ -110,7 +110,7 @@ test("the previously missing pages exist and best sellers resolves to one list",
 test("the route manifest lists the storefront pages", () => {
   const manifest = JSON.parse(read("apps/web/public/manus-routes.json"));
   const paths = manifest.routes.map((route) => route.path);
-  for (const expected of ["/about", "/best-sellers", "/contact", "/cookie-policy", "/faq", "/privacy", "/products", "/returns", "/shipping", "/size-guide", "/terms", "/checkout", "/admin/jersey", "/admin/loyalty", "/admin/settlements", "/admin/attributes"]) {
+  for (const expected of ["/about", "/best-sellers", "/contact", "/cookie-policy", "/faq", "/privacy", "/products", "/returns", "/shipping", "/size-guide", "/terms", "/checkout", "/admin/loyalty", "/admin/settlements", "/admin/attributes"]) {
     assert.ok(paths.includes(expected), `the manifest is missing ${expected}`);
   }
   assert.deepEqual(paths, [...paths].sort(), "the manifest is sorted by path");

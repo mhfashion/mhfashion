@@ -8,7 +8,6 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPostsPage() {
-  // AdminPosts reads ?tab= to open the Jersey mapping straight from /admin/jersey.
   return (
     <Suspense fallback={null}>
       <AdminPosts />

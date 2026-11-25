@@ -110,8 +110,11 @@ test("the chain drives new post drafts and the pricing grid labels", () => {
 
 test("Attribute Management is registered, routed and linked from Pricing", () => {
   assert.ok(admin.ADMIN_MODULES.some((module) => module.id === "attributes" && module.label === "Attributes"));
+  // The shell's sidebar and the storefront menu share one list.
   const shell = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminShell.tsx"), "utf8");
-  assert.match(shell, /id: "attributes", label: "Attributes", href: "\/admin\/attributes"/);
+  const nav = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/admin-nav.ts"), "utf8");
+  assert.match(shell, /ADMIN_NAV\.map\(\(entry\) => \(/);
+  assert.match(nav, /id: "attributes", label: "Attributes", href: "\/admin\/attributes"/);
   assert.ok(existsSync(path.join(__dirname, "..", "apps/web/src/app/admin/attributes/page.tsx")));
   const pricing = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminPricing.tsx"), "utf8");
   assert.match(pricing, /href="\/admin\/attributes"/);

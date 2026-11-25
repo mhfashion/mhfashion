@@ -98,7 +98,6 @@ test("route manifest is served as JSON and matches implemented pages", async () 
     "/admin/customers",
     "/admin/designs",
     "/admin/inventory",
-    "/admin/jersey",
     "/admin/login",
     "/admin/loyalty",
     "/admin/orders",

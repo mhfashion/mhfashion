@@ -2,6 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import MobileNav from "./MobileNav";
+import SiteMenu from "./SiteMenu";
 import HeaderActions from "./HeaderActions";
 import { useI18n } from "@/lib/i18n";
 
@@ -24,7 +25,8 @@ export default function Header() {
       {/* Desktop header — sticky, floating pill style with an accent glow underline */}
       <div className="hidden md:block sticky top-0 z-50 px-4 pt-3">
         <header className="flex items-center justify-between px-6 py-3 border border-border rounded-full bg-bg/95 backdrop-blur shadow-[0_8px_24px_-8px_rgba(0,0,0,0.5)] relative">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
+            <SiteMenu />
             <a href="/" className="font-bold text-base tracking-wide whitespace-nowrap">
               <span className="text-accent">MH</span> FASHION.
             </a>

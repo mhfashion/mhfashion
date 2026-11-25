@@ -2011,3 +2011,23 @@ no `Edit Design`, no `[data-ready-made]` in the buying section. A temporary prev
 check) rendered the same component twice: with `optionGroups={null}` the groups were Size, Color, Material,
 Fit Type, Sleeve, GSM; with an admin subset the groups were Size, Color (single value, preselected),
 Print Method and MH Cuttings, with no Material/Fit/Sleeve/GSM box at all.
+
+## The dashboard is behind the menu (2026-11-21)
+
+`SiteMenu.tsx` puts a hamburger at the left of the desktop header; it opens a left guide drawer with
+three groups — **Shop**, **Help** and **Admin** — and the phone's drawer carries the same Admin group.
+That drawer is the only place the storefront links to `/admin`; no shop page (header, footer, bottom bar)
+links to the dashboard directly, which `tests/admin-menu.test.cjs` enforces.
+
+The drawer is rendered through `createPortal(document.body)`: the header pill uses `backdrop-blur`, and a
+filter on an ancestor makes it the containing block for `position: fixed` children, which shrank the
+drawer to the pill's own box (320x55 px) in the first build. Escape closes it and moves focus back to the
+button.
+
+`lib/admin-nav.ts` exports `ADMIN_NAV`; `AdminShell` maps those entries onto icons for its sidebar, and the
+storefront and phone menus read the same list, so the three cannot drift apart. `ADMIN_MODULES` in
+`lib/admin-demo-data.ts` stays the permission list and matches `ADMIN_NAV` one-to-one.
+
+Jersey mapping has been removed: the Posts tab, `/admin/jersey`, `AdminJersey.tsx` and `lib/admin-jersey.ts`
+are deleted and the route is gone from `manus-routes.json`. The owner will specify a panel-per-region upload that
+travels with the post; until then the seed types in `lib/admin-demo-data.ts` are data only.

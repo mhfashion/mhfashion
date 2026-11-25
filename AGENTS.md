@@ -889,6 +889,16 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Adding a canvas insertion means bumping the `revealLayersStack();` count assertion in
   `tests/canvas-shell.test.cjs` (it is 6: text, element, design, photo, upload, gradient).
 
+## Storefront menu and the admin (`SiteMenu.tsx`, `lib/admin-nav.ts`)
+- The only storefront link to `/admin` is the hamburger drawer (`data-site-menu-button` → `[data-site-menu]`).
+  Do not add an Admin link to the header, footer or bottom bar; `tests/admin-menu.test.cjs` fails if one appears.
+- `ADMIN_NAV` in `lib/admin-nav.ts` is the single list of admin sections: `AdminShell` maps it onto icons,
+  `SiteMenu` and the phone drawer render it. `ADMIN_MODULES` (the permission list) must stay identical.
+- The drawer is `createPortal`ed to `<body>`. The desktop header pill has `backdrop-blur`, which makes it the
+  containing block of `position: fixed` children, so an in-place drawer renders at 320x55 inside the pill.
+- Jersey mapping is removed (owner, 2026-11-21); it returns as part of the post upload. Seed jersey types in
+  `lib/admin-demo-data.ts` are data only.
+
 ## Header switchers (`apps/web/src/components/HeaderActions.tsx`, `MobileNav.tsx`, `SwitcherIcons.tsx`)
 - **Owner request 2026-11-21: icon-only.** The `EN / MM` and `Ks / $` text pills are gone on purpose and
   `tests/canvas-shell.test.cjs` fails if they come back.

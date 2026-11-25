@@ -150,7 +150,7 @@ async function main() {
     "/admin", "/admin/orders", "/admin/products", "/admin/designs", "/admin/posts", "/admin/ads",
     "/admin/pricing", "/admin/attributes", "/admin/settlements", "/admin/loyalty",
     "/admin/customers", "/admin/inventory", "/admin/messages", "/admin/promotions", "/admin/reports",
-    "/admin/jersey", "/admin/settings",
+    "/admin/settings",
   ];
   await viewport(1440, 900, false);
   await visit("/");

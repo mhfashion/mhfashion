@@ -207,8 +207,11 @@ test("seeded post prices are all valid combinations", () => {
 
 test("the Pricing module is registered and routed", () => {
   assert.ok(admin.ADMIN_MODULES.some((module) => module.id === "pricing" && module.label === "Pricing"));
+  // The shell's sidebar and the storefront menu share one list.
   const shell = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminShell.tsx"), "utf8");
-  assert.match(shell, /id: "pricing", label: "Pricing", href: "\/admin\/pricing"/);
+  const nav = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/admin-nav.ts"), "utf8");
+  assert.match(shell, /ADMIN_NAV\.map\(\(entry\) => \(/);
+  assert.match(nav, /id: "pricing", label: "Pricing", href: "\/admin\/pricing"/);
   assert.ok(existsSync(path.join(__dirname, "..", "apps/web/src/app/admin/pricing/page.tsx")));
 });
 

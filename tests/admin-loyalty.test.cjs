@@ -145,8 +145,11 @@ test("milestones save, validate and delete", () => {
 
 test("Loyalty is registered, routed and states the §9 rules", () => {
   assert.ok(admin.ADMIN_MODULES.some((module) => module.id === "loyalty" && module.label === "Loyalty"));
+  // The shell's sidebar and the storefront menu share one list.
   const shell = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminShell.tsx"), "utf8");
-  assert.match(shell, /id: "loyalty", label: "Loyalty", href: "\/admin\/loyalty"/);
+  const nav = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/admin-nav.ts"), "utf8");
+  assert.match(shell, /ADMIN_NAV\.map\(\(entry\) => \(/);
+  assert.match(nav, /id: "loyalty", label: "Loyalty", href: "\/admin\/loyalty"/);
   assert.ok(existsSync(path.join(__dirname, "..", "apps/web/src/app/admin/loyalty/page.tsx")));
   const source = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminLoyalty.tsx"), "utf8");
   for (const marker of [

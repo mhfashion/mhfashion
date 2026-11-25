@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight, FileUp, Newspaper, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
-import { AdminJerseyPanel } from "@/components/admin/AdminJersey";
 import {
   AdminBadge, AdminButton, AdminCard, AdminDrawer, AdminEmpty, AdminField,
   AdminInput, AdminSelect, AdminTextarea, type AdminTone,
@@ -19,22 +18,20 @@ import {
   type AdminTshirtPostDraft,
 } from "@/lib/admin-demo-data";
 import { chainAsPostAttributes } from "@/lib/admin-attributes";
-import { jerseyStyles } from "@/lib/admin-jersey";
 import { GUIDE_STARTER_CATALOG } from "@/lib/guide-starter";
 import { guideProductLinkSummary } from "@/lib/guide-products";
 import { storePostSvg } from "@/lib/post-assets";
 
-type PostTab = "guide" | "tshirt" | "nyein" | "jersey";
+type PostTab = "guide" | "tshirt" | "nyein";
 
 const TABS: { id: PostTab; label: string }[] = [
   { id: "guide", label: "Guide posts" },
   { id: "tshirt", label: "T-shirt posts" },
   { id: "nyein", label: "Nyein posts" },
-  { id: "jersey", label: "Jersey mapping" },
 ];
 
 function isPostTab(value: string | null): value is PostTab {
-  return value === "guide" || value === "tshirt" || value === "nyein" || value === "jersey";
+  return value === "guide" || value === "tshirt" || value === "nyein";
 }
 
 const STATUSES: AdminPostStatus[] = ["Draft", "Published"];
@@ -170,7 +167,7 @@ export default function AdminPosts() {
     <AdminShell
       active="posts"
       title="Posts"
-      description="Guide articles, T-shirt drops, the Nyein collection and the jersey mapping, from one place."
+      description="Guide articles, T-shirt drops and the Nyein collection, from one place."
       actions={tab === "tshirt" ? <AdminButton onClick={startCreate}><Plus size={14} /> New T-shirt post</AdminButton> : undefined}
       search={tab === "tshirt" ? (
         <label className="flex h-10 w-full max-w-[420px] items-center gap-2.5 rounded-full border border-[#e6e9ed] bg-[#f8f9fb] px-3.5 text-[#8c95a1] focus-within:border-[#a5d972] focus-within:bg-white">
@@ -185,9 +182,7 @@ export default function AdminPosts() {
             ? guidePosts.length
             : entry.id === "tshirt"
               ? data.tshirtPosts.length
-              : entry.id === "jersey"
-                ? jerseyStyles(data).length
-                : 0;
+              : 0;
           const selected = tab === entry.id;
           return (
             <button
@@ -312,8 +307,6 @@ export default function AdminPosts() {
           <AdminEmpty title="Nyein posts" description="The Nyein post fields will be added once the Nyein brief is ready." />
         </AdminCard>
       ) : null}
-
-      {tab === "jersey" ? <AdminJerseyPanel /> : null}
 
       <AdminDrawer
         open={Boolean(editingId && draft)}

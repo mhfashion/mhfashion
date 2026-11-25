@@ -240,8 +240,11 @@ test("the Posts route, nav entry and manifest are wired", () => {
   assert.match(page, /AdminPosts/);
   assert.match(page, /robots: \{ index: false, follow: false \}/);
 
+  // The shell's sidebar and the storefront menu share one list.
   const shell = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminShell.tsx"), "utf8");
-  assert.match(shell, /\{ id: "posts", label: "Posts", href: "\/admin\/posts", icon: Newspaper \}/);
+  const nav = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/admin-nav.ts"), "utf8");
+  assert.match(shell, /ADMIN_NAV\.map\(\(entry\) => \(/);
+  assert.match(nav, /id: "posts", label: "Posts", href: "\/admin\/posts"/);
 
   const manifest = JSON.parse(readFileSync(path.join(__dirname, "..", "apps/web/public/manus-routes.json"), "utf8"));
   assert.ok(manifest.routes.some((route) => route.path === "/admin/posts"));

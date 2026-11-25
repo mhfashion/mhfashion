@@ -4322,3 +4322,29 @@ tests/*.test.cjs` **838 passing, 0 failing** (8 new in `tests/product-options.te
 Cart, with no Edit Design and no ready-made line in the box; a preview page rendered the same component
 with the default groups (Size, Color, Material, Fit Type, Sleeve, GSM) and with an admin subset (Size +
 one-colour Color + Print Method + MH Cuttings), confirming an unticked attribute leaves no box behind.
+
+## 2026-11-21 — Jersey mapping removed; the dashboard lives behind the menu (owner request)
+
+1. **Jersey mapping is gone for now.** The owner wants jersey panels uploaded with the post itself later,
+   so the mapping screen, its tab inside Posts, its route and its helpers were deleted:
+   `app/admin/jersey/page.tsx`, `components/admin/AdminJersey.tsx`, `lib/admin-jersey.ts`,
+   `tests/admin-jersey.test.cjs`, the `jersey` module in `ADMIN_MODULES`, and the `/admin/jersey` entry in
+   `public/manus-routes.json`. **To be specified:** the future shape — a panel quad per garment region
+   attached to a T-shirt post, with the worn photo uploaded alongside the post artwork. The seed types
+   (`JerseyStyle`, `JerseyPanel`, `jerseyStyles` in `lib/admin-demo-data.ts`) are kept as data only; no
+   screen reads them until the owner describes the upload flow.
+2. **The storefront reaches the admin through a menu button, the way a video site does.** `SiteMenu.tsx`
+   is a hamburger at the left of the desktop header that opens a left-hand guide drawer (Shop, Help,
+   Admin) and is the only storefront link to `/admin`; the phone drawer lists the same Admin group. The
+   drawer is portalled to `<body>` because the header pill's backdrop blur would otherwise become the
+   containing block of a fixed child and trap the panel inside the pill.
+3. **One nav list.** `lib/admin-nav.ts` (`ADMIN_NAV`) feeds the shell's sidebar, the storefront menu and
+   the phone drawer, so a module cannot appear in one and be missing from another; `AdminShell` keeps only
+   the icon map. `tests/admin-menu.test.cjs` pins that, pins "no shop page links straight to `/admin`", and
+   pins that Jersey mapping is deleted rather than hidden.
+
+Checks: `tsc --noEmit` clean; `eslint` 0 errors (the same warnings as before); `node --test
+tests/*.test.cjs` **832 passing, 0 failing**. In Chromium at 1440x950 the menu button opens a 320px
+full-height drawer with headings Shop / Help / Admin and all 16 admin links, Escape closes it and returns
+focus to the button; at 390x844 the phone drawer carries the same Admin group. `/admin/posts` has no
+Jersey mapping tab and `/admin/jersey` answers **404**.

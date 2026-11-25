@@ -148,8 +148,11 @@ test("a ready-made leaderboard can be shown whole instead of cropped", () => {
 
 test("Ads is a registered admin module with its own route and screen", () => {
   assert.ok(admin.ADMIN_MODULES.some((module) => module.id === "ads" && module.label === "Ads"));
+  // The shell's sidebar and the storefront menu share one list.
   const shell = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminShell.tsx"), "utf8");
-  assert.match(shell, /id: "ads", label: "Ads", href: "\/admin\/ads", icon: Megaphone/);
+  const nav = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/admin-nav.ts"), "utf8");
+  assert.match(shell, /ADMIN_NAV\.map\(\(entry\) => \(/);
+  assert.match(nav, /id: "ads", label: "Ads", href: "\/admin\/ads"/);
   assert.ok(existsSync(path.join(__dirname, "..", "apps/web/src/app/admin/ads/page.tsx")));
   const page = readFileSync(path.join(__dirname, "..", "apps/web/src/app/admin/ads/page.tsx"), "utf8");
   assert.match(page, /AdminAds/);
