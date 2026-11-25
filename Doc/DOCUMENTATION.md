@@ -1182,6 +1182,18 @@ editor changed.
 Validation: `tests/print-quality.test.cjs` **16/16**; the full Node suite **358/358**; TypeScript and
 ESLint clean on the new module; Next.js production build passed.
 
+### 2026-11-24 — The Text tool owns its default line height
+
+Line height was only adjustable per layer, and the panel hard-coded the 1.2 fallback in two places, so a new text
+layer always started at whatever the panel guessed.
+
+- `EditorTextToolSettings` gains `lineHeight` (default `EDITOR_TEXT_DEFAULT_LINE_HEIGHT`, 1.2), normalised to 0.7-3.
+  It sits in `EDITOR_TOOL_OPTIONS_DEFAULT.text`, so the Text tool's reset button restores it too.
+- `addCanvasTextLayer` writes `lineHeight: textDefaults.lineHeight` into every new layer; existing text keeps its own
+  value, so saved artwork is not reflowed.
+- The Text box gains a "Line height" slider (`ariaLabel="Text tool line height"`), and the per-layer field now falls
+  back to the shared constant instead of a literal `1.2`.
+
 ### 2026-11-24 — The handbook's subject order is fixed
 
 The owner listed the handbook as it should read: Editor Guide, Size Guide, Product Guide, Design Guide, Payment Guide,

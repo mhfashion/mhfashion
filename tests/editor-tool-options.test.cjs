@@ -12,6 +12,7 @@ const {
   EDITOR_ERASER_PRESETS,
   EDITOR_GRADIENT_PRESETS,
   EDITOR_TEXT_FONT_FAMILY,
+  EDITOR_TEXT_DEFAULT_LINE_HEIGHT,
   normalizeEditorTextToolSettings,
   normalizeEditorToolOptions,
   penDashArray,
@@ -20,6 +21,22 @@ const {
 
 const panel = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorAdjustmentsPanel.tsx"), "utf8");
 const canvas = readFileSync(path.join(__dirname, "../apps/web/src/components/EditorCanvas.tsx"), "utf8");
+
+test("the Text tool carries a default line height into every new layer", () => {
+  assert.equal(EDITOR_TEXT_DEFAULT_LINE_HEIGHT, 1.2);
+  assert.equal(normalizeEditorTextToolSettings(undefined).lineHeight, EDITOR_TEXT_DEFAULT_LINE_HEIGHT);
+  assert.equal(normalizeEditorTextToolSettings({ lineHeight: 0.1 }).lineHeight, 0.7, "too tight is clamped up");
+  assert.equal(normalizeEditorTextToolSettings({ lineHeight: 9 }).lineHeight, 3, "too loose is clamped down");
+  assert.equal(normalizeEditorTextToolSettings({ lineHeight: 1.6 }).lineHeight, 1.6, "a chosen value is kept");
+
+  assert.match(canvas, /lineHeight: textDefaults\.lineHeight,/, "new text layers take the tool default");
+  assert.match(panel, /ariaLabel="Text tool line height"/, "the Text box offers the control");
+  assert.match(
+    panel,
+    /value=\{text\.lineHeight \?\? EDITOR_TEXT_DEFAULT_LINE_HEIGHT\}/,
+    "the per-layer field falls back to the same constant",
+  );
+});
 
 test("the Text tool box defaults are complete and render-safe", () => {
   const text = EDITOR_TOOL_OPTIONS_DEFAULT.text;
@@ -30,6 +47,7 @@ test("the Text tool box defaults are complete and render-safe", () => {
   assert.equal(text.color, null, "null means follow the toolbar foreground colour");
   assert.equal(text.letterSpacing, 0);
   assert.equal(text.wrapWidth, DEFAULT_TEXT_WRAP_WIDTH);
+  assert.equal(text.lineHeight, EDITOR_TEXT_DEFAULT_LINE_HEIGHT, "new text starts at the default line height");
 
   assert.deepEqual(normalizeEditorTextToolSettings(undefined), text);
   // Out-of-range values are clamped, not rejected, so a slider can never store junk.

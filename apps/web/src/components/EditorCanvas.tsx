@@ -2649,6 +2649,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       textAlign: textDefaults.textAlign,
       ...(textDefaults.letterSpacing > 0 ? { letterSpacing: textDefaults.letterSpacing } : {}),
       wrapWidth: textDefaults.wrapWidth,
+      lineHeight: textDefaults.lineHeight,
     };
     setLayers((current) => [
       createEditorTextLayer(id, `Text ${label}`, content),
