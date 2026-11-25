@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import AdSlotBanner from "@/components/AdSlotBanner";
 import Header from "@/components/Header";
+import GuideBanner from "@/components/guide/GuideBanner";
 import GuideLabel from "@/components/guide/GuideLabel";
 import GuidePostGrid from "@/components/guide/GuidePostGrid";
 import { filterGuidePosts, getGuideCatalog, type GuideCategory } from "@/lib/guides";
@@ -89,7 +90,6 @@ export default async function GuidePage({ searchParams }: PageProps) {
   const selectedCategory = first(params.category);
   const activeCategory = catalog.categories.find((category) => category.slug === selectedCategory);
   const posts = filterGuidePosts(catalog.posts, selectedCategory, query);
-  const featured = !selectedCategory && !query ? catalog.posts.find((post) => post.featured) ?? catalog.posts[0] : undefined;
   const categoryCounts = new Map(catalog.categories.map((category) => [category.slug, catalog.posts.filter((post) => post.categorySlug === category.slug).length]));
   // "Other Guide" opens a post list like every other guide, never a single article. When the catalogue has its own
   // catch-all category this row shows that category's posts; otherwise it falls back to the full post list.
@@ -137,19 +137,18 @@ export default async function GuidePage({ searchParams }: PageProps) {
           </aside>
 
           <div className="min-w-0">
-            <section className="relative isolate mb-4 min-h-[96px] overflow-hidden rounded-xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-3.5 py-2.5 text-[#172810] sm:min-h-[124px] sm:rounded-2xl sm:px-8 sm:py-3.5 lg:min-h-[132px] lg:px-9 lg:py-3.5">
-              <div className="relative z-10 max-w-[70%] sm:max-w-[48%]">
-                <span className="inline-flex rounded-full bg-[#5aa817] px-2 py-1 text-[8px] font-black uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[10px]">MH Fashion Guide</span>
-                <h1 className="mt-1 text-lg font-black leading-[0.95] tracking-tight sm:mt-2 sm:text-2xl lg:text-[26px]">Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></h1>
-                <p className="mt-1.5 hidden max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-2 sm:block sm:text-[11px]">Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience.</p>
-                <Link href="#articles" className="mt-2 inline-flex items-center rounded-full bg-[#55a918] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm sm:mt-3 sm:px-3.5 sm:py-1.5 sm:text-[11px]">Browse All Guides <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" /></Link>
-              </div>
-              <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[#9bda45]/50 blur-sm sm:right-8 sm:h-52 sm:w-52" />
-              <div className="absolute bottom-[-48px] right-[13%] hidden h-44 w-32 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block" aria-hidden="true">
-                <div className="absolute left-1/2 top-12 -translate-x-1/2 text-center text-base font-black leading-none text-[#4c9d16]">MH<br /><span className="text-[9px]">FASHION</span></div>
-              </div>
-              <div className="absolute bottom-2 right-3 text-base font-black italic leading-none text-[#54a817]/80 sm:bottom-3 sm:right-10 sm:text-2xl">Your<br />Style</div>
-            </section>
+            <div className="mb-4">
+              <GuideBanner
+                eyebrow="MH Fashion Guide"
+                title={<>Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></>}
+                lead="Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience."
+                action={
+                  <Link href="#articles" className="inline-flex items-center rounded-full bg-[#55a918] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm sm:px-3.5 sm:py-1.5 sm:text-[11px]">
+                    Browse All Guides <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" />
+                  </Link>
+                }
+              />
+            </div>
 
             <AdSlotBanner slot="guide-top" />
 

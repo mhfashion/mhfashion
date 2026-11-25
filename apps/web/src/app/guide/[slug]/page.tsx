@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Header from "@/components/Header";
+import GuideBanner from "@/components/guide/GuideBanner";
 import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
 import { getGuideCatalog, getGuidePostBySlug, relatedGuidePosts } from "@/lib/guides";
@@ -34,25 +35,6 @@ function CategoryIcon({ slug, size = 18 }: { slug: string; size?: number }) {
   if (slug.includes("payment")) return <CreditCard size={size} aria-hidden="true" />;
   if (slug.includes("delivery")) return <Ruler size={size} aria-hidden="true" />;
   return <BookOpen size={size} aria-hidden="true" />;
-}
-
-function FallbackCover({ categorySlug }: { categorySlug: string }) {
-  const tone = categorySlug.includes("design")
-    ? "from-[#dceeff] via-[#c8dcf5] to-[#aec6e8]"
-    : categorySlug.includes("payment")
-      ? "from-[#eaf2ff] via-[#dce8f9] to-[#bbd0ed]"
-      : categorySlug.includes("delivery")
-        ? "from-[#fff0bd] via-[#f7df88] to-[#eec964]"
-        : "from-[#efffdc] via-[#d9f0bd] to-[#b7da91]";
-
-  return (
-    <div className={`relative h-full min-h-[230px] overflow-hidden bg-gradient-to-br ${tone}`}>
-      <div className="absolute -right-10 -top-16 h-72 w-72 rounded-full bg-white/45 blur-sm" />
-      <div className="absolute bottom-[-70px] left-[28%] h-72 w-48 rotate-[-8deg] rounded-[45%] bg-white/75 shadow-xl" />
-      <BookOpen className="absolute left-7 top-7 text-[#4f9715]/70" size={42} aria-hidden="true" />
-      <span className="absolute bottom-7 left-7 text-4xl font-black leading-none text-[#28530e]/70">MH<br /><span className="text-lg">FASHION</span></span>
-    </div>
-  );
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -125,38 +107,60 @@ export default async function GuideArticlePage({ params }: PageProps) {
               <Link href="/guide" className="hover:text-accent"><GuideLabel id="nav.guide" fallback="Guide" /></Link><span aria-hidden="true">/</span><span className="text-text-primary">{category?.name ?? "Article"}</span>
             </nav>
 
-            <header className="overflow-hidden rounded-2xl border border-border bg-bg-surface">
-              <div className="grid lg:grid-cols-[minmax(280px,0.9fr)_1.1fr]">
-                <div className="min-h-[235px] lg:min-h-[300px]">{post.coverImageUrl ? <img src={post.coverImageUrl} alt="" className="h-full min-h-[235px] w-full object-cover lg:min-h-[300px]" /> : <FallbackCover categorySlug={post.categorySlug} />}</div>
-                <div className="flex flex-col justify-center p-6 sm:p-9 lg:p-10">
-                  <Link href={categoryUrl} className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-[10px] font-bold text-accent-foreground hover:opacity-90"><CategoryIcon slug={post.categorySlug} size={12} /> {category?.name ?? "Guide"}</Link>
-                  <h1 className="mt-5 text-3xl font-black leading-[1.02] tracking-tight sm:text-4xl">{post.title}</h1>
-                  <p className="mt-4 text-sm leading-relaxed text-text-secondary">{post.excerpt}</p>
-                  <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-text-muted"><span className="inline-flex items-center gap-1.5"><Clock3 size={14} /> {post.readingMinutes} min read</span><span aria-hidden="true">·</span><span>MH Fashion Guide</span></div>
-                </div>
-              </div>
-            </header>
-
-            {catalog.source === "starter" && <p className="mt-4 rounded-xl border border-border bg-bg-surface px-4 py-3 text-xs leading-relaxed text-text-muted">MH Fashion Guide · Where a feature is still being built, this article says so.</p>}
-
-            <div className="mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_230px] lg:items-start">
-              <article aria-label={post.title} className="min-w-0 rounded-2xl border border-border bg-bg-surface p-6 sm:p-8 lg:p-10">
-                <div className="mb-8 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-accent"><BookOpen size={14} /> <GuideLabel id="guide.article" fallback="Article" /></div>
-                <div className="space-y-10">
-                  {post.sections.map((section, index) => (
-                    <section key={`${index}:${section.heading}`} id={`section-${index + 1}`} className="scroll-mt-24">
-                      <div className="mb-4 flex items-start gap-3"><span className="mt-1 text-2xl font-black leading-none text-accent/70">{String(index + 1).padStart(2, "0")}</span><h2 className="text-xl font-bold leading-snug sm:text-2xl">{section.heading}</h2></div>
-                      <div className="space-y-4 text-sm leading-7 text-text-secondary">{section.paragraphs.map((paragraph, paragraphIndex) => <p key={paragraphIndex}>{paragraph}</p>)}{section.bullets && <ul className="space-y-2 pl-5 marker:text-accent">{section.bullets.map((bullet, bulletIndex) => <li key={bulletIndex}>{bullet}</li>)}</ul>}</div>
-                    </section>
-                  ))}
-                </div>
-                <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6"><Link href="/guide#articles" className="inline-flex items-center gap-2 text-xs font-semibold text-text-secondary hover:text-accent"><ArrowLeft size={14} /> <GuideLabel id="guide.allGuides" fallback="All guides" /></Link><Link href={categoryUrl} className="inline-flex items-center gap-2 text-xs font-semibold text-accent"><GuideLabel id="guide.moreIn" fallback="More in" /> {category?.name ?? "this category"} <ArrowRight size={14} /></Link></div>
-              </article>
-
-              <aside className="rounded-2xl border border-border bg-bg-surface p-5 lg:sticky lg:top-24">
-                <nav aria-label="On this page"><h2 className="mb-4 border-l-4 border-accent pl-3 text-xs font-black uppercase tracking-[0.15em]"><GuideLabel id="guide.onPage" fallback="On this page" /></h2><ol className="space-y-3">{post.sections.map((section, index) => <li key={`${index}:${section.heading}`}><a href={`#section-${index + 1}`} className="flex items-start gap-2 text-xs leading-relaxed text-text-secondary hover:text-accent"><span className="text-[10px] tabular-nums text-accent/70">{String(index + 1).padStart(2, "0")}</span>{section.heading}</a></li>)}</ol></nav>
-              </aside>
+            <div className="mb-6">
+              <GuideBanner
+                eyebrow={category?.name ?? "MH Fashion Guide"}
+                title={post.title}
+                lead={post.excerpt}
+                meta={
+                  <>
+                    <span className="inline-flex items-center gap-1"><Clock3 size={12} /> {post.readingMinutes} min read</span>
+                    <span aria-hidden="true">·</span>
+                    <span>MH Fashion Guide</span>
+                  </>
+                }
+                action={
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link href={categoryUrl} className="inline-flex items-center gap-1.5 rounded-full bg-[#55a918] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm sm:text-[11px]">
+                      <ArrowLeft size={12} /> <GuideLabel id="guide.moreIn" fallback="More in" /> {category?.name ?? "this guide"}
+                    </Link>
+                    <Link href="/guide#articles" className="inline-flex items-center gap-1.5 rounded-full border border-[#4c9d16]/40 bg-white/70 px-3 py-1.5 text-[10px] font-bold text-[#2f6d10] sm:text-[11px]">
+                      <GuideLabel id="guide.allGuides" fallback="All guides" />
+                    </Link>
+                  </div>
+                }
+              />
             </div>
+
+            {catalog.source === "starter" && <p className="mt-4 rounded-xl border border-border bg-bg-surface px-4 py-3 text-xs leading-relaxed text-text-muted">MH Fashion Guide · Where a feature is still being built, this article says so. Photos are placeholders until licensed photography replaces them.</p>}
+
+            <article aria-label={post.title} className="mt-6 min-w-0 rounded-2xl border border-border bg-bg-surface p-6 sm:p-8 lg:p-10">
+              <div className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-accent"><BookOpen size={14} /> <GuideLabel id="guide.article" fallback="Article" /></div>
+              {post.coverImageUrl && (
+                <figure data-guide-figure className="mb-8">
+                  <img src={post.coverImageUrl} alt="" className="aspect-[16/9] max-h-[420px] w-full rounded-xl object-cover" />
+                </figure>
+              )}
+              <div className="space-y-10">
+                {post.sections.map((section, index) => (
+                  <section key={`${index}:${section.heading}`} id={`section-${index + 1}`} className="scroll-mt-24">
+                    <div className="mb-4 flex items-start gap-3"><span className="mt-1 text-2xl font-black leading-none text-accent/70">{String(index + 1).padStart(2, "0")}</span><h2 className="text-xl font-bold leading-snug sm:text-2xl">{section.heading}</h2></div>
+                    {section.images && section.images.length > 0 && (
+                      <div className={section.images.length > 1 ? "mb-5 grid gap-4 sm:grid-cols-2" : "mb-5"}>
+                        {section.images.map((image) => (
+                          <figure key={image.url} data-guide-figure className="overflow-hidden rounded-xl border border-border bg-bg">
+                            <img src={image.url} alt={image.caption} className="aspect-[4/3] w-full object-cover" loading="lazy" />
+                            <figcaption className="px-3 py-2 text-[10px] leading-relaxed text-text-muted sm:text-[11px]">{image.caption}</figcaption>
+                          </figure>
+                        ))}
+                      </div>
+                    )}
+                    <div className="space-y-4 text-sm leading-7 text-text-secondary">{section.paragraphs.map((paragraph, paragraphIndex) => <p key={paragraphIndex}>{paragraph}</p>)}{section.bullets && <ul className="list-disc space-y-2 pl-5 marker:text-accent">{section.bullets.map((bullet, bulletIndex) => <li key={bulletIndex}>{bullet}</li>)}</ul>}</div>
+                  </section>
+                ))}
+              </div>
+              <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6"><Link href="/guide#articles" className="inline-flex items-center gap-2 text-xs font-semibold text-text-secondary hover:text-accent"><ArrowLeft size={14} /> <GuideLabel id="guide.allGuides" fallback="All guides" /></Link><Link href={categoryUrl} className="inline-flex items-center gap-2 text-xs font-semibold text-accent"><GuideLabel id="guide.moreIn" fallback="More in" /> {category?.name ?? "this category"} <ArrowRight size={14} /></Link></div>
+            </article>
 
             <GuideShopLook links={shopLook} />
 

@@ -16,6 +16,27 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
+### 2026-11-21 — Guide posts show photos, share one banner, and the article uses the full width
+
+- **Photos in posts.** `GuideSection` gained `images?: GuideImage[]` (`{ url, caption }`), parsed from
+  the post's `sections` JSON, so photos survive the Supabase path and not just the starter catalogue.
+  All twelve starter posts now have a cover photo (used by `GuideCard` and at the top of the article)
+  and one captioned photo in their first section. The images are Lorem Picsum **placeholders** with
+  hand-picked ids (desk, device and garment scenes) instead of random seeds; the caption doubles as the
+  alt text, and the `starter` note above the article says licensed photography replaces them.
+- **One banner.** `components/guide/GuideBanner.tsx` holds the landing hero's green gradient banner
+  (eyebrow pill, `<h1>`, lead, meta row, action slot). The article's two-column cover card was replaced by
+  the same banner: category eyebrow, title, excerpt, reading time and "More in …" / "All guides" buttons.
+- **Full-width article.** The "On this page" table of contents and its 230 px column are gone, so the
+  article fills the content column; section `id`s remain for deep links, and the bullet lists regained
+  `list-disc` (Tailwind's preflight had removed the markers).
+- Files: `apps/web/src/lib/guides.ts`, `apps/web/src/lib/guide-starter.ts`,
+  `apps/web/src/components/guide/GuideBanner.tsx`, `apps/web/src/app/guide/page.tsx`,
+  `apps/web/src/app/guide/[slug]/page.tsx`, `tests/guide-http.test.cjs`, `tests/guide-card.test.cjs`.
+- Validation: TypeScript clean; ESLint clean (two pre-existing `<img>` warnings); `node --test` **830/830**;
+  guide HTTP suite 5/5; Chromium 1440×1000 and 390×844 with touch — twelve cards with photos, an article
+  with two captioned figures, article width equal to the content width, no "On this page", no overflow.
+
 ### 2026-11-21 — Guide landing shows "See more" under the boxes; articles carry related posts
 
 - **What the owner asked for.** Drop the "View All Posts" link in the Guide header and put a "see more"

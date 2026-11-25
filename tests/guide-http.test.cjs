@@ -58,9 +58,15 @@ test("article serves full text, table of contents, related guides and crawler me
   const result = await page("/guide/payment-options-at-checkout", "facebookexternalhit/1.1");
   assert.equal(result.response.status, 200);
   assert.match(result.visible, /Planned provider choices/);
-  assert.match(result.visible, /On this page/);
+  // The owner removed the small "On this page" box beside the article so the article takes the full width.
+  assert.doesNotMatch(result.visible, /On this page/);
+  assert.doesNotMatch(result.visible, /lg:grid-cols-\[minmax\(0,1fr\)_230px\]/, "the table-of-contents column is back");
   assert.match(result.visible, /Cash on delivery is not part of the plan/);
   assert.match(result.visible, /Keep exploring/);
+  // Posts carry photos: one at the top of the article and one inside its first section, each captioned.
+  const figures = [...result.visible.matchAll(/data-guide-figure/g)];
+  assert.ok(figures.length >= 2, `the article shows ${figures.length} photos`);
+  assert.match(result.visible, /<figcaption[^>]*>[^<]+<\/figcaption>/, "a photo has no caption");
   // The other posts under the article are related to it and never the article itself.
   const relatedSection = result.visible.split(/id="related-heading"/)[1] ?? "";
   const relatedLinks = [...new Set([...relatedSection.matchAll(/href="(\/guide\/[^"?#]+)"/g)].map((match) => match[1]))];

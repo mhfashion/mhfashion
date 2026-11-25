@@ -9,6 +9,7 @@ const page = readFileSync(path.join(ROOT, "apps/web/src/app/guide/page.tsx"), "u
 const articlePage = readFileSync(path.join(__dirname, "../apps/web/src/app/guide/[slug]/page.tsx"), "utf8");
 const productCard = readFileSync(path.join(ROOT, "apps/web/src/components/ProductCard.tsx"), "utf8");
 const grid = readFileSync(path.join(ROOT, "apps/web/src/components/guide/GuidePostGrid.tsx"), "utf8");
+const banner = readFileSync(path.join(ROOT, "apps/web/src/components/guide/GuideBanner.tsx"), "utf8");
 
 test("a guide card is the same square box as a product card", () => {
   assert.match(card, /aspect-square/, "the guide card is not square");
@@ -46,8 +47,11 @@ test("the guide menu never shows two Editor Guides", () => {
   assert.equal((articlePage.match(/otherGuideName/g) || []).length >= 2, true, "the article page's row takes the catalogue name too");
 });
 
-test("the guide hero stays compact", () => {
-  assert.match(page, /min-h-\[96px\]/, "the phone hero grew back");
-  assert.match(page, /sm:min-h-\[124px\]/);
+test("the guide hero stays one compact banner on the landing page and on an article", () => {
+  assert.match(banner, /rounded-xl bg-gradient-to-r from-\[#efffdb\]/, "the banner shape changed");
+  assert.match(banner, /<h1\b/, "the banner title stopped being the page heading");
+  assert.match(page, /<GuideBanner/, "the landing page stopped using the shared banner");
+  assert.match(articlePage, /<GuideBanner/, "an article header is not the shared banner any more");
   assert.equal(page.includes("lg:min-h-[196px]"), false, "the tall desktop hero is back");
+  assert.equal(articlePage.includes('lg:grid-cols-[minmax(280px,0.9fr)_1.1fr]'), false, "the cover header card is back");
 });

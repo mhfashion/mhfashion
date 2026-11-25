@@ -3,10 +3,17 @@ import { cache } from "react";
 import { GUIDE_STARTER_CATALOG } from "./guide-starter";
 import { normalizeGuideProductLinks, type GuideProductLink } from "./guide-products";
 
+/** A photo inside an article. The caption is what the photo shows, and it doubles as the alt text. */
+export type GuideImage = {
+  url: string;
+  caption: string;
+};
+
 export type GuideSection = {
   heading: string;
   paragraphs: string[];
   bullets?: string[];
+  images?: GuideImage[];
 };
 
 export type GuideCategory = {
@@ -117,11 +124,33 @@ function parseGuideSection(value: unknown): GuideSection | null {
     }
   }
 
+  let images: GuideImage[] | undefined;
+  if (value.images !== undefined) {
+    if (!Array.isArray(value.images) || value.images.length === 0) return null;
+    const parsed = value.images.map(parseGuideImage);
+    if (parsed.some((image) => image === null)) return null;
+    images = parsed as GuideImage[];
+  }
+
   return {
     heading: value.heading,
     paragraphs: value.paragraphs,
     ...(value.bullets === undefined ? {} : { bullets: value.bullets }),
+    ...(images === undefined ? {} : { images }),
   };
+}
+
+function parseGuideImage(value: unknown): GuideImage | null {
+  if (!isRecord(value)) return null;
+  if (!isNonEmptyString(value.url) || !isNonEmptyString(value.caption)) return null;
+  if (value.url.length > 2048 || !/^https?:\/\//i.test(value.url)) return null;
+  try {
+    const url = new URL(value.url);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  } catch {
+    return null;
+  }
+  return { url: value.url, caption: value.caption.trim() };
 }
 
 function parseGuideCategory(value: unknown): GuideCategory | null {

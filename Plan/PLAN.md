@@ -4264,3 +4264,29 @@ an article's related cards are neither the article itself nor duplicated; `tests
 covers the ranking with the starter catalogue. In Chromium at 1440x900 and 390x844 (touch) the landing
 grid showed 8 of 12 cards with a "See more 4" pill that expanded to all 12 and then disappeared, and
 `/guide/payment-options-at-checkout` showed four different related cards under "Keep exploring".
+
+## 2026-11-21 — Guide posts carry photos, one shared banner, and the article takes the full width
+
+Three owner requests turned into one pass over the Guide section:
+
+1. **Photos in the posts.** `GuideSection.images?: GuideImage[]` (`{ url, caption }`) is parsed from the
+   `sections` JSON in `lib/guides.ts`, so a post written in Supabase can carry photos too, and every one
+   of the twelve starter posts now has a **cover photo** (the card and the top of the article) plus one
+   captioned photo inside its first section. The URLs are Picsum **placeholder stock** with hand-picked
+   ids (desks, devices, flat lays, shoes) so the subject is not nonsense; `Doc/DOCUMENTATION.md` and the
+   starter note say a licensed photo replaces the URL. Captions are the alt text.
+2. **One banner for the landing page and every article.** `components/guide/GuideBanner.tsx` is the green
+   gradient banner the landing hero already used: eyebrow, `<h1>`, lead, meta row and an action slot. The
+   article's old two-column cover card (photo left, title right) is gone, so a post opens with the same
+   banner as the Guide page, carrying the category as the eyebrow, the title, the excerpt, the reading
+   time and two buttons ("More in …", "All guides").
+3. **No box beside the article.** The "On this page" table of contents — and with it the 230 px side
+   column — is removed, so the article spans the whole content column. The section headings keep their
+   `id`s, and the article's bullet lists got `list-disc` back (Tailwind's preflight had left them with no
+   markers).
+
+Checks: `tsc --noEmit` clean; `eslint` clean apart from the two `<img>` warnings the repo already lives
+with; `node --test tests/*.test.cjs` **830 passing, 0 failing**. In Chromium at 1440x1000 and 390x844
+(touch) all twelve landing cards load a photo, an article shows two `data-guide-figure` photos with a
+caption, the article box measures exactly the content width (1117 px desktop, 358 px phone) and the page
+has no "On this page" text and no horizontal overflow.

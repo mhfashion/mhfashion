@@ -2,6 +2,11 @@ import type { GuideCatalog } from "./guides";
 
 const PUBLISHED_AT = "2026-01-01T00:00:00.000Z";
 
+// Placeholder stock: licensed photography replaces the URL, and the caption says what the photo shows, so
+// it also serves as the alt text. Guide photos are 3:2 at 1200 px, which the card and the article both crop.
+// The ids are picked so a desk, device or garment photo sits above each subject instead of a random scene.
+const guidePhoto = (id: number) => `https://picsum.photos/id/${id}/1200/800`;
+
 export const GUIDE_STARTER_CATALOG: GuideCatalog = {
   source: "starter",
   categories: [
@@ -52,6 +57,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000003",
       slug: "editor-guide",
+      coverImageUrl: guidePhoto(60),
       categorySlug: "editor-guide",
       title: "Editor Guide: make your first print",
       excerpt:
@@ -59,6 +65,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Open the editor",
+          images: [
+            { url: guidePhoto(48), caption: "A first design on the print canvas, with the tools down the left and the layers beside it." },
+          ],
           paragraphs: [
             "Pick Create in the menu, or the Create tab on a phone. The editor fills the screen: the shop header, then the bar that carries the Product, GSM, Color and Size choices, then the print canvas with the tools on the left, the layers panel beside it and the front and back mockups.",
             "The print canvas is the area that gets printed, so anything you draw there is at real print size.",
@@ -103,6 +112,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000012",
       slug: "how-the-editor-works",
+      coverImageUrl: guidePhoto(48),
       categorySlug: "editor-guide",
       title: "How the editor works: tools, layers and export",
       excerpt:
@@ -110,6 +120,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "The four parts of the screen",
+          images: [
+            { url: guidePhoto(180), caption: "The tool dock, the Layers box and the Free Transform box on one canvas." },
+          ],
           paragraphs: [
             "The tools bar holds the brush, pencil, pen, shape, text, gradient and eraser. The print canvas in the middle is the area that actually prints. The layers panel lists everything on the design, and the mockup shows the garment with your artwork on it.",
             "Nothing you draw goes straight onto the garment: every mark lands on the selected layer, so you can move, hide or delete it later without touching the rest.",
@@ -146,6 +159,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000011",
       slug: "how-to-read-the-size-guide",
+      coverImageUrl: guidePhoto(21),
       categorySlug: "size-guide",
       title: "How to read the size guide",
       excerpt:
@@ -153,6 +167,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Start from a garment you already like",
+          images: [
+            { url: guidePhoto(26), caption: "Lay the shirt flat and measure chest, length and sleeve before choosing a size." },
+          ],
           paragraphs: [
             "Lay the garment flat, button or zip it, and smooth out the wrinkles. A flat measurement is easier to repeat than a body measurement, and it is what the chart records.",
             "Measure chest one inch below the armhole, length from the highest point of the shoulder to the hem, and sleeve from the shoulder seam to the cuff. Write the three numbers down in centimetres.",
@@ -188,6 +205,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000001",
       slug: "how-mh-fashion-products-are-organized",
+      coverImageUrl: guidePhoto(20),
       categorySlug: "product-guide",
       title: "How MH Fashion products are organized",
       excerpt:
@@ -195,6 +213,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Start with the product",
+          images: [
+            { url: guidePhoto(42), caption: "One garment, four choices: print method, fabric type, knit structure and cutting." },
+          ],
           paragraphs: [
             "MH Fashion plans to offer customizable and fixed-design products. The top-level selector is Product, with examples such as T-shirt, Streetwear, Hoodie, Cup, and Phone Cover.",
           ],
@@ -222,6 +243,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000002",
       slug: "how-apparel-options-narrow-down",
+      coverImageUrl: guidePhoto(26),
       categorySlug: "product-guide",
       title: "How apparel options narrow down",
       excerpt:
@@ -229,6 +251,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Follow the selection chain",
+          images: [
+            { url: guidePhoto(201), caption: "Choosing a print method narrows the fabrics and cuttings on offer." },
+          ],
           paragraphs: [
             "For T-shirts, Hoodies, and Streetwear, the planned selection chain is Product → Print Method → Fabric Type → Knit/Fabric Structure → GSM → Color → MH Cuttings → Size.",
           ],
@@ -258,6 +283,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000013",
       slug: "print-methods-and-how-to-care-for-a-print",
+      coverImageUrl: guidePhoto(201),
       categorySlug: "product-guide",
       title: "Print methods and how to care for a print",
       excerpt:
@@ -265,6 +291,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Which method suits which artwork",
+          images: [
+            { url: guidePhoto(20), caption: "A DTF print on cotton: wash it inside out and skip the iron on the print." },
+          ],
           paragraphs: [
             "Direct-to-garment printing sprays ink into the fabric, so it handles photographs, gradients and many colours without extra cost. It sits best on cotton and cotton blends.",
             "Vinyl is cut from a coloured sheet, so it suits solid shapes, names and numbers in one or two colours and holds sharp edges on polyester sportswear. Embroidery stitches the artwork in thread, which suits logos and small chest marks rather than fine detail.",
@@ -294,6 +323,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000014",
       slug: "how-to-place-an-order-step-by-step",
+      coverImageUrl: guidePhoto(180),
       categorySlug: "product-guide",
       title: "How to place an order, step by step",
       excerpt:
@@ -301,6 +331,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "From product to cart",
+          images: [
+            { url: guidePhoto(42), caption: "Size, colour and quantity are confirmed before the order is placed." },
+          ],
           paragraphs: [
             "Choose the product, then narrow it down with the options the shop offers, such as colour and size. The price updates as the options change, so the number you see is the number for that combination.",
             "Open the editor, finish the design, and check the mockup before adding it to the cart. If you are unsure about the size, read the size guide and measure a garment you already wear.",
@@ -330,6 +363,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000004",
       slug: "how-previews-and-mockups-are-planned",
+      coverImageUrl: guidePhoto(119),
       categorySlug: "design-guide",
       title: "How previews and mockups are planned",
       excerpt:
@@ -337,6 +371,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Three layers make the preview",
+          images: [
+            { url: guidePhoto(48), caption: "The front and back mockups sit beside the print canvas while you design." },
+          ],
           paragraphs: [
             "A planned preview has three layers: background, product mockup, and design SVG overlay. Grayscale recolor uses one base image per style and angle, so choosing a color can update the main image without requiring a separate photo for every color.",
           ],
@@ -365,6 +402,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000005",
       slug: "payment-options-at-checkout",
+      coverImageUrl: guidePhoto(431),
       categorySlug: "payment-guide",
       title: "Payment options at checkout",
       excerpt:
@@ -372,6 +410,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Planned provider choices",
+          images: [
+            { url: guidePhoto(365), caption: "Checkout runs from the delivery address to the payment provider." },
+          ],
           paragraphs: [
             "The commerce plan lists Visa, KBZPay, Wave Pay, and AYA Pay behind a Payment Provider interface. Cash on delivery is not part of the plan, and payment must complete before an order confirms.",
           ],
@@ -399,6 +440,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000006",
       slug: "what-payment-means-for-order-status",
+      coverImageUrl: guidePhoto(160),
       categorySlug: "payment-guide",
       title: "What payment means for order status",
       excerpt:
@@ -406,6 +448,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Payment comes first",
+          images: [
+            { url: guidePhoto(431), caption: "An order waits in Pending Payment until the provider confirms the payment." },
+          ],
           paragraphs: [
             "The planned order workflow starts at Pending Payment. After payment completes, an order can move to Confirmed and then through Processing, Printing, Ready to Ship, Handed to Delivery, Out for Delivery, and Delivered.",
           ],
@@ -433,6 +478,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000007",
       slug: "how-delivery-fees-are-planned",
+      coverImageUrl: guidePhoto(385),
       categorySlug: "delivery-guide",
       title: "How delivery fees are planned",
       excerpt:
@@ -440,6 +486,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Two planned delivery providers",
+          images: [
+            { url: guidePhoto(42), caption: "The delivery fee follows the city and the weight of the parcel." },
+          ],
           paragraphs: [
             "The commerce plan lists MH Delivery for domestic delivery and DHL for international delivery. Both sit behind a Delivery Provider interface, so the provider choice can be adjusted as the platform develops.",
           ],
@@ -463,6 +512,7 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
     {
       id: "20000000-0000-4000-8000-000000000008",
       slug: "order-status-and-delivery-handoff",
+      coverImageUrl: guidePhoto(331),
       categorySlug: "delivery-guide",
       title: "Order status and delivery handoff",
       excerpt:
@@ -470,6 +520,9 @@ export const GUIDE_STARTER_CATALOG: GuideCatalog = {
       sections: [
         {
           heading: "Follow the planned timeline",
+          images: [
+            { url: guidePhoto(385), caption: "Packed, handed to the courier, then delivered to the customer." },
+          ],
           paragraphs: [
             "After payment and confirmation, the planned MH Fashion workflow moves through production and delivery stages in this order:",
           ],
