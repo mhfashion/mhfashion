@@ -4333,11 +4333,13 @@ one-colour Color + Print Method + MH Cuttings), confirming an unticked attribute
    garment region attached to a T-shirt post, with the worn photo uploaded alongside the post artwork. The
    seed types (`JerseyStyle`, `JerseyPanel`, `jerseyStyles` in `lib/admin-demo-data.ts`) are kept as data
    only; no screen reads them until the owner describes the upload flow.
-2. **The dashboard hides its navigation behind the menu icon, the way a video site does.** In
-   `AdminShell`, the ☰ button in the admin top bar is now the toggle at every width (it used to appear on
-   phones only): clicking it slides the 224 px sidebar in or out, Escape closes it and returns focus to the
-   button, and the closed panel is `inert` so Tab cannot reach it. Closed, the main column takes the full
-   width. The panel starts closed, so the dashboard opens as a clean page with one ☰ in the corner.
+2. **The dashboard hides its navigation behind the menu icon, the way a video site does.** `AdminShell`
+   is rebuilt around one full-width top bar: **☰ · MH FASHION. / SUPER ADMIN · PREVIEW · search · account
+   actions**. The bar is sticky and spans the window, so it does not move, shift or resize when the sidebar
+   opens — the 224 px panel slides underneath it (`top: 64px`) and the content slides aside by the same
+   224 px. The brand block left the sidebar: it now sits between the menu button and the search, where the
+   owner wants it. The ☰ toggles on every width (it used to be phone-only), Escape closes the panel and
+   returns focus to the button, the closed panel is `inert`, and the panel starts closed.
 3. **Scope correction.** The first attempt put the menu on the *storefront* header (a `SiteMenu` drawer in
    `Header.tsx`); the owner asked for the **admin dashboard** only, so that drawer was deleted and the
    storefront header/mobile drawer were restored to their previous commit. Nothing on the shop surface
@@ -4347,7 +4349,9 @@ one-colour Color + Print Method + MH Cuttings), confirming an unticked attribute
 
 Checks: `tsc --noEmit` clean; `eslint` 0 errors (one pre-existing warning); `node --test
 tests/*.test.cjs` **832 passing, 0 failing**, including `tests/admin-menu.test.cjs` (the toggle, the
-`inert` panel, the two nav lists matching, and Jersey mapping deleted rather than hidden). In Chromium at
-1440x900 on `/admin/posts`: closed → sidebar 0 px wide and `inert`, main 1425 px; open → sidebar 224 px and
-main 1201 px; Escape closes and focus returns to the ☰; picking a row navigates and leaves the panel
-closed. `/admin/jersey` answers **404**.
+`inert` panel, the two nav lists matching, and Jersey mapping deleted without a trace). In Chromium at
+1440x900 on `/admin/posts` the top bar measures the same rect open and closed (`0,0,1425x64`; ☰ at x=28,
+brand 75-210, search from x=275, brand before search), the sidebar sits at y=64 in both states and stays
+there through a 400 px scroll, and its width goes 0 → 224 → 0. At 390x844 the drawer opens below the header
+(`0,64,224x780`) with the header still on screen. Escape closes and returns focus to the ☰; picking a row
+navigates and leaves the panel closed. `/admin/jersey` answers **404**.

@@ -890,9 +890,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `tests/canvas-shell.test.cjs` (it is 6: text, element, design, photo, upload, gradient).
 
 ## Admin sidebar behind the menu button (`components/admin/AdminShell.tsx`)
-- The ☰ in the admin top bar (`[data-admin-nav-toggle]`) toggles the sidebar at **every** width; it starts
-  closed, collapses to `w-0` with `inert`, and Escape closes it and refocuses the button. Do not restore the
-  old `md:hidden` on the toggle or the always-open desktop sidebar.
+- One full-width sticky top bar: **☰ · brand (MH FASHION. / SUPER ADMIN · PREVIEW) · search · actions**.
+  The brand belongs there, between the menu button and the search — not inside the sidebar — and the bar
+  must measure the same open and closed (the sidebar slides underneath at `top:64px`, content gains
+  `md:ml-[224px]`).
+- The ☰ (`[data-admin-nav-toggle]`) toggles the sidebar at **every** width; it starts closed, collapses to
+  `w-0` with `inert`, and Escape closes it and refocuses the button. Do not restore the old `md:hidden` on
+  the toggle or the always-open desktop sidebar.
+- The aside is `position: fixed` under the header, not `sticky`: a sticky sibling of a short content column
+  has no travel room and scrolls away (measured: aside top 17px after a 47px scroll until this was fixed).
 - The width animation needs the inner fixed-width column: the aside animates `w-0 ↔ w-[224px]` with
   `overflow-hidden`; without the inner `w-[224px]` wrapper every row reflows while it slides.
 - `ADMIN_NAV` in `lib/admin-nav.ts` is the single list of admin sections (`AdminShell` maps it onto icons);

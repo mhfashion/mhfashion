@@ -2014,23 +2014,26 @@ Print Method and MH Cuttings, with no Material/Fit/Sleeve/GSM box at all.
 
 ## The dashboard's sidebar hides behind the menu icon (2026-11-21)
 
-The admin's ☰ button in `AdminShell`'s top bar is now the sidebar toggle on **every** width; it used to be
-phone-only, with the sidebar permanently open on desktop. Clicking it slides the 224 px panel in or out:
-closed, the aside collapses to zero width and the main column takes the full page; open, the aside is a
-sticky column beside it. The panel starts closed, so a module opens as a clean page with one ☰ in the
-corner. Escape closes it and returns focus to the button, and the closed panel carries `inert` so Tab
-cannot walk links nobody can see.
+`AdminShell` has one full-width top bar:
 
-The width animation needs fixed-width content: the aside animates `w-0 ↔ w-[224px]` with `overflow-hidden`
-around an inner `w-[224px]` column, otherwise every row would reflow while the panel slides.
+```
+[☰]  MH FASHION.            [search]        [PREVIEW MODE] [bell] [help] [globe] [avatar]
+     SUPER ADMIN · PREVIEW
+```
 
-`lib/admin-nav.ts` exports `ADMIN_NAV`; `AdminShell` maps those entries onto icons, and `ADMIN_MODULES` in
-`lib/admin-demo-data.ts` (the permission list) matches it one-to-one, so the sidebar cannot drift from the
-permissions.
+The bar is `sticky top-0` and spans the window, so it never moves, shifts or resizes when the sidebar
+opens — the panel slides in **underneath** it (`top: 64px`) and the content column gains a `224px` left
+margin in the same transition, the way a video site's guide sits below its header. The brand block no
+longer lives in the sidebar; it sits between the menu button and the search box.
 
-Jersey mapping has been removed: the Posts tab, `/admin/jersey`, `AdminJersey.tsx` and `lib/admin-jersey.ts`
-are deleted and the route is gone from `manus-routes.json`. The owner will specify a panel-per-region upload
-that travels with the post; until then the seed types in `lib/admin-demo-data.ts` are data only.
+The ☰ (`[data-admin-nav-toggle]`) toggles the panel at every width; it used to be phone-only with the
+sidebar permanently open on desktop. Closed, the panel collapses to zero width and is `inert`, so Tab
+cannot reach hidden links; Escape closes it and returns focus to the button; the panel starts closed.
+
+Two layout traps are worth remembering. The aside is `position: fixed` below the header rather than
+`sticky`, because a `sticky` sibling of a short content column has no travel room and scrolls away with
+the page. And the width animation needs fixed-width content: the aside animates `w-0 ↔ w-[224px]` with
+`overflow-hidden` around an inner `w-[224px]` column, or every row reflows while the panel slides.
 
 Scope note: an earlier revision of this change put a menu drawer on the **storefront** header. The owner
 wanted the **admin dashboard** changed, so that drawer (`SiteMenu.tsx`) was deleted and `Header.tsx` /
