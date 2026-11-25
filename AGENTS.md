@@ -1204,6 +1204,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `deleteEditorLayer` has no floor, so the last layer can be deleted; `tests/editor-touch.cjs` covers that
   path (collapse the Layers panel first, or the drag lands on the panel).
 
+## Product page option boxes (`apps/web/src/lib/product-options.ts`)
+- The boxes on `/products/[slug]` are the post's own attributes: `getProductOptionGroups(productId)` reads
+  `product_attribute_types` → `attribute_types` + `attribute_values`. An unticked attribute has **no** box
+  and is not required before Add to Cart; a one-value box opens preselected. Only a product with no rows at
+  all falls back to the shop defaults (design-editable) or the size box alone (ready-made).
+- `optionKeyForAttributeName` maps the admin's wording to the cart's keys (`Fabric Type` → `material`,
+  `MH Cuttings` → `cutting`); any other attribute rides in `CartVariant.extras`, which `variantLabel` and
+  `cartItemKey` include, so two print methods never merge into one cart line.
+- A ready-made piece (`is_customizable = 'none'` or `sub_brand = 'Nyein'`) hides `Edit Design`, and the
+  ready-made note lives in the Product Details tab (`[data-ready-made]`), never in the buying box. Tests pin
+  that (`tests/product-options.test.cjs`).
+- `SQL/0008_product_options_public_read.sql` grants anon SELECT on `product_attribute_types`; `0004` missed
+  it, so the storefront could not read the join table.
+
 ## Layer picking (canvas and pasteboard)
 - A press picks the layer under the pointer, then drags it: `hitTestLayerAt` maps the point back through each layer's own move/scale/rotate (top-first, visible only), and `pickLayerAt` selects then calls `beginLayerDrag`.
 - The transform box is a **solid** `rect` over the selected layer's whole area, so it also intercepts presses. `startSelectionBoxPress` hit-tests on that press too: a hit on a layer that is not already selected re-picks it, anything else drags the current selection. Without this, any layer sitting under the box could only be selected from the Layers panel.

@@ -11,6 +11,8 @@ export type CartVariant = {
   gsm: string | null;
   fit: string | null;
   sleeve: string | null;
+  /** Further attributes the post sells on (Print Method, Knit Structure, MH Cuttings). */
+  extras?: Record<string, string>;
 };
 
 export type CartItem = Product & {
@@ -32,6 +34,14 @@ export const EMPTY_VARIANT: CartVariant = {
 };
 
 export function normalizeCartVariant(input?: Partial<CartVariant> | null): CartVariant {
+  const extras = input?.extras
+    ? Object.fromEntries(
+        Object.entries(input.extras)
+          .map(([label, value]) => [label, value?.trim()] as const)
+          .filter(([, value]) => Boolean(value))
+          .sort(([left], [right]) => left.localeCompare(right)),
+      )
+    : {};
   return {
     size: input?.size ?? null,
     color: input?.color ?? null,
@@ -39,6 +49,7 @@ export function normalizeCartVariant(input?: Partial<CartVariant> | null): CartV
     gsm: input?.gsm ?? null,
     fit: input?.fit ?? null,
     sleeve: input?.sleeve ?? null,
+    ...(Object.keys(extras).length ? { extras } : {}),
   };
 }
 
@@ -46,6 +57,7 @@ export function cartItemKey(productId: string, variant?: Partial<CartVariant> | 
   const value = normalizeCartVariant(variant);
   return [productId, value.size, value.color, value.material, value.gsm, value.fit, value.sleeve]
     .map((part) => (part ?? "").toString().trim())
+    .concat(Object.entries(value.extras ?? {}).flatMap(([label, option]) => [label, option]))
     .join("::");
 }
 
@@ -53,6 +65,7 @@ export function cartItemKey(productId: string, variant?: Partial<CartVariant> | 
 export function variantLabel(variant?: Partial<CartVariant> | null): string {
   const value = normalizeCartVariant(variant);
   return [value.size, value.color, value.material, value.gsm, value.fit, value.sleeve]
+    .concat(Object.values(value.extras ?? {}))
     .filter((part): part is string => Boolean(part && part.trim()))
     .join(" · ");
 }

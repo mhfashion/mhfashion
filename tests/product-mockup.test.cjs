@@ -112,7 +112,7 @@ test("the product page renders the mockup from the selection with the design on 
   // A ready-made product (is_customizable = "none") must not paint the editor draft.
   assert.match(client, /resolveDesignOverlay\(\{\s*svgUrl: shared \?\? product\.designSvgUrl,\s*draft: designEditable \? readDesignDraft\(\) : null,\s*\}\)/);
   assert.match(client, /lg:grid-cols-\[minmax\(0,640px\)_minmax\(0,1fr\)\]/);
-  assert.match(client, /colours=\{colors\}/);
+  assert.match(client, /colours=\{colourChoices\}/);
   assert.match(client, /onSelectColour=\{setSelectedColor\}/);
   assert.equal(/activeImage/.test(client), false, "the fake 4-image carousel is gone");
 

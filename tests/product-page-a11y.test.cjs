@@ -15,8 +15,10 @@ test("a size/material/fit/sleeve/GSM option states whether it is the chosen one"
 });
 
 test("a colour swatch states whether it is the chosen one", () => {
-  const swatches = source.slice(source.indexOf("colors.map"), source.indexOf("colors.map") + 400);
-  assert.match(swatches, /aria-pressed=\{selectedColor === color\.name\}/, "colour swatches do not expose their selected state");
+  const anchor = source.indexOf('aria-label={name}', source.indexOf('group.key === "color"'));
+  const swatches = source.slice(anchor, anchor + 300);
+  assert.match(swatches, /aria-pressed=\{selectedColor === name\}/, "colour swatches do not expose their selected state");
+  assert.match(swatches, /aria-label=\{name\}/, "a swatch has no accessible name");
 });
 
 test("choosing a variant announces the new price", () => {

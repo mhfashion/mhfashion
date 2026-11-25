@@ -4290,3 +4290,35 @@ with; `node --test tests/*.test.cjs` **830 passing, 0 failing**. In Chromium at 
 (touch) all twelve landing cards load a photo, an article shows two `data-guide-figure` photos with a
 caption, the article box measures exactly the content width (1117 px desktop, 358 px phone) and the page
 has no "On this page" text and no horizontal overflow.
+
+## 2026-11-21 — The buying box follows the post: only Buy Now and Add to Cart, and only the options the admin ticked
+
+The owner opened a Nyein piece and asked for two things: the card under the product name holds **Buy Now
+and Add to Cart only** (no Edit Design), and the option boxes — Colour, Size, Material, Fit Type, Sleeve,
+GSM, and whatever else a drop sells — must come from **what the admin set when the post was created**, so
+a piece with no colour choice shows no colour box and a piece with no sizes shows no size box.
+
+1. **The buying box.** A ready-made piece (`is_customizable = 'none'`, or any `sub_brand = 'Nyein'`) is
+   never design-editable, so the box is Buy Now + Add to Cart on a two-column grid. The
+   "Ready-made design — sold as shown" line moved out of the box into the **Product Details** tab, so the
+   box contains only the two buttons.
+2. **The boxes come from the catalogue.** `lib/product-options.ts` owns the rules: the product's
+   `product_attribute_types` rows (name + values, ordered by `display_order`) are the page's boxes, an
+   attribute the admin left unticked simply is not rendered, a one-option box opens already chosen, and
+   only real choices (two or more options) are required before Add to Cart. `getProductOptionGroups`
+   reads the rows in `lib/products.ts`; a product with **no** rows keeps the shop's defaults so an
+   unconfigured catalogue still sells, and a ready-made piece with no rows falls back to the **size box
+   alone**. Further attributes (Print Method, Knit Structure, MH Cuttings) travel with the cart line
+   through `CartVariant.extras`.
+3. **Nyein pieces open their own page.** When the catalogue carries no Nyein rows the page shows stand-in
+   pieces; those cards used to link to `/products`, and the detail page 404'd. The product route now
+   resolves the same stand-in slug, so the buying box can be tried before the rows exist.
+4. **SQL.** `SQL/0008_product_options_public_read.sql` grants anon SELECT on `product_attribute_types`,
+   which `0004` missed — without it a logged-out visitor cannot learn which attributes a post sells on.
+
+Checks: `tsc --noEmit` clean; `eslint` clean apart from the two pre-existing warnings; `node --test
+tests/*.test.cjs` **838 passing, 0 failing** (8 new in `tests/product-options.test.cjs`). In Chromium at
+1440x1000 and 390x844: `/products/nyein-oversized-tee` shows the Size box and exactly Buy Now + Add to
+Cart, with no Edit Design and no ready-made line in the box; a preview page rendered the same component
+with the default groups (Size, Color, Material, Fit Type, Sleeve, GSM) and with an admin subset (Size +
+one-colour Color + Print Method + MH Cuttings), confirming an unticked attribute leaves no box behind.

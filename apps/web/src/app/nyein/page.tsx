@@ -17,8 +17,9 @@ export const metadata: Metadata = {
 
 export default async function NyeinPage() {
   const catalogue = await getProductsBySubBrand(NYEIN_BRAND);
+  // A stand-in piece links to its own page too: the product page resolves the same fallback slug, so the
+  // buying box (Buy Now, Add to Cart, the size box) can be tried before the catalogue carries Nyein rows.
   const pieces = catalogue.length ? catalogue : NYEIN_PIECES;
-  const linked = catalogue.length > 0;
   const popular = pieces.slice(0, 5);
   const arrivals = [...pieces].reverse().slice(0, 5);
 
@@ -71,7 +72,7 @@ export default async function NyeinPage() {
               </h2>
               <span className="text-[10px] font-semibold text-text-muted sm:text-xs">Ready-made</span>
             </div>
-            <ProductStrip products={popular} href={linked ? undefined : "/products"} />
+            <ProductStrip products={popular} />
           </section>
 
           <section className="mb-6">
@@ -81,7 +82,7 @@ export default async function NyeinPage() {
               </h2>
               <span className="text-[10px] font-semibold text-text-muted sm:text-xs">No design editing</span>
             </div>
-            <ProductStrip products={arrivals} href={linked ? undefined : "/products"} />
+            <ProductStrip products={arrivals} />
           </section>
 
           <section className="mb-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">

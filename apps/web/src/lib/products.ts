@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import type { ProductOptionGroup } from "./product-options";
+import { optionKeyForAttributeName } from "./product-options";
 import type { Product } from "./types";
 
 // Server-side client — safe to use the anon key here since catalog data
@@ -20,6 +22,10 @@ type ProductRow = {
   sub_brand?: string | null;
   is_customizable?: "full" | "partial" | "none" | null;
 };
+
+type AttributeLinkRow = { attribute_type_id: string };
+type AttributeTypeRow = { id: string; name: string; display_order: number };
+type AttributeValueRow = { attribute_type_id: string; value: string };
 
 type PriceRangeRow = {
   product_id: string;
@@ -61,6 +67,48 @@ function toProduct(row: ProductRow, ranges: Map<string, PriceRangeRow>): Product
     priceMinKs: range?.price_min_ks ?? 0,
     priceMaxKs: range?.price_max_ks ?? 0,
   };
+}
+
+/**
+ * The option boxes a post sells on, straight from the admin's ticked attributes. `null` means the
+ * catalogue carries no attribute rows for this product, so the shop's defaults stand in.
+ */
+export async function getProductOptionGroups(productId: string): Promise<ProductOptionGroup[] | null> {
+  const supabase = getServerSupabase();
+  if (!supabase || !productId) return null;
+
+  const { data: links, error: linkError } = await supabase
+    .from("product_attribute_types")
+    .select("attribute_type_id")
+    .eq("product_id", productId);
+  if (linkError) {
+    console.error("getProductOptionGroups failed:", linkError.message);
+    return null;
+  }
+  const typeIds = ((links ?? []) as AttributeLinkRow[]).map((row) => row.attribute_type_id);
+  if (!typeIds.length) return null;
+
+  const [typesResult, valuesResult] = await Promise.all([
+    supabase.from("attribute_types").select("id, name, display_order").in("id", typeIds),
+    supabase.from("attribute_values").select("attribute_type_id, value").in("attribute_type_id", typeIds).order("created_at"),
+  ]);
+  if (typesResult.error || valuesResult.error) {
+    console.error("getProductOptionGroups failed:", typesResult.error?.message ?? valuesResult.error?.message);
+    return null;
+  }
+
+  const valuesByType = new Map<string, string[]>();
+  for (const row of (valuesResult.data ?? []) as AttributeValueRow[]) {
+    valuesByType.set(row.attribute_type_id, [...(valuesByType.get(row.attribute_type_id) ?? []), row.value]);
+  }
+
+  return ((typesResult.data ?? []) as AttributeTypeRow[])
+    .sort((left, right) => left.display_order - right.display_order || left.name.localeCompare(right.name))
+    .map((type) => ({
+      key: optionKeyForAttributeName(type.name),
+      label: type.name,
+      options: valuesByType.get(type.id) ?? [],
+    }));
 }
 
 export async function getNewArrivals(limit = 6): Promise<Product[]> {

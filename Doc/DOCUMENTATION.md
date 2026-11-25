@@ -1967,3 +1967,47 @@ The rate limiter now reaches for a durable counter itself: `enforceRateLimit` re
 namespace once per isolate (`ensureDurableStore`) and keeps module memory only when the binding is absent, so the
 existing `kvRateLimitStore` starts working as soon as the namespace exists. The upload route (40 a minute) and the
 delivery quote route (30 a minute) are guarded beside the payment routes.
+
+## Product page: the buying box and the option boxes follow the post (2026-11-21)
+
+A product page shows one box per attribute the admin ticked when the post was created, and a ready-made
+piece sells with two buttons only.
+
+**The box under the product name.** A product that is not design-editable — `is_customizable = 'none'`, or
+any row whose `sub_brand` is `Nyein` — hides `Edit Design`, so the action row is `Buy Now` and
+`Add to Cart` on a two-column grid. The "Ready-made design — sold as shown" line lives in the
+**Product Details** tab (`[data-ready-made]`), not in the buying box.
+
+**The option boxes.** `apps/web/src/lib/product-options.ts` is the rule set:
+
+| Situation | What the page shows |
+| --- | --- |
+| The product has rows in `product_attribute_types` | exactly those attributes, each with the values from `attribute_values`, ordered by `attribute_types.display_order` |
+| A configured attribute has one value | the box renders with that value already chosen |
+| An attribute was not ticked | no box, and nothing to answer before Add to Cart |
+| No rows at all, design-editable product | the shop defaults — Size, Color, Material, Fit Type, Sleeve, GSM |
+| No rows at all, ready-made piece | the **Size** box alone |
+
+`getProductOptionGroups(productId)` in `apps/web/src/lib/products.ts` reads those three tables for the
+page; `optionKeyForAttributeName` maps the admin's wording onto the keys the cart already stores
+(`Fabric Type` → `material`, `MH Cuttings` → `cutting`, …), so a renamed attribute still becomes the box
+the page expects. Attributes outside the six cart fields travel with the line through
+`CartVariant.extras`, which `variantLabel` and `cartItemKey` include.
+
+**SQL.** `SQL/0008_product_options_public_read.sql` grants anon SELECT on `product_attribute_types`;
+`0004` granted the value and pricing tables but not the join table, so a logged-out visitor could not
+learn which attributes a post sells on.
+
+**Nyein pieces open their own page.** While the catalogue carries no Nyein rows the Nyein page renders
+stand-in pieces (`lib/nyein-pieces.ts`); the product route resolves the same slug, so a card now opens the
+piece's buying box instead of a 404 or the whole catalogue.
+
+Evidence: `tsc --noEmit` clean; ESLint reports only the two pre-existing warnings; `node --test
+tests/*.test.cjs` → **838 passing, 0 failing** (8 new in `tests/product-options.test.cjs`, covering the
+key mapping, blank-option and duplicate handling, the admin rows winning, the two fallbacks, the one-option
+pre-selection, and the "only real choices are required" rule). Chromium at 1440×1000 and 390×844 against the
+built server: `/products/nyein-oversized-tee` → `h3` groups `["Size"]`, buttons `["Buy Now", "Add to Cart"]`,
+no `Edit Design`, no `[data-ready-made]` in the buying section. A temporary preview page (deleted after the
+check) rendered the same component twice: with `optionGroups={null}` the groups were Size, Color, Material,
+Fit Type, Sleeve, GSM; with an admin subset the groups were Size, Color (single value, preselected),
+Print Method and MH Cuttings, with no Material/Fit/Sleeve/GSM box at all.

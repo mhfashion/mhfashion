@@ -16,7 +16,11 @@ function loadModule(relativePath) {
   }).outputText;
   const loaded = { exports: {} };
   loadedModules.set(sourcePath, loaded);
-  const localRequire = (id) => (id.startsWith("@/") ? loadModule(`apps/web/src/${id.slice(2)}.ts`) : require(id));
+  const localRequire = (id) => {
+    if (id.startsWith("@/")) return loadModule(`apps/web/src/${id.slice(2)}.ts`);
+    if (id.startsWith(".")) return loadModule(path.relative(path.join(__dirname, ".."), path.join(path.dirname(sourcePath), `${id}.ts`)));
+    return require(id);
+  };
   new Function("module", "exports", "require", compiled)(loaded, loaded.exports, localRequire);
   return loaded.exports;
 }
