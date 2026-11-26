@@ -924,6 +924,10 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const hoveredRotation = hoveredLayerId ? canvasLayerRotations[hoveredLayerId] ?? 0 : 0;
   const [pasteboardRect, setPasteboardRect] = useState<PasteboardRect | null>(null);
   const [toolsBarClearance, setToolsBarClearance] = useState(0);
+  // How far the floating tools bar reaches up from the bottom of the viewport: what a bottom sheet
+  // must clear so it neither covers the bar nor sits under it.
+  const [toolsBarInset, setToolsBarInset] = useState(0);
+
   // A layer may be parked far outside the print area, so the Move tool's pick surface has to
   // cover every visible layer, not a fixed margin around the canvas. Sized in percentages of
   // the print area, which is the same box the artwork coordinate space maps onto.
@@ -1164,10 +1168,14 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       if (panStartRef.current || activeNodeDragRef.current || pinchStartRef.current) return;
       const canvasRect = canvasNodeRef.current?.getBoundingClientRect();
       const barRect = bar.getBoundingClientRect();
+      const viewportRect = viewport.getBoundingClientRect();
+      // The viewport shrinks when the phone sheet is open, so the sheet's own column is measured,
+      // not the scroller inside it.
+      const columnRect = viewport.parentElement?.getBoundingClientRect();
+      setToolsBarInset(columnRect && barRect.height > 0 ? Math.max(0, Math.round(columnRect.bottom - barRect.top)) : 0);
       // Before the first paint either box can still be empty; keep the last answer rather than
       // dropping back to no padding.
       if (!canvasRect || !barRect.height) return;
-      const viewportRect = viewport.getBoundingClientRect();
       setToolsBarClearance(
         editorToolsBarClearance({ canvasBottom: canvasRect.bottom, barTop: barRect.top, viewportTop: viewportRect.top, viewportHeight: viewportRect.height }),
       );
@@ -1194,6 +1202,21 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       window.removeEventListener("resize", schedule);
     };
   }, [zoom, pan, toolsCollapsed, layersOpen, editSidebarOpen]);
+
+  // A phone sheet shrinks the viewport from the bottom, so scroll the print canvas back into the
+  // room that is left instead of leaving its lower half out of view (E21 item 10).
+  useEffect(() => {
+    if (!adjustmentsOpen || typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+    const timer = window.setTimeout(() => {
+      const viewport = viewportRef.current;
+      const printCanvas = canvasNodeRef.current;
+      if (!viewport || !printCanvas) return;
+      const wanted = Math.round(printCanvas.getBoundingClientRect().bottom - viewport.getBoundingClientRect().bottom + 12);
+      if (wanted > 0) viewport.scrollBy({ top: wanted });
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [adjustmentsOpen]);
 
   const handleLargeTierRequested = useCallback((side: MockupSide) => {
     setLargeArtworkTierOwner((current) => claimLargeArtworkTier(current, side));
@@ -3087,7 +3110,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
         <button type="button" aria-label="Zoom in" disabled={zoom >= 3} onClick={() => setZoom((current) => Math.min(3, current + 0.25))} className="flex h-11 w-11 items-center justify-center rounded text-text-secondary outline-none disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-accent"><Plus size={17} aria-hidden="true" /></button>
         <button type="button" aria-label="Reset view" onClick={resetView} className="flex h-11 w-11 items-center justify-center rounded text-text-secondary outline-none focus-visible:ring-2 focus-visible:ring-accent"><RotateCcw size={16} aria-hidden="true" /></button>
       </div>
-      <div className="relative min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1 flex-col">
         <div
           ref={viewportRef}
           aria-label="Editor viewport"
@@ -3102,7 +3125,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           data-pan-mode={(touchPanEnabled || activeTool === "hand") ? "hand" : "scroll"}
           data-active-tool={activeTool}
           style={{ cursor: isPanning ? "grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "grab" : activeToolCursorStyle }}
-          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 md:justify-center md:overflow-visible sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : activeToolCursor}`}
+          className={`absolute inset-0 flex flex-col items-center justify-start overflow-auto overscroll-contain p-5 max-md:relative max-md:inset-auto max-md:min-h-0 max-md:flex-1 md:justify-center md:overflow-visible sm:p-8 [@media(pointer:coarse)]:justify-start [@media(pointer:coarse)]:overflow-auto ${(touchPanEnabled || activeTool === "hand") ? "touch-none" : "touch-pan-y"} ${isPanning ? "cursor-grabbing" : (spaceHeld || touchPanEnabled || activeTool === "hand") ? "cursor-grab" : activeToolCursor}`}
         >
           <div
             ref={workspaceRef}
@@ -3525,6 +3548,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           onRenamePreset={renameToolPreset}
           onDeletePreset={deleteToolPreset}
           onPickColour={(colour) => setForegroundColor(colour)}
+          sheetOffset={toolsBarInset}
           onPickFont={(font) => {
             updateToolOptions({ text: { fontFamily: font } });
             const layer = layers.find((item) => item.id === selectedLayerId);
@@ -3552,6 +3576,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           selectedShape={selectedShape}
           onSelectShape={setSelectedShape}
           onNudge={nudgeSelectedLayer}
+
         />}
         {!adjustmentsOpen && <EditorLayersPanel
           open={layersOpen}

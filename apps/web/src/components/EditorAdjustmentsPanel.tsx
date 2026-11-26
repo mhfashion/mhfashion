@@ -1,7 +1,7 @@
 "use client";
 
-import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, FlipHorizontal2, FlipVertical2, Minus, Pencil, Plus, Trash2 } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronDown, ChevronRight, FlipHorizontal2, FlipVertical2, Minus, Pencil, Plus, Trash2 } from "lucide-react";
+import { useId, useMemo, useState, useSyncExternalStore } from "react";
 import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorGradient, EditorGradientStop, EditorGradientToolSettings, EditorGradientType, EditorLayerPlacement, EditorPenSettings, EditorShapeBuilderMode, EditorShapePreset, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorTextToolSettings, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
 import { createEditorShapePaths, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_TEXT_DEFAULT_LINE_HEIGHT, EDITOR_PEN_END_SHAPES, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, editorGradientAngle, editorGradientWithAngle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
 import { EDITOR_DEFAULT_FOREGROUND } from "@/lib/editor-shortcuts";
@@ -15,6 +15,24 @@ import { useEditorFontLibrary } from "@/lib/editor-font-library";
 import { EDITOR_RECENT_LIMIT, type EditorPreset, type EditorPresetGroup, type EditorPresetLibrary } from "@/lib/editor-presets";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
+
+/** A phone shows the panel as a bottom sheet, so the mock-up above it stays in view (E21 item 10). */
+const PHONE_SHEET_QUERY = "(max-width: 767px)";
+
+function subscribePhoneSheet(onChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const query = window.matchMedia(PHONE_SHEET_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+function usePhoneSheet() {
+  return useSyncExternalStore(
+    subscribePhoneSheet,
+    () => (typeof window === "undefined" ? false : window.matchMedia(PHONE_SHEET_QUERY).matches),
+    () => false,
+  );
+}
 const TOOL_LABELS: Record<EditorTool, string> = {
   move: "Move",
   hand: "Hand",
@@ -576,7 +594,7 @@ const PRINT_LEVEL_CLASS: Record<ImagePrintQuality["level"], string> = {
   "very-low": "bg-[#f8d7d7] text-[#8a2020] dark:bg-[#432323] dark:text-[#f0b4b4]",
 };
 
-export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, imagePrintQuality = null, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures, onFlip, placement, selectedShape, onSelectShape, onNudge, presets, recentColours, recentFonts, onApplyPreset, onSavePreset, onRenamePreset, onDeletePreset, onPickColour, onPickFont }: {
+export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, imagePrintQuality = null, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures, onFlip, placement, selectedShape, onSelectShape, onNudge, presets, recentColours, recentFonts, onApplyPreset, onSavePreset, onRenamePreset, onDeletePreset, onPickColour, onPickFont, sheetOffset = 0 }: {
   open: boolean;
   onToggle: () => void;
   selectedLayer: EditorArtworkLayer | null;
@@ -612,6 +630,8 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   onDeletePreset: (id: string) => void;
   onPickColour: (colour: string) => void;
   onPickFont: (font: string) => void;
+  /** How far the floating tools bar reaches up from the bottom, so the sheet stops above it. */
+  sheetOffset?: number;
 }) {
   const text = selectedLayer?.text;
   const image = selectedLayer?.image;
@@ -621,6 +641,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   const [nextEffectId, setNextEffectId] = useState(1);
   const [appliedStyle, setAppliedStyle] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState("Tool Options");
+  const phoneSheet = usePhoneSheet();
   // The hosted library replaces the eight system fonts once `fonts/manifest.json` exists in R2. An open
   // Font section also loads one file per font, so each name in the list paints in its own face.
   const fontLibrary = useEditorFontLibrary(
@@ -675,10 +696,21 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
     replaceEffectStack(next);
   }
   return <>
-    {open && <aside aria-label="Adjustments panel" data-dock-side="right" className="absolute inset-y-0 right-0 z-30 flex min-h-0 flex-col overflow-hidden border-l border-border bg-bg-surface text-text-primary shadow-xl dark:shadow-black/60" style={{ width: PANEL_WIDTH }}>
+    {open && <aside
+      aria-label="Adjustments panel"
+      data-dock-side={phoneSheet ? "bottom" : "right"}
+      data-adjustments-sheet={phoneSheet ? "true" : undefined}
+      className={phoneSheet
+        ? "relative z-40 flex max-h-[32vh] w-full min-h-0 shrink-0 flex-col overflow-hidden rounded-t-2xl border-t border-border bg-bg-surface text-text-primary shadow-[0_-12px_30px_rgba(0,0,0,0.35)]"
+        : "absolute inset-y-0 right-0 z-30 flex min-h-0 flex-col overflow-hidden border-l border-border bg-bg-surface text-text-primary shadow-xl dark:shadow-black/60"}
+      style={phoneSheet ? { marginBottom: sheetOffset } : { width: PANEL_WIDTH }}
+    >
+      {phoneSheet && <div aria-hidden="true" className="flex shrink-0 justify-center pb-1 pt-1.5"><span className="h-1 w-10 rounded-full bg-border" /></div>}
       <div aria-label="Adjustments panel title" className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-bg px-3 text-text-primary shadow-sm [@media(pointer:coarse)]:h-12">
         <div><span role="heading" aria-level={2} className="text-[12px] font-semibold tracking-tight">Adjustments</span><span className="ml-2 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">Live</span></div>
-        <span aria-hidden="true" className="h-2 w-2 rounded-full bg-accent shadow-[0_0_10px_#d4ff3f]" />
+        {phoneSheet
+          ? <button type="button" aria-label="Close adjustments sheet" onClick={onToggle} className="flex h-11 w-11 items-center justify-center rounded-full text-text-secondary outline-none hover:bg-bg-surface hover:text-text-primary focus-visible:ring-2 focus-visible:ring-accent"><ChevronDown size={18} aria-hidden="true" /></button>
+          : <span aria-hidden="true" className="h-2 w-2 rounded-full bg-accent shadow-[0_0_10px_#d4ff3f]" />}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         <div className="space-y-2 text-[11px]">
@@ -903,6 +935,6 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
         </div>
       </div>
     </aside>}
-    <button type="button" aria-label={open ? "Return to Layers" : "Open Adjustments panel"} title={open ? "Return to Layers" : "Open Adjustments panel"} data-adjustments-return-arrow={open ? "true" : "false"} aria-expanded={open} onClick={onToggle} className="absolute top-2 z-40 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11" style={{ right: open ? PANEL_WIDTH : 0 }}><ChevronRight size={17} aria-hidden="true" /></button>
+    {!(open && phoneSheet) && <button type="button" aria-label={open ? "Return to Layers" : "Open Adjustments panel"} title={open ? "Return to Layers" : "Open Adjustments panel"} data-adjustments-return-arrow={open ? "true" : "false"} aria-expanded={open} onClick={onToggle} className="absolute top-2 z-40 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11" style={{ right: open ? PANEL_WIDTH : 0 }}><ChevronRight size={17} aria-hidden="true" /></button>}
   </>;
 }

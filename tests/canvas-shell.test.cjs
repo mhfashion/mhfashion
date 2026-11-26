@@ -331,6 +331,32 @@ test("the Gradient tool draws, re-aims, and edits gradient layers", () => {
   assert.match(source, /onUpdateGradient=\{updateSelectedGradient\}/);
 });
 
+test("a phone opens a tool's options as a bottom sheet, one box at a time (E21 item 10)", () => {
+  const panel = adjustmentsPanel;
+  // The sheet is chosen by a media query, not a guessed width, and read without an effect.
+  assert.match(panel, /const PHONE_SHEET_QUERY = "\(max-width: 767px\)";/);
+  assert.match(panel, /useSyncExternalStore\(/);
+  assert.match(panel, /data-adjustments-sheet=\{phoneSheet \? "true" : undefined\}/);
+  assert.match(panel, /data-dock-side=\{phoneSheet \? "bottom" : "right"\}/);
+  // It is a flow child under the viewport, so the viewport shrinks and the canvas is never covered.
+  assert.match(panel, /relative z-40 flex max-h-\[32vh\] w-full min-h-0 shrink-0 flex-col/);
+  assert.match(panel, /rounded-t-2xl border-t/);
+  assert.match(source, /relative flex min-h-0 flex-1 flex-col/);
+  assert.match(source, /max-md:relative max-md:inset-auto max-md:min-h-0 max-md:flex-1/);
+  // It stops above the floating tools bar, whose measured inset the canvas hands over.
+  assert.match(panel, /style=\{phoneSheet \? \{ marginBottom: sheetOffset \} : \{ width: PANEL_WIDTH \}\}/);
+  assert.match(source, /sheetOffset=\{toolsBarInset\}/);
+  assert.match(source, /setToolsBarInset\(columnRect && barRect\.height > 0 \? Math\.max\(0, Math\.round\(columnRect\.bottom - barRect\.top\)\) : 0\)/);
+  assert.ok(source.includes("if (wanted > 0) viewport.scrollBy({ top: wanted });"), "the canvas is scrolled back into the room the sheet leaves");
+  // A grab handle and a 44 px close button, and no floating return arrow on top of the canvas.
+  assert.match(panel, /h-1 w-10 rounded-full bg-border/);
+  assert.match(panel, /aria-label="Close adjustments sheet"/);
+  assert.ok(panel.includes('{!(open && phoneSheet) && <button type="button" aria-label={open ? "Return to Layers"'), "the docked return arrow is hidden while the sheet is open");
+  // One box at a time: the sections stay an accordion, so opening one closes the last.
+  assert.match(panel, /const \[openSection, setOpenSection\] = useState\("Tool Options"\);/);
+  assert.match(panel, /open=\{openSection === "Tool Options"\}/);
+});
+
 test("drawing tools are inert on photo layers and the tools bar disables them", () => {
   // Canvas guard: a selected photo layer blocks paint/pen/shape/gradient/eraser.
   assert.match(source, /const DRAWING_TOOLS: EditorTool\[\] = \["brush", "pencil", "pen", "shape", "gradient", "eraser"\]/);
@@ -596,7 +622,7 @@ test("phone view pan is captured before editing and navigation reserves its meas
 test("Compact Layers panel docks right and controls its functional stack and masks", () => {
   assert.match(source, /const \[layersOpen, setLayersOpen\] = useState\(false\)/);
   assert.match(source, /<EditorLayersPanel[\s\S]*?open=\{layersOpen\}[\s\S]*?onToggle=\{toggleLayersPanel\}[\s\S]*?onAddLayer=\{addLayer\}[\s\S]*?onAddMask=\{createLayerMask\}[\s\S]*?onDeleteLayer=\{deleteLayer\}/);
-  assert.match(source, /<div className="relative min-h-0 flex-1">[\s\S]*?ref=\{viewportRef\}/);
+  assert.match(source, /<div className="relative flex min-h-0 flex-1 flex-col">[\s\S]*?ref=\{viewportRef\}/);
   assert.match(source, /createEditorArtworkLayer\("layer-1", "Layer 1"\)/);
   assert.match(source, /function addLayer\(\)[\s\S]*?setSelectedLayerId\(id\)/);
   assert.match(source, /function createLayerMask\(id: string\)[\s\S]*?setSelectedTarget\("mask"\)/);
