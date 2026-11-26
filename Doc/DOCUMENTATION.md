@@ -2012,6 +2012,24 @@ check) rendered the same component twice: with `optionGroups={null}` the groups 
 Fit Type, Sleeve, GSM; with an admin subset the groups were Size, Color (single value, preselected),
 Print Method and MH Cuttings, with no Material/Fit/Sleeve/GSM box at all.
 
+## Phone bottom sheet for tool options (2026-11-26)
+
+On a screen narrower than 768 px the Adjustments panel renders as a bottom sheet instead of a right-hand dock.
+The panel chooses this itself with `useSyncExternalStore` over `(max-width: 767px)`, so there is no hydration
+mismatch and no guessed width.
+
+- The sheet is a **flow child** of the workspace column (`flex flex-col`), and the viewport becomes
+  `max-md:relative max-md:inset-auto max-md:min-h-0 max-md:flex-1` there. Opening the sheet therefore shrinks the
+  canvas area; it never covers the artwork.
+- It is capped at `max-h-[32vh]`, has a grab handle, a 44 px close button (`Close adjustments sheet`) and a
+  `rounded-t-2xl` top edge. It keeps its `marginBottom` equal to the measured tools-bar inset, so it stops above
+  the floating tools bar. The inset is measured from the sheet's column, not from the scroller inside it.
+- Opening it scrolls the print canvas back into the remaining room.
+- The panel is still the same accordion, so one box is open at a time, and `RangeField` still gives each slider
+  a 44 px number field on touch.
+- While the sheet is open the docked "Return to Layers" arrow is hidden; the sheet's own close button toggles
+  back to the Layers panel.
+
 ## Gradient tool box (2026-11-26)
 
 The Gradient tool's box now reads Shape, Preset, Reverse, **Angle** (0-360, step 5) and **Opacity** (1-100),

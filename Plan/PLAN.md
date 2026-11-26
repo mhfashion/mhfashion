@@ -3866,7 +3866,11 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    clamped 120–2000) is now what `addCanvasTextLayer` writes into a new layer, instead of a constant in the canvas;
    the Text box carries a "Wrap width" slider with a number field, so the shop sets how wide new text runs before
    it wraps. Verified in Chromium: the field starts at 880, typing 320 gives a new text layer whose inline editor is
-   320 units wide, console clean. A default **line height** is still open.
+   320 units wide, console clean.
+   *Default line height built 2026-11-24.* `EditorTextToolSettings.lineHeight` (0.7-3, default
+   `EDITOR_TEXT_DEFAULT_LINE_HEIGHT` = 1.2) is normalised with the rest of the group, the Text box carries a
+   "Line height" step field next to "Wrap width", and `addCanvasTextLayer` writes it into a new layer, so item 6
+   is complete.
 7. **Gradient box:** an angle field and the stop editor reachable from the tool box, plus opacity.
    *Built 2026-11-26.* `EditorGradientToolSettings` gained `angle` (0-360, clamped) and `opacity` (1-100), both
    normalised so old tool settings fill in at 0° and 100%. `editorGradientFromToolSettings` now rotates the new
@@ -3910,6 +3914,24 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    rules plus the panel/canvas wiring.
 10. **Phone:** a tool's options open as a bottom sheet with large sliders, one box at a time, never hiding the
     canvas, 44 px targets.
+    *Built 2026-11-26.* The panel decides for itself, from `(max-width: 767px)` read through
+    `useSyncExternalStore`, whether it renders docked (`data-dock-side="right"`) or as a sheet
+    (`data-dock-side="bottom"`, `data-adjustments-sheet="true"`). The sheet is a **flow child** of the workspace
+    column, not an overlay: the column became `flex flex-col` and the viewport `max-md:relative max-md:inset-auto
+    max-md:min-h-0 max-md:flex-1`, so opening the sheet shrinks the canvas area instead of covering it. It is
+    capped at `max-h-[32vh]`, carries a grab handle and a 44 px `ChevronDown` close button, and has a
+    `rounded-t-2xl` top edge. It stops above the floating tools bar through the measured `toolsBarInset` used as
+    its `marginBottom`; that inset is measured from the sheet's own column, because measuring from the scroller
+    inside it (which the sheet shrinks) made the answer circular. Opening the sheet then scrolls the print canvas
+    back into the room that is left. The sections stay the one-open accordion, so one box is open at a time, and
+    every slider keeps its 44 px number field on touch.
+    Verified in Chromium at 390 x 844 touch: the sheet measured 270 px tall at y 420-690, the tools bar stayed at
+    690-770 untouched, the print canvas sat at 58-408 **fully visible with nothing hidden**, exactly one section
+    was open, the close button returned to the Layers panel, and the docked "Return to Layers" arrow was gone
+    while the sheet was open. At 1440 x 900 nothing changed: the same component still docks right at 256 px with
+    the return arrow. Console clean at both sizes. `tests/canvas-shell.test.cjs` pins the media query, the flow
+    classes, the margin, the close button and the hidden arrow; `tests/editor-viewport.test.cjs` keeps the
+    tools-bar spacer honest.
 11. **Persistence (decision for the owner):** whether tool settings survive a reload.
    *Partly answered 2026-11-26:* saved presets and recents persist per browser (item 9). Whether the live
    tool settings survive a reload by themselves is still the owner's call.

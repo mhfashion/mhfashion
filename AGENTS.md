@@ -889,6 +889,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Adding a canvas insertion means bumping the `revealLayersStack();` count assertion in
   `tests/canvas-shell.test.cjs` (it is 6: text, element, design, photo, upload, gradient).
 
+## Phone bottom sheet (Adjustments panel)
+- Below 768 px the panel is a bottom sheet: `data-dock-side="bottom"` and `data-adjustments-sheet="true"`,
+  chosen by `useSyncExternalStore` over `(max-width: 767px)`.
+- It is a **flow** child of the workspace column (`flex flex-col`; viewport `max-md:relative max-md:inset-auto
+  max-md:min-h-0 max-md:flex-1`), so it shrinks the canvas area rather than covering it. Do not turn it back into
+  an `absolute` overlay: that covered the mock-up and the tools bar.
+- `max-h-[32vh]` plus `marginBottom: sheetOffset` (the measured tools-bar inset) keeps it above the tools bar.
+  Measure that inset from the sheet's column (`viewportRef.current.parentElement`), never from the scroller,
+  which the sheet shrinks (a circular measurement).
+- Opening the sheet scrolls the print canvas back into view; the docked "Return to Layers" arrow is hidden
+  while the sheet is open and its own close button toggles back to Layers.
+
 ## Gradient tool box
 - `EditorGradientToolSettings` has `angle` and `opacity`. `editorGradientFromToolSettings` rotates a new
   layer to that angle; `editorGradientClickAxis` is the ramp a click (no drag) lays.
