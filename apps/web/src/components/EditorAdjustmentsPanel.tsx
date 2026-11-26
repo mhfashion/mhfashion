@@ -24,6 +24,7 @@ const TOOL_LABELS: Record<EditorTool, string> = {
   eraser: "Eraser",
   shape: "Shape",
   gradient: "Gradient",
+  eyedropper: "Eyedropper",
   "remove-bg": "Remove BG",
 };
 // Families offered by the Text tool box. The first entry is the app font stack,
@@ -45,6 +46,7 @@ const TOOL_OPTION_HINTS: Partial<Record<EditorTool, string>> = {
   text: "Select a text layer to edit its font, size, color, alignment, effects, and decoration.",
   shape: "Pick a shape from the Shape chip, then drag on the canvas to draw it into the active layer.",
   gradient: "Pick a shape and preset, then drag on the canvas to lay a gradient on a new layer. Drag a selected gradient layer to re-aim its axis; fine-tune stops under Gradient.",
+  eyedropper: "Click the canvas to copy the colour under the pointer into the foreground swatch. The canvas returns to the tool you were using.",
   "remove-bg": "Upload a photo layer to use background removal. The image service is not connected yet.",
 };
 type ToolOptionsPatch = {

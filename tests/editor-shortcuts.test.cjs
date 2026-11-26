@@ -96,7 +96,7 @@ test("the canvas binds the shortcut to the same undo and redo as the tool-bar bu
 const pressTool = (overrides) => shortcuts.editorToolShortcut({ key: "", ...overrides });
 
 test("each tool has its letter, and the letters do not collide", () => {
-  const expected = { v: "move", h: "hand", b: "brush", n: "pencil", p: "pen", t: "text", e: "eraser", u: "shape", g: "gradient" };
+  const expected = { v: "move", h: "hand", b: "brush", n: "pencil", p: "pen", t: "text", e: "eraser", u: "shape", g: "gradient", i: "eyedropper" };
   for (const [key, tool] of Object.entries(expected)) {
     assert.deepEqual(pressTool({ key }), { kind: "tool", tool }, `${key} picks ${tool}`);
     assert.deepEqual(pressTool({ key: key.toUpperCase() }), { kind: "tool", tool }, `${key.toUpperCase()} picks ${tool} too`);

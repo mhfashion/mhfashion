@@ -444,7 +444,8 @@ test("every tool paints outside the print canvas, not just inside it", () => {
   // The drawing tools used to clamp their pointer to the print area, so a stroke started
   // outside the canvas was either ignored (edge-gesture guard) or snapped onto the border.
   // Artwork space now extends onto the pasteboard around the canvas.
-  assert.match(source, /const CANVAS_OUTSIDE_TOOLS: EditorTool\[\] = \[\.\.\.DRAWING_TOOLS, "text"\];/);
+  // The eyedropper reads the same surface, so a colour can be picked anywhere the artwork shows.
+  assert.match(source, /const CANVAS_OUTSIDE_TOOLS: EditorTool\[\] = \[\.\.\.DRAWING_TOOLS, "text", "eyedropper"\];/);
   assert.doesNotMatch(source, /isCanvasEdgeGesture\(event\.clientX, event\.clientY\)\) return;/);
   // A transparent pasteboard sits behind the canvas and carries the drawing handlers, so a
   // stroke or text click that starts outside the print area still reaches the tool.

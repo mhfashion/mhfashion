@@ -889,6 +889,15 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Adding a canvas insertion means bumping the `revealLayersStack();` count assertion in
   `tests/canvas-shell.test.cjs` (it is 6: text, element, design, photo, upload, gradient).
 
+## Eyedropper (`lib/editor-colour-sample.ts`, `EditorCanvas.tsx`)
+- `window.EyeDropper` first, canvas sampling as the fallback: the artwork is serialised through the export
+  renderer and one pixel is read, so the colour is what is painted, not a layer's declared fill. Transparent
+  pixels blend to `#FFFFFF` (the paper).
+- The press must be handled in **three** places or the tool looks dead: `startArtworkStroke` (plus
+  `eyedropper` in `CANVAS_OUTSIDE_TOOLS`, or the pasteboard never receives it), `startSelectionBoxPress`
+  (the transform box covers the selected layer) and `startCanvasLayerResize` (its handles).
+- It is a one-shot tool: `toolBeforeEyedropperRef` hands the canvas back to the previous tool after a pick.
+
 ## Admin sidebar behind the menu button (`components/admin/AdminShell.tsx`)
 - One full-width sticky top bar: **☰ · brand (MH FASHION. / SUPER ADMIN · PREVIEW) · search · actions**.
   The brand belongs there, between the menu button and the search — not inside the sidebar — and the bar

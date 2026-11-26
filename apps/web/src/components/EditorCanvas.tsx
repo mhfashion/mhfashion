@@ -28,6 +28,7 @@ import {
   stepBrushSize,
 } from "@/lib/editor-shortcuts";
 import { imagePrintQuality, imagePrintLevelRank } from "@/lib/editor-image-ppi";
+import { nativeEyeDropper, sampleArtworkColour } from "@/lib/editor-colour-sample";
 import type { ImagePrintQuality } from "@/lib/editor-image-ppi";
 import { flipLayerPlacement, getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } from "@/lib/editor-transform";
 import type { TransformHandle } from "@/lib/editor-transform";
@@ -130,7 +131,7 @@ const DRAWING_TOOLS: EditorTool[] = ["brush", "pencil", "pen", "shape", "gradien
 // Every tool that puts marks on the artwork, including text. These get a drawing surface that
 // reaches past the print area, so a stroke or a text box can be placed outside the canvas
 // instead of stopping dead at its border.
-const CANVAS_OUTSIDE_TOOLS: EditorTool[] = [...DRAWING_TOOLS, "text"];
+const CANVAS_OUTSIDE_TOOLS: EditorTool[] = [...DRAWING_TOOLS, "text", "eyedropper"];
 
 // Inline SVG paths for the double-headed arrows shown while hovering a resize handle.
 // Each path is centred on the handle and points along that handle's own axis: corners use
@@ -590,6 +591,8 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const [adjustmentsOpen, setAdjustmentsOpen] = useState(false);
   const [editSidebarOpen, setEditSidebarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<EditorTool>("pen");
+  // The eyedropper is a one-shot tool: it hands the canvas back to whatever was active before.
+  const toolBeforeEyedropperRef = useRef<EditorTool>("move");
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const [toolOptions, setToolOptions] = useState<EditorToolOptions>(() => normalizeEditorToolOptions(EDITOR_TOOL_OPTIONS_DEFAULT));
   // True while a freehand stroke is being drawn, so the Free Transform box hides itself
@@ -751,6 +754,46 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     setToolNotice(outcome === "downloaded"
       ? format === "png" ? "Design downloaded as a 300 dpi PNG" : "Design downloaded as an SVG"
       : "The design could not be downloaded. Try again.");
+  };
+
+  /**
+   * The Eyedropper tool. The browser's own picker is used when it exists (it can read the mockup
+   * and anything else on screen); otherwise the artwork is rasterised and the pixel under the
+   * pointer is read. Either way the colour lands in the foreground swatch and the canvas goes back
+   * to the tool that was active before.
+   */
+  const pickColourAt = async (clientX: number, clientY: number) => {
+    const handBack = () => setActiveTool(toolBeforeEyedropperRef.current === "eyedropper" ? "move" : toolBeforeEyedropperRef.current);
+    const native = nativeEyeDropper();
+    if (native) {
+      try {
+        const picked = await native.open();
+        setForegroundColor(picked.sRGBHex.toLowerCase());
+        setToolNotice(`Picked ${picked.sRGBHex.toUpperCase()}`);
+        handBack();
+      } catch {
+        setToolNotice("Colour picking was cancelled. Click the canvas to try again.");
+      }
+      return;
+    }
+    const unit = toCanvasPoint(clientX, clientY);
+    const inner = serializeArtworkSvg(exportSvgRef.current);
+    if (!inner) {
+      setToolNotice("Nothing to sample yet. Add something to the canvas first.");
+      return;
+    }
+    const colour = await sampleArtworkColour({
+      inner,
+      point: { x: unit.x * 1000, y: unit.y * 1200 },
+      fontCss: await designExportFontCss(textFontFamilies),
+    });
+    if (!colour) {
+      setToolNotice("The canvas could not be read in this browser. Try the colour picker in the swatch.");
+      return;
+    }
+    setForegroundColor(colour);
+    setToolNotice(`Picked ${colour.toUpperCase()}`);
+    handBack();
   };
 
   // Arrow-pad nudges from the Adjustments panel: offset only, so the artwork
@@ -1745,6 +1788,14 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
    */
   function startSelectionBoxPress(event: React.PointerEvent<Element>) {
     if (event.button !== 0 || !event.isPrimary) return;
+    // The transform box covers the selected layer, so the eyedropper has to read the press here
+    // as well or a selected shape could never be sampled.
+    if (activeTool === "eyedropper") {
+      event.preventDefault();
+      event.stopPropagation();
+      void pickColourAt(event.clientX, event.clientY);
+      return;
+    }
     const point = toCanvasPointUnclamped(event.clientX, event.clientY);
     const hitId = hitTestLayerAt({ x: point.x * 1000, y: point.y * 1200 });
     if (hitId && !selectedLayerIds.includes(hitId)) {
@@ -1774,6 +1825,12 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
 
   function startCanvasLayerResize(event: React.PointerEvent<SVGCircleElement>) {
     if (event.button !== 0 || !event.isPrimary || selectedLayerIds.length === 0) return;
+    if (activeTool === "eyedropper") {
+      event.preventDefault();
+      event.stopPropagation();
+      void pickColourAt(event.clientX, event.clientY);
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     const ids = resolveLinkedLayerIds(selectedLayerIds).filter((id) => !layers.find((layer) => layer.id === id)?.locked);
@@ -2276,6 +2333,12 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
       startGradientDrawing(event);
       return;
     }
+    if (activeTool === "eyedropper") {
+      event.preventDefault();
+      event.stopPropagation();
+      void pickColourAt(event.clientX, event.clientY);
+      return;
+    }
     if (activeTool === "remove-bg") {
       event.preventDefault();
       event.stopPropagation();
@@ -2527,6 +2590,7 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   }
 
   function chooseTool(tool: EditorTool) {
+    if (tool === "eyedropper" && activeTool !== "eyedropper") toolBeforeEyedropperRef.current = activeTool;
     const selected = layers.find((layer) => layer.id === selectedLayerId);
     // A photo layer has no paint target: selecting any drawing tool just keeps
     // Move active so the photo stays adjustable, never drawable.
@@ -2551,9 +2615,11 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     if (tool === "pen" || tool === "shape" || tool === "gradient") setSelectedTarget("artwork");
     setToolNotice(tool === "remove-bg"
       ? "Remove BG needs an uploaded image; background removal is not connected yet."
-      : tool === "gradient"
-          ? "Drag on the canvas to draw a gradient on a new layer. Pick its shape and preset in Adjustments."
-          : "");
+      : tool === "eyedropper"
+          ? "Click the canvas to pick a colour into the foreground swatch."
+          : tool === "gradient"
+              ? "Drag on the canvas to draw a gradient on a new layer. Pick its shape and preset in Adjustments."
+              : "");
   }
 
   function startNodeDrag(node: WorkspaceNode, event: React.PointerEvent<HTMLElement>) {

@@ -2012,6 +2012,29 @@ check) rendered the same component twice: with `optionGroups={null}` the groups 
 Fit Type, Sleeve, GSM; with an admin subset the groups were Size, Color (single value, preselected),
 Print Method and MH Cuttings, with no Material/Fit/Sleeve/GSM box at all.
 
+## Eyedropper tool (2026-11-26)
+
+The editor's tools bar has an Eyedropper (`Pipette`, shortcut **I**) beside the Gradient tool. A press on the
+canvas copies the colour under the pointer into the foreground swatch, shows `Picked #RRGGBB` in the tool
+notice, and hands the canvas back to the tool that was active before it.
+
+Two paths, in this order:
+
+1. **The platform picker** (`window.EyeDropper`, Chrome and Edge). It opens on the press and can read the
+   mockup, the page or another window; a cancelled pick says so and leaves the tool active.
+2. **Canvas sampling** everywhere else. `lib/editor-colour-sample.ts` serialises the artwork through the
+   export renderer (`serializeArtworkSvg` → `designExportDocument` → `svgDataUrl`), draws it into a
+   1000 x 1200 canvas and reads the pixel under the pointer. That is what is painted — effects, gradients and
+   photos included — rather than a layer's declared fill. A transparent pixel is blended over the white paper,
+   so empty canvas reads `#FFFFFF`.
+
+The press is read in three places because three surfaces can receive it: `startArtworkStroke` (the pasteboard,
+which now includes `eyedropper` in `CANVAS_OUTSIDE_TOOLS`), `startSelectionBoxPress` (the transform box covers
+a selected layer) and `startCanvasLayerResize` (its handles). Missing any of them made the tool look dead.
+
+Tests: `tests/editor-colour-sample.test.cjs` (pixel → hex, transparency, pointer mapping and clamping, the
+wiring) and `tests/editor-shortcuts.test.cjs` (the `I` key).
+
 ## The dashboard's sidebar hides behind the menu icon (2026-11-21)
 
 `AdminShell` has one full-width top bar:

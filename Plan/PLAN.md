@@ -3129,7 +3129,7 @@ the owner approves an item before it starts.
 | E18 | Text effects, round 2 | more looks and finer control for the effect stack | `editor-layers`, `EditorLayerPreview`, `EditorAdjustmentsPanel` | medium |
 | E19 | A real text bend — **approach decided 2026-11-22** (outline warp with HarfBuzz) | Arch and Wave only slant the text | `editor-layers`, `editor-fonts`, renderer, bounds, print | medium |
 | E20 | Brushes, round 2 | brush packs, pressure, stabiliser and a size cursor | Brush box, `public/brushes`, `EditorCanvas` | medium |
-| E21 | Tool adjustments, polish | numeric entry, reset, shortcuts, eyedropper, richer Pen and Shape boxes, phone layout | `EditorAdjustmentsPanel`, `EditorToolsBar`, `EditorCanvas` | medium |
+| E21 | Tool adjustments, polish | numeric entry, reset, shortcuts, eyedropper (**done 2026-11-26**), richer Pen and Shape boxes, phone layout | `EditorAdjustmentsPanel`, `EditorToolsBar`, `EditorCanvas` | medium |
 | E22 | Adjustments panel: complete, compact and beautiful | the panel has no numeric position or size, no align, flip or rotate, no colour system, and every label is 9 to 10 px | `EditorAdjustmentsPanel`, `EditorPhotoAdjustments`, `EditorToolsBar`, shared controls | large |
 | E23 | Design areas per mockup | align, snap and the outside-the-area warning need to know where artwork may go | admin, mockup `meta.json`, `EditorCanvas`, `lib/print-quality.ts` | medium |
 
@@ -3807,10 +3807,27 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    `EDITOR_DEFAULT_BACKGROUND`, which are now also the editor's initial colours. Each tool button prints its
    key in the tooltip and in `aria-keyshortcuts`. Verified in Chromium: all nine letters pick their tool,
    `]` took the brush from 52 to 57 px, X swapped #202124/#ffffff and D restored them, typing "v" in the
-   header search left the Brush active, and the console stayed clean. I (eyedropper) is not built — it needs
-   the eyedropper itself.
+   header search left the Brush active, and the console stayed clean. I (eyedropper) followed on 2026-11-26 with
+   the tool itself (see item 3).
 3. **Eyedropper:** pick a colour from the canvas or the mockup; the browser's EyeDropper API where it exists,
    canvas sampling elsewhere.
+   *Built 2026-11-26.* The tools bar carries an **Eyedropper** (lucide `Pipette`) with the **I** shortcut, and
+   `lib/editor-colour-sample.ts` holds the whole colour path. On press the canvas asks `nativeEyeDropper()`
+   first: where the browser has `window.EyeDropper` (Chrome, Edge) the platform picker opens, so the mockup
+   and anything else on screen can be read too; otherwise the artwork is serialised through the existing
+   export renderer (`serializeArtworkSvg` → `designExportDocument` → `svgDataUrl`), drawn into a
+   1000 x 1200 canvas and the pixel under the pointer is read, so the colour is what is *painted* — effects,
+   gradients and photos included — not a layer's declared fill. `hexFromRgba` blends a transparent pixel over
+   the white paper, so empty canvas reads `#FFFFFF` rather than black. The pick lands in the foreground swatch,
+   the notice says `Picked #RRGGBB`, and the canvas hands itself back to the tool that was active before
+   (`toolBeforeEyedropperRef`). Because the transform box and the pasteboard both sit over the artwork, the
+   press is also read in `startSelectionBoxPress` and `startCanvasLayerResize`, and `eyedropper` joined
+   `CANVAS_OUTSIDE_TOOLS`; without those three the tool was dead whenever a layer was selected or a drawing
+   tool had painted the pasteboard. Verified in Chromium at 1440 x 900 with `window.EyeDropper` removed to
+   force the sampling path: a rectangle filled `#202124` was drawn, the swatch was read back as `#202124` after
+   a pick, the bare paper read `#FFFFFF` and updated the swatch, the tool returned to Shape tools, and the
+   console stayed clean. `tests/editor-colour-sample.test.cjs` covers the pixel maths, the pointer mapping and
+   the wiring; `tests/editor-shortcuts.test.cjs` now pins `I`.
 4. **Pen box:** join style, line style (solid, dashed, dotted), end shapes for open paths, and a separate fill
    for closed paths. Today it holds width, width presets and cap.
    *Join and line style built 2026-11-24.* `EditorPenSettings` gains `join` (round / miter / bevel) and `style`

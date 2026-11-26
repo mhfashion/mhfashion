@@ -16,6 +16,7 @@ import {
   Move,
   Pencil,
   PenTool,
+  Pipette,
   Redo2,
   RefreshCw,
   Star,
@@ -28,7 +29,7 @@ import { useEffect, useRef, useState } from "react";
 import { EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, type EditorShapePreset } from "@/lib/editor-layers";
 import { editorToolShortcutKey, type EditorShortcutTool } from "@/lib/editor-shortcuts";
 
-export type EditorTool = "move" | "hand" | "pencil" | "pen" | "text" | "brush" | "eraser" | "shape" | "gradient" | "remove-bg";
+export type EditorTool = "move" | "hand" | "pencil" | "pen" | "text" | "brush" | "eraser" | "shape" | "gradient" | "eyedropper" | "remove-bg";
 
 type Props = {
   activeTool: EditorTool;
@@ -63,6 +64,7 @@ const tools = [
   { id: "eraser", label: "Eraser tool", Icon: Eraser },
   { id: "shape", label: "Shape tools", Icon: Square },
   { id: "gradient", label: "Gradient tool", Icon: Blend },
+  { id: "eyedropper", label: "Eyedropper", Icon: Pipette },
 ] as const;
 
 const shapeIcons = {

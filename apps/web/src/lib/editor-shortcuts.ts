@@ -1,7 +1,7 @@
 export type EditorHistoryShortcut = "undo" | "redo";
 
 /** The tools a key can pick. The bar's own union also carries tools no key reaches. */
-export type EditorShortcutTool = "move" | "hand" | "pencil" | "pen" | "text" | "brush" | "eraser" | "shape" | "gradient";
+export type EditorShortcutTool = "move" | "hand" | "pencil" | "pen" | "text" | "brush" | "eraser" | "shape" | "gradient" | "eyedropper";
 
 export type EditorToolShortcut =
   | { kind: "tool"; tool: EditorShortcutTool }
@@ -20,6 +20,7 @@ export const EDITOR_TOOL_SHORTCUTS: ReadonlyArray<{ tool: EditorShortcutTool; ke
   { tool: "eraser", key: "e" },
   { tool: "shape", key: "u" },
   { tool: "gradient", key: "g" },
+  { tool: "eyedropper", key: "i" },
 ];
 
 /** The letter a tool's tooltip prints, e.g. "V". */
