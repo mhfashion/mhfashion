@@ -322,7 +322,7 @@ test("the Gradient tool draws, re-aims, and edits gradient layers", () => {
   assert.match(layerPreview, /editorGradientConicWedges\(gradient\)/);
   assert.match(layerPreview, /editorGradientDiamondFacets\(gradient\)/);
   // The Adjustments panel exposes tool shape/preset pickers and a stop editor.
-  assert.match(adjustmentsPanel, /function GradientOptions\(\{ value, onChange \}/);
+  assert.match(adjustmentsPanel, /function GradientOptions\(\{ value, onChange, selectedGradient, onUpdateSelectedGradient \}/);
   assert.match(adjustmentsPanel, /aria-label="Gradient shape"/);
   assert.match(adjustmentsPanel, /aria-label="Gradient preset"/);
   assert.match(adjustmentsPanel, /function GradientEditor\(\{ gradient, onChange \}/);

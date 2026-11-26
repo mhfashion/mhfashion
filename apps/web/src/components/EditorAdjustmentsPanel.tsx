@@ -475,7 +475,13 @@ function GradientPreviewBar({ stops }: { stops: EditorGradientStop[] }) {
   return <span aria-hidden="true" className="block h-5 w-full rounded-md border border-border" style={{ backgroundImage: `linear-gradient(90deg, ${css})` }} />;
 }
 
-function GradientOptions({ value, onChange }: { value: EditorGradientToolSettings; onChange: (patch: Partial<EditorGradientToolSettings>) => void }) {
+function GradientOptions({ value, onChange, selectedGradient, onUpdateSelectedGradient }: {
+  value: EditorGradientToolSettings;
+  onChange: (patch: Partial<EditorGradientToolSettings>) => void;
+  /** The selected gradient layer, so its stops are editable from the tool box too. */
+  selectedGradient?: EditorGradient | null;
+  onUpdateSelectedGradient?: (gradient: EditorGradient) => void;
+}) {
   return <div className="space-y-3">
     <div className="space-y-1.5">
       <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Shape</p>
@@ -491,8 +497,14 @@ function GradientOptions({ value, onChange }: { value: EditorGradientToolSetting
       </div>
     </div>
     <label className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Reverse the ramp</span><input aria-label="Gradient reverse" type="checkbox" checked={value.reverse} onChange={(event) => onChange({ reverse: event.target.checked })} className="h-3.5 w-3.5 accent-[var(--accent)]" /></label>
-    <button type="button" aria-label="Reset gradient to its default" onClick={() => onChange({ type: EDITOR_TOOL_OPTIONS_DEFAULT.gradient.type, presetId: EDITOR_TOOL_OPTIONS_DEFAULT.gradient.presetId, reverse: EDITOR_TOOL_OPTIONS_DEFAULT.gradient.reverse })} className="w-full rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-text-secondary outline-none hover:border-accent hover:bg-accent/10">Reset gradient to default</button>
-    <p className="text-[9px] leading-relaxed text-text-muted">Pick a shape and preset, then drag on the canvas to lay the gradient. Drag again on a selected gradient layer to re-aim it; edit its stops under Gradient below.</p>
+    <RangeField label="Angle" value={value.angle} min={0} max={360} step={5} suffix="°" ariaLabel="Gradient tool angle" defaultValue={EDITOR_TOOL_OPTIONS_DEFAULT.gradient.angle} onChange={(angle) => onChange({ angle })} />
+    <RangeField label="Opacity" value={value.opacity} min={1} max={100} suffix="%" ariaLabel="Gradient tool opacity" defaultValue={EDITOR_TOOL_OPTIONS_DEFAULT.gradient.opacity} onChange={(opacity) => onChange({ opacity })} />
+    <button type="button" aria-label="Reset gradient to its default" onClick={() => onChange({ ...EDITOR_TOOL_OPTIONS_DEFAULT.gradient })} className="w-full rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-text-secondary outline-none hover:border-accent hover:bg-accent/10">Reset gradient to default</button>
+    <p className="text-[9px] leading-relaxed text-text-muted">Pick a shape and preset, then drag on the canvas to lay the gradient. A click lays it at the Angle above; a drag sets its own. Opacity is what a new gradient layer starts at.</p>
+    {selectedGradient && onUpdateSelectedGradient && <div className="space-y-2 rounded-lg border border-border/70 p-2">
+      <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Stops on the selected gradient</p>
+      <GradientEditor gradient={selectedGradient} onChange={onUpdateSelectedGradient} />
+    </div>}
   </div>;
 }
 
@@ -699,6 +711,8 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
             {activeTool === "gradient" && <GradientOptions
               value={toolOptions.gradient}
               onChange={(patch) => onUpdateToolOptions({ gradient: patch })}
+              selectedGradient={selectedLayer?.gradient ?? null}
+              onUpdateSelectedGradient={onUpdateGradient}
             />}
             {activeTool === "text" && <TextToolOptions value={toolOptions.text} onChange={(patch) => onUpdateToolOptions({ text: patch })} />}
             {activeTool === "shape" && <ShapeToolOptions preset={selectedShape} onSelect={onSelectShape} />}

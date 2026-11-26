@@ -159,7 +159,7 @@ export const EDITOR_TOOL_OPTIONS_DEFAULT: EditorToolOptions = {
   pencil: { shape: "round", size: 24, opacity: 1, softness: 0, feather: 0, spacing: 6, flow: 100, smoothing: 2, sizeJitter: 0, opacityJitter: 0, jitterMinimum: 20, angle: 0, roundness: 100, scatter: 0, angleJitter: 0, roundnessJitter: 0, fadeOut: false, blend: "normal" },
   eraser: { mode: "brush", shape: "round", size: 120, hardness: 60, opacity: 100, flow: 100, spacing: 12, angle: 0, roundness: 100 },
   pen: { width: 5, cap: "round", join: "round", style: "solid", ends: "none", fillClosed: true, fillColor: null },
-  gradient: { type: "linear", presetId: "black-white", reverse: false },
+  gradient: { type: "linear", presetId: "black-white", reverse: false, angle: 0, opacity: 100 },
   text: { fontSize: 110, fontFamily: EDITOR_TEXT_FONT_FAMILY, fontWeight: 700, textAlign: "center", color: null, letterSpacing: 0, wrapWidth: DEFAULT_TEXT_WRAP_WIDTH, lineHeight: EDITOR_TEXT_DEFAULT_LINE_HEIGHT },
 };
 
@@ -238,18 +238,28 @@ export function normalizeEditorToolOptions(input: Partial<EditorToolOptions> | u
   };
 }
 
-/** The Gradient tool holds the shape and preset a new gradient layer starts from. */
+/** The Gradient tool holds the shape, preset, angle and opacity a new gradient layer starts from. */
 export type EditorGradientToolSettings = {
   type: EditorGradientType;
   presetId: string;
   /** Flip the ramp, so the last colour sits at the start of the axis. */
   reverse: boolean;
+  /** Axis angle in degrees, clockwise from the x axis; used by a click and by new layers. */
+  angle: number;
+  /** Opacity of a new gradient layer, 1-100. */
+  opacity: number;
 };
 
 export function normalizeEditorGradientToolSettings(input: Partial<EditorGradientToolSettings> | undefined): EditorGradientToolSettings {
   const type = EDITOR_GRADIENT_TYPES.includes(input?.type as EditorGradientType) ? input!.type as EditorGradientType : EDITOR_TOOL_OPTIONS_DEFAULT.gradient.type;
   const presetId = EDITOR_GRADIENT_PRESETS.some((preset) => preset.id === input?.presetId) ? input!.presetId! : EDITOR_TOOL_OPTIONS_DEFAULT.gradient.presetId;
-  return { type, presetId, reverse: input?.reverse ?? EDITOR_TOOL_OPTIONS_DEFAULT.gradient.reverse };
+  return {
+    type,
+    presetId,
+    reverse: input?.reverse ?? EDITOR_TOOL_OPTIONS_DEFAULT.gradient.reverse,
+    angle: clamp(Number.isFinite(input?.angle) ? input!.angle! : EDITOR_TOOL_OPTIONS_DEFAULT.gradient.angle, 0, 360),
+    opacity: clamp(Math.round(Number.isFinite(input?.opacity) ? input!.opacity! : EDITOR_TOOL_OPTIONS_DEFAULT.gradient.opacity), 1, 100),
+  };
 }
 
 export function normalizeEditorTextToolSettings(input: Partial<EditorTextToolSettings> | undefined): EditorTextToolSettings {
@@ -1338,7 +1348,7 @@ export function editorGradientDiamondFacets(gradient: EditorGradient): { d: stri
 export function editorGradientFromToolSettings(settings: EditorGradientToolSettings | undefined): EditorGradient {
   const normalized = normalizeEditorGradientToolSettings(settings);
   const preset = EDITOR_GRADIENT_PRESETS.find((item) => item.id === normalized.presetId) ?? EDITOR_GRADIENT_PRESETS[0];
-  return normalizeEditorGradient({
+  const gradient = normalizeEditorGradient({
     ...defaultEditorGradient(),
     type: normalized.type,
     stops: preset.stops.map((stop) => ({
@@ -1347,7 +1357,27 @@ export function editorGradientFromToolSettings(settings: EditorGradientToolSetti
       offset: normalized.reverse ? 100 - stop.offset : stop.offset,
     })),
   });
+  return editorGradientWithAngle(gradient, normalized.angle);
 }
+
+/**
+ * The axis a gradient gets when the pointer went down without dragging: a centred ramp at the
+ * tool's own angle. It used to be horizontal whatever the tool said, so the angle field only
+ * reached layers that had already been dragged in.
+ */
+export function editorGradientClickAxis(point: { x: number; y: number }, degrees: number): { x1: number; y1: number; x2: number; y2: number } {
+  const radians = ((Number.isFinite(degrees) ? degrees : 0) * Math.PI) / 180;
+  const half = EDITOR_GRADIENT_CLICK_HALF_LENGTH;
+  return {
+    x1: point.x - Math.cos(radians) * half,
+    y1: point.y - Math.sin(radians) * half,
+    x2: point.x + Math.cos(radians) * half,
+    y2: point.y + Math.sin(radians) * half,
+  };
+}
+
+/** Half the axis a click lays down: 640 units across, so a click fills the print area. */
+export const EDITOR_GRADIENT_CLICK_HALF_LENGTH = 320;
 
 export function createEditorGradientLayer(
   id: string,

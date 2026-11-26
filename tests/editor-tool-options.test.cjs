@@ -20,6 +20,9 @@ const {
   editorGradientFromToolSettings,
   editorGradientAngle,
   editorGradientWithAngle,
+  editorGradientClickAxis,
+  normalizeEditorGradientToolSettings,
+  EDITOR_GRADIENT_CLICK_HALF_LENGTH,
   defaultEditorShapeStyle,
 } = lib.exports;
 
@@ -45,6 +48,40 @@ test("a gradient layer's axis can be set by angle without losing its length", ()
 
   assert.match(panel, /ariaLabel="Gradient angle"/, "the gradient editor offers the angle");
   assert.match(panel, /editorGradientWithAngle\(gradient, degrees\)/, "the control rotates the real axis");
+});
+
+test("the Gradient tool box carries an angle and an opacity (plan E21 item 7)", () => {
+  const defaults = normalizeEditorGradientToolSettings(undefined);
+  assert.equal(defaults.angle, 0, "a new gradient runs left to right unless the shop says otherwise");
+  assert.equal(defaults.opacity, 100);
+  assert.equal(normalizeEditorGradientToolSettings({ angle: 470, opacity: 0 }).angle, 360, "the angle is clamped");
+  assert.equal(normalizeEditorGradientToolSettings({ angle: 470, opacity: 0 }).opacity, 1, "the opacity never reaches 0");
+  assert.equal(normalizeEditorGradientToolSettings({ angle: Number.NaN, opacity: Number.NaN }).angle, 0);
+  assert.equal(normalizeEditorGradientToolSettings({ angle: 135, opacity: 42 }).angle, 135);
+  assert.equal(normalizeEditorGradientToolSettings({ angle: 135, opacity: 42.6 }).opacity, 43);
+
+  const vertical = editorGradientFromToolSettings({ type: "linear", presetId: "black-white", reverse: false, angle: 90, opacity: 60 });
+  assert.equal(editorGradientAngle(vertical), 90, "a new layer takes the tool's angle");
+  assert.equal(vertical.stops[0].color, "#000000", "the ramp still comes from the preset");
+
+  const horizontal = editorGradientFromToolSettings({ type: "linear", presetId: "black-white", reverse: false, angle: 0, opacity: 100 });
+  assert.equal(editorGradientAngle(horizontal), 0);
+
+  const click = editorGradientClickAxis({ x: 500, y: 600 }, 0);
+  assert.deepEqual(click, { x1: 500 - EDITOR_GRADIENT_CLICK_HALF_LENGTH, y1: 600, x2: 500 + EDITOR_GRADIENT_CLICK_HALF_LENGTH, y2: 600 });
+  const diagonal = editorGradientClickAxis({ x: 500, y: 600 }, 90);
+  assert.equal(Math.round(diagonal.x1), 500, "a 90 degree click lays a vertical ramp");
+  assert.equal(Math.round(diagonal.y1), 600 - EDITOR_GRADIENT_CLICK_HALF_LENGTH);
+  assert.equal(Math.round(Math.hypot(diagonal.x2 - diagonal.x1, diagonal.y2 - diagonal.y1)), EDITOR_GRADIENT_CLICK_HALF_LENGTH * 2);
+
+  // The box offers both, and the canvas honours them.
+  assert.match(panel, /ariaLabel="Gradient tool angle"/);
+  assert.match(panel, /ariaLabel="Gradient tool opacity"/);
+  assert.match(panel, /Stops on the selected gradient/);
+  assert.match(panel, /<GradientEditor gradient=\{selectedGradient\} onChange=\{onUpdateSelectedGradient\} \/>/);
+  assert.match(canvas, /const angle = drag\.layerId \? editorGradientAngle\(drag\.gradient\) : toolOptions\.gradient\.angle;/);
+  assert.match(canvas, /const opacity = toolOptions\.gradient\.opacity;/);
+  assert.match(canvas, /\{ \.\.\.createEditorGradientLayer\(id, `Gradient \$\{label\}`, gradient\), opacity \}/);
 });
 
 test("the Text tool carries a default line height into every new layer", () => {

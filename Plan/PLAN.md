@@ -3868,6 +3868,20 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    it wraps. Verified in Chromium: the field starts at 880, typing 320 gives a new text layer whose inline editor is
    320 units wide, console clean. A default **line height** is still open.
 7. **Gradient box:** an angle field and the stop editor reachable from the tool box, plus opacity.
+   *Built 2026-11-26.* `EditorGradientToolSettings` gained `angle` (0-360, clamped) and `opacity` (1-100), both
+   normalised so old tool settings fill in at 0° and 100%. `editorGradientFromToolSettings` now rotates the new
+   layer's axis to the tool angle (`editorGradientWithAngle`, so the 500-unit length is kept), and a press
+   without a drag lays a centred ramp at that angle through `editorGradientClickAxis` — it used to be horizontal
+   whatever the angle field said. A drag still sets its own axis, and a click on an **existing** gradient keeps
+   that layer's angle instead of snapping it back to 0°. A new layer starts at the tool's opacity. The box
+   reads Angle, Opacity and, when a gradient layer is selected, the **same** stop editor the Gradient section
+   uses (`GradientEditor`), so stops are editable without scrolling; Reset returns the whole group.
+   Verified in Chromium at 1440 x 900: angle 90 + opacity 50 then a click on the canvas gave a selected layer
+   whose Gradient section read 90° and whose Appearance read 50%; a horizontal drag re-aimed it to 0° and a
+   follow-up click kept 0° (not 90°); the tool box carried the two stop handles and Add stop. On a phone
+   (390 x 844 touch) both fields sit inside the panel with their number fields. Console clean.
+   `tests/editor-tool-options.test.cjs` holds the clamps, the angle on a new layer, the click-axis maths and the
+   wiring on both sides.
 8. **Reset everywhere:** every box gets a reset to its tool defaults; the Brush/Pencil box has one today and
    the other boxes list none.
    *Built 2026-11-24.* Pen, Eraser, Gradient and Text have the same "Reset … to default" button, each writing the

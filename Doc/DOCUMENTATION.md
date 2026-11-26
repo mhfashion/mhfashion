@@ -2012,6 +2012,21 @@ check) rendered the same component twice: with `optionGroups={null}` the groups 
 Fit Type, Sleeve, GSM; with an admin subset the groups were Size, Color (single value, preselected),
 Print Method and MH Cuttings, with no Material/Fit/Sleeve/GSM box at all.
 
+## Gradient tool box (2026-11-26)
+
+The Gradient tool's box now reads Shape, Preset, Reverse, **Angle** (0-360, step 5) and **Opacity** (1-100),
+plus the shared Reset. `EditorGradientToolSettings` carries `angle` and `opacity`, both normalised so drafts
+written before this build fill in at 0 degrees and 100 percent.
+
+- `editorGradientFromToolSettings` rotates a new layer's axis to the tool angle, keeping its 500-unit length.
+- `editorGradientClickAxis(point, degrees)` is the axis a press-without-drag lays: a centred 640-unit ramp at
+  that angle. It used to be horizontal whatever the field said, so the angle only reached dragged layers.
+- A drag still sets its own axis. A click on an **existing** gradient keeps that layer's own angle, so
+  re-aiming never snaps it back to the tool's angle.
+- A new gradient layer starts at the tool's opacity.
+- When a gradient layer is selected, the box renders the same `GradientEditor` the Gradient section uses, so
+  its stops are editable without scrolling to the layer section.
+
 ## Saved presets and recents (2026-11-26)
 
 The Adjustments panel has two sections beside the tool options.

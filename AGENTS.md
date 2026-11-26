@@ -889,6 +889,12 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Adding a canvas insertion means bumping the `revealLayersStack();` count assertion in
   `tests/canvas-shell.test.cjs` (it is 6: text, element, design, photo, upload, gradient).
 
+## Gradient tool box
+- `EditorGradientToolSettings` has `angle` and `opacity`. `editorGradientFromToolSettings` rotates a new
+  layer to that angle; `editorGradientClickAxis` is the ramp a click (no drag) lays.
+- A click on an existing gradient re-aims it at its **own** angle, not the tool's, so re-aiming never snaps it.
+- A new layer takes the tool's opacity; the box also shows the selected layer's stops via `GradientEditor`.
+
 ## Saved presets and recents (`lib/editor-presets.ts`)
 - Presets are per tool (brush, pencil, eraser, pen, gradient, text) and live in
   `mh-fashion-editor-presets-v1`; recents (last 6 colours and fonts) in `mh-fashion-editor-recents-v1`.

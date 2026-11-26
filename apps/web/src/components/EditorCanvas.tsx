@@ -63,6 +63,8 @@ import {
   createEditorTextLayer,
   deleteEditorLayer,
   duplicateEditorLayer,
+  editorGradientAngle,
+  editorGradientClickAxis,
   editorGradientFromToolSettings,
   editorTextCanvasBounds,
   editorTextLines,
@@ -2193,9 +2195,11 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   function gradientWithAxis(drag: ActiveGradientDrag, end: Point): EditorGradient {
     const dx = end.x - drag.start.x;
     const dy = end.y - drag.start.y;
-    // A click (no real drag) falls back to a full-width horizontal axis through the point.
+    // A click (no real drag) lays a centred ramp: at the tool's angle for a new layer, or at the
+    // angle the selected gradient already has, so re-aiming never snaps it back to horizontal.
     if (Math.hypot(dx, dy) < 8) {
-      return { ...drag.gradient, x1: drag.start.x - 320, y1: drag.start.y, x2: drag.start.x + 320, y2: drag.start.y };
+      const angle = drag.layerId ? editorGradientAngle(drag.gradient) : toolOptions.gradient.angle;
+      return { ...drag.gradient, ...editorGradientClickAxis(drag.start, angle) };
     }
     return { ...drag.gradient, x1: drag.start.x, y1: drag.start.y, x2: end.x, y2: end.y };
   }
@@ -2218,7 +2222,8 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     const id = claimLayerId();
     const label = nextGradientLayerLabelRef.current++;
     rememberLayerSnapshot();
-    setLayers((current) => [createEditorGradientLayer(id, `Gradient ${label}`, gradient), ...current]);
+    const opacity = toolOptions.gradient.opacity;
+    setLayers((current) => [{ ...createEditorGradientLayer(id, `Gradient ${label}`, gradient), opacity }, ...current]);
     setSelectedLayerId(id);
     setSelectedLayerIds([id]);
     setSelectedTarget("artwork");
