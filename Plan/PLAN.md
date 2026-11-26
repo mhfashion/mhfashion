@@ -244,6 +244,17 @@ horizontal page scroll (`scrollWidth === clientWidth`), every touch target ≥ 4
 flow (select → bulk set → save) writes the same rows as the web grid. The search field in the
 admin header needed `min-w-0` to stop it forcing 370 px of page width at 320 px.
 
+**Admin sidebar colour fixed (2026-11-26).** The dark sidebar was split by the platform's light grey
+scrollbar (measured `rgb(159,159,159)` down its right edge against the panel's `rgb(17,23,27)`), and the
+"Create. Print. Wear." card sat inside the scroll area, so the fold cut it in half. The nav now scrolls
+with a dark bar (`.admin-scroll-dark`: thin, transparent track, `rgba(255,255,255,.18)` thumb — measured
+`rgb(59,64,68)` after the change) and the card is pinned under the nav, above the user row. Two latent
+layout bugs in the same panel are gone with it: the user row's name block carried a stray
+`md:ml-[224px]` that pushed the name and email out of the 224 px panel (only the avatar showed), and the
+drawer a11y test read the toggle by its "Open navigation" label, which flips to "Close navigation" on
+open — it now reads `[data-admin-nav-toggle]`, and its first-visible-"Open "-button lookup no longer
+picks the sidebar toggle instead of an order row.
+
 **Attribute Management (built 2026-11-21, cascade added 2026-11-22):** `/admin/attributes` edits the
 chain — order, labels, option lists and on/off state — in `data.attributeChain`, and now the cascade
 rules themselves in `data.attributeCascade` (§4.1). Guards refuse a change that would orphan

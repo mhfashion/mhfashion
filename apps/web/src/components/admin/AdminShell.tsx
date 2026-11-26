@@ -149,7 +149,7 @@ export default function AdminShell({
               <button type="button" aria-label="Close navigation" onClick={closeSidebar} className="rounded-lg p-1.5 text-[#b8c0c6] hover:bg-white/10"><X size={18} /></button>
             </div>
 
-            <nav aria-label="Admin navigation" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+            <nav aria-label="Admin navigation" className="admin-scroll-dark min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
               {NAV.map(({ id, label, href, icon: Icon }) => (
                 id === active ? (
                   <Link key={id} href={href} aria-current="page" data-admin-nav={id} onClick={() => setSidebarOpen(false)} className="flex h-10 items-center gap-3 rounded-xl border-l-[3px] border-[#8bd340] bg-[#263a25] px-3 text-[12px] font-semibold text-[#a5ea62] shadow-[inset_0_0_0_1px_rgba(139,211,64,.1)]">
@@ -161,19 +161,21 @@ export default function AdminShell({
                   </Link>
                 )
               ))}
-              <div className="mx-2 my-5 border-t border-white/[0.08]" />
+            </nav>
+
+            {/* The card is pinned under the scroll area: inside it, the fold cut the panel in half. */}
+            <div className="shrink-0 border-t border-white/[0.08] p-3">
               <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3.5">
                 <div className="flex items-center gap-2 text-[#a9e269]"><Sparkles size={15} /><span className="text-[11px] font-bold">Create. Print. Wear.</span></div>
                 <p className="mt-2 text-[10px] leading-4 text-[#a4adb3]">Make your own style and print it on premium apparel.</p>
                 <Link href="/create" className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold text-[#a9e269] hover:text-white">Open design editor <ArrowRight size={12} /></Link>
               </div>
-            </nav>
+            </div>
 
             <div className="border-t border-white/[0.08] p-3">
               <div className="flex items-center gap-2.5 rounded-xl px-2 py-2">
                 <AdminAvatar initials={initials} />
-                {/* The panel is out of flow, so the page keeps its own width and the content slides over instead. */}
-        <div className={`min-w-0 transition-[margin] duration-200 ${sidebarOpen ? "md:ml-[224px]" : "md:ml-0"}`}><p className="truncate text-[11px] font-semibold text-white">{admin.name}</p><p className="truncate text-[9px] text-[#7f8b91]">{admin.email}</p></div>
+                <div className="min-w-0"><p className="truncate text-[11px] font-semibold text-white">{admin.name}</p><p className="truncate text-[9px] text-[#7f8b91]">{admin.email}</p></div>
                 <button type="button" onClick={handleSignOut} aria-label="Sign out of demo account" title="Sign out" className="rounded-lg p-1.5 text-[#89939a] hover:bg-white/10 hover:text-white"><LogOut size={15} /></button>
               </div>
             </div>

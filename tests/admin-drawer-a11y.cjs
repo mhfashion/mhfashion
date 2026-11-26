@@ -84,7 +84,8 @@ async function main() {
   });
   await send("Page.navigate", { url: `${origin}/admin/orders` });
   // The orders list keeps a hidden copy of each row for the phone layout, so pick the visible opener.
-  const opener = '[...document.querySelectorAll(\'button[aria-label^="Open "]\')].find((button) => button.getClientRects().length)';
+  // "Open navigation" also starts with "Open ", and it is the first visible match, so it is skipped.
+  const opener = '[...document.querySelectorAll(\'button[aria-label^="Open "]\')].find((button) => button.getClientRects().length && !button.hasAttribute("data-admin-nav-toggle"))';
   await waitFor('button[aria-label^="Open "]');
   for (let attempt = 0; attempt < 40; attempt += 1) {
     if (await evaluate(new Function(`return Boolean(${opener})`))) break;
@@ -153,10 +154,11 @@ async function main() {
 
   // The sidebar is a phone drawer: closed it slides off-screen but stays in the document.
   await send("Page.navigate", { url: `${origin}/admin/orders` });
-  await waitFor('button[aria-label="Open navigation"]');
+  await waitFor("button[data-admin-nav-toggle]");
   const sidebarState = () => evaluate(() => {
     const sidebar = document.getElementById("admin-sidebar");
-    const opener = document.querySelector('button[aria-label="Open navigation"]');
+    // The label flips to "Close navigation" while the drawer is open, so read the stable hook.
+    const opener = document.querySelector("button[data-admin-nav-toggle]");
     return {
       inert: Boolean(sidebar?.inert),
       focusInside: Boolean(sidebar && sidebar.contains(document.activeElement)),
@@ -168,7 +170,7 @@ async function main() {
   assert.equal(sidebarClosed.inert, true, "the closed sidebar is inert, so Tab skips its links");
   assert.equal(sidebarClosed.expanded, "false", "the opener says the drawer is closed");
 
-  await evaluate(() => document.querySelector('button[aria-label="Open navigation"]').focus());
+  await evaluate(() => document.querySelector('button[data-admin-nav-toggle]').focus());
   await press("Enter", "Enter", 13);
   const sidebarOpen = await sidebarState();
   assert.equal(sidebarOpen.inert, false, "the open sidebar takes Tab again");

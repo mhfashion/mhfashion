@@ -889,6 +889,19 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Adding a canvas insertion means bumping the `revealLayersStack();` count assertion in
   `tests/canvas-shell.test.cjs` (it is 6: text, element, design, photo, upload, gradient).
 
+## Admin sidebar (AdminShell.tsx)
+- The sidebar is one dark panel (`bg-[#11171b]`). The nav scrolls with `.admin-scroll-dark` (defined in
+  `app/globals.css`); without it the platform scrollbar paints a light grey band down the panel and the
+  sidebar looks split in two.
+- The "Create. Print. Wear." card is pinned **below** the nav (`shrink-0`), not inside it: inside the scroll
+  area the fold cut the card in half. The nav is `min-h-0 flex-1` so it scrolls instead of growing.
+- The sidebar's own rows must not carry the page's `md:ml-[224px]` content margin. It leaked onto the user
+  row's name block once and pushed the name/email outside the 224 px panel.
+- Tests: `tests/admin-sidebar-colour.test.cjs` (source contracts) and `tests/admin-drawer-a11y.cjs`, which
+  must pick the drawer opener with `button[aria-label^="Open "]` **minus** `[data-admin-nav-toggle]`, because
+  "Open navigation" is the first visible match, and must read the toggle by `[data-admin-nav-toggle]` because
+  its label flips to "Close navigation" when open.
+
 ## Phone bottom sheet (Adjustments panel)
 - Below 768 px the panel is a bottom sheet: `data-dock-side="bottom"` and `data-adjustments-sheet="true"`,
   chosen by `useSyncExternalStore` over `(max-width: 767px)`.

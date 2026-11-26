@@ -82,3 +82,28 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* The admin sidebar is a dark panel, but the platform scrollbar is a light grey band that splits it
+   in two. Keep the bar thin and let it fade into the panel. */
+.admin-scroll-dark {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.admin-scroll-dark::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.admin-scroll-dark::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-scroll-dark::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.admin-scroll-dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

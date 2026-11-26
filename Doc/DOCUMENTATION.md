@@ -2012,6 +2012,24 @@ check) rendered the same component twice: with `optionGroups={null}` the groups 
 Fit Type, Sleeve, GSM; with an admin subset the groups were Size, Color (single value, preselected),
 Print Method and MH Cuttings, with no Material/Fit/Sleeve/GSM box at all.
 
+## Admin sidebar colour (2026-11-26)
+
+The admin sidebar is a single dark panel (`#11171b`). Three things used to break that:
+
+- The navigation scrolled with the platform's scrollbar, a light grey band (`rgb(159,159,159)`) down the
+  right edge. The nav now carries `.admin-scroll-dark` (`globals.css`): `scrollbar-width: thin`, a
+  transparent track and a `rgba(255, 255, 255, 0.18)` rounded thumb, so the bar reads as part of the panel.
+- The "Create. Print. Wear." card lived at the end of the scrollable nav, so the fold cut it in half. It is
+  now pinned below the nav (and above the user row), and the nav itself is `min-h-0` so it scrolls instead.
+- The user row's name block carried a stray `md:ml-[224px]` layout margin, which pushed the name and email
+  outside the 224 px panel and left only the avatar visible. It is a plain `min-w-0` block again.
+
+Verified in headless Chromium: at 1440 x 900 the scrollbar column reads `rgb(59,64,68)` instead of
+`rgb(159,159,159)`, the promo card and the user row are both fully drawn, and at 390 x 844 the drawer shows
+the close button, the nav (scrolling), the complete promo card and "Aung Min / owner@mhfashion.c…" with the
+sign-out button. Console clean at both sizes. `tests/admin-sidebar-colour.test.cjs` pins the class, the CSS
+and the pinned card; `tests/admin-drawer-a11y.cjs` now drives the drawer from `[data-admin-nav-toggle]`.
+
 ## Phone bottom sheet for tool options (2026-11-26)
 
 On a screen narrower than 768 px the Adjustments panel renders as a bottom sheet instead of a right-hand dock.
