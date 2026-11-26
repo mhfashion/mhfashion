@@ -3875,9 +3875,30 @@ stack has thirteen kinds. Proposed additions, each with its own tile, row thumbn
    and the Move box only nudges, so neither has anything to reset.
 9. **Presets and recents:** the shop's own saved presets per tool (save, rename, delete) and the last six
    colours and fonts.
+   *Built 2026-11-26.* `lib/editor-presets.ts` is the whole store: a preset is `{ id, group, name, settings }`
+   for one of Brush, Pencil, Eraser, Pen, Gradient, Text, names are trimmed, single-spaced and capped at 40
+   characters, a clash gets a ` (2)` suffix, and each tool keeps up to `EDITOR_PRESET_LIMIT` (24). Everything is
+   tolerant on read — a junk entry, an unknown group or half-written JSON is dropped, a storage that throws is
+   ignored — so a broken browser profile cannot take the editor down. The Adjustments panel gained two
+   sections: **Presets** (apply, rename inline, delete, and "Save current settings") and **Recents** (the last
+   six colours and fonts, newest first, de-duplicated with hex compared case-insensitively). A recent colour
+   paints the foreground swatch; a recent font sets the Text tool and any selected text layer.
+   Storage keys are `mh-fashion-editor-presets-v1` and `mh-fashion-editor-recents-v1`, read lazily on first
+   render (the panel is closed then, so no hydration mismatch) and written on every change. Only a *change*
+   is recorded, so the tool's starting colour and font never fill the list. This answers the persistence
+   half of item 11 for presets and recents; the tool settings themselves still reset on reload.
+   Verified in Chromium at 1440 x 900: saving "Chalk 40" while the brush size was 52, dragging the size to
+   200, then applying the preset put it back to 52; renaming to "Soft chalk" and deleting returned the empty
+   state; an eyedropper pick of the paper was recorded as `#FFFFFF` and a font change as `Georgia`, both in
+   the Recents section and in `localStorage`, and both survived a reload. On a phone (390 x 844 touch) the
+   section fits the panel (156-320 px) and the Save button is 44 px tall. Console clean.
+   `tests/editor-presets.test.cjs` (11 tests) holds the naming, capping, rename, delete, storage and recents
+   rules plus the panel/canvas wiring.
 10. **Phone:** a tool's options open as a bottom sheet with large sliders, one box at a time, never hiding the
     canvas, 44 px targets.
 11. **Persistence (decision for the owner):** whether tool settings survive a reload.
+   *Partly answered 2026-11-26:* saved presets and recents persist per browser (item 9). Whether the live
+   tool settings survive a reload by themselves is still the owner's call.
 - Acceptance: each item works with mouse, touch and keyboard; the values stay in range after typing; settings
   are never lost when another field changes (`updateToolOptions` merges per field); Web at 1440 × 900 and Phone
   at 390 × 844; the Tool Options tests grow with each box.

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, FlipHorizontal2, FlipVertical2, Minus, Plus, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, ChevronRight, FlipHorizontal2, FlipVertical2, Minus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import type { EditorArtworkLayer, EditorBrushBlend, EditorBrushShape, EditorBrushSettings, EditorEraserSettings, EditorGradient, EditorGradientStop, EditorGradientToolSettings, EditorGradientType, EditorLayerPlacement, EditorPenSettings, EditorShapeBuilderMode, EditorShapePreset, EditorShapeStyle, EditorTextContent, EditorTextEffect, EditorTextEffectKind, EditorTextToolSettings, EditorToolOptions, PhotoAdjustmentUpdate } from "@/lib/editor-layers";
 import { createEditorShapePaths, EDITOR_BRUSH_BLENDS, EDITOR_BRUSH_PRESETS, EDITOR_TEXT_DEFAULT_LINE_HEIGHT, EDITOR_PEN_END_SHAPES, EDITOR_DESIGN_SWATCHES, EDITOR_ERASER_PRESETS, EDITOR_SHAPE_LABELS, EDITOR_SHAPE_PRESETS, EDITOR_TEXT_FONT_FAMILY, EDITOR_GRADIENT_LABELS, EDITOR_GRADIENT_PRESETS, EDITOR_GRADIENT_STOP_LIMIT, EDITOR_GRADIENT_TYPES, EDITOR_SHAPE_LINE_STYLES, EDITOR_TEXT_STYLES, EDITOR_TOOL_OPTIONS_DEFAULT, nextEditorGradientStopId, resolveEditorShapeStyle, editorGradientAngle, editorGradientWithAngle, sortEditorGradientStops, textStyleEffects } from "@/lib/editor-layers";
@@ -12,6 +12,7 @@ import { editorStrokePrintMm, IMAGE_PRINT_LEVEL_LABEL, IMAGE_PRINT_THRESHOLDS, t
 import { STRICTEST_MIN_STROKE_MM } from "@/lib/print-quality";
 import { EditorTextArtwork } from "@/components/EditorLayerPreview";
 import { useEditorFontLibrary } from "@/lib/editor-font-library";
+import { EDITOR_RECENT_LIMIT, type EditorPreset, type EditorPresetGroup, type EditorPresetLibrary } from "@/lib/editor-presets";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
 const TOOL_LABELS: Record<EditorTool, string> = {
@@ -39,6 +40,25 @@ const TEXT_TOOL_FONTS = [
   { label: "Verdana", value: "Verdana" },
   { label: "Times New Roman", value: "Times New Roman" },
 ];
+
+const PRESET_GROUP_LABELS: Record<EditorPresetGroup, string> = {
+  brush: "Brush",
+  pencil: "Pencil",
+  eraser: "Eraser",
+  pen: "Pen",
+  gradient: "Gradient",
+  text: "Text",
+};
+
+/** Only these tools hold settings worth saving as a preset. */
+const PRESET_GROUP_FOR_TOOL: Partial<Record<EditorTool, EditorPresetGroup>> = {
+  brush: "brush",
+  pencil: "pencil",
+  eraser: "eraser",
+  pen: "pen",
+  gradient: "gradient",
+  text: "text",
+};
 
 const TOOL_OPTION_HINTS: Partial<Record<EditorTool, string>> = {
   move: "Drag the canvas to move the selected layer. Adjust a layer's own size, opacity, and blend under Appearance.",
@@ -290,6 +310,135 @@ function TextToolOptions({ value, onChange }: { value: EditorTextToolSettings; o
   </div>;
 }
 
+/**
+ * The shop's own saved presets for the current tool: apply, rename and delete, plus "save the
+ * tool as it stands now". Presets are kept in localStorage (plan E21 item 9).
+ */
+function PresetsBox({ group, presets, onApply, onSave, onRename, onDelete }: {
+  group: EditorPresetGroup;
+  presets: EditorPreset[];
+  onApply: (preset: EditorPreset) => void;
+  onSave: (group: EditorPresetGroup, name: string) => void;
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [draftName, setDraftName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const commitRename = () => {
+    if (renamingId) onRename(renamingId, renameDraft);
+    setRenamingId(null);
+    setRenameDraft("");
+  };
+  return <div className="space-y-2">
+    <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Saved presets</p>
+    {presets.length === 0
+      ? <p className="text-[9px] leading-relaxed text-text-muted">No presets yet. Set this tool up the way you like it, then save it here and it is one click away next time.</p>
+      : <ul aria-label={`${PRESET_GROUP_LABELS[group]} presets`} className="space-y-1">{presets.map((preset) => (
+          <li key={preset.id} className="flex items-center gap-1">
+            {renamingId === preset.id
+              ? <input
+                  autoFocus
+                  aria-label={`New name for preset ${preset.name}`}
+                  value={renameDraft}
+                  onChange={(event) => setRenameDraft(event.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") commitRename();
+                    if (event.key === "Escape") { setRenamingId(null); setRenameDraft(""); }
+                  }}
+                  className="min-w-0 flex-1 rounded-lg border border-accent bg-bg px-2 py-1 text-[10px] text-text-primary outline-none"
+                />
+              : <button type="button" aria-label={`Apply preset ${preset.name}`} onClick={() => onApply(preset)} className="min-w-0 flex-1 truncate rounded-lg border border-border px-2 py-1 text-left text-[10px] text-text-primary outline-none hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11">{preset.name}</button>}
+            <button
+              type="button"
+              aria-label={`Rename preset ${preset.name}`}
+              onClick={() => { setRenamingId(preset.id); setRenameDraft(preset.name); }}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-border text-text-secondary outline-none hover:border-accent hover:text-text-primary [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+            >
+              <Pencil size={11} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label={`Delete preset ${preset.name}`}
+              onClick={() => onDelete(preset.id)}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-border text-text-secondary outline-none hover:border-danger hover:text-danger [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11"
+            >
+              <Trash2 size={11} aria-hidden="true" />
+            </button>
+          </li>
+        ))}</ul>}
+    <div className="flex items-center gap-1">
+      <input
+        aria-label={`Name for a new ${PRESET_GROUP_LABELS[group]} preset`}
+        value={draftName}
+        placeholder={`${PRESET_GROUP_LABELS[group]} preset ${presets.length + 1}`}
+        onChange={(event) => setDraftName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") { onSave(group, draftName); setDraftName(""); }
+        }}
+        className="min-w-0 flex-1 rounded-lg border border-border bg-bg px-2 py-1 text-[10px] text-text-primary outline-none focus:border-accent"
+      />
+      <button
+        type="button"
+        aria-label={`Save current ${PRESET_GROUP_LABELS[group]} settings as a preset`}
+        onClick={() => { onSave(group, draftName); setDraftName(""); }}
+        className="shrink-0 rounded-lg border border-accent/50 bg-accent/10 px-2 py-1 text-[10px] font-semibold text-accent outline-none hover:bg-accent/20 [@media(pointer:coarse)]:min-h-11"
+      >
+        Save
+      </button>
+    </div>
+    <p className="text-[9px] leading-relaxed text-text-muted">Saving stores this tool&apos;s current settings for this browser. Presets survive a reload; deleting one cannot be undone.</p>
+  </div>;
+}
+
+/** A font stack reads as its first family, so "Inter, system-ui, …" shows as "Inter". */
+function fontDisplayName(font: string) {
+  const first = font.split(",")[0]?.replace(/["']/g, "").trim();
+  return first || font;
+}
+
+/** The last colours and fonts the shop used, newest first (plan E21 item 9). */
+function RecentsBox({ colours, fonts, onPickColour, onPickFont }: {
+  colours: string[];
+  fonts: string[];
+  onPickColour: (colour: string) => void;
+  onPickFont: (font: string) => void;
+}) {
+  return <div className="space-y-2">
+    <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Recent colours</p>
+    {colours.length === 0
+      ? <p className="text-[9px] leading-relaxed text-text-muted">Pick a colour from the swatch or with the Eyedropper (I) and it is kept here.</p>
+      : <div role="group" aria-label="Recent colours" className="flex flex-wrap gap-1">{colours.map((colour) => (
+          <button
+            key={colour}
+            type="button"
+            aria-label={`Use recent colour ${colour.toUpperCase()}`}
+            title={colour.toUpperCase()}
+            onClick={() => onPickColour(colour)}
+            className="h-5 w-5 rounded-md border border-border outline-none transition hover:scale-110 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:h-7 [@media(pointer:coarse)]:w-7"
+            style={{ background: colour }}
+          />
+        ))}</div>}
+    <p className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Recent fonts</p>
+    {fonts.length === 0
+      ? <p className="text-[9px] leading-relaxed text-text-muted">Choose a font in the Font section and it is kept here.</p>
+      : <div role="group" aria-label="Recent fonts" className="flex flex-wrap gap-1">{fonts.map((font) => (
+          <button
+            key={font}
+            type="button"
+            aria-label={`Use recent font ${fontDisplayName(font)}`}
+            onClick={() => onPickFont(font)}
+            className="rounded-full border border-border px-2 py-1 text-[9px] text-text-primary outline-none hover:border-accent hover:bg-accent/10 [@media(pointer:coarse)]:min-h-11"
+            style={{ fontFamily: font }}
+          >
+            {fontDisplayName(font)}
+          </button>
+        ))}</div>}
+    <p className="text-[9px] leading-relaxed text-text-muted">The last {EDITOR_RECENT_LIMIT} of each, newest first. A recent colour paints the foreground; a recent font sets the Text tool and any selected text.</p>
+  </div>;
+}
+
 /** Which shape the Shape tool draws, plus a reminder of how the style is applied. */
 function ShapeToolOptions({ preset, onSelect }: { preset: EditorShapePreset; onSelect: (preset: EditorShapePreset) => void }) {
   return <div className="space-y-2">
@@ -415,7 +564,7 @@ const PRINT_LEVEL_CLASS: Record<ImagePrintQuality["level"], string> = {
   "very-low": "bg-[#f8d7d7] text-[#8a2020] dark:bg-[#432323] dark:text-[#f0b4b4]",
 };
 
-export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, imagePrintQuality = null, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures, onFlip, placement, selectedShape, onSelectShape, onNudge }: {
+export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, activeTool, toolOptions, onUpdateToolOptions, onUpdateLayer, onUpdateText, onUpdateTextStyle, onUpdateShapeBuilder, onUpdateShapeStyle, onUpdateImage, imagePrintQuality = null, onUpdateGradient, onAddMask, onRemoveMask, onSelectMask, onClearErasures, onFlip, placement, selectedShape, onSelectShape, onNudge, presets, recentColours, recentFonts, onApplyPreset, onSavePreset, onRenamePreset, onDeletePreset, onPickColour, onPickFont }: {
   open: boolean;
   onToggle: () => void;
   selectedLayer: EditorArtworkLayer | null;
@@ -441,12 +590,22 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   selectedShape: EditorShapePreset;
   onSelectShape: (preset: EditorShapePreset) => void;
   onNudge: (dx: number, dy: number) => void;
+  /** The shop's saved presets, per tool (plan E21 item 9). */
+  presets: EditorPresetLibrary;
+  recentColours: string[];
+  recentFonts: string[];
+  onApplyPreset: (preset: EditorPreset) => void;
+  onSavePreset: (group: EditorPresetGroup, name: string) => void;
+  onRenamePreset: (id: string, name: string) => void;
+  onDeletePreset: (id: string) => void;
+  onPickColour: (colour: string) => void;
+  onPickFont: (font: string) => void;
 }) {
   const text = selectedLayer?.text;
   const image = selectedLayer?.image;
   const shapeStyle = selectedLayer?.shape ? resolveEditorShapeStyle(selectedLayer.shape) : null;
   const [fontQuery, setFontQuery] = useState("");
-  const [recentFonts, setRecentFonts] = useState<string[]>([]);
+
   const [nextEffectId, setNextEffectId] = useState(1);
   const [appliedStyle, setAppliedStyle] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState("Tool Options");
@@ -468,7 +627,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
   function toggleSection(section: string) { setOpenSection((current) => current === section ? "" : section); }
   function chooseFont(fontFamily: string) {
     onUpdateTextStyle({ fontFamily });
-    setRecentFonts((current) => [fontFamily, ...current.filter((font) => font !== fontFamily)].slice(0, 4));
+    onPickFont(fontFamily);
   }
   function replaceEffectStack(effects: EditorTextEffect[], keepStyle = false) {
     onUpdateTextStyle({ effects, textEffect: "none" });
@@ -545,6 +704,21 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
             {activeTool === "shape" && <ShapeToolOptions preset={selectedShape} onSelect={onSelectShape} />}
             {activeTool === "move" && <MoveToolOptions placement={placement} onNudge={onNudge} />}
             {(activeTool === "hand" || activeTool === "remove-bg") && <p className="text-[10px] leading-relaxed text-text-muted">{TOOL_OPTION_HINTS[activeTool]}</p>}
+          </Section>
+          <Section title="Presets" open={openSection === "Presets"} onToggle={() => toggleSection("Presets")}>
+            {PRESET_GROUP_FOR_TOOL[activeTool]
+              ? <PresetsBox
+                  group={PRESET_GROUP_FOR_TOOL[activeTool]!}
+                  presets={presets[PRESET_GROUP_FOR_TOOL[activeTool]!]}
+                  onApply={onApplyPreset}
+                  onSave={onSavePreset}
+                  onRename={onRenamePreset}
+                  onDelete={onDeletePreset}
+                />
+              : <p className="text-[10px] leading-relaxed text-text-muted">{TOOL_LABELS[activeTool]} has no settings to save. Pick Brush, Pencil, Eraser, Pen, Gradient or Text to save a preset.</p>}
+          </Section>
+          <Section title="Recents" open={openSection === "Recents"} onToggle={() => toggleSection("Recents")}>
+            <RecentsBox colours={recentColours} fonts={recentFonts} onPickColour={onPickColour} onPickFont={onPickFont} />
           </Section>
           {!selectedLayer && <p className="p-2 text-[11px] text-[#666] dark:text-[#bdbdbd]">Select a layer to edit its properties.</p>}
           {selectedLayer && <>
@@ -629,7 +803,7 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
                 <Swatches value={text.color} ariaLabel="Text colour swatch" onPick={(color) => onUpdateTextStyle({ color })} />
                 <div className="flex items-center justify-between gap-2 text-[10px] text-text-secondary"><span>Font</span><span className="text-[9px] text-text-muted">{text.fontFamily ?? "Inter"}</span></div>
                 <input aria-label="Search fonts" value={fontQuery} onChange={(event) => setFontQuery(event.target.value)} placeholder="Search fonts" className="w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-primary outline-none placeholder:text-text-muted focus:border-accent" />
-                {recentFonts.length > 0 && !fontQuery && <div className="flex flex-wrap gap-1">{recentFonts.map((font) => <button key={font} type="button" onClick={() => chooseFont(font)} className="rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-[9px] text-accent hover:bg-accent/20">{font}</button>)}</div>}
+                {recentFonts.length > 0 && !fontQuery && <div className="flex flex-wrap gap-1">{recentFonts.slice(0, 4).map((font) => <button key={font} type="button" onClick={() => chooseFont(font)} className="rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-[9px] text-accent hover:bg-accent/20">{fontDisplayName(font)}</button>)}</div>}
                 <div role="listbox" aria-label="Available fonts" className="grid max-h-28 grid-cols-2 gap-1 overflow-y-auto rounded-lg border border-border bg-bg p-1">
                   {filteredFonts.map((font) => <button key={font} type="button" role="option" aria-selected={(text.fontFamily ?? "Inter") === font} onClick={() => chooseFont(font)} className={`truncate rounded-md px-2 py-1.5 text-left text-[11px] transition hover:bg-accent/10 ${((text.fontFamily ?? "Inter") === font) ? "bg-accent/15 font-semibold text-accent" : "text-text-primary"}`} style={{ fontFamily: font }}>{font}</button>)}
                   {filteredFonts.length === 0 && <span className="col-span-2 px-2 py-2 text-[10px] text-text-muted">No matching fonts</span>}

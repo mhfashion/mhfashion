@@ -2012,6 +2012,33 @@ check) rendered the same component twice: with `optionGroups={null}` the groups 
 Fit Type, Sleeve, GSM; with an admin subset the groups were Size, Color (single value, preselected),
 Print Method and MH Cuttings, with no Material/Fit/Sleeve/GSM box at all.
 
+## Saved presets and recents (2026-11-26)
+
+The Adjustments panel has two sections beside the tool options.
+
+**Presets** keeps the shop's own setups for Brush, Pencil, Eraser, Pen, Gradient and Text: "Save current
+settings" stores the tool as it stands, a click applies a preset, and each row can be renamed inline (Enter
+commits, Escape cancels) or deleted. Tools without settings (Move, Hand, Shape, Eyedropper) say so instead.
+
+**Recents** lists the last six colours and fonts, newest first. A recent colour paints the foreground swatch;
+a recent font sets the Text tool and any selected text layer. A font stack shows as its first family, so
+`Inter, system-ui, …` reads as `Inter`.
+
+`lib/editor-presets.ts` holds the rules and the storage: `saveEditorPreset`, `renameEditorPreset`,
+`deleteEditorPreset`, `nextEditorPresetName`, `pushEditorRecent`, `normalizeEditorPresetLibrary`,
+`normalizeEditorRecents`, `readEditorPresetLibrary` / `writeEditorPresetLibrary` and `readEditorRecents` /
+`writeEditorRecents` over an injectable `EditorStorageLike`. Names are trimmed, single-spaced and capped at
+40 characters; a clash gets a ` (2)` suffix; each tool keeps up to 24 presets; recents de-duplicate with hex
+compared case-insensitively. Junk on read is dropped and a storage that throws is ignored, so a broken
+profile cannot take the editor down.
+
+Keys: `mh-fashion-editor-presets-v1`, `mh-fashion-editor-recents-v1`. Both are read lazily on the first
+render — the panel is closed then, so there is no hydration mismatch — and written on every change. Only a
+change is recorded, so the tool's starting colour and font never fill the lists. Presets therefore answer
+the persistence half of plan E21 item 11; the live tool settings themselves still reset on reload.
+
+Tests: `tests/editor-presets.test.cjs`.
+
 ## Eyedropper tool (2026-11-26)
 
 The editor's tools bar has an Eyedropper (`Pipette`, shortcut **I**) beside the Gradient tool. A press on the

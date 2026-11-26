@@ -889,6 +889,17 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Adding a canvas insertion means bumping the `revealLayersStack();` count assertion in
   `tests/canvas-shell.test.cjs` (it is 6: text, element, design, photo, upload, gradient).
 
+## Saved presets and recents (`lib/editor-presets.ts`)
+- Presets are per tool (brush, pencil, eraser, pen, gradient, text) and live in
+  `mh-fashion-editor-presets-v1`; recents (last 6 colours and fonts) in `mh-fashion-editor-recents-v1`.
+- Read lazily with `useState(() => readEditor…)` — the Adjustments panel is closed on the first render, so
+  there is no hydration mismatch, and `react-hooks/set-state-in-effect` stays quiet. Persist inside
+  `storePresets` / the `recents` effect, not in a `setState` updater.
+- Only a *change* is recorded (`lastRecentColourRef` / `lastRecentFontRef`), so the tool's starting colour
+  and font never fill the lists. A recent font sets the Text tool and the selected text layer.
+- Names: trimmed, single-spaced, 40 chars, ` (2)` on a clash, 24 presets per tool. Reads drop junk and
+  ignore a storage that throws.
+
 ## Eyedropper (`lib/editor-colour-sample.ts`, `EditorCanvas.tsx`)
 - `window.EyeDropper` first, canvas sampling as the fallback: the artwork is serialised through the export
   renderer and one pixel is read, so the colour is what is painted, not a layer's declared fill. Transparent

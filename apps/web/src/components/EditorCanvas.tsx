@@ -29,6 +29,21 @@ import {
 } from "@/lib/editor-shortcuts";
 import { imagePrintQuality, imagePrintLevelRank } from "@/lib/editor-image-ppi";
 import { nativeEyeDropper, sampleArtworkColour } from "@/lib/editor-colour-sample";
+import {
+  deleteEditorPreset,
+  presetSettingsFor,
+  pushEditorRecent,
+  readEditorPresetLibrary,
+  readEditorRecents,
+  renameEditorPreset,
+  saveEditorPreset,
+  writeEditorPresetLibrary,
+  writeEditorRecents,
+  type EditorPreset,
+  type EditorPresetGroup,
+  type EditorPresetLibrary,
+  type EditorRecents,
+} from "@/lib/editor-presets";
 import type { ImagePrintQuality } from "@/lib/editor-image-ppi";
 import { flipLayerPlacement, getFreeTransformResizeAnchor, getFreeTransformResizeFactors, rotateTransformPoint, snapEditorRotationDelta } from "@/lib/editor-transform";
 import type { TransformHandle } from "@/lib/editor-transform";
@@ -604,6 +619,13 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
   const [shapeDrawing, setShapeDrawing] = useState<ActiveShapeDrag | null>(null);
   const [gradientDrawing, setGradientDrawing] = useState<ActiveGradientDrag | null>(null);
   const [foregroundColor, setForegroundColor] = useState(EDITOR_DEFAULT_FOREGROUND);
+  // Read once, lazily: the panel that shows them is closed on the first render, so this cannot
+  // cause a hydration mismatch, and it keeps the save path synchronous.
+  const [presets, setPresets] = useState<EditorPresetLibrary>(() => readEditorPresetLibrary());
+  const [recents, setRecents] = useState<EditorRecents>(() => readEditorRecents());
+  // The tool's starting values are not "recent"; only a change from here on is recorded.
+  const lastRecentColourRef = useRef(foregroundColor);
+  const lastRecentFontRef = useRef(toolOptions.text.fontFamily);
   const [backgroundColor, setBackgroundColor] = useState(EDITOR_DEFAULT_BACKGROUND);
   const [penAnchors, setPenAnchors] = useState<EditorPenAnchor[]>([]);
   const [penHoverPoint, setPenHoverPoint] = useState<Point | null>(null);
@@ -795,6 +817,54 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
     setToolNotice(`Picked ${colour.toUpperCase()}`);
     handBack();
   };
+
+  // Saved presets and recents live in localStorage, so the shop's favourite setups are still there
+  // after a reload and after the browser restarts (plan E21 item 9).
+  useEffect(() => {
+    if (lastRecentColourRef.current === foregroundColor) return;
+    lastRecentColourRef.current = foregroundColor;
+    setRecents((current) => ({ ...current, colours: pushEditorRecent(current.colours, foregroundColor) }));
+  }, [foregroundColor]);
+
+  useEffect(() => {
+    if (lastRecentFontRef.current === toolOptions.text.fontFamily) return;
+    lastRecentFontRef.current = toolOptions.text.fontFamily;
+    setRecents((current) => ({ ...current, fonts: pushEditorRecent(current.fonts, toolOptions.text.fontFamily) }));
+  }, [toolOptions.text.fontFamily]);
+
+  useEffect(() => {
+    writeEditorRecents(recents);
+  }, [recents]);
+
+  function applyEditorPreset(preset: EditorPreset) {
+    setToolOptions((current) => normalizeEditorToolOptions({
+      ...current,
+      [preset.group]: { ...(current[preset.group] as Record<string, unknown>), ...preset.settings },
+    }));
+    setToolNotice(`Applied preset "${preset.name}"`);
+  }
+
+  function storePresets(next: EditorPresetLibrary) {
+    setPresets(next);
+    writeEditorPresetLibrary(next);
+  }
+
+  function saveToolPreset(group: EditorPresetGroup, name: string) {
+    const next = saveEditorPreset(presets, { group, name, settings: presetSettingsFor(toolOptions, group) });
+    storePresets(next);
+    setToolNotice(`Saved preset "${next[group][0]?.name ?? name}"`);
+  }
+
+  function renameToolPreset(id: string, name: string) {
+    storePresets(renameEditorPreset(presets, id, name));
+    setToolNotice(`Renamed preset to "${name.trim()}"`);
+  }
+
+  function deleteToolPreset(id: string) {
+    const preset = Object.values(presets).flat().find((entry) => entry.id === id);
+    storePresets(deleteEditorPreset(presets, id));
+    setToolNotice(preset ? `Deleted preset "${preset.name}"` : "Preset deleted");
+  }
 
   // Arrow-pad nudges from the Adjustments panel: offset only, so the artwork
   // never moves inside its own transform.
@@ -3442,6 +3512,19 @@ export default function EditorCanvas({ product }: { product: EditorProduct }) {
           activeTool={activeTool}
           toolOptions={toolOptions}
           onUpdateToolOptions={updateToolOptions}
+          presets={presets}
+          recentColours={recents.colours}
+          recentFonts={recents.fonts}
+          onApplyPreset={applyEditorPreset}
+          onSavePreset={saveToolPreset}
+          onRenamePreset={renameToolPreset}
+          onDeletePreset={deleteToolPreset}
+          onPickColour={(colour) => setForegroundColor(colour)}
+          onPickFont={(font) => {
+            updateToolOptions({ text: { fontFamily: font } });
+            const layer = layers.find((item) => item.id === selectedLayerId);
+            if (layer?.kind === "text") updateSelectedTextStyle({ fontFamily: font });
+          }}
           onUpdateLayer={updateLayer}
           onUpdateText={updateSelectedText}
           onUpdateTextStyle={updateSelectedTextStyle}
