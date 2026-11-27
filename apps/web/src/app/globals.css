@@ -53,6 +53,34 @@ html[lang="my"] :where(a, span, label, button, input, select) {
   line-height: 1.5;
 }
 
+/* A one-line bar or a link list keeps the Latin line box in both languages, so it never changes height. */
+html[lang="my"] [data-tight-line],
+html[lang="my"] [data-tight-line] * {
+  line-height: 1.5;
+}
+
+/* The home banner keeps one height in both languages. Burmese sets a 2.1em line box, so its headline and
+   copy are drawn smaller inside the same box instead of stretching the banner. */
+html[lang="my"] [data-hero] :is(p, a) {
+  line-height: 1.6;
+}
+
+html[lang="my"] [data-hero] h1 {
+  font-size: 20px;
+}
+
+@media (min-width: 640px) {
+  html[lang="my"] [data-hero] h1 {
+    font-size: 25px;
+  }
+}
+
+@media (min-width: 1024px) {
+  html[lang="my"] [data-hero] h1 {
+    font-size: 40px;
+  }
+}
+
 /* Keyboard focus must be visible on every control that does not paint its own indicator. This sits
    in the base layer so a component's `outline-none` utility still wins where the focus is drawn by a
    border or ring instead. */

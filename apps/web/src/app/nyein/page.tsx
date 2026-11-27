@@ -29,7 +29,7 @@ export default async function NyeinPage() {
       <Header />
       <div className="w-full bg-bg px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
         <div className="mx-auto max-w-[1480px]">
-          <section className="relative isolate min-h-[155px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdc] via-[#dcf4bc] to-[#b6e773] px-4 py-4 text-[#172810] sm:min-h-[250px] sm:px-10 sm:py-10 lg:min-h-[300px] lg:px-12">
+          <section data-hero className="relative isolate h-[256px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdc] via-[#dcf4bc] to-[#b6e773] px-4 py-4 text-[#172810] sm:h-[404px] sm:px-10 sm:py-10 lg:h-[420px] lg:px-12">
             <div className="relative z-10 max-w-[68%] sm:max-w-[47%]">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4c9d16] sm:text-xs sm:tracking-[0.18em]">Nyein · MH Fashion</p>
               <h1 className="mt-2 text-2xl font-black leading-[0.95] tracking-tight sm:mt-3 sm:text-5xl lg:text-6xl">
@@ -42,7 +42,7 @@ export default async function NyeinPage() {
               </p>
               <a
                 href="#nyein-pieces"
-                className="mt-3 inline-flex h-7 items-center rounded-full bg-[#55a918] px-3 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:h-9 sm:px-4 sm:text-xs"
+                className="mt-3 inline-flex h-7 min-w-[222px] items-center justify-center rounded-full bg-[#55a918] px-3 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:h-9 sm:px-4 sm:text-xs"
               >
                 <T k="nyein.cta" />
                 <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" />
@@ -87,18 +87,18 @@ export default async function NyeinPage() {
           </section>
 
           <section className="mb-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <a href="/categories/t-shirts" className="group relative min-h-[150px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#f5f5f2] to-[#dfe8d9] p-5 text-[#172810] sm:p-7">
+            <a href="/categories/t-shirts" className="group relative min-h-[266px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#f5f5f2] to-[#dfe8d9] p-5 text-[#172810] sm:p-7">
               <div className="relative z-10">
                 <h2 className="text-xl font-black sm:text-2xl"><T k="nyein.cottonTitle" /></h2>
                 <p className="mt-1 text-xs text-[#4a5a44]"><T k="nyein.cottonLead" /></p>
-                <span className="mt-5 inline-flex rounded-full bg-accent px-3 py-2 text-[10px] font-bold text-accent-foreground">
+                <span className="mt-5 inline-flex min-w-[99px] items-center justify-center rounded-full bg-accent px-3 py-2 text-[10px] font-bold text-accent-foreground">
                   <T k="nyein.shopNow" /> <ArrowRight size={13} className="ml-1" />
                 </span>
               </div>
               <div className="absolute -bottom-20 right-[-10px] h-48 w-48 rounded-full bg-white/80" />
               <span className="absolute bottom-5 right-9 text-4xl font-black text-[#85ad69]/60">NY</span>
             </a>
-            <div className="relative min-h-[150px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#d7f5a8] via-[#79bf20] to-[#4e9e12] p-5 text-white sm:p-7">
+            <div className="relative min-h-[275px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#d7f5a8] via-[#79bf20] to-[#4e9e12] p-5 text-white sm:min-h-[266px] sm:p-7">
               <p className="text-xs font-bold uppercase tracking-[0.15em] text-white/80">Nyein</p>
               <h2 className="mt-2 text-2xl font-black">
                 <T k="nyein.story1" />
@@ -106,7 +106,7 @@ export default async function NyeinPage() {
                 <T k="nyein.story2" />
               </h2>
               <p className="mt-1 text-xs text-white/85"><T k="nyein.storyLead" /></p>
-              <span className="mt-4 inline-flex rounded-full bg-white px-3 py-2 text-[10px] font-bold text-[#4e9e12]">
+              <span className="mt-4 inline-flex min-w-[122px] items-center justify-center rounded-full bg-white px-3 py-2 text-[10px] font-bold text-[#4e9e12]">
                 <T k="nyein.readyOnly" />
               </span>
             </div>

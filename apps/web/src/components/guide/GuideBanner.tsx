@@ -18,7 +18,7 @@ export default function GuideBanner({
   action?: ReactNode;
 }) {
   return (
-    <section className="relative isolate overflow-hidden rounded-xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-3.5 py-2.5 text-[#172810] sm:rounded-2xl sm:px-8 sm:py-3.5 lg:px-9">
+    <section className="relative isolate min-h-[206px] overflow-hidden rounded-xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-3.5 py-2.5 text-[#172810] sm:min-h-[250px] sm:rounded-2xl sm:px-8 sm:py-3.5 lg:min-h-[267px] lg:px-9">
       <div className="relative z-10 max-w-[78%] sm:max-w-[62%]">
         <span className="inline-flex rounded-full bg-[#5aa817] px-2 py-1 text-[8px] font-black uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[10px]">
           {eyebrow}

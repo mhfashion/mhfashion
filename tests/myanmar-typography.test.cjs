@@ -89,3 +89,44 @@ test("a language switch never resizes a control", () => {
   assert.match(read("apps/web/src/components/MobileBottomNav.tsx"), /fixed inset-x-0 bottom-0 z-\[60\] h-\[60px\]/, "the phone tab bar keeps its height");
   assert.match(read("apps/web/src/components/Footer.tsx"), /inline-flex h-5 items-center rounded border border-border-light/, "payment badges keep their height");
 });
+
+test("a language switch never resizes a banner, tile or card", () => {
+  // Burmese sets a 2.1em line box, so a content-sized box grew by up to 60% on switch (the home banner
+  // went 340 -> 509px). Every banner now carries a fixed height at each breakpoint, and its Burmese
+  // headline is drawn smaller inside that height instead of stretching it.
+  const css = read("apps/web/src/app/globals.css");
+  assert.match(css, /html\[lang="my"\] \[data-hero\] h1 \{\n  font-size: 20px;/);
+  assert.match(css, /@media \(min-width: 640px\) \{\n  html\[lang="my"\] \[data-hero\] h1 \{\n    font-size: 25px;/);
+  assert.match(css, /@media \(min-width: 1024px\) \{\n  html\[lang="my"\] \[data-hero\] h1 \{\n    font-size: 40px;/);
+
+  const heroes = [
+    "apps/web/src/app/page.tsx",
+    "apps/web/src/app/collections/page.tsx",
+    "apps/web/src/app/new/page.tsx",
+    "apps/web/src/app/popular/page.tsx",
+    "apps/web/src/app/mh-fashion/page.tsx",
+    "apps/web/src/app/nyein/page.tsx",
+  ];
+  for (const file of heroes) {
+    const source = read(file);
+    const hero = source.match(/<section data-hero className="([^"]+)"/);
+    assert.ok(hero, `${file} marks its banner`);
+    assert.match(hero[1], /(^|\s)h-\[\d+px\]/, `${file} pins the banner height`);
+    assert.doesNotMatch(hero[1], /(^|\s)min-h-\[/, `${file} no longer grows with its copy`);
+    assert.match(hero[1], /sm:h-\[\d+px\]/, `${file} pins the tablet height`);
+    assert.match(hero[1], /lg:h-\[\d+px\]/, `${file} pins the desktop height`);
+  }
+
+  // A one-line bar and a link list keep the Latin line box, so the footer never changes height.
+  assert.match(css, /html\[lang="my"\] \[data-tight-line\],\nhtml\[lang="my"\] \[data-tight-line\] \* \{\n  line-height: 1\.5;/);
+  assert.match(read("apps/web/src/components/CopyrightBar.tsx"), /<p data-tight-line className=\{`text-center text-\[9px\]/);
+  assert.match(read("apps/web/src/components/Footer.tsx"), /min-h-\[862px\] px-6 md:min-h-\[349px\]/);
+
+  // Cards take the taller (Burmese) measure, so both languages render them the same height.
+  assert.match(read("apps/web/src/app/collections/page.tsx"), /min-h-\[172px\] w-\[160px\] shrink-0 sm:w-auto/);
+  assert.match(read("apps/web/src/app/nyein/page.tsx"), /min-h-\[275px\] overflow-hidden/);
+  assert.match(read("apps/web/src/app/account/page.tsx"), /min-h-\[353px\] rounded-2xl border border-border bg-bg-surface p-5 sm:min-h-\[315px\]/);
+  assert.match(read("apps/web/src/components/CartPageClient.tsx"), /min-h-\[390px\] rounded-2xl/);
+  assert.match(read("apps/web/src/app/search/page.tsx"), /min-h-\[311px\] rounded-2xl border border-border bg-bg-surface p-8 text-center sm:min-h-\[212px\]/);
+  assert.match(read("apps/web/src/components/guide/GuideBanner.tsx"), /min-h-\[206px\][^"]*lg:min-h-\[267px\]/);
+});

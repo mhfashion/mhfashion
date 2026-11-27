@@ -33,7 +33,7 @@ export default function SearchField({ initial }: { initial: string }) {
           <X size={15} />
         </Link>
       ) : null}
-      <button type="submit" className="min-h-9 shrink-0 rounded-full bg-accent px-3.5 py-1.5 text-[11px] font-bold text-accent-foreground">
+      <button type="submit" className="min-h-9 min-w-[71px] shrink-0 rounded-full bg-accent px-3.5 py-1.5 text-[11px] font-bold text-accent-foreground">
         {t("search.submit")}
       </button>
     </>

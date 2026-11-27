@@ -18,7 +18,7 @@ export default function CopyrightBar() {
         isHome ? "md:border-t-0 md:py-0" : "md:py-4"
       }`}
     >
-      <p className={`text-center text-[9px] text-text-faint ${isHome ? "md:pt-4" : ""}`}>
+      <p data-tight-line className={`text-center text-[9px] text-text-faint ${isHome ? "md:pt-4" : ""}`}>
         © {new Date().getFullYear()} MH Fashion. {t("footer.rights")}
       </p>
     </footer>

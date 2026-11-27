@@ -51,7 +51,7 @@ export default function CartPageClient() {
 
   const noticeRegion = <p role="status" aria-live="polite" data-cart-notice className="sr-only">{notice}</p>;
 
-  if (!items.length) return <section className="rounded-2xl border border-border bg-bg-surface px-5 py-16 text-center shadow-sm"><ShoppingBag size={42} className="mx-auto text-text-muted" /><h2 ref={emptyHeadingRef} tabIndex={-1} className="mt-4 text-xl font-black">{t("cart.empty")}</h2><p className="mt-2 text-xs text-text-muted">{t("cart.emptyHelp")}</p><a href="/new" className="mt-6 inline-flex h-9 items-center rounded-full bg-accent px-5 text-xs font-bold text-accent-foreground">{t("cart.shopNow")} <ArrowRight size={14} className="ml-1.5" /></a>{noticeRegion}</section>;
+  if (!items.length) return <section className="min-h-[390px] rounded-2xl border border-border bg-bg-surface px-5 py-16 text-center shadow-sm sm:min-h-[323px]"><ShoppingBag size={42} className="mx-auto text-text-muted" /><h2 ref={emptyHeadingRef} tabIndex={-1} className="mt-4 text-xl font-black">{t("cart.empty")}</h2><p className="mt-2 text-xs text-text-muted">{t("cart.emptyHelp")}</p><a href="/new" className="mt-6 inline-flex h-9 min-w-[189px] items-center justify-center rounded-full bg-accent px-5 text-xs font-bold text-accent-foreground">{t("cart.shopNow")} <ArrowRight size={14} className="ml-1.5" /></a>{noticeRegion}</section>;
 
   return <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
     {noticeRegion}

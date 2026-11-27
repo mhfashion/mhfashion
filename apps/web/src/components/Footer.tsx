@@ -7,7 +7,7 @@ export default function Footer() {
   return (
     // Shown at every width: the owner listed these blocks as page content, so a phone gets them too. The extra
     // bottom padding keeps the last row clear of the fixed MobileBottomNav.
-    <footer className="px-6 md:px-8 pt-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6 border-t border-border mt-6">
+    <footer className="min-h-[862px] px-6 md:min-h-[349px] md:px-8 pt-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6 border-t border-border mt-6">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-5 pb-5 border-b border-border">
         <div className="col-span-2 md:col-span-1">
           <p className="font-bold text-sm mb-2">MH FASHION.</p>
@@ -24,7 +24,7 @@ export default function Footer() {
 
         <div>
           <p className="text-[10px] font-semibold text-text-muted mb-2">{t("footer.shop")}</p>
-          <ul className="text-[10px] space-y-1.5">
+          <ul data-tight-line className="text-[10px] space-y-1.5">
             <li><a href="/products">{t("nav.allProducts")}</a></li>
             <li><a href="/new">{t("nav.newArrivals")}</a></li>
             <li><a href="/best-sellers">{t("nav.bestSellers")}</a></li>
@@ -34,7 +34,7 @@ export default function Footer() {
 
         <div>
           <p className="text-[10px] font-semibold text-text-muted mb-2">{t("footer.help")}</p>
-          <ul className="text-[10px] space-y-1.5">
+          <ul data-tight-line className="text-[10px] space-y-1.5">
             <li><a href="/guide">{t("nav.guide")}</a></li>
             <li><a href="/faq">{t("nav.faq")}</a></li>
             <li><a href="/contact">{t("nav.contact")}</a></li>
@@ -46,7 +46,7 @@ export default function Footer() {
 
         <div>
           <p className="text-[10px] font-semibold text-text-muted mb-2">{t("footer.legal")}</p>
-          <ul className="text-[10px] space-y-1.5">
+          <ul data-tight-line className="text-[10px] space-y-1.5">
             <li><a href="/about">About Us</a></li>
             <li><a href="/terms">Terms of Use</a></li>
             <li><a href="/privacy">Privacy Policy</a></li>

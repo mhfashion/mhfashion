@@ -225,7 +225,7 @@ export default function CheckoutClient() {
 
   if (!items.length) {
     return (
-      <section className="mx-auto max-w-[720px] rounded-2xl border border-border bg-bg-surface px-5 py-14 text-center shadow-sm">
+      <section className="mx-auto min-h-[297px] max-w-[720px] rounded-2xl border border-border bg-bg-surface px-5 py-14 text-center shadow-sm">
         <ShoppingBag size={40} className="mx-auto text-text-muted" />
         <h2 className="mt-4 text-lg font-black">Nothing to check out</h2>
         <p className="mt-2 text-xs text-text-muted">Your cart is empty, so there is no order to place.</p>

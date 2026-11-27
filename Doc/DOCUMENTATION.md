@@ -2551,3 +2551,11 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
 
 - The `/account` dashboard shows three cards: Total Orders, My Points, Wishlist (`sm:grid-cols-2 xl:grid-cols-3`).
 - There is no wallet balance: customers cannot top up, and payment happens at checkout. KBZPay / Wave Pay / AYA Pay are payment methods, not a stored balance.
+
+## Language switch: box sizes
+
+- Banners carry `data-hero` and a fixed height per breakpoint (`h-[236px] sm:h-[388px] lg:h-[400px]`; nyein is taller because of its meta row). In Myanmar the headline is drawn at 20/25/40px inside that height, because a Burmese line needs a 2.1em box.
+- Tiles and cards use a `min-h` equal to the taller (Burmese) measure, so both languages render one size. Phone-specific heights are added as the base value with `sm:` restoring the desktop one.
+- `data-tight-line` keeps the Latin line box (1.5) for one-line bars and link lists (copyright bar, footer lists).
+- CTA pills carry a `min-w` equal to the wider Burmese label and centre their text.
+- Result at 1440x900 and 390x844: no banner, tile, card, bar or pill changes size on a language switch. Page titles and section wrappers still follow their text.

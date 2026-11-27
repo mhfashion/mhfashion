@@ -104,7 +104,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
       <main className="w-full bg-bg px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
         <div className="mx-auto grid w-full max-w-[1480px] gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="hidden lg:flex lg:flex-col lg:gap-4">
-            <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#69b917] via-[#4a9d0f] to-[#25720b] p-5 text-white shadow-sm">
+            <div className="min-h-[256px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#69b917] via-[#4a9d0f] to-[#25720b] p-5 text-white shadow-sm">
               <BookOpen size={34} strokeWidth={2.5} aria-hidden="true" />
               <h2 className="mt-5 text-2xl font-black leading-none">MH Fashion<br />Guide</h2>
               <p className="mt-3 text-xs leading-relaxed text-white/85"><T k="guide.heroTag" /></p>
@@ -129,11 +129,11 @@ export default async function GuidePage({ searchParams }: PageProps) {
               <Link href="/faq" className="flex h-[42px] items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> <span className="min-w-0 truncate">FAQ</span></Link>
               <Link href="/contact" data-guide-contact className="flex h-[42px] items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-bg"><ShieldAlert size={17} /> <span className="min-w-0 truncate">Contact / copyright claim</span></Link>
             </nav>
-            <div className="overflow-hidden rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]">
+            <div className="min-h-[221px] overflow-hidden rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]">
               <Sparkles size={25} className="mx-auto text-[#6eae18]" aria-hidden="true" />
               <h3 className="mt-3 text-base font-black"><T k="guide.earnTitle1" /><br /><T k="guide.earnTitle2" /></h3>
               <p className="mt-2 text-[10px]"><T k="guide.earnSub" /></p>
-              <Link href="/account" className="mt-4 inline-flex h-8 items-center rounded-full bg-[#54a817] px-4 text-[10px] font-bold text-white"><T k="guide.joinNow" /> <ArrowRight size={13} className="ml-1" /></Link>
+              <Link href="/account" className="mt-4 inline-flex h-8 min-w-[113px] items-center justify-center rounded-full bg-[#54a817] px-4 text-[10px] font-bold text-white"><T k="guide.joinNow" /> <ArrowRight size={13} className="ml-1" /></Link>
             </div>
           </aside>
 
@@ -144,7 +144,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
                 title={<><T k="guide.learnCreate1" /><br /><em className="text-[#54a817]"><T k="guide.learnCreate2" /></em></>}
                 lead={<T k="guide.lead" />}
                 action={
-                  <Link href="#articles" className="inline-flex items-center rounded-full bg-[#55a918] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm sm:px-3.5 sm:py-1.5 sm:text-[11px]">
+                  <Link href="#articles" className="inline-flex min-w-[215px] items-center justify-center rounded-full bg-[#55a918] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm sm:px-3.5 sm:py-1.5 sm:text-[11px]">
                     <T k="guide.browseAll" /> <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" />
                   </Link>
                 }
@@ -158,12 +158,12 @@ export default async function GuidePage({ searchParams }: PageProps) {
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><BookOpen size={13} /></span>
                 <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs"><T k="guide.allGuides" /></span>
               </Link>
-              <Link href={otherGuideHref} data-guide-editor className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4">
+              <Link href={otherGuideHref} data-guide-editor className="group flex h-[68px] w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Pencil size={13} /></span>
                 <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">{otherGuideName}</span>
               </Link>
               {catalog.categories.map((category) => <CategoryShortcut key={category.id} category={category} count={categoryCounts.get(category.slug) ?? 0} selected={selectedCategory === category.slug} query={query} />)}
-              <Link href="/faq" className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4">
+              <Link href="/faq" className="group flex h-[68px] w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Star size={13} /></span>
                 <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">Points &amp; Rewards</span>
               </Link>

@@ -50,7 +50,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </section>
         ) : (
           <section className="mt-5" data-search-empty>
-            <div className="rounded-2xl border border-border bg-bg-surface p-8 text-center">
+            <div className="min-h-[311px] rounded-2xl border border-border bg-bg-surface p-8 text-center sm:min-h-[212px]">
               <SearchIcon size={26} className="mx-auto text-text-muted" />
               <h2 className="mt-3 text-base font-black"><T k="search.emptyTitle" /></h2>
               <p className="mt-1 text-xs text-text-muted"><T k="search.emptyHelp" /></p>
@@ -62,7 +62,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         )
       ) : (
         <section className="mt-6" data-search-idle>
-          <div className="rounded-2xl border border-border bg-bg-surface p-8 text-center">
+          <div className="min-h-[311px] rounded-2xl border border-border bg-bg-surface p-8 text-center sm:min-h-[212px]">
             <SearchIcon size={26} className="mx-auto text-text-muted" />
             <h2 className="mt-3 text-base font-black"><T k={tooShort ? "search.idleShort" : "search.idleTitle"} /></h2>
             <p className="mt-1 text-xs text-text-muted"><T k="search.idleHelp" /></p>

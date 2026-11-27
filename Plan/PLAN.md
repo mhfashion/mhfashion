@@ -4770,3 +4770,32 @@ tofu box and a screenshot looks broken even when the markup is right. Put Noto S
   `/account`, and its label is gone from both dictionaries.
 - The stat row is now three cards — Total Orders, My Points, Wishlist — on `sm:grid-cols-2 xl:grid-cols-3`,
   so they still fill the width evenly.
+
+## §18.12 A language switch no longer resizes a box
+
+Measured by dumping every painted box (background, border or radius) on `/`, `/create`, `/collections`,
+`/cart`, `/account`, `/search`, `/guide`, `/nyein`, `/checkout`, `/new`, `/popular` and `/mh-fashion` in
+both locales at 1440x900 and 390x844 and diffing width/height. Before this pass the home banner alone
+went 340 -> 509px and the promo tiles 208 -> 263px.
+
+- **Banners** (`data-hero`): a fixed height at each breakpoint — `h-[236px] sm:h-[388px] lg:h-[400px]`
+  (nyein carries a meta row, so `h-[256px] sm:h-[404px] lg:h-[420px]`). Burmese sets a 2.1em line box,
+  so its headline is drawn smaller inside that height (`20px / 25px / 40px` by breakpoint) and its copy
+  keeps a 1.6 line box; the lead is clamped to two lines. Same for the account hero (`h-[245px]`) and
+  the guide banner (`min-h-[206px] sm:min-h-[250px] lg:min-h-[267px]`).
+- **Tiles and cards** take the taller (Burmese) measure as a `min-h`, so both languages render them at
+  one size: home promo tiles (`min-h-[168px]` / `h-[252px]`), collections tiles (`min-h-[172px]`,
+  `w-[160px]` in the phone scroller, `sm:w-auto` in the grid), nyein tiles (`min-h-[266px]`), the cart
+  empty state (`min-h-[390px] sm:min-h-[323px]`), the checkout empty state, the search cards
+  (`min-h-[311px] sm:min-h-[212px]`), the account profile/points/stat/recent-order/settings/help cards,
+  the guide sidebar cards and the mh-fashion aside.
+- **Bars and lists**: `data-tight-line` keeps the Latin line box (1.5) in Myanmar for the copyright bar
+  and the footer link lists, so those bars do not grow; the footer also carries `min-h-[862px]
+  md:min-h-[349px]` for the wrapped copy.
+- **Pills**: every CTA pill has a `min-w` equal to its wider (Burmese) label, so the pill does not
+  change size on switch. The label is centred inside it.
+- Verified: the only remaining size deltas are text containers (page titles, section wrappers), the
+  guide card thumbnails inside a fixed square card, and a conditional count badge. Every banner keeps
+  2-16px of slack for the Burmese copy at both widths, so nothing is clipped.
+- `tests/myanmar-typography.test.cjs` pins the banner heights, the Myanmar type scale, the tight-line
+  hook and the card `min-h` values.
