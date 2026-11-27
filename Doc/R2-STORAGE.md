@@ -4,6 +4,10 @@
 > live in a second, private bucket, `mh-fashion-private`, because R2 makes a bucket public as a whole. The full prefix list,
 > key rules, retention and backups are in `Plan/PLAN.md` section 12.2. Do not put anything about a customer or an order in the
 > public bucket.
+>
+> **Added 2026-11-26:** the editor's Photos and Patterns libraries (`photos/<slug>/`, `patterns/<slug>/`) and a customer's files under
+> `users/<account-uuid>/` (private bucket) are decided in section 12.2. The upload instructions for photos and patterns are added to this
+> document when `npm run assets:check` supports them; until then, do not upload either.
 
 MH Fashion serves product mockups, design files and post artwork from Cloudflare R2. This is the
 contract the code already expects; follow it and nothing has to change in the app. The catalogue

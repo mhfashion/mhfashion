@@ -777,6 +777,8 @@ Local development uses wrangler's local R2 simulation, so no development buckets
 | `fonts/manifest.json` | the older hand-edited font list, honoured until every font has a `meta.json` | JSON | by hand | revalidate |
 | `designs/<design-slug>/design.svg` + `meta.json` | design library artwork; each element is a top-level `<g id>` so it lists as a layer | SVG up to 2 MB, cleaned | admin form, or by hand | revalidate |
 | `elements/<element-slug>/element.svg` + `meta.json` | one reusable shape | SVG up to 200 KB, cleaned | same | revalidate |
+| `photos/<photo-slug>/photo.<webp\|png\|jpg>` + `thumb.webp` + `meta.json` | a library photo for the editor's Photos section: the full picture, a small picture for the grid, and its description | photo: WebP or JPEG up to 8 MB and 4000 px on the long side (PNG, or WebP with transparency, only for a cut-out); thumb: WebP up to 40 KB and 512 px | the owner, by hand; later the admin form | revalidate |
+| `patterns/<pattern-slug>/pattern.svg` + `meta.json` | a pattern layer for the Patterns section: an SVG that already covers the 1000 × 1200 artwork space, as the nine built-in patterns do | SVG up to 200 KB, cleaned | the owner, by hand; later the admin form | revalidate |
 | `brushes/<brush-slug>/tip.png` or `tip.svg` + `meta.json` | a brush tip | PNG up to 512 × 512 px and 200 KB, or SVG up to 100 KB | the owner, by hand | immutable |
 | `text-styles/<style-slug>/meta.json` | a text style is data: its effect stack; it is painted live, so there are no image files | JSON up to 20 KB | admin | revalidate |
 | `textures/<texture-slug>/texture.png` + `meta.json` | a grain mask for the Distress effect (editor plan E18, later) | PNG up to 2048 px and 1 MB | by hand | immutable |
@@ -789,14 +791,21 @@ Local development uses wrangler's local R2 simulation, so no development buckets
 | Key pattern | What it is | Accepted file | Written by | Read by |
 |---|---|---|---|---|
 | `catalog/<kind>.json` | the snapshot for `fonts`, `designs`, `elements`, `brushes`, `text-styles`, `mockups`, with its `issues` list | JSON | the rebuild only | the asset routes; the admin issues route; the public route strips `issues` |
-| `uploads/tmp/<user-id>/<upload-id>.<webp\|jpg\|png>` | a customer photo that is not yet part of a saved design | the compressed working copy, up to 6 MB (3000 px on a phone) | the upload route | the same customer |
-| `uploads/<user-id>/<upload-id>.<webp\|jpg\|png>` | the photo once a design that uses it is saved | same | promoted from `tmp` on Save | the same customer; the press through the order copy |
-| `saved/<user-id>/<design-id>/thumbnail.webp` | the My designs thumbnail | WebP up to 100 KB, about 600 px | the browser at Save, through the route | the same customer |
+| `tmp/<user-id>/<upload-id>.<webp\|jpg\|png>` and `tmp/<user-id>/quota.json` | a customer photo that is not yet part of a saved design, and the hourly upload counter | the compressed working copy, up to 6 MB (3000 px on a phone) | the upload route | the same customer |
+| `users/<user-id>/uploads/<upload-id>.<webp\|jpg\|png>` | the photo once a design that uses it is saved | same | promoted from `tmp` on Save | the same customer; the press through the order copy |
+| `users/<user-id>/designs/<design-id>/thumbnail.webp` | the My designs thumbnail | WebP up to 100 KB, about 600 px | the browser at Save, through the route | the same customer |
 | `orders/<order-id>/<file>` | the frozen copy of what the press receives: `print-sheet-<order>.html`, `invoice-<order>.html`, `print-spec-<order>.csv`, `measurements-<order>.csv`, `manifest.json`, `delivery-<order>.json`, and per design `designs/<design>-<look>.svg` and `...-mockup.svg` (the names in `Doc/PRINT-BUNDLE.md`) | the files themselves; the ZIP is not stored | the server at Buy, once | admins and the press, through the Worker |
-| `licences/<font-slug>/<file>.pdf` | proof of the right to use a font commercially | PDF up to 5 MB | the owner | admins |
+| `licences/<fonts\|photos>/<slug>/<file>.pdf` | proof of the right to use a font or a library photo commercially | PDF up to 5 MB | the owner | admins |
 
 A `meta.json` is the description of its folder; the catalogue builder reads it and lists the folder without it as an
 issue.
+
+`<user-id>` is the Supabase account UUID. The shop's **Photos library** (`photos/`, public, chosen by the shop) and a
+**customer's own uploads** (`users/<user-id>/uploads/`, private, chosen by the customer) are different things and never
+share a prefix. `photos/<slug>/meta.json` carries: the name in English and Myanmar, tags and aliases, the pixel width
+and height, whether the picture has transparency, the licence (name, source address, `commercialPrintAllowed`, the
+credit line) and on/off. `patterns/<slug>/meta.json` carries: the name in English and Myanmar, tags, `ink`
+(`dark`, `light` or `color`, which decides the card's background) and on/off.
 
 #### 12.2.3 Key rules
 
@@ -812,6 +821,9 @@ issue.
    none can drift. It is a pure function with a test per pattern in the tables above.
 7. A replaced file whose old copy may still be cached gets a new name (`regular-2.woff2`, as `Doc/R2-STORAGE.md`
    already says), or its cache class is `revalidate`.
+8. A customer's folder is named by the account **UUID**, never by the account name: a name can change, repeat, contain
+   Myanmar script or personal data, and a key must not depend on any of that. The name is shown from the profile, not
+   from the key.
 
 #### 12.2.4 Cache classes
 
@@ -837,7 +849,7 @@ issue.
 3. **Customer files (private).** The browser re-encodes a photo (which drops its EXIF data, including any location)
    and sends it to `POST /api/uploads` with the customer's token. The Worker checks the type by its first bytes,
    the size and the pixel size, limits the number of uploads per customer per hour, and writes it under
-   `uploads/tmp/<user-id>/`. Save promotes the files a design uses to `uploads/<user-id>/`; the rest of `tmp` expires
+   `tmp/<user-id>/`. Save promotes the files a design uses to `users/<user-id>/uploads/`; the rest of `tmp` expires
    after 24 hours (12.2.7).
 4. **Order files (private).** At Buy the server writes each file of `orders/<order-id>/` **once**. The Worker refuses
    a second write to an existing order key. Each carries its `sha256`, which is checked when it is read.
@@ -855,7 +867,8 @@ issue.
   one `meta.json` per asset.
 - **Private files** are returned only by the Worker, after it has checked who is asking: a customer gets their own
   uploads, thumbnails and designs; an admin gets order files and licences. There are no presigned links, so no key
-  ever leaves the server.
+  ever leaves the server. Every admin read of a customer's file under `users/` is written to the admin audit log (who,
+  which key, when), so support access is always visible.
 - **The press bundle ZIP** is built on request (in the Worker or the browser) from the stored order files, never
   stored, so there is one copy of each file.
 
@@ -863,15 +876,15 @@ issue.
 
 | What | Kept | Then |
 |---|---|---|
-| `uploads/tmp/` | 24 hours | a lifecycle rule on the prefix expires it (to be set in the dashboard when the bucket exists) |
-| `uploads/<user-id>/` and `saved/` | while the design that uses them exists | a design deleted by the customer is soft-deleted; its files are purged after 30 days (editor plan E1) |
+| `tmp/` | 24 hours | a lifecycle rule on the prefix expires it (to be set in the dashboard when the bucket exists) |
+| `users/<user-id>/` | while the design that uses a file exists | a design deleted by the customer is soft-deleted; its files are purged after 30 days (editor plan E1) |
 | `orders/<order-id>/` | for the life of the order, and for the legal retention period | the owner sets the period with the legal review (editor plan, "Inputs only the owner can supply"); until then nothing is deleted |
 | `licences/` | as long as the font is in use, then kept | never purged automatically |
 | public assets | until an admin turns them off | switching off sets `enabled: false` in `meta.json` and keeps the file; **permanent delete** is a separate admin action offered after 30 days |
 | `catalog/` | until the next rebuild | overwritten |
 
-Account deletion removes `uploads/<user-id>/` and `saved/<user-id>/` for designs no order uses; orders keep their own
-copies.
+Account deletion removes the whole prefix `users/<user-id>/` in one operation, after checking that no open order still
+needs a file; paid orders keep their own copies under `orders/`.
 
 #### 12.2.8 Backups
 
@@ -889,7 +902,7 @@ copied.
 
 1. **A change event.** R2 event notifications on `mh-fashion-assets` send a message to the Queue
    `mh-fashion-asset-events` when an object is created or deleted. There is one rule per source prefix (`fonts/`,
-   `designs/`, `elements/`, `brushes/`, `text-styles/`, `mockups/`) so the rules never overlap, and the Worker's
+   `designs/`, `elements/`, `photos/`, `patterns/`, `brushes/`, `text-styles/`, `mockups/`) so the rules never overlap, and the Worker's
    `queue` handler rebuilds that kind, so a new file appears within seconds. Snapshots live in the other bucket, so
    a rebuild cannot trigger itself.
 2. **The admin "Rescan" button**, for an immediate refresh.
@@ -907,7 +920,7 @@ The risk is not the bill but a loop that lists the bucket on every request, whic
 #### 12.2.11 Checks
 
 - `npm run assets:check <folder>` (before an upload): key rules, file types and sizes, `meta.json` fields, a licence
-  entry for every font, duplicates.
+  entry for every font and every photo, a thumbnail for every photo, duplicates.
 - The issues route and panel (section 12.1): every skipped entry with its key and reason.
 - A weekly size report per prefix (a handful of list operations) in the admin, so growth is seen early.
 - Tests: the key function, the file-type check, the SVG cleaner, the access rules (a customer cannot read another
@@ -954,6 +967,27 @@ mislabeled or oversized file as a problem. The event side of §12.2.9 is prepare
 `rebuildAssetCatalogues(..., kinds)` rebuilds only the kinds a queue message names. Remaining: the bindings, the Queue and
 the event rules (12.2.9), the upload and order routes, and the backup workflow — all of which need the buckets to exist.
 
+**To build for Photos, Patterns and the `users/` layout (decided 2026-11-26).** None of this is in the code yet:
+1. `asset-keys.ts`: new shapes `photo` (webp, png or jpg, up to 8 MB and 4000 px), `photo-thumb` (`thumb.webp`, up to
+   40 KB and 512 px), `photo-meta`, `pattern` (svg, up to 200 KB) and `pattern-meta`; the private shapes `upload-tmp`,
+   `upload` and `saved-thumbnail` become `tmp/<user>/…`, `users/<user>/uploads/…` and
+   `users/<user>/designs/<design>/thumbnail.webp`; the licence shape becomes `licences/<fonts|photos>/<slug>/<file>.pdf`.
+2. `asset-store.ts`: `PUBLIC_ASSET_KEY_PREFIXES` gain `photos/` and `patterns/`; `PRIVATE_ASSET_KEY_PREFIXES` swap
+   `uploads/` and `saved/` for `users/` and `tmp/`.
+3. `asset-access.ts`: the owner of a private key is the second segment of `users/<id>/…` and `tmp/<id>/…`; an admin still
+   reads everything, and each admin read of `users/` is logged.
+4. `asset-upload.ts`: the quota file and the temporary keys move to `tmp/<user>/`, `promoteUploads` copies to
+   `users/<user>/uploads/`, and `app/api/uploads`, `app/api/uploads/promote` and the Worker's private route follow.
+5. `asset-catalogue.ts` and `asset-events.ts`: the kinds `photos` and `patterns` (a folder with `meta.json`, like designs),
+   their routes `/api/assets/photos` and `/patterns`, and a non-overlapping event rule for each prefix. A photo whose
+   `meta.json` lacks the licence fields, or whose licence document is missing, is listed as an issue and not offered.
+6. `editor-photo-library.ts` and `editor-pattern-library.ts`: the sidebar reads the two catalogues. The nine built-in
+   patterns stay in code and are shown first; the Lorem Picsum placeholder photos, the `placeholder` flag and the status
+   constants go when the first licensed photos are uploaded.
+7. The tests that pin the old paths (`asset-keys`, `asset-upload`, `assets-worker`, `asset-store`) change with the code;
+   the backup workflow and `Doc/R2-STORAGE.md` list the new prefixes, and the lifecycle rule targets `tmp/`.
+Nothing customer-related has been written to R2 yet, so the rename moves no data.
+
 #### 12.2.13 Moving from today
 
 1. Create `mh-fashion-private` and bind it as `MH_FASHION_PRIVATE`; create `mh-fashion-backup`. Nothing customer-related
@@ -961,7 +995,9 @@ the event rules (12.2.9), the upload and order routes, and the backup workflow �
 2. Keep reading `fonts/manifest.json` and any flat mockup keys until the shop has uploaded in the new form.
 3. Move each single-file design into its folder (`designs/<slug>/design.svg` plus a `meta.json`) with the checker's list.
 4. Apply the changes in 12.2.12 in the order 1, 2, 3, 4, 6, then 5.
-5. Add the event rules and the Queue (12.2.9), the lifecycle rule for `uploads/tmp/`, and the backup workflow.
+5. Add the event rules and the Queue (12.2.9), the lifecycle rule for `tmp/`, and the backup workflow.
+6. Upload the first licensed photos and patterns in the new form (`photos/<slug>/…`, `patterns/<slug>/…`), check them with
+   `npm run assets:check`, and then switch the sidebar from the placeholders.
 
 #### 12.2.14 Decisions
 
@@ -972,6 +1008,11 @@ the event rules (12.2.9), the upload and order routes, and the backup workflow �
 | R2-7 | Is a customer's original photo kept? | **Decided 2026-11-24:** no. Only the compressed working copy is kept (editor plan D8); an original is stored only if the press asks for originals. |
 | R2-8 | How are backups made? | **Decided 2026-11-24:** weekly copy of both buckets to `mh-fashion-backup`, monthly copy of `orders/` and `licences/` to a place outside the Cloudflare account; the owner picks that place. |
 | R2-9 | How is a catalogue refreshed after a change? | **Decided 2026-11-24:** by an R2 event to a Queue and the Worker's `queue` handler, with an hourly cron as the safety net and the admin Rescan button; this replaces R2-2's five-minute rhythm once the events are on. |
+| R2-10 | Is the design folder named by file format (`svg/`) or by purpose? | **Decided 2026-11-26:** by purpose: `designs/` stays. A folder named after a format becomes a dumping ground for PNG previews and JSON, and the built keys, catalogue and tests already use `designs/`. |
+| R2-11 | How are the shop's photos stored? | **Decided 2026-11-26:** one folder per photo, `photos/<slug>/` with the picture, `thumb.webp` (up to 40 KB, 512 px, the only file the grid loads) and `meta.json` (pixel size, licence). Ordinary photos are WebP or JPEG; PNG or WebP with transparency only for a cut-out; up to 8 MB and 4000 px. |
+| R2-12 | How are patterns stored? | **Decided 2026-11-26:** `patterns/<slug>/pattern.svg`, an SVG that already covers the artwork space (no editor change), up to 200 KB, with `ink` in its `meta.json`. A repeating tile that the editor tiles itself is a later option. The built-in code patterns stay and come first. |
+| R2-13 | How are customers' files laid out? | **Decided 2026-11-26:** in the private bucket, under `users/<account-uuid>/uploads/` and `users/<account-uuid>/designs/<design-id>/`, with unsaved photos in `tmp/<account-uuid>/` (expires in 24 hours). The folder is the account UUID, never the name. `orders/` stays separate, because an order outlives the account. Admin reads are logged. |
+| R2-14 | Which photos may be listed? | **Decided 2026-11-26:** only photos the shop may print and sell: its own, bought stock with a commercial or merchandise licence, or public-domain and CC0. Each `meta.json` records the licence name, source address and `commercialPrintAllowed`, and the licence document is kept in `licences/photos/<slug>/`. A photo without them is not offered. The Lorem Picsum placeholders are not licensed for this and are removed when real photos arrive. |
 
 **Depends on:** the two bindings and the Queue in `wrangler.assets.jsonc`; the event rules and the lifecycle rule created in
 the dashboard; Supabase Auth for every private route and for the admin writes; the owner's choice of an off-account
@@ -1345,6 +1386,7 @@ browser-local demo data (section 16 P0).
 - 2026-11-23: Decided R2-1 to R2-3 (§12.1). Editor plan: decided D1, D2, D4 to D9, D14 and D15; designed the saved design and order hand-off (E1), the Hoodie (E9) and design areas (E23); added the order of work (5.1) and the list of inputs only the owner can supply.
 - 2026-11-23: `Plan/` reduced to one file: the editor plan became Part II of this file and the separate editor plan file was removed. Added the repository layout and file rules (SQL only in `SQL/`, documents only in `Doc/`, one file in `Worker/` and in `Plan/`), the §17 search plan, and the Worker-file design in §12.1 (R2-4). Section 6 now points to Part II.
 - 2026-11-24: Added §12.2, the R2 storage plan: three buckets (public, private, backup), every prefix with its file type, limit, writer, reader and cache class, key rules, how files get in and are read, retention, backups, rebuild events, cost, checks, the changes the built asset code needs, and decisions R2-5 to R2-9. The old key list in section 12 now points to it.
+- 2026-11-26: §12.2 now covers the editor's Photos and Patterns libraries (`photos/`, `patterns/`) and moves customers' files to `users/<account-uuid>/` and `tmp/<account-uuid>/`; decisions R2-10 to R2-14; the code changes this needs are listed in §12.2.12; Part II (II.2, E1, E10, the inputs list) and §17 search follow.
 
 
 
@@ -2094,7 +2136,7 @@ author's, taken on the owner's instruction to decide everything.
 |---|---|---|
 | Storefront `/search?q=` | Server-rendered. `normalizeSearchQuery` keeps letters, combining marks, digits, spaces and `' & . + -`, cuts the text at 60 characters and needs 2 characters. `searchProducts` asks Supabase for `ilike %term%` on `name`, `sub_brand` and `product_type`, ordered by name, at most 40 products, with a price range per product. With no hit the page shows popular products. The header search form goes to this page. | `lib/products.ts`, `app/search/page.tsx`, `components/HeaderActions.tsx` |
 | Guide `/guide?q=&category=` | Server-side. The text is normalised and matched with `includes` over each article's searchable fields; it composes with the category filter. | `lib/guides.ts` |
-| Editor | In the browser. The Edit sidebar search (Designs, Elements, Text) and the font picker filter their lists with a lower-case `includes` on names. | `EditorEditSidebar`, `EditorAdjustmentsPanel` |
+| Editor | In the browser. The Edit sidebar search (Designs, Elements, Photos, Patterns, Text) and the font picker filter their lists with a lower-case `includes` on names. | `EditorEditSidebar`, `EditorAdjustmentsPanel` |
 | Admin | In the browser, over the demo data. Each list (orders, products, posts, customers, designs, availability, promotions, settlements, the pricing grid) filters on one joined text made from its own fields; orders use id, customer, email and more. | `components/admin/*`, `lib/pricing-combinations.ts` |
 
 Verified gaps:
@@ -2117,7 +2159,7 @@ Verified gaps:
 | S2 | **Matching and ranking.** A Latin query is split on spaces and every word must match as a prefix or a substring. A Myanmar query has no spaces, so it matches as a substring after normalising. Results rank: exact name, then name starts with, then name contains, then other fields; ties break by popularity, then name. Phase 1 fetches up to 80 rows with `ilike` and ranks them in code, returning 40. |
 | S3 | **Typo tolerance** comes in phase 3 with the `pg_trgm` extension: a trigram index on the normalised search text and a similarity threshold of about 0.3. Postgres full-text search (`tsvector`) is not used because it has no usable Burmese configuration. |
 | S4 | **One search column.** Each searchable record (products, posts, designs, guides) gets a normalised `search_text` made from its names in English and in Myanmar, aliases, tags, brand and type, so a customer finds it in either language. The text is built when the record is written, and that column is what `ilike` and the trigram index read. The migration is a numbered file in `SQL/`. |
-| S5 | **Where filtering runs is decided by size, not by screen.** A list that comes from the database or may exceed about 200 rows is filtered in SQL (products, posts, orders, customers, designs). A small list already in memory is filtered in the browser (the editor's font, design, element, text-style and brush libraries, and the pricing grid). The editor libraries search the catalogue JSON that the asset Worker returns (section 12.1), over name, tags, shelf, scripts and aliases, using S1. |
+| S5 | **Where filtering runs is decided by size, not by screen.** A list that comes from the database or may exceed about 200 rows is filtered in SQL (products, posts, orders, customers, designs). A small list already in memory is filtered in the browser (the editor's font, design, element, photo, pattern, text-style and brush libraries, and the pricing grid). The editor libraries search the catalogue JSON that the asset Worker returns (section 12.1), over name, tags, shelf, scripts and aliases, using S1. |
 | S6 | **The storefront search page is grouped:** Products (default), Guides and Designs, each with a count and a cap (products 40, guides 10, designs 12), as tabs on a phone, with `?q=` and `?type=` in the address. The header search shows up to 5 suggestions while typing, after a 200 ms pause, and announces the count. |
 | S7 | **Interface rules.** `type="search"` inside `role="search"`, labelled in English and Myanmar; at least 2 characters after normalising, at most 60; Esc clears; the typed text stays after an error; the empty state offers popular products and a clear button; 44 px targets on a phone; the result count is announced to screen readers. |
 | S8 | **Misses are recorded.** When a storefront search returns nothing, the normalised query is counted in a table `search_misses` (no user id, no address), kept 90 days, and the admin shows the top misses each week. |
@@ -3059,7 +3101,7 @@ Checked item by item in the source.
 | Images | client-side compression (2 MB, 2000 px), nine photo-adjustment groups, non-destructive values, masks |
 | Mockups | Front and Back boxes with connectors, artwork mirror clipped to the print area, independent overlay transforms, shared 3500 px tier |
 | Header Bar 2 | eight selection boxes (Product, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, Size), live price; Save and Buy disabled |
-| Edit sidebar | Designs, Elements, Text, Upload, Image Create; rail stays visible; additions land in the Layers box |
+| Edit sidebar | Designs, Elements, Photos, Patterns, Text, Uploads, Image Create; rail stays visible; additions land in the Layers box; Photos and Patterns are placeholders and code-made until their R2 libraries exist (E10) |
 | Browser draft | the layers are written to `localStorage` (`mh-fashion-design-draft-v1`) 400 ms after a change; `/create` restores them on load and says "Restored the design from your last visit"; a design-editable product page renders that draft too |
 | Undo / redo | 30 snapshots of the layer list, covering paint, pen, shape and gradient edits plus add, delete, duplicate, rename, reorder, group, mask and visibility/lock toggles; Ctrl+Z / Ctrl+Shift+Z (⌘ on macOS) through `lib/editor-shortcuts.ts`; viewport, mockup overlay and the opacity/fill sliders stay outside it |
 | Download | "Download my design" saves a 38.1 × 45.72 cm SVG (300 dpi PNG too) with the used fonts inlined as base64 `@font-face` rules |
@@ -3129,7 +3171,7 @@ the owner approves an item before it starts.
 | E7 | Hover highlight between canvas and Layers — **done 2026-11-22** | finding the row for a shape on a busy canvas is slow | `EditorCanvas`, `EditorLayersPanel` | small |
 | E8 | Shape Builder for `exclude` and arbitrary paths — **done 2026-11-22** | the builder only merges rectangles today | `lib/editor-path-boolean.ts`, `applyEditorShapeBuilderOperation` | medium |
 | E9 | Enable the remaining products | Hoodie, Cup, Kids and Bag are visible but dead | `EditorHeaderBar2`, mockups, `editor-price` | medium |
-| E10 | Connect the sidebar library and image generation | Designs, Elements and Image Create are placeholders | `editor-design-library`, R2 endpoint, image service | large |
+| E10 | Connect the sidebar library and image generation | Designs, Elements, Photos, Patterns and Image Create are placeholders or hand-written lists | `editor-design-library`, R2 endpoint, image service | large |
 | E11 | Per-character styling, glyphs, artboards | only if the catalogue needs them | text model migration, renderers, export | large |
 | E12 | Required selections before Buy | an order must carry every choice; Save stays open | `EditorHeaderBar2`, new gate helper, order payload | small |
 | E13 | Keyboard Undo / Redo — **done 2026-11-22** | desktop users expect Ctrl+Z; only the tool-bar buttons exist | `lib/editor-shortcuts.ts`, `EditorCanvas` | small |
@@ -3201,7 +3243,7 @@ used by the editor yet, and the editor's draft is browser-only.
    `platform_settings`.
 2. **No pictures inside the row.** Today an image layer carries its photo as a data URL, which is too large for
    a row and for browser storage. Before a design is saved, each photo is sent to private R2 through the Worker
-   (`uploads/tmp/<user-id>/` and, once the design is saved, `uploads/<user-id>/<upload-id>.<ext>`, Part I §12.1 and §12.2, rollout step 4) and the layer keeps only that key.
+   (`tmp/<user-id>/` and, once the design is saved, `users/<user-id>/uploads/<upload-id>.<ext>`, Part I §12.1 and §12.2, rollout step 4) and the layer keeps only that key.
    Fonts are stored by slug, never as files.
 3. **Who may see it.** Row-level security lets a customer select, insert and update only rows with their own
    `user_id`, with a `with check` on writes; nobody else can read a design. The admin order view and the press
@@ -3214,7 +3256,7 @@ used by the editor yet, and the editor's draft is browser-only.
    offline". A save carries the `updated_at` it started from; if the stored copy is newer (another device), the
    editor asks "Keep this version or load the other one" instead of overwriting.
 6. **My designs.** A list with a thumbnail, name and date, with open, duplicate and delete, in the account area
-   and in the Edit sidebar. The thumbnail is drawn in the browser at Save (about 600 px) and stored privately.
+   and in the Edit sidebar. The thumbnail is drawn in the browser at Save (about 600 px) and stored privately at `users/<user-id>/designs/<design-id>/thumbnail.webp`.
    Delete is soft; the row and its files are purged after 30 days.
 7. **Buy hand-off (after payment and E12).** Buy creates an order item that owns an **immutable copy**:
    `design_snapshot jsonb` (layers and selections at purchase), `design_svg_key` (the print SVG with the fonts
@@ -3401,6 +3443,7 @@ used by the editor yet, and the editor's draft is browser-only.
   `meta.json` per asset (name, category, tags). The `pending-r2-endpoint` placeholder in
   `lib/editor-design-library.ts` is replaced by that response. A design's layers stay individually selectable.
   Uploaded photos are private: they go to R2 through the Worker and come back only to their owner.
+- **Photos and Patterns (owner, 2026-11-26):** the Photos and Patterns rail sections read `GET /api/assets/photos` and `/patterns` the same way (Part I §12.2.2). A photo shows its `thumb.webp` in the grid and loads the full picture only when it is added; it then enters the canvas through `addCanvasPhoto` and `imageLayerBox` as it does today, and its pixel size comes from `meta.json`, so the E14 resolution warning needs no extra download. A pattern is an SVG that already covers the artwork space and enters as a shape layer through `patternToDesignLayer`; the nine built-in patterns stay in code and appear first. Both lists search name, tags and aliases in English and Myanmar (Part I §17, S5). The Lorem Picsum placeholder photos are removed when the first licensed photos are uploaded. Uploads (the customer's own photos) stay a separate section and a separate private prefix.
 - Acceptance: a design added from the sidebar survives a reload (once E1 lands) and appears in the print
   bundle.
 
@@ -4089,6 +4132,7 @@ The plan author has decided every open design question above. These are facts th
 8. Which effects the press confirms print safely on dark garments (E18).
 9. The legal review of the terms, privacy and cookie pages (Part I §13).
 10. The place outside the Cloudflare account for the monthly backup of order files and licences (R2-8), and the legal retention period for order files (Part I §12.2.7).
+11. The licensed photos and the patterns for the Photos and Patterns sections, with the licence document of each photo (Part I §12.2, R2-11 to R2-14).
 
 #### Owner decisions recorded (2026-11-21)
 
@@ -4112,6 +4156,7 @@ The plan author has decided every open design question above. These are facts th
 15. Flip does not belong in the Tools bar; it moves into the Adjustments panel — **done 2026-11-22**. The Adjustments panel should be more complete, tighter and good to look at (E22, owner request, 2026-11-22). E22 is a proposal; the owner reviews a visual mock-up first.
 16. Files in R2 are read through a Worker that turns them into JSON, not by the browser directly (owner, 2026-11-22). The design is Part I §12.1; E10, E17 and E20 use it.
 17. 2026-11-23: the owner asked the plan author to decide every remaining open question and write it all down. The decisions are in II.6 (D1, D2, D4 to D9, D14, D15), Part I §12.1 (R2-1 to R2-3), and the order of work in II.5.1. What only the owner can supply is listed under "Inputs only the owner can supply". Nothing is approved to start by this entry; each item still begins on the owner's word.
+18. 2026-11-26: the owner added the Photos and Patterns sections to the Edit sidebar and asked for advice on the R2 folders; the plan author decided R2-10 to R2-14 in Part I §12.2.14 (`designs/` stays; `photos/` and `patterns/` folders; customers' files under `users/<account-uuid>/` and `tmp/<account-uuid>/`; a photo needs a licence record).
 
 ### II.7 Verification and change policy
 
