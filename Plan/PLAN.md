@@ -2264,7 +2264,10 @@ Verified gaps:
    screenshots: the font stack names each platform's Myanmar face (`Noto Sans Myanmar`, `Myanmar Sangam MN`,
    `Myanmar Text`, `Padauk`, `Pyidaungsu`), and `html[lang="my"]` raises the line box to 2.1 because Noto Sans
    Myanmar reports a 2.17em line box against Latin's 1.42em — at 1.6 two Burmese lines ran into each other.
-   `tests/myanmar-typography.test.cjs` keeps both, and ratchets the labels that still have no Myanmar text.
+   `tests/myanmar-typography.test.cjs` keeps both. The dictionary is now complete: the last 38 labels (nav,
+   footer, account, editor and guide) are translated and the test refuses any label that is missing or still
+   carries its English text, so a new screen cannot ship half-translated. The account settings panel also read
+   its four sentences from hard-coded English while the dictionary already held them; it now reads `t()`.
 
 ### 17.4 Acceptance
 

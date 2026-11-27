@@ -1744,7 +1744,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `<html lang>`, so Latin text is untouched.
 - The Tailwind `fontFamily.sans` stack names `Noto Sans Myanmar`, `Myanmar Sangam MN`, `Myanmar Text`, `Padauk`,
   `Pyidaungsu` after the Latin faces. Without one of them a device paints every Burmese label as empty boxes.
-- `tests/myanmar-typography.test.cjs` checks the rule, the font stack, that `search.*` exists in both dictionaries,
-  and ratchets the 38 labels that still have no Myanmar text — translate one and drop it from `UNTRANSLATED`.
+- `tests/myanmar-typography.test.cjs` checks the rule, the font stack, that every English key has a Myanmar
+  entry, and that no Myanmar entry is still the English text (`nav.mhFashion`, `nav.singular`, `nav.nyein` are
+  the allowed brand-name exceptions). The dictionary is complete as of 2026-11-21.
+- A key can exist while the component still prints its own English (the account settings panel did). Grep the
+  long dictionary values inside `src/**/*.tsx` when adding a screen; only the guide's pre-hydration `fallback=`
+  props are meant to stay English.
 - Screenshots in this container need `fonts-noto-core` installed (it is not there by default), or every Burmese
   glyph is tofu and you cannot judge the layout.

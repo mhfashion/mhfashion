@@ -2414,3 +2414,21 @@ bottom navigation measures itself and stays inside the viewport at 71 px with th
 `tests/myanmar-typography.test.cjs` keeps the rule, the font stack and the dictionary honest, and ratchets the
 labels that still have no Myanmar text (38 of them, mostly the account and policy pages) so a new English-only
 label fails the suite instead of slipping in.
+
+### The dictionary is complete (2026-11-21)
+
+The last 38 labels that fell back to English are translated — the nav and footer, the account settings, the
+editor's attach/stroke/width labels and the guide's chrome. `tests/myanmar-typography.test.cjs` now refuses a
+label that has no Myanmar text *and* a label whose Myanmar text is identical to the English one (the brand names
+`MH Fashion`, `Nyein` and `Singular` are listed as the only allowed exceptions), so a screen cannot ship
+half-translated again.
+
+Translating the text is only half of it: a key can exist and the component can still print its own English.
+The account settings panel did exactly that — `account.currencyHelp`, `account.themeHelp` and
+`account.notificationsHelp` were in the dictionary while the panel held the same sentences in JSX. Those four
+sentences and the address placeholder now read `t()`, and `account.currency` was added for the row's title. The
+account header ("MH Fashion Account", "← Dashboard") and the phone's bottom bar were the same story: the bar
+carried its own Myanmar array with `Popular` and `Cart` left in English, and now every item reads a `nav.*` key,
+so the two menus cannot drift apart again.
+A grep for each long dictionary value inside `src/**/*.tsx` finds the remaining cases; today the only matches
+are the guide's pre-hydration `fallback=` props, which are meant to be English.

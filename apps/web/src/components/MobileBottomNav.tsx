@@ -6,17 +6,17 @@ import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 
 const ITEMS = [
-  { href: "/", label: "Home", Icon: Home },
-  { href: "/popular", label: "Popular", Icon: Flame },
-  { href: "/create", label: "Create", Icon: Pencil },
-  { href: "/cart", label: "Cart", Icon: ShoppingCart },
-  { href: "/account", label: "Account", Icon: User },
+  { href: "/", labelKey: "nav.home", Icon: Home },
+  { href: "/popular", labelKey: "nav.popular", Icon: Flame },
+  { href: "/create", labelKey: "nav.create", Icon: Pencil },
+  { href: "/cart", labelKey: "nav.cart", Icon: ShoppingCart },
+  { href: "/account", labelKey: "nav.account", Icon: User },
 ];
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const { locale } = useI18n();
-  const labels = locale === "my" ? ["ပင်မ", "Popular", "ဖန်တီးရန်", "Cart", "အကောင့်"] : ITEMS.map((item) => item.label);
+  const { t } = useI18n();
+  const labels = ITEMS.map((item) => t(item.labelKey));
   const navRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const root = document.documentElement;

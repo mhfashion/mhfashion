@@ -14,26 +14,23 @@ function dictionarySections() {
 
 const keysOf = (section) => new Set([...section.matchAll(/"([a-z][\w.]*)":/g)].map((match) => match[1]));
 
-// Labels that still fall back to English. The list only shrinks: a new label must be translated when it is
-// added, and the test asks for a line to be removed once the text exists.
-const UNTRANSLATED = [
-  "nav.mhFashion", "nav.singular", "nav.streetwear", "nav.sport", "nav.allProducts", "nav.newArrivals",
-  "nav.bestSellers", "nav.collectionsPlural", "nav.faq", "nav.contact", "nav.shipping", "nav.returns",
-  "nav.sizeGuide", "nav.about", "nav.terms", "nav.privacy", "nav.cookies", "footer.description",
-  "account.addressPlaceholder", "account.addressHelp", "account.saved", "account.deleteRoom",
-  "account.dailyHelp", "account.purchaseHelp", "account.pointsHelp", "account.currencyHelp",
-  "account.themeHelp", "account.notificationsHelp", "editor.attachFirst", "editor.stroke", "editor.width",
-  "guide.searchPlaceholder", "guide.unavailable", "guide.unavailableHelp", "guide.starter", "guide.explore",
-  "guide.handbook", "guide.starterGuide",
-];
+// Brand names (MH Fashion, Nyein, Singular) read the same in both languages, so they are not a gap.
+const SAME_IN_BOTH = ["nav.mhFashion", "nav.singular", "nav.nyein"];
 
-test("no label is left in English unless it is on the known list", () => {
+test("every English label has a Myanmar one, so no screen falls back mid-page", () => {
   const { en, my } = dictionarySections();
-  const missing = [...keysOf(en)].filter((key) => !keysOf(my).has(key));
-  const added = missing.filter((key) => !UNTRANSLATED.includes(key));
-  assert.deepEqual(added, [], `these labels have no Myanmar text: ${added.join(", ")}`);
-  const translated = UNTRANSLATED.filter((key) => !missing.includes(key));
-  assert.deepEqual(translated, [], `these now have Myanmar text, so drop them from UNTRANSLATED: ${translated.join(", ")}`);
+  const myKeys = keysOf(my);
+  const missing = [...keysOf(en)].filter((key) => !myKeys.has(key));
+  assert.deepEqual(missing, [], `these labels have no Myanmar text: ${missing.join(", ")}`);
+});
+
+test("no label is left as its English text by accident", () => {
+  const { en, my } = dictionarySections();
+  const english = (section) => new Map([...section.matchAll(/"([a-z][\w.]*)":\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => [m[1], m[2]]));
+  const enText = english(en);
+  const myText = english(my);
+  const untranslated = [...myText.keys()].filter((key) => enText.get(key) === myText.get(key) && !SAME_IN_BOTH.includes(key));
+  assert.deepEqual(untranslated, [], `these labels are still the English text: ${untranslated.join(", ")}`);
 });
 
 test("the search labels are translated in both languages", () => {
