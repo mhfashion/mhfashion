@@ -1162,6 +1162,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   `Pull requests: Read and write` as its own fine-grained permission, and without it the API answers
   `403 Resource not accessible by personal access token`. `create_pr` uses the ambient read-only token
   and fails the same way. So open the PR *before* fast-forwarding `main`, or ask for the extra scope.
+- 2026-11-21: of two PATs pasted into the chat, the first returned `401 Bad credentials` and the
+  second (a fresh `Contents: Read and write` fine-grained PAT) pushed `4ce9e17` and `270b395` to
+  `main` inline. Check `GET /user` with a pasted token before retrying a push; a revoked one looks
+  the same length as a good one. The two deploy workflows then failed at their first step,
+  `Check required Cloudflare secrets` — still no Actions secrets — not on the code.
 - Never `git reset --hard origin/main` without a `git fetch` first: the tracking ref lags, and the
   reset silently drops local commits that were already pushed (recover them from the pushed branch).
 
