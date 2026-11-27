@@ -48,13 +48,58 @@ test("a one-character or empty term never reaches the catalog", async () => {
   assert.deepEqual(await products.searchProducts("   "), []);
 });
 
-test("the catalog query asks for name, line and product type in one request", async () => {
+test("the catalog query reads the folded search_text column and ranks the answer", async () => {
   const requests = [];
+  const rows = [
+    { id: "p3", name: "Abstract Butterfly Print", slug: "abstract-butterfly-print", image_url: null, is_new: false, product_type: "T-Shirt", sub_brand: "MH", is_customizable: "full" },
+    { id: "p2", name: "Butterfly Hoodie", slug: "butterfly-hoodie", image_url: null, is_new: false, product_type: "Hoodie", sub_brand: "MH", is_customizable: "full" },
+    { id: "p1", name: "Butterfly", slug: "butterfly", image_url: null, is_new: false, product_type: "T-Shirt", sub_brand: "MH", is_customizable: "full" },
+  ];
   const server = http.createServer((request, response) => {
     requests.push(request.url);
     response.setHeader("content-type", "application/json");
     if (request.url.includes("product_price_ranges")) {
       response.end(JSON.stringify([{ product_id: "p1", price_min_ks: 21000, price_max_ks: 25000 }]));
+      return;
+    }
+    response.end(JSON.stringify(rows));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  process.env.NEXT_PUBLIC_SUPABASE_URL = `http://127.0.0.1:${port}`;
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+
+  try {
+    const results = await products.searchProducts("butterfly");
+    assert.deepEqual(results.map((product) => product.slug), ["butterfly", "butterfly-hoodie", "abstract-butterfly-print"],
+      "the exact name answers first, then the name that starts with the query, then the one that contains it");
+    assert.equal(results[0].priceMinKs, 21000);
+
+    const query = requests.find((url) => url.includes("/rest/v1/products"));
+    assert.ok(query, "the products table is queried");
+    const decoded = decodeURIComponent(query);
+    assert.match(decoded, /search_text=ilike\.%butterfly%/, "one column holds every searchable field");
+    assert.match(decoded, /limit=80/, "a wider page is fetched so the ranking can choose");
+    assert.equal(decoded.includes("or=("), false, "no three-column or() filter");
+  } finally {
+    server.close();
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  }
+});
+
+test("a shop that has not run migration 0009 still searches the old columns", async () => {
+  const requests = [];
+  const server = http.createServer((request, response) => {
+    requests.push(request.url);
+    response.setHeader("content-type", "application/json");
+    if (request.url.includes("search_text=")) {
+      response.statusCode = 400;
+      response.end(JSON.stringify({ code: "42703", message: "column products.search_text does not exist" }));
+      return;
+    }
+    if (request.url.includes("product_price_ranges")) {
+      response.end(JSON.stringify([]));
       return;
     }
     response.end(JSON.stringify([{ id: "p1", name: "Butterfly Effect", slug: "butterfly-effect", image_url: null, is_new: true, product_type: "T-Shirt", sub_brand: "MH", is_customizable: "full" }]));
@@ -66,19 +111,16 @@ test("the catalog query asks for name, line and product type in one request", as
 
   try {
     const results = await products.searchProducts("butterfly");
-    assert.equal(results.length, 1);
-    assert.equal(results[0].slug, "butterfly-effect");
-    assert.equal(results[0].priceMinKs, 21000);
+    assert.deepEqual(results.map((product) => product.slug), ["butterfly-effect"]);
 
-    const query = requests.find((url) => url.includes("/rest/v1/products"));
-    assert.ok(query, "the products table is queried");
-    const decoded = decodeURIComponent(query);
-    assert.match(decoded, /name\.ilike\.%butterfly%/);
-    assert.match(decoded, /sub_brand\.ilike\.%butterfly%/);
-    assert.match(decoded, /product_type\.ilike\.%butterfly%/);
-    assert.match(decoded, /limit=40/);
-    const filter = decoded.match(/or=\(([^)]*)\)/);
-    assert.ok(filter, "the query is a single or() filter");
+    const fallback = requests.map((url) => decodeURIComponent(url)).find((url) => url.includes("or=("));
+    assert.ok(fallback, "the client retries without the new column");
+    assert.match(fallback, /name\.ilike\.%butterfly%/);
+    assert.match(fallback, /sub_brand\.ilike\.%butterfly%/);
+    assert.match(fallback, /product_type\.ilike\.%butterfly%/);
+    assert.match(fallback, /limit=80/);
+    const filter = fallback.match(/or=\(([^)]*)\)/);
+    assert.ok(filter, "the fallback is a single or() filter");
     for (const clause of filter[1].split(",")) {
       assert.match(clause, /^(name|sub_brand|product_type)\.ilike\.%[^,%()]+%$/, `unsafe clause: ${clause}`);
     }

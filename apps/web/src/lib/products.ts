@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ProductOptionGroup } from "./product-options";
 import { optionKeyForAttributeName } from "./product-options";
+import { rankSearchResults } from "./search-rank";
 import { normalizeSearchText } from "./search-text";
 import type { Product } from "./types";
 
@@ -182,25 +183,54 @@ export function normalizeSearchQuery(input: string | null | undefined): string {
     .slice(0, 60);
 }
 
+/** The widest page a search fetches before ranking (Plan §17 S2: 80 rows in, 40 out). */
+export const SEARCH_FETCH_LIMIT = 80;
+
+function isMissingSearchText(error: { code?: string; message?: string }): boolean {
+  return error.code === "42703" || /search_text/i.test(error.message ?? "");
+}
+
 export async function searchProducts(query: string, limit = 40): Promise<Product[]> {
   const term = normalizeSearchQuery(query);
   const supabase = getServerSupabase();
   if (!supabase || term.length < 2) return [];
   const pattern = `%${term}%`;
-  const { data, error } = await supabase
+  const columns = "id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable";
+  // Plan §17 S2: fetch a wider page than the answer, rank it here, return the best `limit`.
+  const fetchLimit = Math.min(SEARCH_FETCH_LIMIT, Math.max(limit, limit * 2));
+  // Migration 0009 puts every searchable field in `search_text`; a shop that has not run it yet still searches
+  // the three old columns, so the storefront keeps working between a deploy and the migration.
+  let result = await supabase
     .from("products")
-    .select("id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable")
-    .or(`name.ilike.${pattern},sub_brand.ilike.${pattern},product_type.ilike.${pattern}`)
-    .order("name", { ascending: true })
-    .limit(limit);
+    .select(columns)
+    .ilike("search_text", pattern)
+    .limit(fetchLimit);
+  if (result.error && isMissingSearchText(result.error)) {
+    result = await supabase
+      .from("products")
+      .select(columns)
+      .or(`name.ilike.${pattern},sub_brand.ilike.${pattern},product_type.ilike.${pattern}`)
+      .limit(fetchLimit);
+  }
 
-  if (error) {
-    console.error("searchProducts failed:", error.message);
+  if (result.error) {
+    console.error("searchProducts failed:", result.error.message);
     return [];
   }
-  const rows = (data ?? []) as ProductRow[];
-  const ranges = await getPriceRanges(rows.map((r) => r.id));
-  return rows.map((r) => toProduct(r, ranges));
+  const rows = (result.data ?? []) as ProductRow[];
+  const ranked = rankSearchResults(
+    rows.map((row) => ({
+      row,
+      name: row.name,
+      text: [row.name, row.sub_brand, row.product_type, row.slug].filter(Boolean).join(" "),
+      popularity: row.is_new ? 1 : 0,
+    })),
+    term,
+    limit,
+  );
+  const products = ranked.map((entry) => entry.row);
+  const ranges = await getPriceRanges(products.map((r) => r.id));
+  return products.map((r) => toProduct(r, ranges));
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {

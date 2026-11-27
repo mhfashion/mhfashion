@@ -1183,6 +1183,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The storefront's `normalizeSearchQuery` folds with `normalizeSearchText` and then applies its allow-list and
   60-character cap; that allow-list is the PostgREST safety rule, so keep it.
 
+## Search text in SQL (`SQL/0009_search_text.sql`, Plan §17 S2/S4)
+- `public.normalize_search_text` is the SQL twin of `normalizeSearchText`: keep the two in step, or a query folded
+  in the app stops matching a column folded in the database.
+- `products.search_text` is built by a `before insert or update` trigger from name, `name_my`, slug, brand, type,
+  tags and aliases; `guide_posts.search_text` from title, excerpt, SEO text and every section. Backfill with the
+  two `update ... where search_text is distinct from ...` statements when adding fields.
+- `searchProducts` reads `search_text` (80 rows in, 40 out) and ranks with `lib/search-rank.ts`; when the column is
+  missing (`42703`) it retries the old three-column `or()`. Keep that fallback: the deploy and the migration are
+  not one step.
+- `tests/search-sql.test.cjs` is the real check. It needs `psql` plus `SEARCH_SQL_TEST_URL`
+  (`postgres:///postgres` locally) and creates a throwaway database; without them it skips, so CI stays green.
+  Locally: `sudo apt-get install -y postgresql && sudo service postgresql start`, then
+  `SEARCH_SQL_TEST_URL=postgres:///postgres node --test tests/search-sql.test.cjs`.
+
 ## Font outline files (plan E17 step 3, decision D14)
 - `EditorFontFile.outline` names a bucket-relative `.ttf`/`.otf` beside the woff2; HarfBuzz cannot shape
   woff2, so a weight without one cannot be bent (E19) while it still displays fine.

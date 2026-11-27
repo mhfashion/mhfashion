@@ -2212,7 +2212,15 @@ Verified gaps:
    eleven admin screens use it. The guide keeps phrase matching on purpose: a guide is long prose, and word-wise
    matching would let any two common words pull in every article. Verified in Chromium at 1440 × 900: `street`
    finds 2 photos, `street portrait` finds 1, `street hoodie` finds none and shows the empty note.
-2. Ranking and the `search_text` columns (a `SQL/` migration).
+2. ~~Ranking and the `search_text` columns (a `SQL/` migration).~~ **Done 2026-11-21:**
+   `SQL/0009_search_text.sql` adds `public.normalize_search_text(text)` (the same fold as the app, in SQL),
+   `search_text` on `products` and `guide_posts`, the `name_my` / `aliases` / `tags` columns a Myanmar name needs,
+   `before insert or update` triggers that rebuild the column, a backfill and a `text_pattern_ops` index.
+   `apps/web/src/lib/search-rank.ts` ranks exact name → name prefix → name contains → other field, ties break by
+   popularity then name. `searchProducts` now fetches up to 80 rows with `ilike` on `search_text`, ranks them in
+   code and returns 40; a shop that has not run the migration yet falls back to the three old columns, so the
+   storefront keeps working between the deploy and the migration. Verified against a real Postgres 17 with every
+   earlier migration applied (`tests/search-sql.test.cjs`, skipped unless `SEARCH_SQL_TEST_URL` is set).
 3. `pg_trgm` typo tolerance.
 4. The grouped `/search` page, suggestions and the `search_misses` table.
 5. Admin search against Supabase, with paging.
@@ -2220,8 +2228,9 @@ Verified gaps:
 ### 17.4 Acceptance
 
 - Two spellings of the same Burmese word (with and without a zero-width character, with the medial signs in a
-  different order) return the same results. *(The normaliser half is tested in `tests/search-text.test.cjs`; the
-  storefront half waits for the `search_text` column in step 2.)*
+  different order) return the same results. *(Both halves are tested: `tests/search-text.test.cjs` folds the
+  query, and `tests/search-sql.test.cjs` finds the row through `search_text` with a zero-width character in the
+  query.)*
 - The Burmese test strings မြန်မာ, ကြောင်, ပြည်ထောင်စု and သင်္ကြန် each find their record by a part of the word.
 - An English name and its Myanmar name find the same record.
 - A one-letter Latin typo finds the product once phase 3 is in; before then it finds nothing.

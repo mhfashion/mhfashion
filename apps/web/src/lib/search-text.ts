@@ -6,11 +6,12 @@
 const ZERO_WIDTH = /[\u200B\u200C\u200D\uFEFF]/g;
 
 /**
- * The storage order of the signs that follow a consonant, as the Unicode Standard's Myanmar chapter lists them
- * (Plan §17 S1): medial ya, ra, wa, ha; the e vowel; the i/u/ai vowels; the anusvara; aa; the dot below; the
- * visarga; the asat. A word stored as `က` + `ျ` + `ွ` and one stored as `က` + `ွ` + `ျ` are the same word, so
- * sorting the run makes them the same text. U+1039 (virama) is absent on purpose: it joins the next consonant
- * and must keep its place.
+ * The storage order of the signs that follow a consonant (Plan §17 S1): medial ya, ra, wa, ha; the e vowel; the
+ * i/u/ai vowels; the anusvara; aa; the dot below; the asat; the visarga. A word stored as `က` + `ျ` + `ွ` and one
+ * stored as `က` + `ွ` + `ျ` are the same word, so sorting the run makes them the same text. The asat sits before
+ * the visarga because that is the order real text uses (every "င်း" in this repository is 103A then 1038), so
+ * correct text is left untouched. U+1039 (virama) is absent on purpose: it joins the next consonant and must keep
+ * its place.
  */
 const SIGN_ORDER: Record<string, number> = {
   "\u103B": 10, // ျ medial ya
@@ -27,8 +28,8 @@ const SIGN_ORDER: Record<string, number> = {
   "\u102B": 31, // ါ tall aa
   "\u102C": 32, // ာ aa
   "\u1037": 40, // ့ dot below
-  "\u1038": 41, // း visarga
-  "\u103A": 50, // ် asat
+  "\u103A": 45, // ် asat, before the visarga: real Burmese text stores "င်း" as 103A then 1038
+  "\u1038": 50, // း visarga
 };
 
 /** Put each run of signs that follows a base character into the standard order, and leave every other char. */

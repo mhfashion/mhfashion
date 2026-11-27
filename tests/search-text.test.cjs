@@ -27,6 +27,10 @@ test("the Myanmar signs that follow a consonant are put in the standard order", 
   assert.equal(search.normalizeSearchText("\u1000\u102C\u1031"), "\u1000\u1031\u102C");
   // a correct cluster is left as it is
   assert.equal(search.normalizeSearchText("\u1000\u103C\u1031\u102C\u1004\u103A"), "\u1000\u103C\u1031\u102C\u1004\u103A");
+  // real text is idempotent: ကောင်း keeps asat before visarga, ကြောင့် keeps dot below before asat
+  for (const word of ["\u1000\u1031\u102C\u1004\u103A\u1038", "\u1000\u103C\u1031\u102C\u1004\u1037\u103A", "\u1019\u103C\u1014\u103A\u1019\u102C"]) {
+    assert.equal(search.normalizeSearchText(word), word, JSON.stringify(word));
+  }
 });
 
 test("the four acceptance words are found by a part of the word", () => {

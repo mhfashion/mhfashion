@@ -2230,3 +2230,51 @@ with the "No photo matches that search." note, clearing → 9. No console errors
 Tests: `tests/search-text.test.cjs` (8) covers the folds, the sign order, the four acceptance words
 (မြန်မာ, ကြောင်, ပြည်ထောင်စု, သင်္ကြန်), the storefront query, and asserts the sidebar and admin sources no
 longer keep their own filters. The full suite is 890 passing.
+
+## Ranking, and one search column per record (2026-11-21, Plan §17 S2/S4)
+
+The storefront used to ask PostgREST for `name.ilike`, `sub_brand.ilike` and `product_type.ilike` in one `or()`,
+ordered by name, and take the first 40 rows. That answer never contained the Myanmar name, never saw a tag, and
+put "Abstract Butterfly Print" above "Butterfly".
+
+**The column** — `SQL/0009_search_text.sql`:
+
+```sql
+alter table public.products
+  add column if not exists name_my text,
+  add column if not exists aliases text[] not null default '{}',
+  add column if not exists tags text[] not null default '{}',
+  add column if not exists search_text text;
+
+create trigger products_set_search_text
+  before insert or update of name, name_my, slug, sub_brand, product_type, tags, aliases
+  on public.products for each row execute function public.products_set_search_text();
+```
+
+`search_text` holds the folded name, Myanmar name, slug, brand, type, tags and aliases; `guide_posts` gets the same
+column from its title, excerpt, SEO text and every heading, paragraph and bullet. `public.normalize_search_text`
+is the SQL twin of `normalizeSearchText` in the app (same NFC, zero-width removal, space collapse, lower case and
+Myanmar sign order), so a query folded by the app matches a column folded by the database. A backfill fills rows
+that existed before the migration, and a `text_pattern_ops` index covers the "starts with" case until the trigram
+index arrives in step 3.
+
+**The order** — `apps/web/src/lib/search-rank.ts`:
+
+| Rank | When |
+|---|---|
+| 0 | the name is the query |
+| 1 | the name starts with the query (or with its first word, which is how a Myanmar query ranks) |
+| 2 | the name contains the query |
+| 3 | the match is in the Myanmar name, tags, aliases, brand or type |
+
+Ties break by `popularity` (the storefront passes `is_new ? 1 : 0`), then by name, then by the order the rows
+arrived, so the same query always answers in the same order.
+
+**The request** — `searchProducts` fetches up to 80 rows with `ilike` on `search_text`, ranks them and returns 40.
+If the column is missing (a shop that has deployed but not run the migration) the client retries with the old
+three-column `or()`, so the storefront never breaks between a deploy and a migration.
+
+Verified against a real PostgreSQL 17 with every earlier migration applied: the fold returns `tee black`,
+`မြန်မာ`, `ကျွ` and leaves `ကောင်း` untouched; an inserted product carries all seven fields; an update rewrites the
+column; a query typed with a zero-width character and the medials in the other order still finds the row.
+`tests/search-sql.test.cjs` runs that check and skips when `psql` or `SEARCH_SQL_TEST_URL` is absent.
