@@ -29,3 +29,16 @@ test("the sidebar user row keeps its name and email inside the panel", () => {
   assert.match(row, /<div className="min-w-0"><p className="truncate text-\[11px\] font-semibold text-white">\{admin\.name\}<\/p>/);
   assert.doesNotMatch(row, /md:ml-\[224px\]/, "the content margin belongs on the page, not inside the sidebar");
 });
+
+test("the footer is one thin bar pinned to the viewport, and the sidebar stops above it", () => {
+  const bar = shell.match(/<footer data-admin-footer[^>]*className="([^"]+)"/);
+  assert.ok(bar, "the admin shell renders its own footer bar");
+  assert.match(bar[1], /fixed inset-x-0 bottom-0/, "the bar does not scroll with the page");
+  assert.match(bar[1], /h-\[32px\]/, "the bar stays thin");
+  assert.match(shell, /All rights reserved\./, "the bar carries the copyright line");
+  assert.match(shell, /fixed bottom-\[32px\] left-0 top-\[64px\][^"]*bg-\[#11171b\]/, "the sidebar ends where the bar starts");
+  assert.doesNotMatch(shell, /<footer className="mt-6/, "the old scrolling footer is gone");
+
+  const site = fs.readFileSync(path.join(__dirname, "..", "apps/web/src/components/CopyrightBar.tsx"), "utf8");
+  assert.match(site, /if \(pathname\?\.startsWith\("\/admin"\)\) return null;/, "the site bar steps aside on admin screens");
+});

@@ -133,7 +133,7 @@ export default function AdminShell({
         </div>
       </header>
 
-      {sidebarOpen && <button type="button" aria-label="Close navigation" tabIndex={-1} onClick={closeSidebar} className="fixed bottom-0 left-0 right-0 top-[64px] z-[60] bg-[#111820]/50 md:hidden" />}
+      {sidebarOpen && <button type="button" aria-label="Close navigation" tabIndex={-1} onClick={closeSidebar} className="fixed bottom-[32px] left-0 right-0 top-[64px] z-[60] bg-[#111820]/50 md:hidden" />}
 
       <div className="min-h-[calc(100vh-64px)]">
         <aside
@@ -141,7 +141,7 @@ export default function AdminShell({
           id="admin-sidebar"
           tabIndex={-1}
           inert={!sidebarOpen}
-          className={`fixed bottom-0 left-0 top-[64px] flex shrink-0 flex-col overflow-hidden bg-[#11171b] text-white outline-none transition-all duration-200 z-[70] shadow-xl md:z-40 md:shadow-none ${sidebarOpen ? "w-[224px] translate-x-0" : "w-0 -translate-x-full md:translate-x-0"}`}>
+          className={`fixed bottom-[32px] left-0 top-[64px] flex shrink-0 flex-col overflow-hidden bg-[#11171b] text-white outline-none transition-all duration-200 z-[70] shadow-xl md:z-40 md:shadow-none ${sidebarOpen ? "w-[224px] translate-x-0" : "w-0 -translate-x-full md:translate-x-0"}`}>
           {/* Fixed-width content so the collapse animates the panel instead of reflowing every row. */}
           <div className="flex h-full w-[224px] flex-col">
             <div className="flex justify-end px-2 pt-2 md:hidden">
@@ -183,7 +183,7 @@ export default function AdminShell({
 
         {/* The panel is out of flow, so the page keeps its own width and the content slides over instead. */}
         <div className={`min-w-0 transition-[margin] duration-200 ${sidebarOpen ? "md:ml-[224px]" : "md:ml-0"}`}>
-          <main className="mx-auto w-full max-w-[1700px] px-3 pb-8 pt-4 sm:px-5 sm:pt-6 lg:px-7">
+          <main className="mx-auto w-full max-w-[1700px] px-3 pb-14 pt-4 sm:px-5 sm:pt-6 lg:px-7">
             <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
                 <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#f2dfab] bg-[#fff9e9] px-2.5 py-1 text-[9px] font-bold tracking-wide text-[#927018]"><Sparkles size={12} /> {badge}</div>
@@ -195,13 +195,16 @@ export default function AdminShell({
 
             {children}
 
-            <footer className="mt-6 flex flex-col gap-2 border-t border-[#e5e9ee] pt-4 text-[9px] text-[#929ba7] sm:flex-row sm:items-center sm:justify-between">
-              <p><strong className="text-[#4cae22]">MH FASHION.</strong> <span className="ml-1">Admin preview · Sample data only</span></p>
-              <p className="flex items-center gap-3"><span>Demo session · local browser only</span><span>·</span><span>© MH Fashion</span></p>
-            </footer>
           </main>
         </div>
       </div>
+
+      {/* One thin bar pinned to the bottom of the viewport: the sidebar stops at its top edge, so nothing
+          scrolls past it and the copyright stays put while the page moves. */}
+      <footer data-admin-footer className="fixed inset-x-0 bottom-0 z-30 flex h-[32px] items-center justify-between gap-3 border-t border-[#e5e9ee] bg-white px-3 text-[9px] text-[#929ba7] sm:px-5 lg:px-7">
+        <p className="min-w-0 truncate"><strong className="text-[#4cae22]">MH FASHION.</strong> <span className="ml-1 hidden sm:inline">Admin preview · Sample data only</span></p>
+        <p className="shrink-0">© {new Date().getFullYear()} MH Fashion. All rights reserved.</p>
+      </footer>
     </div>
   );
 }

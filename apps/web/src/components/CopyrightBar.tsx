@@ -9,6 +9,8 @@ export default function CopyrightBar() {
   const isHome = pathname === "/";
 
   if (pathname === "/create" || pathname?.startsWith("/create/")) return null;
+  // The admin shell pins its own thin bar to the bottom of the viewport.
+  if (pathname?.startsWith("/admin")) return null;
 
   return (
     <footer

@@ -4722,3 +4722,13 @@ tofu box and a screenshot looks broken even when the markup is right. Put Noto S
   answers (the parameter is ignored).
 - The header's suggestion dropdown is unchanged: it still offers products and guide posts, so a guide is
   still one keystroke away.
+
+## §18.8 One thin admin footer, and the sidebar stops above it
+
+- The admin shell renders a single 32px bar pinned to the bottom of the viewport (`data-admin-footer`):
+  "MH FASHION. · Admin preview · Sample data only" on the left, "© {year} MH Fashion. All rights reserved."
+  on the right. It never scrolls, so the copyright stays put while the page moves.
+- The sidebar is `fixed top-[64px] bottom-[32px]`, so it ends exactly at the bar's top edge and never runs
+  behind it; the phone dimmer stops at the same line, so the bar stays visible while the menu is open.
+- The site-wide `CopyrightBar` returns null under `/admin`, so there is only one copyright bar on those
+  screens. `<main>` carries `pb-14` so the last row clears the pinned bar.

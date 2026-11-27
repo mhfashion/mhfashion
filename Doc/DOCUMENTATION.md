@@ -2527,3 +2527,9 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
 - `/search` renders the search field and then either the product card grid or the empty state. There is no page title, kicker, result-count sentence or tab strip above the answer, and the query is not echoed back.
 - `SEARCH_CAPS` is `{ products: 40 }`; `?type=` is ignored, so old links keep working.
 - Guide posts are not part of the answer; they are still offered by the header suggestion dropdown (`/api/search/suggest`).
+
+## Admin footer bar
+
+- `AdminShell` owns the admin footer: a fixed 32px bar (`data-admin-footer`) with the preview note on the left and "© {year} MH Fashion. All rights reserved." on the right. It does not scroll.
+- The sidebar and its phone dimmer end at the bar's top edge (`bottom-[32px]`), so nothing is drawn behind the bar.
+- `CopyrightBar` renders nothing under `/admin`; the other screens keep the site bar.
