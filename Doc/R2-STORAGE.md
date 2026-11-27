@@ -312,7 +312,7 @@ deploys it on a change to `Worker/**` or the shared libraries. Its routes:
 | `PUT /api/admin/assets` | admin | upload a file and its fields; the key is built, the bytes are checked, the catalogue rebuilds |
 | `GET /api/private/<key>` | the file's owner, or an admin | a private file's bytes, `private, no-store` |
 
-The site itself serves `POST /api/uploads` (a customer's photo, twenty an hour, `uploads/tmp/<user>/`) and
+The site itself serves `POST /api/uploads` (a customer's photo, twenty an hour, `tmp/<user>/`) and
 `POST /api/uploads/promote` (a saved design keeps the photos it uses). Orders are written once, at Buy, by
 `lib/order-assets.ts`. Only fall back to the S3 API with `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` if you
 need a tool outside Cloudflare; `.github/workflows/backup-assets.yml` uses it for the weekly copy.

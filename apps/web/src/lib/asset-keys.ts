@@ -7,6 +7,9 @@ import { cleanSvg, imageSize, sniffAssetType, type AssetFileType } from "./asset
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** A user, order or design id: a UUID or a slug, never a name or a phone number (§12.2.3 rule 4). */
 const ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
+/** The two libraries that can hold a licence document (§12.2.2). */
+export const LICENCE_KINDS = ["fonts", "photos"] as const;
+export type LicenceKind = (typeof LICENCE_KINDS)[number];
 
 export type AssetShape = {
   bucket: AssetBucketName;
@@ -30,6 +33,14 @@ export const ASSET_SHAPES = {
   "design-meta": { bucket: "public", extensions: [], maxBytes: MAX_JSON, path: ["designs", "{slug}", "meta.json"] },
   element: { bucket: "public", extensions: ["svg"], maxBytes: 200_000, path: ["elements", "{slug}", "{file}"] },
   "element-meta": { bucket: "public", extensions: [], maxBytes: MAX_JSON, path: ["elements", "{slug}", "meta.json"] },
+  // A library photo: the picture itself, its grid thumbnail, and the description with the licence.
+  // The thumbnail and the meta.json come before `photo` so `identifyAssetKey` reads them as themselves.
+  "photo-thumb": { bucket: "public", extensions: [], maxBytes: 40_000, maxEdge: 512, path: ["photos", "{slug}", "thumb.webp"] },
+  "photo-meta": { bucket: "public", extensions: [], maxBytes: MAX_JSON, path: ["photos", "{slug}", "meta.json"] },
+  photo: { bucket: "public", extensions: ["webp", "png", "jpg"], maxBytes: 8_000_000, maxEdge: 4000, path: ["photos", "{slug}", "{file}"] },
+  // A pattern is one SVG that already covers the 1000 x 1200 artwork space, like the nine built-ins.
+  "pattern-meta": { bucket: "public", extensions: [], maxBytes: MAX_JSON, path: ["patterns", "{slug}", "meta.json"] },
+  pattern: { bucket: "public", extensions: ["svg"], maxBytes: 200_000, path: ["patterns", "{slug}", "{file}"] },
   brush: { bucket: "public", extensions: ["png", "svg"], maxBytes: 200_000, maxEdge: 512, path: ["brushes", "{slug}", "{file}"] },
   "brush-meta": { bucket: "public", extensions: [], maxBytes: MAX_JSON, path: ["brushes", "{slug}", "meta.json"] },
   "text-style-meta": { bucket: "public", extensions: [], maxBytes: MAX_JSON, path: ["text-styles", "{slug}", "meta.json"] },
@@ -44,12 +55,13 @@ export const ASSET_SHAPES = {
   "site-category": { bucket: "public", extensions: ["webp"], maxBytes: 300_000, path: ["site", "categories", "{slug}.{ext}"] },
   "site-banner": { bucket: "public", extensions: ["webp"], maxBytes: 300_000, path: ["site", "banners", "{slug}.{ext}"] },
   snapshot: { bucket: "private", extensions: [], maxBytes: MAX_JSON, path: ["catalog", "{slug}.json"] },
-  "upload-tmp": { bucket: "private", extensions: ["webp", "jpg", "png"], maxBytes: 6_000_000, path: ["uploads", "tmp", "{id}", "{file}"] },
-  upload: { bucket: "private", extensions: ["webp", "jpg", "png"], maxBytes: 6_000_000, path: ["uploads", "{id}", "{file}"] },
-  "saved-thumbnail": { bucket: "private", extensions: [], maxBytes: 100_000, path: ["saved", "{id}", "{design}", "thumbnail.webp"] },
+  // A customer's own files: `tmp/` is the 24-hour working copy, `users/` is what a saved design keeps.
+  "upload-tmp": { bucket: "private", extensions: ["webp", "jpg", "png"], maxBytes: 6_000_000, path: ["tmp", "{id}", "{file}"] },
+  upload: { bucket: "private", extensions: ["webp", "jpg", "png"], maxBytes: 6_000_000, path: ["users", "{id}", "uploads", "{file}"] },
+  "saved-thumbnail": { bucket: "private", extensions: [], maxBytes: 100_000, path: ["users", "{id}", "designs", "{design}", "thumbnail.webp"] },
   "order-file": { bucket: "private", extensions: ["html", "csv", "json"], maxBytes: 20_000_000, path: ["orders", "{id}", "{file}"] },
   "order-design": { bucket: "private", extensions: ["svg"], maxBytes: 20_000_000, path: ["orders", "{id}", "designs", "{file}.{ext}"] },
-  licence: { bucket: "private", extensions: ["pdf"], maxBytes: 5_000_000, path: ["licences", "{slug}", "{file}"] },
+  licence: { bucket: "private", extensions: ["pdf"], maxBytes: 5_000_000, path: ["licences", "{kind}", "{slug}", "{file}"] },
 } as const satisfies Record<string, AssetShape>;
 
 export type AssetShapeId = keyof typeof ASSET_SHAPES;
@@ -60,6 +72,13 @@ function fill(value: string, vars: AssetKeyVars, shape: AssetShapeId): string {
   return value.replace(/\{(\w+)\}/g, (_match, name: string) => {
     const replacement = vars[name];
     if (!replacement) throw new Error(`${shape} needs ${name}`);
+    // `{kind}` is a free slug in the mockup keys and a closed list in a licence key.
+    if (name === "kind" && shape === "licence") {
+      if (!(LICENCE_KINDS as readonly string[]).includes(replacement)) {
+        throw new Error(`${shape} refused kind "${replacement}"`);
+      }
+      return replacement;
+    }
     const pattern = name === "id" || name === "design" ? ID : SLUG;
     if (!pattern.test(replacement)) throw new Error(`${shape} refused ${name} "${replacement}"`);
     return replacement;
@@ -156,7 +175,7 @@ const TYPE_BY_EXTENSION: Record<string, AssetFileType> = {
 };
 
 /** The shapes whose folder carries a `meta.json` describing the asset (Plan §12.2.2). */
-const META_SHAPES: readonly AssetShapeId[] = ["font", "design", "element", "brush", "texture", "mockup"];
+const META_SHAPES: readonly AssetShapeId[] = ["font", "design", "element", "brush", "texture", "mockup", "photo", "pattern"];
 
 /**
  * The `meta.json` that describes the folder a key sits in, or `null` when the shape has none. The admin

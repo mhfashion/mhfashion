@@ -1,5 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { publicAssetUrl } from "@/lib/asset-public-url";
 import type { DesignLibraryLayer, DesignLibraryLayerKind } from "@/lib/editor-design-library";
 import type { EditorShapePath } from "@/lib/editor-layers";
+import { svgShapePaths } from "@/lib/editor-svg-shapes";
+import { R2_MOCKUP_BASE } from "@/lib/product-mockup";
 
 // Patterns section of the Editor Sidebar.
 //
@@ -142,3 +149,98 @@ export function patternToDesignLayer(pattern: PatternLibraryEntry): DesignLibrar
 }
 
 export const MH_PATTERN_LAYERS: DesignLibraryLayer[] = MH_PATTERN_LIBRARY.map(patternToDesignLayer);
+
+// Patterns the shop adds later live in R2 under `patterns/<slug>/pattern.svg` and are listed by the asset
+// service at `/api/assets/patterns` (Plan §12.2.2). The nine above stay in code and are shown first, so
+// the section works with no bucket at all; a catalogue pattern is read into the same shape paths.
+export const PATTERN_SERVICE_PATH = "/api/assets/patterns";
+
+/** What a card's background should be, so a light pattern is not painted on a white card. */
+export type PatternInk = "dark" | "light" | "color";
+
+export type PatternCatalogueEntry = {
+  slug: string;
+  name: string;
+  nameMy?: string;
+  ink: PatternInk;
+  file: string;
+  tags?: string[];
+};
+
+function isPatternCatalogueEntry(value: unknown): value is PatternCatalogueEntry {
+  if (typeof value !== "object" || value === null) return false;
+  const entry = value as Partial<PatternCatalogueEntry>;
+  return typeof entry.slug === "string" && typeof entry.name === "string" && typeof entry.file === "string";
+}
+
+/** One catalogue pattern, painted from its SVG. A file with nothing a shape can carry is dropped. */
+export function patternFromCatalogue(entry: PatternCatalogueEntry, svg: string): PatternLibraryEntry | null {
+  const { paths } = svgShapePaths(svg);
+  if (!paths.length) return null;
+  return { id: `pattern-${entry.slug}`, name: entry.name, paths };
+}
+
+export type CataloguePatternLayer = { layer: DesignLibraryLayer; ink: PatternInk };
+
+/**
+ * The shop's own patterns, after the nine built-in ones. A pattern whose SVG cannot be read is skipped
+ * rather than shown as an empty card, and the catalogue's issue list already says why it was refused.
+ */
+export async function loadCataloguePatterns(
+  load: (url: string) => Promise<unknown>,
+  loadSvg: (url: string) => Promise<string>,
+  base: string = R2_MOCKUP_BASE,
+): Promise<CataloguePatternLayer[]> {
+  let payload: unknown;
+  try {
+    payload = await load(PATTERN_SERVICE_PATH);
+  } catch {
+    return [];
+  }
+  const items = (payload as { items?: unknown })?.items;
+  if (!Array.isArray(items)) return [];
+  const loaded: CataloguePatternLayer[] = [];
+  for (const item of items.filter(isPatternCatalogueEntry)) {
+    try {
+      const pattern = patternFromCatalogue(item, await loadSvg(publicAssetUrl(base, item.file)));
+      if (pattern) loaded.push({ layer: patternToDesignLayer(pattern), ink: item.ink ?? "dark" });
+    } catch {
+      // A file that cannot be fetched leaves the built-ins alone.
+    }
+  }
+  return loaded;
+}
+
+/** The nine built-in patterns first, then the shop's own; `inkByLayerId` colours their cards. */
+export function useEditorPatternLibrary(): {
+  layers: DesignLibraryLayer[];
+  inkByLayerId: Record<string, PatternInk>;
+  fromCatalogue: boolean;
+} {
+  const [added, setAdded] = useState<CataloguePatternLayer[]>([]);
+  useEffect(() => {
+    let live = true;
+    loadCataloguePatterns(
+      async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`${url} answered ${response.status}`);
+        return response.json();
+      },
+      async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`${url} answered ${response.status}`);
+        return response.text();
+      },
+    ).then((patterns) => {
+      if (live) setAdded(patterns);
+    });
+    return () => { live = false; };
+  }, []);
+  const inkByLayerId: Record<string, PatternInk> = {};
+  for (const entry of added) inkByLayerId[entry.layer.id] = entry.ink;
+  return {
+    layers: added.length ? [...MH_PATTERN_LAYERS, ...added.map((entry) => entry.layer)] : MH_PATTERN_LAYERS,
+    inkByLayerId,
+    fromCatalogue: added.length > 0,
+  };
+}

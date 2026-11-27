@@ -10,6 +10,8 @@ export const ASSET_SOURCE_RULES: readonly AssetSourceRule[] = [
   { prefix: "fonts/", kind: "fonts" },
   { prefix: "designs/", kind: "designs" },
   { prefix: "elements/", kind: "elements" },
+  { prefix: "photos/", kind: "photos" },
+  { prefix: "patterns/", kind: "patterns" },
   { prefix: "brushes/", kind: "brushes" },
   { prefix: "text-styles/", kind: "text-styles" },
   { prefix: "mockups/", kind: "mockups" },

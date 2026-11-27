@@ -33,17 +33,19 @@ test("one pass rebuilds every kind and reports what each one holds", async () =>
       ["fonts", 1, 0],
       ["designs", 1, 0],
       ["elements", 0, 1],
+      ["photos", 0, 0],
+      ["patterns", 0, 0],
       ["brushes", 0, 0],
       ["text-styles", 0, 0],
       ["mockups", 1, 0],
     ],
   );
-  assert.equal(summary.written, 6);
+  assert.equal(summary.written, 8);
   assert.equal(summary.issues, 1);
-  assert.equal(lines.length, 6);
+  assert.equal(lines.length, 8);
   assert.match(lines[0], /^assets: fonts rebuilt, 1 item, 0 issues$/);
   assert.match(lines[2], /^assets: elements rebuilt, 0 items, 1 issue$/);
-  for (const kind of ["fonts", "designs", "elements", "brushes", "text-styles", "mockups"]) {
+  for (const kind of ["fonts", "designs", "elements", "photos", "patterns", "brushes", "text-styles", "mockups"]) {
     assert.equal(buckets.private.files.has(`catalog/${kind}.json`), true, kind);
     assert.equal(buckets.public.files.has(`catalog/${kind}.json`), false, `the ${kind} snapshot must not be public`);
   }
@@ -59,10 +61,10 @@ test("a second pass over an unchanged bucket writes nothing", async () => {
   assert.equal(summary.kinds.every((entry) => entry.written === false), true);
 });
 
-test("an empty bucket still produces six snapshots, each with no items", async () => {
+test("an empty bucket still produces eight snapshots, each with no items", async () => {
   const buckets = storeLib.createMemoryAssetBuckets({});
   const summary = await rebuild.rebuildAssetCatalogues(buckets, new Date(2026, 10, 22), () => {});
-  assert.equal(summary.written, 6);
+  assert.equal(summary.written, 8);
   assert.equal(summary.issues, 0);
   for (const kind of summary.kinds) assert.equal(kind.items, 0, kind.kind);
 });

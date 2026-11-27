@@ -35,7 +35,7 @@ async function readBody(request: Request): Promise<{ data: Uint8Array; ext?: str
 
 /**
  * Plan §12.2.5 item 3: a customer's photo. The caller is checked by Supabase, the bytes decide the type,
- * the size and the pixel size, and the file lands under `uploads/tmp/<user-id>/` until a design keeps it.
+ * the size and the pixel size, and the file lands under `tmp/<user-id>/` until a design keeps it.
  */
 export async function POST(request: Request) {
   const limited = await enforceRateLimit(request, "uploads", RATE_LIMITS.upload);

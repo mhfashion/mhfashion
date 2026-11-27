@@ -863,8 +863,9 @@ test("Edit sidebar starts hidden, reveals a rail, and exposes the owner-requeste
   assert.match(editSidebar, /onAddPhoto\(photo\)/);
   assert.match(editSidebar, /Search patterns/);
   assert.match(editSidebar, /aria-label="Pattern library"/);
-  assert.match(editSidebar, /MH_PHOTO_LIBRARY/);
-  assert.match(editSidebar, /MH_PATTERN_LAYERS/);
+  // The two sections read the shop's catalogues, which fall back to the placeholders and the built-ins.
+  assert.match(editSidebar, /useEditorPhotoLibrary\(\)/);
+  assert.match(editSidebar, /useEditorPatternLibrary\(\)/);
   assert.match(editSidebar, /Search designs/);
   assert.match(editSidebar, /MH Fashion designs/);
   assert.match(editSidebar, /Search elements/);
@@ -1005,6 +1006,9 @@ test("Sidebar catalogs come from the MH Fashion design library and uploads honou
   assert.match(patternLibrary, /export const MH_PATTERN_LIBRARY: PatternLibraryEntry\[\]/);
   assert.match(patternLibrary, /export function patternToDesignLayer/);
   assert.match(patternLibrary, /export const MH_PATTERN_LAYERS/);
+  assert.match(photoLibrary, /export const PHOTO_SERVICE_PATH = "\/api\/assets\/photos"/);
+  assert.match(patternLibrary, /export const PATTERN_SERVICE_PATH = "\/api\/assets\/patterns"/);
+  assert.match(patternLibrary, /export function patternFromCatalogue/);
   assert.match(source, /function addCanvasPhoto\(photo: PhotoLibraryEntry\)/);
   assert.match(source, /createEditorImageLayer\(id, photo\.name, \{/);
   // Uploads are reduced to the registered KB/MB policy before they reach the canvas.

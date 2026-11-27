@@ -158,16 +158,16 @@ test("an SVG with a script is stored cleaned, and the change is named", async ()
 
 test("a private file is served to its owner and an admin, never to anyone else", async () => {
   const buckets = storeLib.createMemoryAssetBuckets({}, {});
-  await buckets.private.putObject("uploads/user-1/photo.webp", new Uint8Array([1, 2, 3]), { contentType: "image/webp" });
+  await buckets.private.putObject("users/user-1/uploads/photo.webp", new Uint8Array([1, 2, 3]), { contentType: "image/webp" });
   await buckets.private.putObject("orders/order-1/manifest.json", "{}", { contentType: "application/json" });
 
-  const own = await worker.handleRequest(request("/api/private/uploads/user-1/photo.webp"), {}, { buckets, viewer: customer });
+  const own = await worker.handleRequest(request("/api/private/users/user-1/uploads/photo.webp"), {}, { buckets, viewer: customer });
   assert.equal(own.status, 200);
   assert.equal(own.headers.get("content-type"), "image/webp");
   assert.equal(own.headers.get("cache-control"), "private, no-store");
   assert.equal(new Uint8Array(await own.arrayBuffer()).length, 3);
 
-  const another = await worker.handleRequest(request("/api/private/uploads/user-2/photo.webp"), {}, { buckets, viewer: customer });
+  const another = await worker.handleRequest(request("/api/private/users/user-2/uploads/photo.webp"), {}, { buckets, viewer: customer });
   assert.equal(another.status, 403);
 
   const order = await worker.handleRequest(request("/api/private/orders/order-1/manifest.json"), {}, { buckets, viewer: customer });
@@ -176,7 +176,7 @@ test("a private file is served to its owner and an admin, never to anyone else",
   const adminRead = await worker.handleRequest(request("/api/private/orders/order-1/manifest.json"), {}, { buckets, viewer: admin });
   assert.equal(adminRead.status, 200);
 
-  const anonymous = await worker.handleRequest(request("/api/private/uploads/user-1/photo.webp"), {}, { buckets });
+  const anonymous = await worker.handleRequest(request("/api/private/users/user-1/uploads/photo.webp"), {}, { buckets });
   assert.equal(anonymous.status, 401);
 });
 
@@ -186,7 +186,7 @@ test("the admin issues route needs an admin", async () => {
   assert.equal((await worker.handleRequest(request("/api/admin/assets/issues"), {}, { buckets, viewer: customer })).status, 403);
   const adminRead = await worker.handleRequest(request("/api/admin/assets/issues"), {}, { buckets, viewer: admin });
   assert.equal(adminRead.status, 200);
-  assert.equal((await adminRead.json()).summary.kinds, 6);
+  assert.equal((await adminRead.json()).summary.kinds, 8);
 });
 
 test("a queue message rebuilds the kinds it names, and the schedule does a full pass", async () => {
@@ -215,7 +215,7 @@ test("a queue message rebuilds the kinds it names, and the schedule does a full 
   assert.deepEqual(acked, ["fonts", "orders"]);
 
   const full = await worker.handleScheduled({}, { buckets });
-  assert.equal(full.kinds.length, 6);
+  assert.equal(full.kinds.length, 8);
 });
 
 test("an R2 event body is read in every shape it arrives in", () => {

@@ -26,8 +26,8 @@ import type {
   DesignLibraryLayer,
   DesignLibraryText,
 } from "@/lib/editor-design-library";
-import { MH_PATTERN_LAYERS } from "@/lib/editor-pattern-library";
-import { MH_PHOTO_LIBRARY } from "@/lib/editor-photo-library";
+import { useEditorPatternLibrary } from "@/lib/editor-pattern-library";
+import { useEditorPhotoLibrary } from "@/lib/editor-photo-library";
 import type { PhotoLibraryEntry } from "@/lib/editor-photo-library";
 import { formatByteSize } from "@/lib/editor-upload";
 
@@ -82,10 +82,10 @@ function ElementCard({ layer, onAdd }: { layer: DesignLibraryLayer; onAdd: () =>
 }
 
 /** Patterns are dark ink for a white print area, so their tile sits on white, not on the dark card. */
-function PatternCard({ layer, onAdd }: { layer: DesignLibraryLayer; onAdd: () => void }) {
+function PatternCard({ layer, onAdd, light = true }: { layer: DesignLibraryLayer; onAdd: () => void; light?: boolean }) {
   return (
     <button type="button" onClick={onAdd} title={layer.name} aria-label={"Add " + layer.name + " pattern to the canvas"} className={CARD_BUTTON}>
-      <ArtworkFrame light>
+      <ArtworkFrame light={light}>
         <EditorLayerPreview paths={layer.paths} text={layer.text} />
       </ArtworkFrame>
     </button>
@@ -153,6 +153,9 @@ function PanelContent({
   const [search, setSearch] = useState("");
   const [prompt, setPrompt] = useState("");
   const needle = search.trim().toLowerCase();
+  // The shop's own library when it has one, the built-ins and placeholders until then.
+  const { photos: photoLibrary } = useEditorPhotoLibrary();
+  const { layers: patternLayers, inkByLayerId } = useEditorPatternLibrary();
 
   if (section === "Designs") {
     const designs = MH_DESIGN_LIBRARY.filter((design) => !needle || design.name.toLowerCase().includes(needle));
@@ -189,7 +192,9 @@ function PanelContent({
   }
 
   if (section === "Photos") {
-    const photos = MH_PHOTO_LIBRARY.filter((photo) => !needle || photo.name.toLowerCase().includes(needle));
+    const photos = photoLibrary.filter(
+      (photo) => !needle || `${photo.name} ${photo.keywords ?? ""}`.toLowerCase().includes(needle),
+    );
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <SearchField value={search} onChange={setSearch} placeholder="Search photos" />
@@ -200,9 +205,9 @@ function PanelContent({
           ))}
         </div>
         {photos.length === 0 && <p className="text-[10px] text-text-muted">No photo matches that search.</p>}
-        {MH_PHOTO_LIBRARY.some((photo) => photo.placeholder) && (
+        {photoLibrary.some((photo) => photo.placeholder) && (
           <p className="text-[10px] leading-relaxed text-text-muted">
-            Placeholder stock: licensed photographs replace these when the R2 photo library is connected.
+            Placeholder stock: the shop&apos;s licensed photos appear here once the first one is uploaded.
           </p>
         )}
       </div>
@@ -210,14 +215,19 @@ function PanelContent({
   }
 
   if (section === "Patterns") {
-    const patterns = MH_PATTERN_LAYERS.filter((layer) => !needle || layer.name.toLowerCase().includes(needle));
+    const patterns = patternLayers.filter((layer) => !needle || layer.name.toLowerCase().includes(needle));
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <SearchField value={search} onChange={setSearch} placeholder="Search patterns" />
         <SectionHeading>Pattern fills</SectionHeading>
         <div aria-label="Pattern library" className="grid grid-cols-2 gap-2">
           {patterns.map((layer) => (
-            <PatternCard key={layer.id} layer={layer} onAdd={() => onAddElement(layer)} />
+            <PatternCard
+              key={layer.id}
+              layer={layer}
+              light={inkByLayerId[layer.id] !== "light"}
+              onAdd={() => onAddElement(layer)}
+            />
           ))}
         </div>
         {patterns.length === 0 && <p className="text-[10px] text-text-muted">No pattern matches that search.</p>}

@@ -2,7 +2,7 @@
 // the admin and private routes), `queue` (the rebuild an R2 event asks for) and `scheduled` (the hourly
 // safety net). Every rule it applies is imported from the app's pure libraries by relative path, so the
 // Worker, the site's own routes and the pre-upload check cannot disagree about a key, a type or a limit.
-import { canReadPrivateAsset, canWriteAdmin, type AssetViewer } from "../apps/web/src/lib/asset-access";
+import { canReadPrivateAsset, canWriteAdmin, isAdminCustomerFileRead, type AssetViewer } from "../apps/web/src/lib/asset-access";
 import { rebuildAssetCatalogues, type CatalogueRebuildSummary } from "../apps/web/src/lib/asset-catalogue-rebuild";
 import { kindsForAssetKeys } from "../apps/web/src/lib/asset-events";
 import { MIME_BY_TYPE, sha256Hex } from "../apps/web/src/lib/asset-file-type";
@@ -215,6 +215,11 @@ async function privateFile(request: Request, env: AssetsEnv, deps: AssetsDeps | 
   const viewer = await viewerFor(request, env, deps);
   if (!viewer) return json(401, { error: "sign_in_required" }, { "cache-control": "private, no-store" });
   if (!canReadPrivateAsset(viewer, key)) return json(403, { error: "not_yours" }, { "cache-control": "private, no-store" });
+  // Support access to a customer's own file is audited, so it is never silent (Plan §12.2.6).
+  if (isAdminCustomerFileRead(viewer, key)) {
+    const at = (deps?.now?.() ?? new Date()).toISOString();
+    (deps?.log ?? console.log)(`assets: audit admin-read admin=${viewer.id} key=${key} at=${at}`);
+  }
   if (!checkWorkerRateLimit(`private:${viewer.id}`, WORKER_RATE_LIMITS.privateRead, deps?.now?.().getTime() ?? Date.now())) {
     return json(429, { error: "rate_limited", retryAfterSeconds: 60 }, { "cache-control": "private, no-store" });
   }

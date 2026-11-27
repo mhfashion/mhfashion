@@ -1,7 +1,7 @@
 // Plan §12.2.5 item 3 and §12.2.7: a customer's photo. The browser re-encodes it (which drops the EXIF,
 // including any location), the route checks the bytes, the size and the pixel size, limits how many
-// uploads one customer makes per hour, and writes it under `uploads/tmp/<user-id>/`. Saving a design
-// promotes the files it uses to `uploads/<user-id>/`; the rest of `tmp` expires after 24 hours.
+// uploads one customer makes per hour, and writes it under `tmp/<user-id>/`. Saving a design promotes
+// the files it uses to `users/<user-id>/uploads/`; the rest of `tmp` expires after 24 hours.
 import { sha256Hex } from "./asset-file-type";
 import { buildAssetKey, checkAssetContent } from "./asset-keys";
 import { isSafeAssetKey, type AssetStore } from "./asset-store";
@@ -13,7 +13,7 @@ export type UploadQuota = { windowStart: number; count: number };
 
 /** The quota record sits beside the uploads; `quota.json` matches no upload key, so it is never served. */
 export function uploadQuotaKey(userId: string): string {
-  return `uploads/tmp/${userId}/quota.json`;
+  return `tmp/${userId}/quota.json`;
 }
 
 export function readUploadQuota(raw: string | null, now: number): UploadQuota {
@@ -45,11 +45,11 @@ export function uploadKeyFor(userId: string, uploadId: string, ext: string): str
   return buildAssetKey("upload-tmp", { id: userId, file: uploadId, ext });
 }
 
-/** `uploads/tmp/<user>/<file>` → `uploads/<user>/<file>`: the key a saved design keeps. */
+/** `tmp/<user>/<file>` → `users/<user>/uploads/<file>`: the key a saved design keeps. */
 export function promotionKeyFor(key: string): string | null {
-  const match = /^uploads\/tmp\/([a-z0-9][a-z0-9-]*)\/([a-z0-9-]+\.[a-z0-9]+)$/.exec(key);
+  const match = /^tmp\/([a-z0-9][a-z0-9-]*)\/([a-z0-9-]+\.[a-z0-9]+)$/.exec(key);
   if (!match) return null;
-  return `uploads/${match[1]}/${match[2]}`;
+  return `users/${match[1]}/uploads/${match[2]}`;
 }
 
 export type UploadCheck =
@@ -101,7 +101,7 @@ export async function promoteUploads(
   const refused: string[] = [];
   for (const key of keys) {
     const target = promotionKeyFor(key);
-    if (!target || !key.startsWith(`uploads/tmp/${userId}/`) || !isSafeAssetKey(target, "private")) {
+    if (!target || !key.startsWith(`tmp/${userId}/`) || !isSafeAssetKey(target, "private")) {
       refused.push(key);
       continue;
     }

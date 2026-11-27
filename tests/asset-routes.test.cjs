@@ -117,8 +117,8 @@ test("an unknown product and an impossible slug are answered, never guessed", as
   assert.equal(JSON.parse(bad.body).error, "invalid_slug");
 });
 
-test("only the six known kinds are routable", () => {
-  for (const kind of ["fonts", "designs", "elements", "brushes", "text-styles", "mockups"]) {
+test("only the eight known kinds are routable", () => {
+  for (const kind of ["fonts", "designs", "elements", "photos", "patterns", "brushes", "text-styles", "mockups"]) {
     assert.equal(routes.isAssetCatalogueKind(kind), true, kind);
   }
   for (const kind of ["catalog", "fonts/", "", "../fonts", "FONTS"]) {
@@ -143,7 +143,7 @@ test("the issues route lists every kind, with the problems the snapshot carries"
   assert.equal(result.status, 200);
   const report = JSON.parse(result.body);
   assert.equal(report.version, 1);
-  assert.deepEqual(report.kinds.map((entry) => entry.kind), ["fonts", "designs", "elements", "brushes", "text-styles", "mockups"]);
+  assert.deepEqual(report.kinds.map((entry) => entry.kind), ["fonts", "designs", "elements", "photos", "patterns", "brushes", "text-styles", "mockups"]);
   const fonts = report.kinds.find((entry) => entry.kind === "fonts");
   assert.equal(fonts.items, 1);
   assert.equal(fonts.builtAt, "2026-11-22T03:00:00.000Z");
@@ -152,7 +152,7 @@ test("the issues route lists every kind, with the problems the snapshot carries"
   assert.equal(elements.items, 0);
   assert.equal(elements.issues.length, 1);
   assert.match(elements.issues[0].reason, /meta\.json/);
-  assert.deepEqual(report.summary, { kinds: 6, items: 1, issues: 5 });
+  assert.deepEqual(report.summary, { kinds: 8, items: 1, issues: 7 });
   assert.equal(result.headers["cache-control"], "public, max-age=60, stale-while-revalidate=600");
 });
 
@@ -166,7 +166,7 @@ test("a kind with no snapshot says so instead of pretending the kind is empty", 
 
 test("without a bound bucket every kind reports the missing binding", async () => {
   const report = JSON.parse((await routes.issuesResponse(null, null)).body);
-  assert.deepEqual(report.summary, { kinds: 6, items: 0, issues: 6 });
+  assert.deepEqual(report.summary, { kinds: 8, items: 0, issues: 8 });
   for (const entry of report.kinds) {
     assert.deepEqual(entry.issues, [{ key: `catalog/${entry.kind}.json`, reason: "the asset bucket is not bound in this environment" }]);
   }

@@ -1292,6 +1292,48 @@ key, `promoteUploads` on Save), and an order's frozen copy through `lib/order-as
 `tests/assets-worker.test.cjs` (9 tests) and `tests/asset-upload.test.cjs` / `tests/order-assets.test.cjs` cover them,
 and a `wrangler deploy --dry-run` bundles the Worker with its bindings.
 
+### 2026-11-21 — The Photos and Patterns libraries, and a customer's own folder
+
+The editor's Photos and Patterns sections now read the shop's own catalogues (Plan §12.2.2), and a customer's files
+moved to the folder the plan names for them.
+
+**The two libraries.** `photos/<slug>/` holds the picture, a `thumb.webp` for the grid and a `meta.json` with the name,
+the Myanmar name, the pixel size, tags, aliases and the licence. `patterns/<slug>/` holds one `pattern.svg` that already
+covers the 1000 × 1200 artwork space, plus a `meta.json` with its name and its `ink` (`dark`, `light` or `color`, so a
+light pattern is not painted on a white card). Both are public keys, and both are now catalogue kinds: the rebuild
+writes `catalog/photos.json` and `catalog/patterns.json`, `/api/assets/photos` and `/api/assets/patterns` serve them, and
+an R2 event on either prefix rebuilds only that kind. `asset-keys.ts` has the shapes (`photo`, `photo-thumb`,
+`photo-meta`, `pattern`, `pattern-meta`), so `npm run assets:check` refuses a folder that does not match them.
+
+**A photo is offered only when it can be sold.** `buildPhotoCatalogue` lists a photo as an issue, not an item, when the
+picture, the thumbnail, the name, the pixel size or the licence is missing, when `licence.commercialPrintAllowed` is not
+`true`, or — in the rebuild, which passes the private bucket — when there is no PDF under `licences/photos/<slug>/`.
+The licence shape is `licences/<fonts|photos>/<slug>/<file>.pdf`, and the kind is a closed list, so a licence cannot be
+filed under an invented one.
+
+**The sidebar.** `editor-photo-library.ts` turns a catalogue photo into the `PhotoLibraryEntry` the canvas already
+takes, with the picture's own size from `meta.json`, and its credit and Myanmar name/tags/aliases searchable. The Lorem
+Picsum placeholders stay — marked `placeholder` — until the first licensed photo arrives, and the panel's note is shown
+only while a placeholder is on screen. `editor-pattern-library.ts` fetches each `pattern.svg` and reads it with the new
+`editor-svg-shapes.ts` into the same `EditorShapePath` list the nine built-in patterns build in code: the `viewBox` is
+scaled onto the artwork space, `translate`/`scale`/`matrix` compose down the tree, a stroke width follows its path, and
+circles and ellipses become cubic curves. A gradient or pattern fill, a filter, an embedded image, text or a rotation
+cannot be carried by a shape, so it is reported as an issue instead of painted, and a file with nothing to paint is
+skipped. The nine built-ins stay first, so the section works with no bucket at all.
+
+**A customer's own files.** `tmp/<account-uuid>/<file>` is the 24-hour working copy (with `quota.json` beside it), and
+`users/<account-uuid>/uploads/<file>` is what a saved design keeps; the thumbnail is
+`users/<account-uuid>/designs/<design>/thumbnail.webp`. `asset-access.ts` resolves the owner from those two prefixes, an
+admin still reads everything, and the Worker now writes one audit line for an admin read of a customer's file
+(`assets: audit admin-read admin=… key=… at=…`) because that is a support action, not routine work. The old `uploads/`
+and `saved/` prefixes are gone; nothing customer-related had been written to R2, so no data moved.
+
+`tests/asset-photo-pattern.test.cjs` covers the two catalogues, the licence rules and the new access paths;
+`tests/editor-svg-shapes.test.cjs` covers the SVG reader (scaling, nested transforms, shapes, and the refusals);
+`tests/editor-catalogue-client.test.cjs` covers the mapping into the sidebar and the fallbacks. The asset, worker and
+sidebar tests were updated to the new prefixes. A browser check on `/create` shows nine placeholder photos with the
+note, nine built-in patterns, and no console errors; the full suite is 869 tests, all passing.
+
 ### 2026-11-21 — The footer stays on the home page
 
 The Nyein page had picked up the full `Footer` (brand, SHOP/HELP/LEGAL, newsletter, payment blocks) along with the

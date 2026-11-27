@@ -28,11 +28,17 @@ test("every key in the plan builds from its shape, and the shape is recognised b
     ["site-category", { slug: "t-shirts", ext: "webp" }, "site/categories/t-shirts.webp"],
     ["site-banner", { slug: "hero", ext: "webp" }, "site/banners/hero.webp"],
     ["snapshot", { slug: "fonts" }, "catalog/fonts.json"],
-    ["upload-tmp", { id: "user-1", file: "photo", ext: "webp" }, "uploads/tmp/user-1/photo.webp"],
-    ["upload", { id: "user-1", file: "photo", ext: "jpg" }, "uploads/user-1/photo.jpg"],
-    ["saved-thumbnail", { id: "user-1", design: "design-1" }, "saved/user-1/design-1/thumbnail.webp"],
+    ["upload-tmp", { id: "user-1", file: "photo", ext: "webp" }, "tmp/user-1/photo.webp"],
+    ["upload", { id: "user-1", file: "photo", ext: "jpg" }, "users/user-1/uploads/photo.jpg"],
+    ["saved-thumbnail", { id: "user-1", design: "design-1" }, "users/user-1/designs/design-1/thumbnail.webp"],
     ["order-file", { id: "order-1", file: "manifest", ext: "json" }, "orders/order-1/manifest.json"],
-    ["licence", { slug: "padauk", file: "ofl", ext: "pdf" }, "licences/padauk/ofl.pdf"],
+    ["photo", { slug: "street", file: "photo", ext: "webp" }, "photos/street/photo.webp"],
+    ["photo-thumb", { slug: "street" }, "photos/street/thumb.webp"],
+    ["photo-meta", { slug: "street" }, "photos/street/meta.json"],
+    ["pattern", { slug: "dots", file: "pattern", ext: "svg" }, "patterns/dots/pattern.svg"],
+    ["pattern-meta", { slug: "dots" }, "patterns/dots/meta.json"],
+    ["licence", { kind: "fonts", slug: "padauk", file: "ofl", ext: "pdf" }, "licences/fonts/padauk/ofl.pdf"],
+    ["licence", { kind: "photos", slug: "street", file: "lic", ext: "pdf" }, "licences/photos/street/lic.pdf"],
   ];
   for (const [shape, vars, expected] of cases) {
     const key = keys.buildAssetKey(shape, vars);

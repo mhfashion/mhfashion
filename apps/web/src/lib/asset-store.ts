@@ -11,6 +11,8 @@ export const PUBLIC_ASSET_KEY_PREFIXES = [
   "fonts/",
   "designs/",
   "elements/",
+  "photos/",
+  "patterns/",
   "brushes/",
   "text-styles/",
   "mockups/",
@@ -24,8 +26,8 @@ export const PUBLIC_ASSET_KEY_PREFIXES = [
 /** Private bucket prefixes. Reached only by code that checked who is asking (Plan §12.2.6). */
 export const PRIVATE_ASSET_KEY_PREFIXES = [
   "catalog/",
-  "uploads/",
-  "saved/",
+  "users/",
+  "tmp/",
   "orders/",
   "licences/",
 ] as const;

@@ -843,7 +843,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   limited per caller in the isolate (`WORKER_RATE_LIMITS`, 30 and 120 a minute; `resetWorkerRateLimits()` in tests).
   Auth is the Worker's own:
   `verifySupabaseUser` asks Supabase `/auth/v1/user` with the bearer token; `canReadPrivateAsset` decides the rest.
-- Uploads: `POST /api/uploads` (Supabase token, 2 MB, bytes sniffed, twenty an hour via `uploads/tmp/<user>/quota.json`)
+- Uploads: `POST /api/uploads` (Supabase token, 2 MB, bytes sniffed, twenty an hour via `tmp/<user>/quota.json`)
   and `POST /api/uploads/promote` (moves a saved design's photos to `uploads/<user>/`). Order files:
   `order-assets.ts` (`orderFileKey`, `orderDesignKey`, `writeOrderFiles`, which refuses a second write).
 - `tests/assets-worker.test.cjs` drives the Worker over memory buckets (`handleRequest(request, env, { buckets, viewer })`),
@@ -1235,6 +1235,22 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   is not selected**, so it never doubles the solid transform box. The row carries `data-layer-hovered`.
 - A layer row has no `aria-pressed` of its own: the "Select <name> artwork" button inside it does. Read
   the selection from that button, not from `[data-layer-id][aria-pressed]` (that selector matches nothing).
+
+## Asset libraries and the customer folder (Plan §12.2.2, built 2026-11-21)
+- Public keys: `photos/<slug>/{photo.<webp|png|jpg>,thumb.webp,meta.json}` and `patterns/<slug>/{pattern.svg,meta.json}`.
+  Private keys: `tmp/<uuid>/<file>` + `tmp/<uuid>/quota.json`, `users/<uuid>/uploads/<file>`,
+  `users/<uuid>/designs/<design>/thumbnail.webp`, `licences/<fonts|photos>/<slug>/<file>.pdf`. The old `uploads/` and
+  `saved/` prefixes are gone; `asset-keys.ts` builds and recognises every one of them.
+- `buildPhotoCatalogue` refuses (as an issue) a photo without `photo.<ext>`, `thumb.webp`, a name, a pixel size, a
+  licence whose `commercialPrintAllowed === true`, or — when given the private bucket — a licence PDF. Do not relax that
+  to "list it anyway": the point is that nothing is sold without the right to print it.
+- `{kind}` in the licence shape is a closed list (`LICENCE_KINDS`); `{kind}` in the mockup shapes stays a free slug.
+- `editor-svg-shapes.ts` reads a pattern SVG into `EditorShapePath[]` (`viewBox` → 1000 × 1200, translate/scale/matrix
+  composed, basic shapes to `d`, stroke widths scaled). Gradients, filters, images, text and rotations are reported as
+  issues rather than painted — a shape layer must stay movable, scalable and rotatable.
+- The sidebar keeps the nine built-in patterns first and the Lorem Picsum photos (marked `placeholder`) until the first
+  licensed photo arrives; `useEditorPhotoLibrary` / `useEditorPatternLibrary` swap them in when the catalogue answers.
+- An admin read of `users/…` or `tmp/…` writes `assets: audit admin-read admin=… key=… at=…` (Plan §12.2.6).
 
 ## Testing pitfalls
 - `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.

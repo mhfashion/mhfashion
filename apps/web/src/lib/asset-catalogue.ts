@@ -4,13 +4,24 @@
 import { assertSafeAssetKey, isSafeAssetKey, type AssetStore } from "./asset-store";
 import { parseEditorFontManifest, type EditorFontEntry } from "./editor-fonts";
 
-export const ASSET_CATALOGUE_KINDS = ["fonts", "designs", "elements", "brushes", "text-styles", "mockups"] as const;
+export const ASSET_CATALOGUE_KINDS = [
+  "fonts",
+  "designs",
+  "elements",
+  "photos",
+  "patterns",
+  "brushes",
+  "text-styles",
+  "mockups",
+] as const;
 export type AssetCatalogueKind = (typeof ASSET_CATALOGUE_KINDS)[number];
 
 export const ASSET_FOLDER_BY_KIND: Record<AssetCatalogueKind, string> = {
   fonts: "fonts/",
   designs: "designs/",
   elements: "elements/",
+  photos: "photos/",
+  patterns: "patterns/",
   brushes: "brushes/",
   "text-styles": "text-styles/",
   mockups: "mockups/",
@@ -40,6 +51,49 @@ export type CatalogueMockup = {
   looks: CatalogueMockupLook[];
   /** Every file of every look, sorted, so a caller that only wants the keys keeps working. */
   files: string[];
+};
+
+/** The licence a library photo must carry before the shop may offer it (Plan §12.2.2). */
+export type CataloguePhotoLicence = {
+  name: string;
+  source: string;
+  /** The one field that decides whether the photo may be printed and sold. */
+  commercialPrintAllowed: boolean;
+  credit: string;
+};
+
+/** One licensed photo: `photos/<slug>/photo.<ext>` plus `thumb.webp` and `meta.json`. */
+export type CataloguePhoto = {
+  slug: string;
+  name: string;
+  /** The Myanmar name; empty when the shop has not written one yet. */
+  nameMy: string;
+  /** The picture itself. */
+  file: string;
+  /** The grid thumbnail, `photos/<slug>/thumb.webp`. */
+  thumb: string;
+  files: string[];
+  width: number;
+  height: number;
+  transparent: boolean;
+  tags: string[];
+  aliases: string[];
+  licence: CataloguePhotoLicence;
+};
+
+export const PATTERN_INKS = ["dark", "light", "color"] as const;
+export type PatternInk = (typeof PATTERN_INKS)[number];
+
+/** One pattern: `patterns/<slug>/pattern.svg`, authored for the 1000 x 1200 artwork space. */
+export type CataloguePattern = {
+  slug: string;
+  name: string;
+  nameMy: string;
+  /** What the card behind the thumbnail is, so a light pattern is not lost on a light card. */
+  ink: PatternInk;
+  file: string;
+  files: string[];
+  tags: string[];
 };
 
 export type AssetCatalogueIssue = { key: string; reason: string };
@@ -271,6 +325,205 @@ export async function buildFolderCatalogue(
   };
 }
 
+function asNumber(value: unknown): number {
+  const number = typeof value === "number" ? value : Number.NaN;
+  return Number.isFinite(number) ? number : 0;
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(asString).filter(Boolean) : [];
+}
+
+/** The licence object of a photo's meta.json, or the reason it cannot be offered. */
+function readPhotoLicence(value: unknown): { licence: CataloguePhotoLicence } | { reason: string } {
+  if (!isRecord(value)) return { reason: "licence is missing" };
+  const name = asString(value.name);
+  const source = asString(value.source);
+  if (!name) return { reason: "licence.name is missing" };
+  if (!source) return { reason: "licence.source is missing" };
+  if (value.commercialPrintAllowed !== true) {
+    return { reason: "licence.commercialPrintAllowed must be true before the photo can be sold" };
+  }
+  return {
+    licence: {
+      name,
+      source,
+      commercialPrintAllowed: true,
+      credit: asString(value.credit) || name,
+    },
+  };
+}
+
+export type PhotoCatalogueOptions = {
+  /** The private bucket, so a photo without its licence document is reported instead of offered. */
+  licences?: AssetStore;
+};
+
+/**
+ * The shop's Photos library (Plan §12.2.2). A photo is offered only when it is complete: the picture,
+ * the grid thumbnail, a name, its pixel size, a licence that allows commercial printing, and the licence
+ * document under `licences/photos/<slug>/`. Anything less is an issue with the key the shop must fix.
+ */
+export async function buildPhotoCatalogue(
+  store: AssetStore,
+  now: Date = new Date(),
+  options: PhotoCatalogueOptions = {},
+): Promise<AssetCatalogue<CataloguePhoto>> {
+  const prefix = ASSET_FOLDER_BY_KIND.photos;
+  const keys = await listAllKeys(store, prefix);
+  const issues: AssetCatalogueIssue[] = [];
+  const items: CataloguePhoto[] = [];
+  const seen = new Set<string>();
+
+  for (const key of keys) {
+    if (!assertKeyOk(key, issues)) continue;
+    const folder = folderOf(key, prefix);
+    if (!folder) continue;
+    const read = await readMeta(store, key);
+    if ("reason" in read) {
+      issues.push({ key, reason: read.reason });
+      continue;
+    }
+    const slug = asString(read.meta.slug) || folder;
+    if (!SLUG_PATTERN.test(slug)) {
+      issues.push({ key, reason: "slug must be lowercase words joined by -" });
+      continue;
+    }
+    if (seen.has(slug)) {
+      issues.push({ key, reason: "duplicate slug" });
+      continue;
+    }
+    const name = asString(read.meta.name);
+    if (!name) {
+      issues.push({ key, reason: "name is missing" });
+      continue;
+    }
+    const licence = readPhotoLicence(read.meta.licence);
+    if ("reason" in licence) {
+      issues.push({ key, reason: licence.reason });
+      continue;
+    }
+    const file = keys.find((other) => other.startsWith(`${prefix}${folder}/photo.`));
+    if (!file) {
+      issues.push({ key, reason: "photo.<webp|png|jpg> is missing" });
+      continue;
+    }
+    const thumb = `${prefix}${folder}/thumb.webp`;
+    if (!keys.includes(thumb)) {
+      issues.push({ key, reason: "thumb.webp is missing" });
+      continue;
+    }
+    const width = asNumber(read.meta.width);
+    const height = asNumber(read.meta.height);
+    if (width <= 0 || height <= 0) {
+      issues.push({ key, reason: "width and height must be the photo's pixel size" });
+      continue;
+    }
+    if (options.licences) {
+      const documents = await listAllKeys(options.licences, `licences/photos/${slug}/`);
+      if (!documents.some((document) => document.endsWith(".pdf"))) {
+        issues.push({ key, reason: `licence document is missing at licences/photos/${slug}/` });
+        continue;
+      }
+    }
+    seen.add(slug);
+    items.push({
+      slug,
+      name,
+      nameMy: asString(read.meta.nameMy),
+      file,
+      thumb,
+      files: [file, thumb],
+      width,
+      height,
+      transparent: read.meta.transparent === true,
+      tags: stringList(read.meta.tags),
+      aliases: stringList(read.meta.aliases),
+      licence: licence.licence,
+    });
+  }
+
+  reportSingleFileLayout(keys, prefix, "photos", issues);
+  reportMissingMeta(keys, prefix, issues);
+  return {
+    version: 1,
+    kind: "photos",
+    generatedAt: now.toISOString(),
+    items: items.sort((a, b) => a.name.localeCompare(b.name)),
+    issues,
+  };
+}
+
+/**
+ * The Patterns library (Plan §12.2.2): one SVG per folder, authored to cover the 1000 x 1200 artwork
+ * space. The nine built-in patterns live in code and are shown before these, so this list may be empty.
+ */
+export async function buildPatternCatalogue(
+  store: AssetStore,
+  now: Date = new Date(),
+): Promise<AssetCatalogue<CataloguePattern>> {
+  const prefix = ASSET_FOLDER_BY_KIND.patterns;
+  const keys = await listAllKeys(store, prefix);
+  const issues: AssetCatalogueIssue[] = [];
+  const items: CataloguePattern[] = [];
+  const seen = new Set<string>();
+
+  for (const key of keys) {
+    if (!assertKeyOk(key, issues)) continue;
+    const folder = folderOf(key, prefix);
+    if (!folder) continue;
+    const read = await readMeta(store, key);
+    if ("reason" in read) {
+      issues.push({ key, reason: read.reason });
+      continue;
+    }
+    const slug = asString(read.meta.slug) || folder;
+    if (!SLUG_PATTERN.test(slug)) {
+      issues.push({ key, reason: "slug must be lowercase words joined by -" });
+      continue;
+    }
+    if (seen.has(slug)) {
+      issues.push({ key, reason: "duplicate slug" });
+      continue;
+    }
+    const name = asString(read.meta.name);
+    if (!name) {
+      issues.push({ key, reason: "name is missing" });
+      continue;
+    }
+    const ink = asString(read.meta.ink) || "dark";
+    if (!(PATTERN_INKS as readonly string[]).includes(ink)) {
+      issues.push({ key, reason: `ink must be ${PATTERN_INKS.join(", ")}` });
+      continue;
+    }
+    const file = `${prefix}${folder}/pattern.svg`;
+    if (!keys.includes(file)) {
+      issues.push({ key, reason: "pattern.svg is missing" });
+      continue;
+    }
+    seen.add(slug);
+    items.push({
+      slug,
+      name,
+      nameMy: asString(read.meta.nameMy),
+      ink: ink as PatternInk,
+      file,
+      files: [file],
+      tags: stringList(read.meta.tags),
+    });
+  }
+
+  reportSingleFileLayout(keys, prefix, "patterns", issues);
+  reportMissingMeta(keys, prefix, issues);
+  return {
+    version: 1,
+    kind: "patterns",
+    generatedAt: now.toISOString(),
+    items: items.sort((a, b) => a.name.localeCompare(b.name)),
+    issues,
+  };
+}
+
 /**
  * The looks that exist for each product or garment, so a page picks one instead of probing.
  *
@@ -337,11 +590,19 @@ export async function buildMockupCatalogue(
   return { version: 1, kind: "mockups", generatedAt: now.toISOString(), items: built, issues };
 }
 
-type AnyCatalogue = AssetCatalogue<EditorFontEntry | CatalogueAsset | CatalogueMockup>;
+type AnyCatalogue = AssetCatalogue<EditorFontEntry | CatalogueAsset | CatalogueMockup | CataloguePhoto | CataloguePattern>;
 
-function buildAnyCatalogue(store: AssetStore, kind: AssetCatalogueKind, now: Date): Promise<AnyCatalogue> {
+function buildAnyCatalogue(
+  store: AssetStore,
+  kind: AssetCatalogueKind,
+  now: Date,
+  /** The private bucket, for the licence documents a photo catalogue checks. */
+  licences?: AssetStore,
+): Promise<AnyCatalogue> {
   if (kind === "fonts") return buildFontCatalogue(store, now);
   if (kind === "mockups") return buildMockupCatalogue(store, now);
+  if (kind === "photos") return buildPhotoCatalogue(store, now, { licences });
+  if (kind === "patterns") return buildPatternCatalogue(store, now);
   return buildFolderCatalogue(store, kind, now);
 }
 
@@ -357,7 +618,17 @@ export function buildAssetCatalogue(
 ): Promise<AssetCatalogue<CatalogueMockup>>;
 export function buildAssetCatalogue(
   store: AssetStore,
-  kind: Exclude<AssetCatalogueKind, "fonts" | "mockups">,
+  kind: "photos",
+  now?: Date,
+): Promise<AssetCatalogue<CataloguePhoto>>;
+export function buildAssetCatalogue(
+  store: AssetStore,
+  kind: "patterns",
+  now?: Date,
+): Promise<AssetCatalogue<CataloguePattern>>;
+export function buildAssetCatalogue(
+  store: AssetStore,
+  kind: Exclude<AssetCatalogueKind, "fonts" | "mockups" | "photos" | "patterns">,
   now?: Date,
 ): Promise<AssetCatalogue<CatalogueAsset>>;
 export function buildAssetCatalogue(
@@ -404,7 +675,7 @@ export async function writeAssetCatalogue<T>(
   kind: AssetCatalogueKind,
   now: Date = new Date(),
 ): Promise<{ written: boolean; catalogue: AssetCatalogue<T> }> {
-  const catalogue = (await buildAnyCatalogue(source, kind, now)) as AssetCatalogue<T>;
+  const catalogue = (await buildAnyCatalogue(source, kind, now, snapshots)) as AssetCatalogue<T>;
   const previous = await readAssetCatalogue<T>(snapshots, kind);
   if (previous && fingerprint(previous as AssetCatalogue<unknown>) === fingerprint(catalogue as AssetCatalogue<unknown>)) {
     return { written: false, catalogue: previous };

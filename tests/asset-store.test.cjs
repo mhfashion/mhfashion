@@ -10,7 +10,7 @@ test("each bucket only accepts its own prefixes", () => {
     assert.equal(isSafeAssetKey(key, "public"), true, `${key} is public`);
     assert.equal(isSafeAssetKey(key, "private"), false, `${key} must not reach the private bucket`);
   }
-  for (const key of ["catalog/fonts.json", "uploads/uid/one.webp", "saved/uid/design/thumbnail.webp", "orders/o1/manifest.json", "licences/padauk/ofl.pdf"]) {
+  for (const key of ["catalog/fonts.json", "tmp/uid/one.webp", "users/uid/uploads/one.webp", "users/uid/designs/d1/thumbnail.webp", "orders/o1/manifest.json", "licences/fonts/padauk/ofl.pdf"]) {
     assert.equal(isSafeAssetKey(key, "private"), true, `${key} is private`);
     assert.equal(isSafeAssetKey(key, "public"), false, `${key} must never be public`);
   }

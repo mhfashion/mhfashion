@@ -790,7 +790,7 @@ Local development uses wrangler's local R2 simulation, so no development buckets
 
 | Key pattern | What it is | Accepted file | Written by | Read by |
 |---|---|---|---|---|
-| `catalog/<kind>.json` | the snapshot for `fonts`, `designs`, `elements`, `brushes`, `text-styles`, `mockups`, with its `issues` list | JSON | the rebuild only | the asset routes; the admin issues route; the public route strips `issues` |
+| `catalog/<kind>.json` | the snapshot for `fonts`, `designs`, `elements`, `photos`, `patterns`, `brushes`, `text-styles`, `mockups`, with its `issues` list | JSON | the rebuild only | the asset routes; the admin issues route; the public route strips `issues` |
 | `tmp/<user-id>/<upload-id>.<webp\|jpg\|png>` and `tmp/<user-id>/quota.json` | a customer photo that is not yet part of a saved design, and the hourly upload counter | the compressed working copy, up to 6 MB (3000 px on a phone) | the upload route | the same customer |
 | `users/<user-id>/uploads/<upload-id>.<webp\|jpg\|png>` | the photo once a design that uses it is saved | same | promoted from `tmp` on Save | the same customer; the press through the order copy |
 | `users/<user-id>/designs/<design-id>/thumbnail.webp` | the My designs thumbnail | WebP up to 100 KB, about 600 px | the browser at Save, through the route | the same customer |
@@ -987,6 +987,28 @@ the event rules (12.2.9), the upload and order routes, and the backup workflow �
 7. The tests that pin the old paths (`asset-keys`, `asset-upload`, `assets-worker`, `asset-store`) change with the code;
    the backup workflow and `Doc/R2-STORAGE.md` list the new prefixes, and the lifecycle rule targets `tmp/`.
 Nothing customer-related has been written to R2 yet, so the rename moves no data.
+
+**Built (2026-11-21): items 1 to 7 above are in the code, and the tests follow.**
+`asset-keys.ts` has the shapes `photo`, `photo-thumb`, `photo-meta`, `pattern` and `pattern-meta`; the private shapes
+are `tmp/<id>/<file>`, `users/<id>/uploads/<file>` and `users/<id>/designs/<design>/thumbnail.webp`; the licence shape
+is `licences/<kind>/<slug>/<file>.pdf` and `{kind}` is a closed list (`LICENCE_KINDS = fonts, photos`), so a licence
+cannot land under an invented kind. `PUBLIC_ASSET_KEY_PREFIXES` gain `photos/` and `patterns/`, and
+`PRIVATE_ASSET_KEY_PREFIXES` hold `catalog/`, `users/`, `tmp/`, `orders/`, `licences/`; `asset-access.ts` resolves the
+owner from `users/<id>/` and `tmp/<id>/`, and `isAdminCustomerFileRead` marks an admin read of either for the audit line
+the Worker writes (`assets: audit admin-read admin=… key=… at=…`). `asset-upload.ts` writes `tmp/<user>/<file>` and
+`tmp/<user>/quota.json` and promotes to `users/<user>/uploads/`. `asset-catalogue.ts` builds the `photos` and
+`patterns` catalogues: a photo is offered only with `photo.<ext>`, `thumb.webp`, a name, its pixel size and a licence
+whose `commercialPrintAllowed` is `true`, and — when the rebuild passes the private bucket — a PDF under
+`licences/photos/<slug>/`; anything less is an issue naming the key. A pattern needs `pattern.svg`, a name and an `ink`
+of `dark`, `light` or `color`. The rebuild writes eight snapshots. `asset-events.ts` maps `photos/` and `patterns/` to
+their kinds. In the editor, `editor-photo-library.ts` maps a catalogue photo to a `PhotoLibraryEntry` (placeholders stay
+until the first licensed photo arrives, and only then is the note shown), `editor-pattern-library.ts` fetches each
+`pattern.svg` and reads it with `editor-svg-shapes.ts` into the same `EditorShapePath` list the nine built-ins use —
+`viewBox` scaled onto 1000 × 1200, `translate`/`scale`/`matrix` composed, strokes scaled with the path, and a gradient,
+filter, image, text or rotation reported as an issue instead of painted — and the built-ins stay first with their card
+ink from `meta.json`. `tests/asset-photo-pattern.test.cjs`, `tests/editor-svg-shapes.test.cjs` and
+`tests/editor-catalogue-client.test.cjs` cover the new rules; the browser check shows nine placeholder photos with the
+note, nine built-in patterns, and no console errors.
 
 #### 12.2.13 Moving from today
 
@@ -1386,6 +1408,9 @@ browser-local demo data (section 16 P0).
 - 2026-11-23: Decided R2-1 to R2-3 (§12.1). Editor plan: decided D1, D2, D4 to D9, D14 and D15; designed the saved design and order hand-off (E1), the Hoodie (E9) and design areas (E23); added the order of work (5.1) and the list of inputs only the owner can supply.
 - 2026-11-23: `Plan/` reduced to one file: the editor plan became Part II of this file and the separate editor plan file was removed. Added the repository layout and file rules (SQL only in `SQL/`, documents only in `Doc/`, one file in `Worker/` and in `Plan/`), the §17 search plan, and the Worker-file design in §12.1 (R2-4). Section 6 now points to Part II.
 - 2026-11-24: Added §12.2, the R2 storage plan: three buckets (public, private, backup), every prefix with its file type, limit, writer, reader and cache class, key rules, how files get in and are read, retention, backups, rebuild events, cost, checks, the changes the built asset code needs, and decisions R2-5 to R2-9. The old key list in section 12 now points to it.
+- 2026-11-21: the Photos and Patterns catalogues and the `users/` + `tmp/` customer layout are in the code (§12.2.2,
+  §12.2.12 items 1-7); the sidebar reads both catalogues and keeps the placeholders and the nine built-in patterns
+  until the first licensed photo or pattern is uploaded.
 - 2026-11-26: §12.2 now covers the editor's Photos and Patterns libraries (`photos/`, `patterns/`) and moves customers' files to `users/<account-uuid>/` and `tmp/<account-uuid>/`; decisions R2-10 to R2-14; the code changes this needs are listed in §12.2.12; Part II (II.2, E1, E10, the inputs list) and §17 search follow.
 
 
