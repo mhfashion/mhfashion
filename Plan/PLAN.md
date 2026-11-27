@@ -4710,3 +4710,15 @@ tofu box and a screenshot looks broken even when the markup is right. Put Noto S
   name (and an empty `tags` list) so an old row can still be opened and saved. The loader now also stores
   the mapped `products` it builds — it previously spread `...parsed` over them, which silently dropped every
   product backfill.
+
+## §18.7 A search answer is the product cards and nothing else
+
+- The owner does not want the search page to announce itself over the answer: no "Shop" kicker, no "Search"
+  title, no "3 results for “…”" sentence, no "matched on …" note, no group tabs and no "Popular right now"
+  block. A query renders the product grid; nothing else sits above it but the search field.
+- The query text is not echoed back anywhere on the page, including the empty state ("Nothing matched").
+- Guides are no longer a search group: `SearchTabs.tsx`, `readSearchType`, `searchHref` and the unused
+  `search.*` dictionary keys are gone, and `SEARCH_CAPS` is `{ products: 40 }`. A stale `?type=` link still
+  answers (the parameter is ignored).
+- The header's suggestion dropdown is unchanged: it still offers products and guide posts, so a guide is
+  still one keystroke away.

@@ -37,7 +37,7 @@ test("the search labels are translated in both languages", () => {
   const { en, my } = dictionarySections();
   const searchKeys = (section) => [...keysOf(section)].filter((key) => key.startsWith("search."));
   assert.deepEqual(searchKeys(en).sort(), searchKeys(my).sort());
-  assert.ok(searchKeys(en).length >= 25, "the search screen's labels are in the dictionary");
+  assert.ok(searchKeys(en).length >= 11, "the search screen's labels are in the dictionary");
 });
 
 test("the search page's labels are all translated", () => {
@@ -49,23 +49,11 @@ test("the search page's labels are all translated", () => {
     "search.placeholder",
     "search.submit",
     "search.clear",
-    "search.resultCount",
-    "search.resultCountOne",
     "search.emptyTitle",
-    "search.groupEmpty",
-    "search.tablist",
-    "search.tab.products",
-    "search.tab.guides",
-    "search.tab.designs",
-    "search.group.product",
-    "search.group.guide",
-    "search.group.design",
   ]) {
     assert.ok(keys.has(key), `the search page needs ${key}`);
   }
-  const tabs = read("apps/web/src/components/SearchTabs.tsx");
-  assert.ok(tabs.includes('t(`search.tab.${tab.type}`)'), "the tabs read their label from the dictionary");
-  assert.ok(tabs.includes('t(`search.group.${group.replace(/s$/, "")}`)'), "the group name is the singular dictionary entry");
+  assert.equal(read("apps/web/src/app/search/page.tsx").includes("data-search-tab"), false, "the page has no group tabs");
   assert.ok(read("apps/web/src/components/SearchField.tsx").includes('t("search.inputLabel")'));
 });
 

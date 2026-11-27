@@ -202,29 +202,24 @@ test("the fuzzy search is not asked for a two-letter term, nor when it is missin
   }
 });
 
-test("the result groups have their own caps and live in the address", () => {
+test("one search answer carries products only", () => {
   const caps = loadModule("apps/web/src/lib/search-caps.ts");
-  assert.deepEqual(caps.SEARCH_CAPS, { products: 40, guides: 10 }, "a design is posted with its product, so it is not a group");
-  assert.equal(caps.readSearchType(undefined), "products");
-  assert.equal(caps.readSearchType("guides"), "guides");
-  assert.equal(caps.readSearchType("designs"), "products", "a designs tab is no longer a group");
-  assert.equal(caps.readSearchType("posters"), "products", "an unknown group falls back to products");
-  assert.equal(caps.searchHref("tee", "products"), "/search?q=tee");
-  assert.equal(caps.searchHref("tee", "guides"), "/search?q=tee&type=guides");
-  assert.equal(caps.searchHref("", "guides"), "/search?type=guides");
-  assert.equal(caps.searchHref("", "products"), "/search");
+  assert.deepEqual(caps.SEARCH_CAPS, { products: 40 }, "the answer is a page of product cards and nothing else");
 });
 
 test("the search page and both header fields are wired", () => {
   const read = (relativePath) => readFileSync(path.join(__dirname, "..", relativePath), "utf8");
   const page = read("apps/web/src/app/search/page.tsx");
-  for (const marker of ["data-search-form", "data-search-results", "data-search-result", "data-search-empty", "data-search-idle", "SearchField", "SearchTabs", "normalizeSearchQuery", "searchCatalog", "robots: { index: false, follow: true }"]) {
+  for (const marker of ["data-search-form", "data-search-results", "data-search-result", "data-search-empty", "data-search-idle", "SearchField", "normalizeSearchQuery", "searchCatalog", "robots: { index: false, follow: true }"]) {
     assert.ok(page.includes(marker), `search page is missing ${marker}`);
   }
   // The field and the tab strip are client components so their labels follow the chosen language.
   assert.ok(read("apps/web/src/components/SearchField.tsx").includes('name="q"'), "the field still submits q");
   assert.ok(read("apps/web/src/components/SearchField.tsx").includes('event.key !== "Escape"'), "Esc clears the field");
-  assert.ok(read("apps/web/src/components/SearchTabs.tsx").includes("data-search-tab"), "the tabs keep their markers");
+  // A search answer is the product grid alone: no group tabs, no result-count sentence over it.
+  assert.equal(page.includes("SearchTabs"), false, "the tab strip is gone");
+  assert.equal(page.includes("data-search-tab"), false, "no group tab is rendered");
+  assert.equal(page.includes("search.resultCount"), false, "the answer does not restate the query");
   const header = read("apps/web/src/components/HeaderActions.tsx");
   assert.match(header, /data-header-search="desktop"/);
   assert.match(header, /data-header-search="compact"/);

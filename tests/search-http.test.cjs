@@ -12,43 +12,27 @@ async function page(path) {
   return { response, html };
 }
 
-function tabCount(html, type) {
-  const match = html.match(new RegExp(`data-search-tab="${type}"[^>]*data-search-tab-count="(\\d+)"`));
-  return match ? Number(match[1]) : null;
-}
-
-test("a query answers with the two group tabs and their counts", async () => {
-  const { response, html } = await page("/search?q=guide");
+test("a query answers with product cards only", async () => {
+  const { response, html } = await page("/search?q=tee");
   assert.equal(response.status, 200);
-  for (const type of ["products", "guides"]) {
-    assert.ok(html.includes(`data-search-tab="${type}"`), `the ${type} tab is missing`);
-    assert.ok(tabCount(html, type) !== null, `the ${type} tab has no count`);
-  }
-  assert.ok(tabCount(html, "guides") > 0, "the handbook has guide posts for “guide”");
-  assert.match(html, /role="tablist"/);
-  assert.match(html, /aria-selected="true"/);
+  assert.match(html, /data-search-results|data-search-empty/, "the answer is a card grid or the empty state");
+  assert.equal(html.includes("data-search-tab"), false, "no group tabs are rendered");
+  assert.equal(html.includes("role=\"tablist\""), false, "no tab strip at all");
+  assert.equal(html.includes("results for"), false, "the answer does not restate the query");
+  assert.equal(html.includes(">Shop<"), false, "the page kicker is not shown over the answer");
+  assert.equal(/<h1[\s>]/.test(html), false, "no page title sits over the answer");
 });
 
-test("the guides tab lists guide articles that link to their own page", async () => {
-  const { html } = await page("/search?q=payment&type=guides");
-  const cards = [...html.matchAll(/<a\b[^>]*data-search-guide[^>]*href="(\/guide\/[^"?]+)"/g)].map((match) => match[1]);
-  assert.ok(cards.length > 0, "no guide card was rendered");
-  assert.ok(cards.length <= 10, "the guides group is capped at 10");
-  for (const href of cards) assert.match(href, /^\/guide\/[a-z0-9-]+$/);
-  assert.match(html, /data-search-group="guides"/);
+test("a query with no product match shows the empty state instead of other groups", async () => {
+  const { html } = await page("/search?q=payment");
+  assert.equal(html.includes("data-search-guide"), false, "guide cards are not a search answer");
+  assert.match(html, /data-search-empty|data-search-results/);
 });
 
-test("the shop has no designs group: artwork is posted with its product", async () => {
-  const { html } = await page("/search?q=wave&type=designs");
-  assert.equal(html.includes('data-search-tab="designs"'), false, "no designs tab is offered");
-  assert.equal(html.includes("data-search-design="), false, "no design card is rendered");
-  assert.equal(html.includes('data-search-group="designs"'), false);
-});
-
-test("an unknown group falls back to products, and a miss shows the empty state", async () => {
+test("an unknown group still answers, and a miss shows the empty state", async () => {
   const unknown = await page("/search?q=guide&type=posters");
-  const tab = unknown.html.match(/<a\b[^>]*data-search-tab="products"[^>]*>/)?.[0] ?? "";
-  assert.match(tab, /aria-selected="true"/, "an unknown group falls back to products");
+  assert.equal(unknown.response.status, 200, "a stale ?type= link does not break the page");
+  assert.match(unknown.html, /data-search-results|data-search-empty/);
   const miss = await page("/search?q=zzzzqqqq");
   assert.match(miss.html, /data-search-empty/);
   assert.match(miss.html, /Nothing matched/);
