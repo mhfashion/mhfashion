@@ -55,6 +55,11 @@ const en: Dictionary = {
 
   "collections.item.all": "All Collections", "collections.item.allDetail": "Everyday favorites", "collections.item.tShirts": "T-Shirts", "collections.item.tShirtsDetail": "Soft custom staples", "collections.item.kids": "Kids", "collections.item.kidsDetail": "Playful everyday prints", "collections.item.phoneCovers": "Phone Covers", "collections.item.phoneCoversDetail": "Carry your style", "collections.item.bags": "Bags", "collections.item.bagsDetail": "Made to go anywhere", "collections.item.cups": "Cups", "collections.item.cupsDetail": "Your daily essentials",
 
+  "shop.filterTitle": "Filter MH Fashion", "shop.category": "Category", "shop.size": "Size", "shop.inStock": "In Stock Only", "shop.apply": "Apply Filters", "shop.sort": "Sort", "shop.categories": "Categories",
+  "mh.eyebrow": "MH Fashion Collection", "mh.title1": "Your Style.", "mh.title2": "Your Statement.", "mh.lead": "Explore signature MH Fashion designs and find a piece made for your everyday mood.", "mh.cta": "Explore MH Fashion", "mh.mark": "FASHION", "mh.listTitle": "MH Fashion Products", "mh.listLead": "Signature designs from MH Fashion", "mh.empty": "No MH Fashion products found.",
+
+  "shop.allMh": "All MH Fashion", "shop.searchPlaceholder": "Search MH Fashion...", "category.kids": "Kids",
+
 };
 
 const my: Dictionary = {
@@ -120,6 +125,9 @@ const my: Dictionary = {
   "account.openWishlist": "ဆန္ဒစာရင်း ဖွင့်ရန်", "account.pointsLabel": "အမှတ်များ", "wishlist.title": "ဆန္ဒစာရင်း",
   "errors.offlineHelp": "ဆိုင်က ထုတ်ကုန်များ ဖွင့်ရန်နဲ့ အော်ဒါ လက်ခံရန် အင်တာနက် လိုအပ်သည်။ ဖွင့်ပြီးသား စာမျက်နှာများက ဖုန်းမှာ ဆက်ဖွင့်နိုင်ပြီး၊ ဒီဇိုင်းဆွဲနေတဲ့ အရာများက အင်တာနက် ပြန်ရသည်အထိ ဒီစက်မှာသာ ရှိသည်။", "errors.offlineNote": "အင်တာနက် ပြန်ချိတ်ပြီး ပြန်ဖွင့်ပါ၊ သိမ်းထားတာ ဘာမှ မပျက်ပါ။",
   "collections.item.all": "စုစည်းမှု အားလုံး", "collections.item.allDetail": "နေ့စဉ် အကြိုက်ဆုံးများ", "collections.item.tShirts": "တီရှပ်များ", "collections.item.tShirtsDetail": "နူးညံ့တဲ့ ကိုယ်ပိုင် ပုံနှိပ်များ", "collections.item.kids": "ကလေးများ", "collections.item.kidsDetail": "နေ့စဉ် ပျော်စရာ ပုံနှိပ်များ", "collections.item.phoneCovers": "ဖုန်းအိတ်များ", "collections.item.phoneCoversDetail": "သင့်စတိုင်ကို သယ်သွားပါ", "collections.item.bags": "အိတ်များ", "collections.item.bagsDetail": "ဘယ်နေရာမဆို သွားနိုင်သည်", "collections.item.cups": "ခွက်များ", "collections.item.cupsDetail": "နေ့စဉ် မရှိမဖြစ်များ",
+  "shop.filterTitle": "MH Fashion ကို စစ်ထုတ်ရန်", "shop.category": "အမျိုးအစား", "shop.size": "အရွယ်အစား", "shop.inStock": "လက်ကျန်ရှိသည်သာ", "shop.apply": "စစ်ထုတ်မှု အသုံးချရန်", "shop.sort": "စီစဉ်ရန်", "shop.categories": "အမျိုးအစားများ",
+  "mh.eyebrow": "MH Fashion စုစည်းမှု", "mh.title1": "သင့်စတိုင်။", "mh.title2": "သင့်ထုတ်ဖော်ပြချက်။", "mh.lead": "MH Fashion ရဲ့ ထူးခြားတဲ့ ဒီဇိုင်းများကို ရှာဖွေပြီး နေ့စဉ် စိတ်ခံစားမှုအတွက် ပစ္စည်းတစ်ခု ရှာပါ။", "mh.cta": "MH Fashion ကို ရှာဖွေရန်", "mh.mark": "ဖက်ရှင်", "mh.listTitle": "MH Fashion ထုတ်ကုန်များ", "mh.listLead": "MH Fashion ဆီက ထူးခြားတဲ့ ဒီဇိုင်းများ", "mh.empty": "MH Fashion ထုတ်ကုန် မတွေ့ပါ။",
+  "shop.allMh": "MH Fashion အားလုံး", "shop.searchPlaceholder": "MH Fashion ရှာဖွေရန်...", "category.kids": "ကလေးများ",
 };
 
 const dictionaries: Record<Locale, Dictionary> = { en, my };
