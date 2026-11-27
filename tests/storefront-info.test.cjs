@@ -68,8 +68,9 @@ test("the copy keeps the facts the plan fixed", () => {
 test("the contact page is the claim channel and composes a real email", () => {
   const page = read("apps/web/src/app/contact/page.tsx");
   assert.match(page, /data-contact-claim/);
-  assert.match(page, /accepted the claim|accept the claim/);
-  assert.match(page, /already paid is still produced and delivered/);
+  const dictionary = read("apps/web/src/lib/i18n.tsx");
+  assert.match(dictionary, /accepted the claim|accept the claim/);
+  assert.match(dictionary, /already paid is still produced and delivered/);
   assert.match(page, /CONTACT_EMAIL/);
 
   const form = read("apps/web/src/components/ContactForm.tsx");
@@ -77,8 +78,9 @@ test("the contact page is the claim channel and composes a real email", () => {
     assert.ok(form.includes(marker), `ContactForm is missing ${marker}`);
   }
   // A message is recorded in the shop inbox with a reference, and the mail app is still an option.
-  assert.match(form, /is with the shop/, "the form must say where the message went");
-  assert.match(form, /reference/i, "the customer needs something to quote back");
+  assert.match(form, /contactForm\.sent/, "the form must say where the message went");
+  assert.match(dictionary, /"contactForm\.sent": "Message \{id\} is with the shop"/);
+  assert.match(dictionary, /"contactForm\.sentNote": "[^"]*reference/i, "the customer needs something to quote back");
 
   const terms = pageText(info.INFO_PAGES.terms);
   assert.match(terms, /Claims are received through the contact page/);

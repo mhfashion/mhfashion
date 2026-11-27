@@ -1,13 +1,15 @@
+"use client";
+
 import type { Metadata } from "next";
 import { ArrowRight, Mail } from "lucide-react";
 import Header from "@/components/Header";
-import { CONTACT_EMAIL, type InfoPage as InfoPageContent } from "@/lib/storefront-info";
+import T from "@/components/T";
+import { useI18n } from "@/lib/i18n";
+import { CONTACT_EMAIL, INFO_PAGES_MY, type InfoPage as InfoPageContent } from "@/lib/storefront-info";
 
-export function infoPageMetadata(page: InfoPageContent): Metadata {
-  return { title: `${page.title} — MH Fashion`, description: page.lead };
-}
-
-export default function InfoPage({ page }: { page: InfoPageContent }) {
+export default function InfoPage({ page: english }: { page: InfoPageContent }) {
+  const { locale } = useI18n();
+  const page = (locale === "my" ? INFO_PAGES_MY[english.slug] : undefined) ?? english;
   return (
     <div>
       <Header />
@@ -44,10 +46,10 @@ export default function InfoPage({ page }: { page: InfoPageContent }) {
           </div>
 
           <section className="mt-6 rounded-2xl border border-border bg-bg-surface p-4 shadow-sm sm:p-6">
-            <h2 className="text-sm font-black">Still need an answer?</h2>
-            <p className="mt-1 text-[11px] text-text-secondary sm:text-xs">Write to us and include the order number if you have one.</p>
+            <h2 className="text-sm font-black"><T k="info.stillNeed" /></h2>
+            <p className="mt-1 text-[11px] text-text-secondary sm:text-xs"><T k="info.writeUs" /></p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <a href="/contact" data-info-contact className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-[11px] font-bold text-accent-foreground">Contact us <ArrowRight size={13} /></a>
+              <a href="/contact" data-info-contact className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-[11px] font-bold text-accent-foreground"><T k="info.contactUs" /> <ArrowRight size={13} /></a>
               <a href={`mailto:${CONTACT_EMAIL}`} className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[11px] font-bold"><Mail size={13} /> {CONTACT_EMAIL}</a>
             </div>
           </section>

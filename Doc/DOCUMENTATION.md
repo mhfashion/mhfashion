@@ -2475,3 +2475,18 @@ English copy in JSX.
 Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the `28 Nov 2026` month names from
 `formatOrderDate` remain English because they are data or date formatting, not interface copy. The
 `/mh-fashion` search `placeholder` stays English because `placeholder` accepts only a string.
+
+## Contact, about, FAQ and the form
+
+- `/contact` and `ContactForm` are translated end to end: the claim block, the four topic options (the array
+  entries now carry `labelKey`), every field label, the confirmation ("Message #… is with the shop", with the
+  id and the reply address substituted into the dictionary sentence) and the three action buttons.
+- `/about` and `/faq` are content pages: their copy lives in `INFO_PAGES` in `lib/storefront-info.ts`, not in
+  JSX. `INFO_PAGES_MY` carries the Myanmar `eyebrow`, `title`, `lead` and `sections`, and `InfoPage` picks it
+  when the locale is `my`. Pages without a Myanmar entry fall back to English, which is what the legal drafts
+  do.
+- Making `InfoPage` a client component broke the build for every info page: the server pages call
+  `infoPageMetadata`, and Next refuses to call a function exported from a `"use client"` module on the server.
+  The helper now lives in `lib/storefront-info.ts`, next to the content it describes.
+- `tests/storefront-info.test.cjs` asserted the claim wording inside the page source; it now reads
+  `i18n.tsx` for those sentences and keeps asserting the `data-contact-*` hooks in the components.

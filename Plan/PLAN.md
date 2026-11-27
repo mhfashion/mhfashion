@@ -4641,6 +4641,8 @@ The first sweep covered the pages a visitor lands on. The next two covered the r
 | `/nyein` | hero title/lead/CTA, the `NYEIN / READY-MADE` mark, the "Printed / As Shown" stamp, both strip headings and their notes, the cotton card and the "Printed once / Kept forever" card (`nyein.*`) |
 | `/products/[slug]` | the back link, the five policy tabs, `Size Guide`, `New`, `Quantity`, `In Stock · Ready to ship`, `Edit Design`, the details copy, every specification label, the size/reviews/shipping leads, `Based on 126 reviews`, `Related Products` (`product.*`) |
 | `/guide/[slug]` | the sidebar card, `Back to all guides`, `FAQ`, `Keep learning / Keep creating`, `Create a design`, the breadcrumb label and the starter-post disclaimer (`guide.*`) |
+| `/contact` | the eyebrow, title, lead, the copyright-claim block (title, paragraph, "Include", the three steps, the record note), "Faster answers" and its four links, and the whole form: heading, lead, six field labels, four topic options, the sent confirmation, "Write another message", "Send to the shop", "Open in your email app", copy/copied, the mail-app hint and "Subject:" |
+| `/about`, `/faq` | the whole page. `INFO_PAGES_MY` in `lib/storefront-info.ts` holds the Myanmar `eyebrow`/`title`/`lead`/`sections`, and `InfoPage` picks it when `locale === "my"` |
 | `/offline`, `error.tsx`, `guide/error.tsx` | every sentence |
 
 Implementation notes:
@@ -4657,3 +4659,12 @@ Implementation notes:
 
 Still English by design: tier names (`Silver`, `Gold`), demo wallet/handle values, guide article bodies, and
 `formatOrderDate`'s `28 Nov 2026` month names. Those are data or a date formatter, not chrome.
+
+`InfoPage` is now a client component because it reads the locale, so `infoPageMetadata` moved to
+`lib/storefront-info.ts`: a server page cannot call a function exported from a `"use client"` module
+(`Attempted to call infoPageMetadata() from the server but infoPageMetadata is on the client` failed the
+build for every info page).
+
+The legal pages (`/privacy`, `/terms`, `/cookie-policy`, `/shipping`, `/returns`) are still English on
+purpose. They carry a draft banner, and machine-translating a legal draft that the owner has not signed off
+would read as a finished policy. They need a human translator and the owner's review in one pass.
