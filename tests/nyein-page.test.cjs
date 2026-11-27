@@ -41,8 +41,11 @@ test("every Nyein box is the home page's own product box", () => {
 test("nothing on the Nyein page can be edited", () => {
   assert.doesNotMatch(nyein, /href="\/create"/, "no editor entry point");
   assert.doesNotMatch(nyein, /Start Designing/);
-  assert.match(nyein, /nothing to customise/);
-  assert.match(nyein, /Ready-made only/);
+  const dictionary = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/i18n.tsx"), "utf8");
+  assert.match(nyein, /k="nyein\.lead"/, "the hero says nothing is customisable");
+  assert.match(dictionary, /"nyein\.lead": "For those who don't follow the crowd[^"]*nothing to customise/);
+  assert.match(nyein, /k="nyein\.readyOnly"/, "the card is labelled ready-made only");
+  assert.match(dictionary, /"nyein\.readyOnly": "Ready-made only"/);
   assert.doesNotMatch(nyein, /AdSlotBanner/, "no admin-editable ad slots");
 });
 

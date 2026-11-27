@@ -19,8 +19,12 @@ test("removing the badges left no dead icon imports", () => {
 });
 
 test("the product page still carries the buying controls and the policy tabs", () => {
-  for (const marker of ["data-add-to-cart", "data-buy-now", "Shipping & Returns", "Size Guide"]) {
+  for (const marker of ["data-add-to-cart", "data-buy-now", '"product.tabShipping"', '"product.sizeGuide"']) {
     assert.ok(detail.includes(marker), `${marker} disappeared from the product page`);
+  }
+  const dictionary = readFileSync(path.join(ROOT, "apps/web/src/lib/i18n.tsx"), "utf8");
+  for (const label of ['"product.tabShipping": "Shipping & Returns"', '"product.sizeGuide": "Size Guide"']) {
+    assert.ok(dictionary.includes(label), `${label} is missing from the dictionary`);
   }
 });
 

@@ -172,7 +172,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
             <section id="articles" aria-labelledby="articles-heading" className="scroll-mt-24">
               <div className="mb-3">
                 <h2 id="articles-heading" className="border-l-4 border-accent pl-3 text-lg font-black sm:text-xl"><GuideLabel id="guide.latest" fallback="Latest Guides" /></h2>
-                <p className="mt-1 pl-4 text-xs text-text-muted">{posts.length} {posts.length === 1 ? "post" : "posts"}{activeCategory ? ` in ${activeCategory.name}` : ""}</p>
+                <p className="mt-1 pl-4 text-xs text-text-muted">{posts.length} <T k={posts.length === 1 ? "guide.post" : "guide.posts"} />{activeCategory ? ` · ${activeCategory.name}` : ""}</p>
               </div>
 
               {catalog.source === "unavailable" ? (

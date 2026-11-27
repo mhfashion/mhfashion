@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ArrowRight, BadgeCheck, Heart, Palette } from "lucide-react";
 import Header from "@/components/Header";
+import T from "@/components/T";
 import CategoryRow from "@/components/CategoryRow";
 import ProductStrip from "@/components/ProductStrip";
 import { getProductsBySubBrand } from "@/lib/products";
@@ -32,18 +33,18 @@ export default async function NyeinPage() {
             <div className="relative z-10 max-w-[68%] sm:max-w-[47%]">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4c9d16] sm:text-xs sm:tracking-[0.18em]">Nyein · MH Fashion</p>
               <h1 className="mt-2 text-2xl font-black leading-[0.95] tracking-tight sm:mt-3 sm:text-5xl lg:text-6xl">
-                Print-on-demand
+                <T k="nyein.title1" />
                 <br />
-                <span className="text-[#4d9e16]">for the few.</span>
+                <span className="text-[#4d9e16]"><T k="nyein.title2" /></span>
               </h1>
               <p className="mt-2 max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-4 sm:text-sm">
-                For those who don&apos;t follow the crowd. Every Nyein piece is printed exactly as shown, so there is nothing to customise.
+                <T k="nyein.lead" />
               </p>
               <a
                 href="#nyein-pieces"
                 className="mt-3 inline-flex items-center rounded-full bg-[#55a918] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:px-4 sm:py-2.5 sm:text-xs"
               >
-                Shop Nyein pieces
+                <T k="nyein.cta" />
                 <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" />
               </a>
             </div>
@@ -52,13 +53,13 @@ export default async function NyeinPage() {
               <div className="absolute left-1/2 top-20 -translate-x-1/2 text-center text-3xl font-black leading-none text-[#4d9e16]">
                 NYEIN
                 <br />
-                <span className="text-sm">READY-MADE</span>
+                <span className="text-sm"><T k="nyein.mark" /></span>
               </div>
             </div>
             <div className="absolute bottom-3 right-3 text-2xl font-black italic leading-tight text-[#37770e]/80 sm:bottom-8 sm:right-7 sm:text-4xl">
-              Printed
+              <T k="nyein.stamp1" />
               <br />
-              As Shown
+              <T k="nyein.stamp2" />
             </div>
             <BadgeCheck className="absolute bottom-3 left-4 text-[#37770e]/70 sm:bottom-8" size={20} />
           </section>
@@ -68,9 +69,9 @@ export default async function NyeinPage() {
           <section className="mb-6" id="nyein-pieces">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-sm font-black sm:text-base">
-                <Heart size={17} className="text-accent" /> Popular Nyein pieces
+                <Heart size={17} className="text-accent" /> <T k="nyein.popular" />
               </h2>
-              <span className="text-[10px] font-semibold text-text-muted sm:text-xs">Ready-made</span>
+              <span className="text-[10px] font-semibold text-text-muted sm:text-xs"><T k="nyein.readyMade" /></span>
             </div>
             <ProductStrip products={popular} />
           </section>
@@ -78,9 +79,9 @@ export default async function NyeinPage() {
           <section className="mb-6">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-sm font-black sm:text-base">
-                <Palette size={17} className="text-accent" /> New Nyein arrivals
+                <Palette size={17} className="text-accent" /> <T k="nyein.newTitle" />
               </h2>
-              <span className="text-[10px] font-semibold text-text-muted sm:text-xs">No design editing</span>
+              <span className="text-[10px] font-semibold text-text-muted sm:text-xs"><T k="nyein.noEditing" /></span>
             </div>
             <ProductStrip products={arrivals} />
           </section>
@@ -88,10 +89,10 @@ export default async function NyeinPage() {
           <section className="mb-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <a href="/categories/t-shirts" className="group relative min-h-[150px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#f5f5f2] to-[#dfe8d9] p-5 text-[#172810] sm:p-7">
               <div className="relative z-10">
-                <h2 className="text-xl font-black sm:text-2xl">Premium Cotton T-Shirts</h2>
-                <p className="mt-1 text-xs text-[#4a5a44]">Soft · Breathable · Durable</p>
+                <h2 className="text-xl font-black sm:text-2xl"><T k="nyein.cottonTitle" /></h2>
+                <p className="mt-1 text-xs text-[#4a5a44]"><T k="nyein.cottonLead" /></p>
                 <span className="mt-5 inline-flex rounded-full bg-accent px-3 py-2 text-[10px] font-bold text-accent-foreground">
-                  Shop Now <ArrowRight size={13} className="ml-1" />
+                  <T k="nyein.shopNow" /> <ArrowRight size={13} className="ml-1" />
                 </span>
               </div>
               <div className="absolute -bottom-20 right-[-10px] h-48 w-48 rounded-full bg-white/80" />
@@ -100,13 +101,13 @@ export default async function NyeinPage() {
             <div className="relative min-h-[150px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#d7f5a8] via-[#79bf20] to-[#4e9e12] p-5 text-white sm:p-7">
               <p className="text-xs font-bold uppercase tracking-[0.15em] text-white/80">Nyein</p>
               <h2 className="mt-2 text-2xl font-black">
-                Printed once.
+                <T k="nyein.story1" />
                 <br />
-                Kept forever.
+                <T k="nyein.story2" />
               </h2>
-              <p className="mt-1 text-xs text-white/85">The design is already on the piece — nothing to edit.</p>
+              <p className="mt-1 text-xs text-white/85"><T k="nyein.storyLead" /></p>
               <span className="mt-4 inline-flex rounded-full bg-white px-3 py-2 text-[10px] font-bold text-[#4e9e12]">
-                Ready-made only
+                <T k="nyein.readyOnly" />
               </span>
             </div>
           </section>

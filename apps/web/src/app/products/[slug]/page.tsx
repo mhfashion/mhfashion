@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
+import T from "@/components/T";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema, productSchema } from "@/lib/structured-data";
@@ -45,7 +46,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       <Header />
       <main className="w-full bg-bg px-2 py-3 sm:px-4 lg:px-6 lg:py-4">
         <div className="mx-auto w-full max-w-[1500px]">
-          <a href="/" className="mb-3 inline-flex items-center gap-1 text-[11px] font-semibold text-text-secondary transition hover:text-accent"><ArrowLeft size={13} /> Back to shopping</a>
+          <a href="/" className="mb-3 inline-flex items-center gap-1 text-[11px] font-semibold text-text-secondary transition hover:text-accent"><ArrowLeft size={13} /> <T k="product.backToShopping" /></a>
           <ProductDetailClient product={product} related={related} optionGroups={optionGroups} />
         </div>
       </main>

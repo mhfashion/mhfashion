@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Header from "@/components/Header";
+import T from "@/components/T";
 import GuideBanner from "@/components/guide/GuideBanner";
 import GuideCard from "@/components/guide/GuideCard";
 import GuideLabel from "@/components/guide/GuideLabel";
@@ -89,17 +90,17 @@ export default async function GuideArticlePage({ params }: PageProps) {
           <aside className="hidden xl:flex xl:flex-col xl:gap-4">
             <Link href="/guide" className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#69b917] via-[#4a9d0f] to-[#25720b] p-5 text-white shadow-sm">
               <BookOpen size={34} strokeWidth={2.5} aria-hidden="true" />
-              <h2 className="mt-5 text-2xl font-black leading-none">MH Fashion<br />Guide</h2>
-              <p className="mt-3 text-xs text-white/85">Back to all guides</p>
+              <h2 className="mt-5 text-2xl font-black leading-none">MH Fashion<br /><T k="guide.sideTitle" /></h2>
+              <p className="mt-3 text-xs text-white/85"><T k="guide.backAll" /></p>
             </Link>
             <nav aria-label="Guide navigation" className="rounded-2xl border border-border bg-bg-surface p-2">
               <Link href="/guide#articles" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-bold text-accent hover:bg-bg"><BookOpen size={17} /> <GuideLabel id="guide.allGuides" fallback="All Guides" /></Link>
               {catalog.categories.map((item) => <Link key={item.id} href={`/guide?category=${item.slug}#articles`} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg ${item.slug === post.categorySlug ? "bg-accent/10 text-accent" : ""}`}><CategoryIcon slug={item.slug} /> {item.name}</Link>)}
               <Link href={otherGuideHref} data-guide-editor className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg ${otherGuide && post.categorySlug === otherGuide.slug ? "bg-accent/10 text-accent" : ""}`}><Pencil size={17} /> {otherGuideName}</Link>
               <div className="my-2 border-t border-border" />
-              <Link href="/faq" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> FAQ</Link>
+              <Link href="/faq" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> <T k="nav.faq" /></Link>
             </nav>
-            <div className="rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]"><Sparkles size={24} className="mx-auto text-[#6eae18]" /><p className="mt-3 text-sm font-black">Keep learning.<br />Keep creating.</p><Link href="/create" className="mt-4 inline-flex rounded-full bg-[#54a817] px-4 py-2 text-[10px] font-bold text-white">Create a design <ArrowRight size={13} className="ml-1" /></Link></div>
+            <div className="rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]"><Sparkles size={24} className="mx-auto text-[#6eae18]" /><p className="mt-3 text-sm font-black"><T k="guide.keepLearning" /><br /><T k="guide.keepCreating" /></p><Link href="/create" className="mt-4 inline-flex rounded-full bg-[#54a817] px-4 py-2 text-[10px] font-bold text-white"><T k="guide.createDesign" /> <ArrowRight size={13} className="ml-1" /></Link></div>
           </aside>
 
           <div className="min-w-0">
@@ -116,7 +117,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
                   <>
                     <span className="inline-flex items-center gap-1"><Clock3 size={12} /> {post.readingMinutes} min read</span>
                     <span aria-hidden="true">·</span>
-                    <span>MH Fashion Guide</span>
+                    <span><T k="guide.label" /></span>
                   </>
                 }
                 action={
@@ -132,7 +133,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
               />
             </div>
 
-            {catalog.source === "starter" && <p className="mt-4 rounded-xl border border-border bg-bg-surface px-4 py-3 text-xs leading-relaxed text-text-muted">MH Fashion Guide · Where a feature is still being built, this article says so. Photos are placeholders until licensed photography replaces them.</p>}
+            {catalog.source === "starter" && <p className="mt-4 rounded-xl border border-border bg-bg-surface px-4 py-3 text-xs leading-relaxed text-text-muted"><T k="guide.disclaimer" /></p>}
 
             <article aria-label={post.title} className="mt-6 min-w-0 rounded-2xl border border-border bg-bg-surface p-6 sm:p-8 lg:p-10">
               <div className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-accent"><BookOpen size={14} /> <GuideLabel id="guide.article" fallback="Article" /></div>
