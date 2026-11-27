@@ -4642,6 +4642,7 @@ The first sweep covered the pages a visitor lands on. The next two covered the r
 | `/products/[slug]` | the back link, the five policy tabs, `Size Guide`, `New`, `Quantity`, `In Stock · Ready to ship`, `Edit Design`, the details copy, every specification label, the size/reviews/shipping leads, `Based on 126 reviews`, `Related Products` (`product.*`) |
 | `/guide/[slug]` | the sidebar card, `Back to all guides`, `FAQ`, `Keep learning / Keep creating`, `Create a design`, the breadcrumb label and the starter-post disclaimer (`guide.*`) |
 | `/contact` | the eyebrow, title, lead, the copyright-claim block (title, paragraph, "Include", the three steps, the record note), "Faster answers" and its four links, and the whole form: heading, lead, six field labels, four topic options, the sent confirmation, "Write another message", "Send to the shop", "Open in your email app", copy/copied, the mail-app hint and "Subject:" |
+| `/shipping`, `/returns`, `/size-guide` | the whole page, through `INFO_PAGES_MY` |
 | `/about`, `/faq` | the whole page. `INFO_PAGES_MY` in `lib/storefront-info.ts` holds the Myanmar `eyebrow`/`title`/`lead`/`sections`, and `InfoPage` picks it when `locale === "my"` |
 | `/offline`, `error.tsx`, `guide/error.tsx` | every sentence |
 
@@ -4668,3 +4669,8 @@ build for every info page).
 The legal pages (`/privacy`, `/terms`, `/cookie-policy`, `/shipping`, `/returns`) are still English on
 purpose. They carry a draft banner, and machine-translating a legal draft that the owner has not signed off
 would read as a finished policy. They need a human translator and the owner's review in one pass.
+
+`screenshots need a Myanmar font`: the container ships only DejaVu, so every Burmese glyph renders as a
+tofu box and a screenshot looks broken even when the markup is right. Put Noto Sans Myanmar in
+`~/.local/share/fonts` and run `fc-cache -f` before judging a picture; `document.textContent` and the
+`scrollWidth` check still tell the truth without it.

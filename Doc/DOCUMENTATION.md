@@ -2490,3 +2490,16 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
   The helper now lives in `lib/storefront-info.ts`, next to the content it describes.
 - `tests/storefront-info.test.cjs` asserted the claim wording inside the page source; it now reads
   `i18n.tsx` for those sentences and keeps asserting the `data-contact-*` hooks in the components.
+
+## Shipping, returns and the size guide
+
+- These three pages carry no draft banner, so their copy went into `INFO_PAGES_MY` next to `about` and
+  `faq`: the whole page, including the four bullets under "How to measure" and the takedown paragraph on
+  Returns. The build caught the first attempt: the block had been inserted into `INFO_PAGES` (the English
+  map) instead of `INFO_PAGES_MY`, and TypeScript refused the duplicate keys.
+- `/privacy`, `/terms` and `/cookie-policy` stay English. They are marked as drafts for legal review, and a
+  machine translation of an unsigned legal draft reads as an approved policy. They need a translator and the
+  owner in one pass.
+- Screenshots: the container has no Myanmar font, so a page renders as tofu boxes. Noto Sans Myanmar is now
+  in `~/.local/share/fonts` (with `fc-cache -f`); without it, only the DOM text and the overflow number are
+  trustworthy.
