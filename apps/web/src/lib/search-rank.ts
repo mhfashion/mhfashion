@@ -17,6 +17,8 @@ export const SEARCH_RANK_EXACT = 0;
 export const SEARCH_RANK_PREFIX = 1;
 export const SEARCH_RANK_NAME = 2;
 export const SEARCH_RANK_OTHER = 3;
+/** A row the trigram search offered that no rank rule claims (a typo match). It answers last. */
+export const SEARCH_RANK_APPROXIMATE = 4;
 
 /**
  * How well `item` answers `query`, or `null` when it does not answer it at all. Every query word must
@@ -36,12 +38,21 @@ export function searchRankOf(item: SearchRankable, query: string): number | null
   return SEARCH_RANK_OTHER;
 }
 
-/** The items that answer `query`, best first, cut to `limit`. */
-export function rankSearchResults<T extends SearchRankable>(items: T[], query: string, limit = items.length): T[] {
+/**
+ * The items that answer `query`, best first, cut to `limit`. `keepUnmatched` keeps rows that no rank rule
+ * claims — the typo search returns those, and dropping them would throw the answer away.
+ */
+export function rankSearchResults<T extends SearchRankable>(
+  items: T[],
+  query: string,
+  limit = items.length,
+  options: { keepUnmatched?: boolean } = {}
+): T[] {
   const ranked: { item: T; rank: number; order: number }[] = [];
   items.forEach((item, order) => {
     const rank = searchRankOf(item, query);
     if (rank !== null) ranked.push({ item, rank, order });
+    else if (options.keepUnmatched) ranked.push({ item, rank: SEARCH_RANK_APPROXIMATE, order });
   });
   ranked.sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;

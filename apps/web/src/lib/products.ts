@@ -190,10 +190,20 @@ function isMissingSearchText(error: { code?: string; message?: string }): boolea
   return error.code === "42703" || /search_text/i.test(error.message ?? "");
 }
 
+export type SearchOutcome = {
+  products: Product[];
+  /** True when the exact search found nothing and these are the close matches a typo search returned. */
+  approximate: boolean;
+};
+
 export async function searchProducts(query: string, limit = 40): Promise<Product[]> {
+  return (await searchCatalog(query, limit)).products;
+}
+
+export async function searchCatalog(query: string, limit = 40): Promise<SearchOutcome> {
   const term = normalizeSearchQuery(query);
   const supabase = getServerSupabase();
-  if (!supabase || term.length < 2) return [];
+  if (!supabase || term.length < 2) return { products: [], approximate: false };
   const pattern = `%${term}%`;
   const columns = "id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable";
   // Plan §17 S2: fetch a wider page than the answer, rank it here, return the best `limit`.
@@ -215,9 +225,19 @@ export async function searchProducts(query: string, limit = 40): Promise<Product
 
   if (result.error) {
     console.error("searchProducts failed:", result.error.message);
-    return [];
+    return { products: [], approximate: false };
   }
-  const rows = (result.data ?? []) as ProductRow[];
+  let rows = (result.data ?? []) as ProductRow[];
+  let approximate = false;
+  // Plan §17 S3: nothing exact, so ask the trigram fallback. A shop that has not run migration 0010 has no
+  // such function; the error is expected there and simply leaves the answer empty.
+  if (!rows.length && term.length >= 3) {
+    const fuzzy = await supabase.rpc("search_products_fuzzy", { p_term: term, p_limit: fetchLimit });
+    if (!fuzzy.error && Array.isArray(fuzzy.data) && fuzzy.data.length) {
+      rows = fuzzy.data as ProductRow[];
+      approximate = true;
+    }
+  }
   const ranked = rankSearchResults(
     rows.map((row) => ({
       row,
@@ -227,10 +247,11 @@ export async function searchProducts(query: string, limit = 40): Promise<Product
     })),
     term,
     limit,
+    { keepUnmatched: approximate },
   );
   const products = ranked.map((entry) => entry.row);
   const ranges = await getPriceRanges(products.map((r) => r.id));
-  return products.map((r) => toProduct(r, ranges));
+  return { products: products.map((r) => toProduct(r, ranges)), approximate };
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {

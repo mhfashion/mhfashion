@@ -32,6 +32,7 @@ const MIGRATIONS = [
   "SQL/0007_create_super_admin_roles.sql",
   "SQL/0008_product_options_public_read.sql",
   "SQL/0009_search_text.sql",
+  "SQL/0010_search_trigram.sql",
 ];
 
 function psql(database, sql) {
@@ -51,7 +52,7 @@ function psqlFile(database, file) {
   if (result.status !== 0) throw new Error(`${file} failed: ${result.stderr.trim()}`);
 }
 
-test("migration 0009 keeps one folded search text per product and per guide post", { skip }, () => {
+test("migrations 0009 and 0010 fold every record and still find a typo", { skip }, () => {
   const database = `mh_search_test_${process.pid}`;
   psql(url, `drop database if exists ${database}`);
   psql(url, `create database ${database}`);
@@ -102,6 +103,20 @@ test("migration 0009 keeps one folded search text per product and per guide post
     for (const part of ["how the editor works", "print canvas", "layers panel", "free transform"]) {
       assert.ok(guideText.includes(part), `guide search_text is missing ${part}: ${guideText}`);
     }
+
+    // Plan §17 S3: a typo still finds the record through the trigram fallback.
+    const indexes = psql(database, `select indexname from pg_indexes where indexname like '%trgm%' order by 1`).split("\n");
+    assert.deepEqual(indexes, ["guide_posts_search_text_trgm_idx", "products_search_text_trgm_idx"]);
+
+    psql(database, `
+      insert into public.products (name, sub_brand, product_type, slug)
+      values ('Butterfly Effect', 'MH Sport', 'T-shirt', 'butterfly-effect')
+    `);
+    assert.equal(psql(database, `select name from public.search_products_fuzzy('buterfly', 40) limit 1`), "Butterfly Effect");
+    assert.equal(psql(database, `select name from public.search_products_fuzzy('yangn street', 40) limit 1`), "Yangon Street Tee");
+    assert.equal(psql(database, `select count(*) from public.search_products_fuzzy('zzzzqqqq', 40)`), "0", "nonsense finds nothing");
+    assert.equal(psql(database, `select count(*) from public.search_products_fuzzy('te', 40)`), "0", "two letters are not a typo search");
+    assert.equal(psql(database, `select count(*) from public.search_products_fuzzy('buterfly', 1)`), "1", "the limit is honoured");
   } finally {
     psql(url, `drop database if exists ${database}`);
   }

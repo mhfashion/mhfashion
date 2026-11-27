@@ -131,10 +131,94 @@ test("a shop that has not run migration 0009 still searches the old columns", as
   }
 });
 
+test("a typo falls back to the trigram search and says so", async () => {
+  const requests = [];
+  const server = http.createServer((request, response) => {
+    let body = "";
+    request.on("data", (chunk) => (body += chunk));
+    request.on("end", () => {
+      requests.push({ url: request.url, body });
+      response.setHeader("content-type", "application/json");
+      if (request.url.includes("/rest/v1/rpc/search_products_fuzzy")) {
+        response.end(JSON.stringify([{ id: "p1", name: "Butterfly Effect", slug: "butterfly-effect", image_url: null, is_new: false, product_type: "T-Shirt", sub_brand: "MH", is_customizable: "full" }]));
+        return;
+      }
+      if (request.url.includes("product_price_ranges")) {
+        response.end(JSON.stringify([]));
+        return;
+      }
+      response.end(JSON.stringify([]));
+    });
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  process.env.NEXT_PUBLIC_SUPABASE_URL = `http://127.0.0.1:${port}`;
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+
+  try {
+    const outcome = await products.searchCatalog("buterfly");
+    assert.deepEqual(outcome.products.map((product) => product.slug), ["butterfly-effect"]);
+    assert.equal(outcome.approximate, true, "the page has to say these are close matches");
+    const rpc = requests.find((entry) => entry.url.includes("search_products_fuzzy"));
+    assert.ok(rpc, "the exact search found nothing, so the fuzzy function is asked");
+    const payload = JSON.parse(rpc.body);
+    assert.equal(payload.p_term, "buterfly");
+    assert.equal(payload.p_limit, 80);
+  } finally {
+    server.close();
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  }
+});
+
+test("the fuzzy search is not asked for a two-letter term, nor when it is missing", async () => {
+  const requests = [];
+  const server = http.createServer((request, response) => {
+    requests.push(request.url);
+    response.setHeader("content-type", "application/json");
+    if (request.url.includes("/rest/v1/rpc/search_products_fuzzy")) {
+      response.statusCode = 404;
+      response.end(JSON.stringify({ code: "PGRST202", message: "Could not find the function public.search_products_fuzzy" }));
+      return;
+    }
+    response.end(JSON.stringify([]));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  process.env.NEXT_PUBLIC_SUPABASE_URL = `http://127.0.0.1:${port}`;
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+
+  try {
+    const short = await products.searchCatalog("te");
+    assert.deepEqual(short, { products: [], approximate: false });
+    assert.equal(requests.some((url) => url.includes("search_products_fuzzy")), false, "two letters are not a typo search");
+
+    const missing = await products.searchCatalog("buterfly");
+    assert.deepEqual(missing, { products: [], approximate: false }, "a shop without migration 0010 still answers");
+  } finally {
+    server.close();
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  }
+});
+
+test("the result groups have their own caps and live in the address", () => {
+  const caps = loadModule("apps/web/src/lib/search-caps.ts");
+  assert.deepEqual(caps.SEARCH_CAPS, { products: 40, guides: 10, designs: 12 });
+  assert.equal(caps.readSearchType(undefined), "products");
+  assert.equal(caps.readSearchType("guides"), "guides");
+  assert.equal(caps.readSearchType("designs"), "designs");
+  assert.equal(caps.readSearchType("posters"), "products", "an unknown group falls back to products");
+  assert.equal(caps.searchHref("tee", "products"), "/search?q=tee");
+  assert.equal(caps.searchHref("tee", "guides"), "/search?q=tee&type=guides");
+  assert.equal(caps.searchHref("", "designs"), "/search?type=designs");
+  assert.equal(caps.searchHref("", "products"), "/search");
+});
+
 test("the search page and both header fields are wired", () => {
   const read = (relativePath) => readFileSync(path.join(__dirname, "..", relativePath), "utf8");
   const page = read("apps/web/src/app/search/page.tsx");
-  for (const marker of ["data-search-form", "data-search-results", "data-search-result", "data-search-empty", "data-search-idle", 'name="q"', "normalizeSearchQuery", "searchProducts", "robots: { index: false, follow: true }"]) {
+  for (const marker of ["data-search-form", "data-search-results", "data-search-result", "data-search-empty", "data-search-idle", 'name="q"', "normalizeSearchQuery", "searchCatalog", "data-search-tab", "robots: { index: false, follow: true }"]) {
     assert.ok(page.includes(marker), `search page is missing ${marker}`);
   }
   const header = read("apps/web/src/components/HeaderActions.tsx");

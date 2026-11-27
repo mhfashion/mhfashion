@@ -2221,8 +2221,19 @@ Verified gaps:
    code and returns 40; a shop that has not run the migration yet falls back to the three old columns, so the
    storefront keeps working between the deploy and the migration. Verified against a real Postgres 17 with every
    earlier migration applied (`tests/search-sql.test.cjs`, skipped unless `SEARCH_SQL_TEST_URL` is set).
-3. `pg_trgm` typo tolerance.
-4. The grouped `/search` page, suggestions and the `search_misses` table.
+3. ~~`pg_trgm` typo tolerance.~~ **Done 2026-11-21:**
+   `SQL/0010_search_trigram.sql` installs `pg_trgm`, adds a GIN trigram index on both `search_text` columns and
+   the `public.search_products_fuzzy(p_term, p_limit)` function the app calls when the exact search found
+   nothing. It compares the term with the best matching *word* (`word_similarity`, `<%`) at a threshold of 0.4:
+   `similarity()` against a whole column diluted "buterfly" to 0.16, while the word form scores 0.73. The ranked
+   answer keeps those rows last (`SEARCH_RANK_APPROXIMATE`), and the page says they are close matches. Verified
+   in PostgreSQL 17: `buterfly` → Butterfly Effect, `yangn street` → Yangon Street Tee, nonsense and two-letter
+   terms find nothing, and `explain` shows the GIN index answering the filter.
+4. **Partly done 2026-11-21:** the grouped `/search` page. `apps/web/src/lib/search-caps.ts` holds the caps
+   (products 40, guides 10, designs 12) and the `?type=` rules; the page renders three `role="tab"` groups with
+   their counts, keeps `?q=`/`?type=` in the address, shows guides as article cards and the editor's design
+   templates as a third group, and falls back to products for an unknown `type`. Still to do: the header's
+   five-suggestion list and the `search_misses` table.
 5. Admin search against Supabase, with paging.
 
 ### 17.4 Acceptance
@@ -2233,7 +2244,8 @@ Verified gaps:
   query.)*
 - The Burmese test strings မြန်မာ, ကြောင်, ပြည်ထောင်စု and သင်္ကြန် each find their record by a part of the word.
 - An English name and its Myanmar name find the same record.
-- A one-letter Latin typo finds the product once phase 3 is in; before then it finds nothing.
+- A one-letter Latin typo finds the product: `buterfly` returns Butterfly Effect through
+  `search_products_fuzzy` (`tests/search-sql.test.cjs`), and the page says they are close matches.
 - Exact name matches come before partial ones.
 - The filter-safety test passes with every special character in the list.
 - Every search works at 1440 × 900 and 390 × 844, in English and Myanmar, in dark and light.

@@ -61,3 +61,14 @@ test("the order does not depend on the order the rows arrive in", () => {
   const backward = names(rank.rankSearchResults([...items].reverse(), "butterfly"));
   assert.deepEqual(forward, backward);
 });
+
+test("the typo search keeps the rows no rank rule claims, after the ones that match", () => {
+  const items = [{ name: "Butterfly Effect" }, { name: "Butterfly" }];
+  assert.deepEqual(names(rank.rankSearchResults(items, "buterfly")), [], "a plain rank drops a typo row");
+  assert.deepEqual(
+    names(rank.rankSearchResults(items, "buterfly", 10, { keepUnmatched: true })),
+    ["Butterfly", "Butterfly Effect"],
+    "the real match still answers first"
+  );
+  assert.equal(rank.SEARCH_RANK_APPROXIMATE, 4);
+});

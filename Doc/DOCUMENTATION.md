@@ -2278,3 +2278,48 @@ Verified against a real PostgreSQL 17 with every earlier migration applied: the 
 `မြန်မာ`, `ကျွ` and leaves `ကောင်း` untouched; an inserted product carries all seven fields; an update rewrites the
 column; a query typed with a zero-width character and the medials in the other order still finds the row.
 `tests/search-sql.test.cjs` runs that check and skips when `psql` or `SEARCH_SQL_TEST_URL` is absent.
+
+## A typo still finds its record, and the search page answers in groups (2026-11-21, Plan §17 S3/S6)
+
+**Typo tolerance** — `SQL/0010_search_trigram.sql`:
+
+```sql
+create extension if not exists pg_trgm;
+create index products_search_text_trgm_idx on public.products using gin (search_text gin_trgm_ops);
+
+create function public.search_products_fuzzy(p_term text, p_limit integer default 40)
+returns setof public.products language sql stable
+set pg_trgm.word_similarity_threshold = 0.4 as $$
+  with folded as (select public.normalize_search_text(p_term) as term)
+  select p.* from public.products p, folded
+  where p.search_text is not null and char_length(folded.term) >= 3
+    and folded.term <% p.search_text
+  order by word_similarity(folded.term, p.search_text) desc, p.name
+  limit greatest(1, least(coalesce(p_limit, 40), 80));
+$$;
+```
+
+The comparison is `word_similarity` (the best matching *word* of the column), not `similarity` of the whole
+column: a long `search_text` dilutes the score until a real typo reads as 0.16. Measured in PostgreSQL 17,
+`buterfly` scores 0.16 against the whole row and 0.73 against the word, and `<%` is the operator the GIN index
+can answer (`explain` shows `Bitmap Index Scan on products_search_text_trgm_idx`). Two-letter terms are refused
+(no trigrams), and the threshold is lowered to 0.4 for the call so a heavier typo still lands.
+
+`searchCatalog` in `lib/products.ts` runs the exact search first, and only when it finds nothing and the term is
+three characters or more does it call the function. Rows that no rank rule claims are kept last
+(`SEARCH_RANK_APPROXIMATE`) instead of being dropped, and the page says "no exact product matched, so these are
+the closest ones". A shop that has not run the migration has no such function; the 404 leaves the answer empty
+rather than failing.
+
+**The grouped page** — `apps/web/src/lib/search-caps.ts` and `app/search/page.tsx`:
+
+| Group | Cap | Source | Card |
+|---|---|---|---|
+| Products | 40 | `searchCatalog` (Supabase) | `ProductCard` |
+| Guides | 10 | the guide catalog, phrase match | title, excerpt, category → `/guide/<slug>` |
+| Designs | 12 | `MH_DESIGN_LIBRARY` (name and layer names) | name, layers → `/create` |
+
+The groups are `role="tab"` links carrying their count in `data-search-tab-count`, `?type=` keeps the open group
+in the address (products is the default and is left out), and an unknown `type` falls back to products. The total
+is announced with `aria-live="polite"`; a group with no answer shows its own note while the other tabs stay
+reachable, and a query that answers nothing at all still shows the suggestion list and the popular products.

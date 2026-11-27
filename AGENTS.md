@@ -1197,6 +1197,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   Locally: `sudo apt-get install -y postgresql && sudo service postgresql start`, then
   `SEARCH_SQL_TEST_URL=postgres:///postgres node --test tests/search-sql.test.cjs`.
 
+## Typo search and the grouped `/search` page (Plan §17 S3/S6)
+- `SQL/0010_search_trigram.sql` needs `pg_trgm`. Use `word_similarity` with `<%` (`folded.term <% search_text`),
+  not `similarity` with `%`: the whole column dilutes a typo to 0.16 where the word form scores 0.73, and only
+  `<%` lets the GIN index answer. The function sets `pg_trgm.word_similarity_threshold = 0.4` for its own call.
+- `searchCatalog` (products.ts) tries the exact search first and calls `search_products_fuzzy` only when nothing
+  matched and the term is ≥ 3 characters. `searchProducts` is the thin wrapper that returns only the array.
+- Fuzzy rows are kept last via `rankSearchResults(..., { keepUnmatched: true })` (`SEARCH_RANK_APPROXIMATE = 4`).
+  Without it the rank drops them, because a typo does not literally match, and the fallback returns nothing.
+- The page groups are `products` / `guides` / `designs` with caps 40/10/12 in `lib/search-caps.ts`; `?type=`
+  holds the group and an unknown value falls back to products. Guides link to `/guide/<slug>`, designs to
+  `/create` (the editor has no design parameter yet).
+- `tests/search-http.test.cjs` needs a running server (like `guide-http`), `SEARCH_TEST_ORIGIN` overrides it.
+  It checks the tab counts, the guide and design cards and the caps against the real rendered HTML.
+
 ## Font outline files (plan E17 step 3, decision D14)
 - `EditorFontFile.outline` names a bucket-relative `.ttf`/`.otf` beside the woff2; HarfBuzz cannot shape
   woff2, so a weight without one cannot be bent (E19) while it still displays fine.
