@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { ProductOptionGroup } from "./product-options";
 import { optionKeyForAttributeName } from "./product-options";
 import { rankSearchResults } from "./search-rank";
-import { normalizeSearchQuery, normalizeSearchText } from "./search-text";
+import { likePattern, normalizeSearchQuery, normalizeSearchText } from "./search-text";
 import type { Product } from "./types";
 
 // Server-side client — safe to use the anon key here since catalog data
@@ -214,7 +214,7 @@ export async function searchCatalog(query: string, limit = 40): Promise<SearchOu
   const term = normalizeSearchQuery(query);
   const supabase = getServerSupabase();
   if (!supabase || term.length < 2) return { products: [], approximate: false };
-  const pattern = `%${term}%`;
+  const pattern = likePattern(term);
   const columns = "id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable";
   // Plan §17 S2: fetch a wider page than the answer, rank it here, return the best `limit`.
   const fetchLimit = Math.min(SEARCH_FETCH_LIMIT, Math.max(limit, limit * 2));

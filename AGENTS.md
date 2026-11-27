@@ -1731,3 +1731,20 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - A CDP check of the builder must draw the second shape starting **outside** the first shape's transform
   box: a press inside the box drags the selection instead of starting a new shape. The Shape Builder
   section of the Adjustment box is collapsed until its header is clicked.
+
+## Myanmar typography and translated labels in server pages
+- `apps/web/src/components/T.tsx` renders a translated label inside a server component (English on the server,
+  the chosen language on mount). Use it for page copy; use `t()` directly inside client components.
+- `SearchField` (the `type="search"` input, Esc clears it) and `SearchTabs` (the three result tabs + the
+  group-empty note) are client components for exactly that reason; the page still holds `data-search-form`,
+  `data-search-results` and `data-search-empty`.
+- Noto Sans Myanmar reports a **2.17em** font line box (Latin: 1.42em). A Tailwind `text-xs` line height makes two
+  Burmese lines collide, so `globals.css` has `html[lang="my"] :is(p, li, h1…h6, a, span, button, …) { line-height: 2.1 }`.
+  It names elements on purpose: a single utility class (`.text-xs`) would otherwise win. `LocaleProvider` sets
+  `<html lang>`, so Latin text is untouched.
+- The Tailwind `fontFamily.sans` stack names `Noto Sans Myanmar`, `Myanmar Sangam MN`, `Myanmar Text`, `Padauk`,
+  `Pyidaungsu` after the Latin faces. Without one of them a device paints every Burmese label as empty boxes.
+- `tests/myanmar-typography.test.cjs` checks the rule, the font stack, that `search.*` exists in both dictionaries,
+  and ratchets the 38 labels that still have no Myanmar text — translate one and drop it from `UNTRANSLATED`.
+- Screenshots in this container need `fonts-noto-core` installed (it is not there by default), or every Burmese
+  glyph is tofu and you cannot judge the layout.

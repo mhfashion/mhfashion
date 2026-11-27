@@ -105,6 +105,27 @@ test("migrations 0009 and 0010 fold every record and still find a typo", { skip 
       assert.ok(guideText.includes(part), `guide search_text is missing ${part}: ${guideText}`);
     }
 
+    // Plan §17 S4, §17.4: the four acceptance words find their record by a part of the word, and an English
+    // name and its Myanmar name find the same row.
+    psql(database, `
+      insert into public.products (name, name_my, sub_brand, product_type, slug) values
+        ('Myanmar Tee', 'မြန်မာ အင်္ကျီ', 'MH', 'T-shirt', 'myanmar-tee'),
+        ('Cat Hoodie', 'ကြောင် ဟွတ်ဒီ', 'MH', 'Hoodie', 'cat-hoodie'),
+        ('Union Cap', 'ပြည်ထောင်စု ခေါင်းစွပ်', 'MH', 'Cap', 'union-cap'),
+        ('Thingyan Tee', 'သင်္ကြန် အင်္ကျီ', 'MH', 'T-shirt', 'thingyan-tee'),
+        ('Papillon Tee', 'လိပ်ပြာ အင်္ကျီ', 'MH', 'T-shirt', 'papillon-tee')
+    `);
+    const finds = (part) => psql(database, `
+      select coalesce(string_agg(slug, ',' order by slug), '') from public.products
+      where search_text like '%' || public.normalize_search_text('${part}') || '%'
+    `);
+    assert.equal(finds('မြန်'), 'myanmar-tee', 'မြန်မာ is found by its first part');
+    assert.equal(finds('ကြော'), 'cat-hoodie', 'ကြောင် is found without its final consonant');
+    assert.equal(finds('ထောင်'), 'union-cap', 'ပြည်ထောင်စု is found from the middle');
+    assert.equal(finds('သင်္ကြန်'), 'thingyan-tee', 'သင်္ကြန် keeps its stacked consonants');
+    assert.equal(finds('papillon'), 'papillon-tee', 'the English name finds the row');
+    assert.equal(finds('လိပ်'), 'papillon-tee', 'the Myanmar name finds the same row');
+
     // Plan §17 S3: a typo still finds the record through the trigram fallback.
     const indexes = psql(database, `select indexname from pg_indexes where indexname like '%trgm%' order by 1`).split("\n");
     assert.deepEqual(indexes, ["guide_posts_search_text_trgm_idx", "products_search_text_trgm_idx"]);

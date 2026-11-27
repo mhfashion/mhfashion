@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpen, Search as SearchIcon, Shapes, Shirt, X } from "lucide-react";
+import { Search as SearchIcon } from "lucide-react";
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
+import SearchField from "@/components/SearchField";
+import SearchTabs, { SearchGroupEmpty } from "@/components/SearchTabs";
+import T from "@/components/T";
 import { MH_DESIGN_LIBRARY } from "@/lib/editor-design-library";
 import { filterGuidePosts, getGuideCatalog, type GuidePost } from "@/lib/guides";
 import { getBestSellers, normalizeSearchQuery, searchCatalog } from "@/lib/products";
-import { SEARCH_CAPS, searchHref, readSearchType, type SearchType } from "@/lib/search-caps";
+import { SEARCH_CAPS, readSearchType, type SearchType } from "@/lib/search-caps";
 import { matchesSearchQuery } from "@/lib/search-text";
 
 export const dynamic = "force-dynamic";
@@ -19,12 +22,6 @@ const SUGGESTIONS = [
   { label: "MH Sport jerseys", href: "/mh-fashion" },
   { label: "Nyein ready-made", href: "/nyein" },
   { label: "All products", href: "/products" },
-];
-
-const TABS: { type: SearchType; label: string; icon: typeof Shirt }[] = [
-  { type: "products", label: "Products", icon: Shirt },
-  { type: "guides", label: "Guides", icon: BookOpen },
-  { type: "designs", label: "Designs", icon: Shapes },
 ];
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string }> }) {
@@ -51,58 +48,29 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   return (
     <div><Header /><main className="w-full bg-bg px-4 py-5 sm:px-6 lg:px-8 lg:py-8"><div className="mx-auto max-w-[1480px]">
       <div className="mb-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-accent">Shop</p>
-        <h1 className="mt-2 text-2xl font-black sm:text-4xl">Search</h1>
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-accent"><T k="search.kicker" /></p>
+        <h1 className="mt-2 text-2xl font-black sm:text-4xl"><T k="search.title" /></h1>
       </div>
 
       <form action="/search" method="get" role="search" data-search-form className="flex max-w-xl items-center gap-2 rounded-full border border-border bg-bg-surface px-3 py-1.5">
-        <SearchIcon size={16} className="shrink-0 text-text-secondary" />
-        <input
-          type="search"
-          name="q"
-          aria-label="Search products, guides and designs"
-          defaultValue={raw}
-          placeholder="Search a product, a guide or a design"
-          autoFocus
-          className="w-full bg-transparent py-1.5 text-xs outline-none placeholder:text-text-faint"
-        />
-        {term ? <Link href="/search" aria-label="Clear search" className="text-text-muted hover:text-accent"><X size={15} /></Link> : null}
-        <button type="submit" className="min-h-9 shrink-0 rounded-full bg-accent px-3.5 py-1.5 text-[11px] font-bold text-accent-foreground">Search</button>
+        <SearchField initial={raw} />
       </form>
 
       {searching ? (
         <section className="mt-6" data-search-results>
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
-              <h2 className="text-xl font-black"><span className="text-accent" aria-live="polite">{total}</span> {total === 1 ? "result" : "results"} for “{term}”</h2>
+              <h2 className="text-xl font-black" aria-live="polite">
+                <T k={total === 1 ? "search.resultCountOne" : "search.resultCount"} values={{ count: total, term }} />
+              </h2>
               <p className="mt-1 text-xs text-text-muted">
-                {products.approximate
-                  ? `No exact product matched “${term}”, so these are the closest ones.`
-                  : "Matched on the name, the line, the type, the tags and the guide text."}
+                {products.approximate ? <T k="search.approximate" values={{ term }} /> : <T k="search.matched" />}
               </p>
             </div>
-            <Link href="/products" className="rounded-full bg-accent/10 px-3 py-1.5 text-[10px] font-bold text-accent">Browse all products</Link>
+            <Link href="/products" className="rounded-full bg-accent/10 px-3 py-1.5 text-[10px] font-bold text-accent"><T k="search.browseAll" /></Link>
           </div>
 
-          <div role="tablist" aria-label="Result groups" className="flex gap-1.5 overflow-x-auto pb-1">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const active = tab.type === type;
-              return (
-                <Link
-                  key={tab.type}
-                  href={searchHref(term, tab.type)}
-                  role="tab"
-                  aria-selected={active}
-                  data-search-tab={tab.type}
-                  data-search-tab-count={counts[tab.type]}
-                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11px] font-bold ${active ? "border-accent bg-accent/10 text-accent" : "border-border text-text-secondary hover:border-accent hover:text-accent"}`}
-                >
-                  <Icon size={14} aria-hidden="true" /> {tab.label} <span className="text-text-muted">{counts[tab.type]}</span>
-                </Link>
-              );
-            })}
-          </div>
+          <SearchTabs term={term} type={type} counts={counts} />
 
           <div className="mt-4">
             {type === "products" ? (
@@ -110,7 +78,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" data-search-group="products">
                   {products.products.map((product) => <div key={product.id} data-search-result className="aspect-square overflow-hidden rounded-xl border border-border bg-bg-surface p-1.5 shadow-sm sm:p-2.5"><ProductCard product={product} /></div>)}
                 </div>
-              ) : <GroupEmpty label="product" term={term} />
+              ) : <SearchGroupEmpty group="products" term={term} />
             ) : null}
 
             {type === "guides" ? (
@@ -126,7 +94,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                     </li>
                   ))}
                 </ul>
-              ) : <GroupEmpty label="guide" term={term} />
+              ) : <SearchGroupEmpty group="guides" term={term} />
             ) : null}
 
             {type === "designs" ? (
@@ -137,20 +105,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       <Link href="/create" data-search-design={design.id} className="flex h-full flex-col rounded-xl border border-border bg-bg-surface p-4 hover:border-accent">
                         <span className="text-sm font-black">{design.name}</span>
                         <span className="mt-1 line-clamp-2 text-xs text-text-muted">{design.layers.map((layer) => layer.name).join(" · ")}</span>
-                        <span className="mt-2 text-[10px] font-bold text-accent">Open the editor</span>
+                        <span className="mt-2 text-[10px] font-bold text-accent"><T k="search.openEditor" /></span>
                       </Link>
                     </li>
                   ))}
                 </ul>
-              ) : <GroupEmpty label="design" term={term} />
+              ) : <SearchGroupEmpty group="designs" term={term} />
             ) : null}
           </div>
 
           {!total ? (
             <div className="mt-6 rounded-2xl border border-border bg-bg-surface p-8 text-center" data-search-empty>
               <SearchIcon size={26} className="mx-auto text-text-muted" />
-              <h3 className="mt-3 text-base font-black">Nothing matched “{term}”</h3>
-              <p className="mt-1 text-xs text-text-muted">Try a shorter word, a colour, or one of these:</p>
+              <h3 className="mt-3 text-base font-black"><T k="search.emptyTitle" values={{ term }} /></h3>
+              <p className="mt-1 text-xs text-text-muted"><T k="search.emptyHelp" /></p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {SUGGESTIONS.map((item) => <Link key={item.href} href={item.href} className="rounded-full border border-border px-3 py-1.5 text-[10px] font-bold hover:border-accent hover:text-accent">{item.label}</Link>)}
               </div>
@@ -159,7 +127,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
           {popular.length ? (
             <section className="mt-8">
-              <h3 className="text-base font-black">Popular right now</h3>
+              <h3 className="text-base font-black"><T k="search.popular" /></h3>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
                 {popular.map((product) => <div key={product.id} className="aspect-square overflow-hidden rounded-xl border border-border bg-bg-surface p-1.5 shadow-sm sm:p-2.5"><ProductCard product={product} /></div>)}
               </div>
@@ -170,8 +138,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <section className="mt-6" data-search-idle>
           <div className="rounded-2xl border border-border bg-bg-surface p-8 text-center">
             <SearchIcon size={26} className="mx-auto text-text-muted" />
-            <h2 className="mt-3 text-base font-black">{tooShort ? "Type at least two characters" : "What are you looking for?"}</h2>
-            <p className="mt-1 text-xs text-text-muted">Search the catalog by product name, by line (MH Sport, Nyein), by product type, or the guides.</p>
+            <h2 className="mt-3 text-base font-black"><T k={tooShort ? "search.idleShort" : "search.idleTitle"} /></h2>
+            <p className="mt-1 text-xs text-text-muted"><T k="search.idleHelp" /></p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((item) => <Link key={item.href} href={item.href} className="rounded-full border border-border px-3 py-1.5 text-[10px] font-bold hover:border-accent hover:text-accent">{item.label}</Link>)}
             </div>
@@ -179,14 +147,5 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         </section>
       )}
     </div></main></div>
-  );
-}
-
-function GroupEmpty({ label, term }: { label: string; term: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-bg-surface p-8 text-center" data-search-group-empty={label}>
-      <p className="text-sm font-black">No {label} matched “{term}”</p>
-      <p className="mt-1 text-xs text-text-muted">Another group may have an answer — try the other tabs.</p>
-    </div>
   );
 }

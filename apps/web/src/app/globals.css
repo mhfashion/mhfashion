@@ -36,6 +36,15 @@ body {
   @apply bg-bg text-text-primary;
 }
 
+/* Burmese stacks vowel and medial signs above and below the letters, so a line box sized for Latin clips
+   the top of a syllable and lets the next line run into it. Noto Sans Myanmar reports a font line box of
+   2.17em (Latin is 1.42em), so the line box has to grow with it or two lines collide. LocaleProvider puts
+   the chosen language on <html>, and only Myanmar pays for the taller lines. The rule names elements so it
+   outranks the line height a `text-xs` utility sets; Latin text is untouched. */
+html[lang="my"] :is(p, li, h1, h2, h3, h4, h5, h6, dd, dt, blockquote, figcaption, label, button, a, span, td, th, input, textarea) {
+  line-height: 2.1;
+}
+
 /* Keyboard focus must be visible on every control that does not paint its own indicator. This sits
    in the base layer so a component's `outline-none` utility still wins where the focus is drawn by a
    border or ring instead. */

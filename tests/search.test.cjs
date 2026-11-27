@@ -218,9 +218,13 @@ test("the result groups have their own caps and live in the address", () => {
 test("the search page and both header fields are wired", () => {
   const read = (relativePath) => readFileSync(path.join(__dirname, "..", relativePath), "utf8");
   const page = read("apps/web/src/app/search/page.tsx");
-  for (const marker of ["data-search-form", "data-search-results", "data-search-result", "data-search-empty", "data-search-idle", 'name="q"', "normalizeSearchQuery", "searchCatalog", "data-search-tab", "robots: { index: false, follow: true }"]) {
+  for (const marker of ["data-search-form", "data-search-results", "data-search-result", "data-search-empty", "data-search-idle", "SearchField", "SearchTabs", "normalizeSearchQuery", "searchCatalog", "robots: { index: false, follow: true }"]) {
     assert.ok(page.includes(marker), `search page is missing ${marker}`);
   }
+  // The field and the tab strip are client components so their labels follow the chosen language.
+  assert.ok(read("apps/web/src/components/SearchField.tsx").includes('name="q"'), "the field still submits q");
+  assert.ok(read("apps/web/src/components/SearchField.tsx").includes('event.key !== "Escape"'), "Esc clears the field");
+  assert.ok(read("apps/web/src/components/SearchTabs.tsx").includes("data-search-tab"), "the tabs keep their markers");
   const header = read("apps/web/src/components/HeaderActions.tsx");
   assert.match(header, /data-header-search="desktop"/);
   assert.match(header, /data-header-search="compact"/);

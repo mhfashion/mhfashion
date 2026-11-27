@@ -93,3 +93,17 @@ export function normalizeSearchQuery(input: string | null | undefined): string {
     .trim()
     .slice(0, 60);
 }
+
+/**
+ * A term ready for `ilike`: `%`, `_` and `\` are the wildcard and escape characters, so each is escaped.
+ * `normalizeSearchQuery` already removes them, but a term that reaches a query from anywhere else (the
+ * trigram call, a Worker route, an admin filter) must not be able to widen the pattern (Plan §17 S10).
+ */
+export function escapeLikePattern(term: string): string {
+  return term.replace(/[\\%_]/g, (match) => `\\${match}`);
+}
+
+/** The `%term%` pattern every `ilike` search uses. */
+export function likePattern(term: string): string {
+  return `%${escapeLikePattern(term)}%`;
+}

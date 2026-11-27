@@ -83,3 +83,14 @@ test("every Edit sidebar list searches through the shared normaliser", () => {
     assert.ok(sidebar.includes(`matchesSearchQuery(\`\${${list}`) || sidebar.includes(`matchesSearchQuery(${list}`), list);
   }
 });
+
+// Plan §17 S10: user text never widens a LIKE pattern.
+test("a term for ilike escapes the wildcard and escape characters", () => {
+  const { escapeLikePattern, likePattern } = loadModule("apps/web/src/lib/search-text.ts");
+  assert.equal(escapeLikePattern("50% off"), "50\\% off");
+  assert.equal(escapeLikePattern("under_score"), "under\\_score");
+  assert.equal(escapeLikePattern("back\\slash"), "back\\\\slash");
+  assert.equal(escapeLikePattern("plain term"), "plain term", "nothing else is touched");
+  assert.equal(likePattern("a%b_c"), "%a\\%b\\_c%");
+  assert.equal(likePattern("အင်္ကျီ"), "%အင်္ကျီ%", "Myanmar text passes through");
+});

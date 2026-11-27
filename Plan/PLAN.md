@@ -1423,6 +1423,11 @@ browser-local demo data (section 16 P0).
 - 2026-11-21: the Photos and Patterns catalogues and the `users/` + `tmp/` customer layout are in the code (§12.2.2,
   §12.2.12 items 1-7); the sidebar reads both catalogues and keeps the placeholders and the nine built-in patterns
   until the first licensed photo or pattern is uploaded.
+- 2026-11-21: the search screen speaks both languages (§17 S7): its labels, tabs, count sentence and empty
+  states come from the dictionary through `components/T.tsx`, Esc clears the field, and `likePattern` escapes
+  `%`, `_` and `\` before every `ilike` (§17 S10). The font stack now names each platform's Myanmar face and
+  `html[lang="my"]` gives Burmese a 2.1 line box, because Noto Sans Myanmar's own line box is 2.17em and a
+  Latin line height made two lines collide on a phone.
 - 2026-11-26: §12.2 now covers the editor's Photos and Patterns libraries (`photos/`, `patterns/`) and moves customers' files to `users/<account-uuid>/` and `tmp/<account-uuid>/`; decisions R2-10 to R2-14; the code changes this needs are listed in §12.2.12; Part II (II.2, E1, E10, the inputs list) and §17 search follow.
 
 
@@ -2250,6 +2255,17 @@ Verified gaps:
    filtering and paging live in `lib/admin-order-search.ts`, so moving them to SQL later is a swap of that one
    module plus the query.
 
+6. ~~The interface rules (S7) and filter safety (S10).~~ **Done 2026-11-21:** the search screen reads its
+   labels from the dictionary — `components/T.tsx` renders a translated label inside the server-rendered page,
+   `SearchField` owns the `type="search"` input (Esc clears it without submitting the old term) and `SearchTabs`
+   owns the three tabs and the group-empty note, so English and Myanmar both read as whole sentences with the
+   term substituted. `escapeLikePattern` / `likePattern` in `search-text.ts` escape `%`, `_` and `\` before any
+   `ilike`, so a typed wildcard cannot widen the pattern. Two typography fixes came out of the phone
+   screenshots: the font stack names each platform's Myanmar face (`Noto Sans Myanmar`, `Myanmar Sangam MN`,
+   `Myanmar Text`, `Padauk`, `Pyidaungsu`), and `html[lang="my"]` raises the line box to 2.1 because Noto Sans
+   Myanmar reports a 2.17em line box against Latin's 1.42em — at 1.6 two Burmese lines ran into each other.
+   `tests/myanmar-typography.test.cjs` keeps both, and ratchets the labels that still have no Myanmar text.
+
 ### 17.4 Acceptance
 
 - Two spellings of the same Burmese word (with and without a zero-width character, with the medial signs in a
@@ -2257,12 +2273,18 @@ Verified gaps:
   query, and `tests/search-sql.test.cjs` finds the row through `search_text` with a zero-width character in the
   query.)*
 - The Burmese test strings မြန်မာ, ကြောင်, ပြည်ထောင်စု and သင်္ကြန် each find their record by a part of the word.
-- An English name and its Myanmar name find the same record.
+  *(Tested in `tests/search-sql.test.cjs` against Postgres 17: `မြန်`, `ကြော`, `ထောင်` and the full `သင်္ကြန်`
+  each return only their own row, stacked consonants included.)*
+- An English name and its Myanmar name find the same record. *(Same test: `papillon` and `လိပ်` both return
+  `papillon-tee`.)*
 - A one-letter Latin typo finds the product: `buterfly` returns Butterfly Effect through
   `search_products_fuzzy` (`tests/search-sql.test.cjs`), and the page says they are close matches.
 - Exact name matches come before partial ones.
 - The filter-safety test passes with every special character in the list.
-- Every search works at 1440 × 900 and 390 × 844, in English and Myanmar, in dark and light.
+- Every search works at 1440 × 900 and 390 × 844, in English and Myanmar, in dark and light. *(Driven over CDP
+  in Chromium at both sizes: the title, the count sentence, the tab labels, the field's label and placeholder,
+  the empty states and the group-empty note all switch language and theme, nothing overflows sideways, and the
+  phone's three tabs wrap onto two rows instead of scrolling off the edge.)*
 
 **Depends on:** decision D10 (Unicode only); the asset Worker for the editor catalogues (section 12.1); and a `SQL/`
 migration for `search_text` and `search_misses`.

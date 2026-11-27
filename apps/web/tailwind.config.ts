@@ -31,6 +31,24 @@ const config: Config = {
         card: "10px",
         pill: "20px",
       },
+      // A phone without a Myanmar font paints every Burmese label as empty boxes, so each platform's own
+      // Myanmar face is named before the generic fallback (Plan §17 S7: the interface is labelled in both
+      // languages). Order matters: the Latin faces first keep English on the system font.
+      fontFamily: {
+        sans: [
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Noto Sans Myanmar",
+          "Myanmar Sangam MN",
+          "Myanmar Text",
+          "Padauk",
+          "Pyidaungsu",
+          "sans-serif",
+        ],
+      },
     },
   },
   plugins: [],

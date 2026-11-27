@@ -2372,3 +2372,45 @@ order — a tracking number and a payment reference — and both are searched. P
 adds 50 per press ("Show 36 more · Showing 50 of 86 orders"); a new search or sort starts again at 50. The
 reset is derived from a `filterKey` during render rather than an effect, so a filter change never paints the
 old page size first.
+
+## The search screen in Burmese, and why a line needs more room (2026-11-21, Plan §17 S7/S10)
+
+The search page is a server component, so it cannot know which language the visitor chose — that lives in the
+browser, in `localStorage`. Its labels were therefore hard-coded English while every other screen switched. The
+page now renders `components/T.tsx`, a client component that draws the English text on the server and swaps in the
+chosen language on mount, exactly as the header's labels already did. Sentences that carry the term ("3 results for
+“street”", "Nothing matched “zzzzqqqq”") take it as `values`, so the Myanmar sentence can put the word where
+Burmese puts it instead of pasting an English frame around it.
+
+Two things moved out of the page to make that work. `SearchField` owns the `type="search"` input, which lets Esc
+clear the field instead of submitting the old term, and `SearchTabs` owns the three result tabs plus the note a
+group shows when it has nothing — both need `t()`, and neither needs to be on the server. The tab strip now wraps
+instead of scrolling sideways: on a 390 px phone the Myanmar labels pushed the third tab off the edge.
+
+`likePattern` (in `lib/search-text.ts`) escapes `%`, `_` and `\` before every `ilike`, so a typed wildcard cannot
+widen the pattern. `normalizeSearchQuery` already dropped those characters on the storefront path, but the admin
+filters and the fuzzy call reach the query by other roads.
+
+### Burmese needs a taller line than Latin
+
+The first phone screenshot showed the group-empty sentence with its last line drawn on top of the one above it, and
+the page title with the top of `ဖွေ` cut off. The cause is the font, not the layout: `measureText` on
+`12px "Noto Sans Myanmar"` reports a font line box of **2.17em** (ascent 1.33, descent 0.83) where Latin reports
+1.42em. Tailwind's `text-xs` sets a 1rem line height, so two Burmese lines were placed 16 px apart inside a box the
+font itself wants to be 26 px tall. Two changes followed:
+
+- the font stack names each platform's Myanmar face after the Latin ones — `Noto Sans Myanmar` (Android, and the
+  Noto package on Linux), `Myanmar Sangam MN` (macOS and iOS), `Myanmar Text` (Windows), `Padauk`, `Pyidaungsu`
+  (Myanmar Windows and many phones). Without any of them every Burmese label paints as empty boxes, which is what
+  a bare container does.
+- `html[lang="my"]` raises the line box to 2.1. `LocaleProvider` already writes the chosen language onto `<html>`,
+  so only Myanmar pays for the taller lines and English is untouched. The rule names elements
+  (`p`, `li`, `h1`–`h6`, `a`, `span`, `button`, …) rather than relying on inheritance, because a `text-xs`
+  utility sets its own line height and would otherwise win.
+
+Verified in Chromium at 1440 × 900 and 390 × 844, dark and light, in both languages: no clipped or overlapping
+line on the search page, the home page, the guide, the cart or the collections; nothing overflows sideways; the
+bottom navigation measures itself and stays inside the viewport at 71 px with the taller labels.
+`tests/myanmar-typography.test.cjs` keeps the rule, the font stack and the dictionary honest, and ratchets the
+labels that still have no Myanmar text (38 of them, mostly the account and policy pages) so a new English-only
+label fails the suite instead of slipping in.
