@@ -4748,3 +4748,16 @@ tofu box and a screenshot looks broken even when the markup is right. Put Noto S
   in EN and MM. Widths still follow the label, because a Burmese label is a different length.
 - Content blocks (the hero, the `min-h-[150px]` promo tiles) still grow with the copy; pinning them
   would clip Burmese text.
+
+## §18.10 Admin sidebar: one white panel, navigation only
+
+- The admin sidebar is the same white panel as the header bar (`bg-white`, `border-r border-[#e8ebef]`,
+  text `#27303b`) instead of the old dark `#11171b` slab, so the top bar and the menu read as one surface.
+  Nav rows: `#5b6672` with a `#f2f4f6` hover; the current row is `bg-[#eef7e3]` with a `#4cae22` left edge
+  and `#3f7d12` text.
+- The "Create. Print. Wear." promo card and its "Open design editor" link are gone, and so is the sidebar
+  account row: the sidebar now holds the navigation and nothing else, so it is one flat colour from the
+  first row to the last.
+- The account and its sign-out appear once, in the header bar. They used to be duplicated in both places.
+- `admin-scroll` (formerly `admin-scroll-dark`) paints a grey thumb, because a light-on-white scrollbar is
+  invisible.

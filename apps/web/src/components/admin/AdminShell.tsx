@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BarChart3, Bell, Box, CircleHelp, ClipboardList, Globe2, House, Inbox, Layers3, LogOut, Megaphone, Menu, Newspaper, Package, Percent, Crown, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
+import { BarChart3, Bell, Box, CircleHelp, ClipboardList, Globe2, House, Inbox, Layers3, LogOut, Megaphone, Menu, Newspaper, Package, Percent, Crown, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
 import { getDemoAdminSession, signOutDemoAdmin, type AdminDemoSession } from "@/lib/admin-demo-auth";
 import { ADMIN_NAV } from "@/lib/admin-nav";
 import type { AdminModuleId } from "@/lib/admin-demo-data";
@@ -141,43 +141,27 @@ export default function AdminShell({
           id="admin-sidebar"
           tabIndex={-1}
           inert={!sidebarOpen}
-          className={`fixed bottom-[32px] left-0 top-[64px] flex shrink-0 flex-col overflow-hidden bg-[#11171b] text-white outline-none transition-all duration-200 z-[70] shadow-xl md:z-40 md:shadow-none ${sidebarOpen ? "w-[224px] translate-x-0" : "w-0 -translate-x-full md:translate-x-0"}`}>
+          className={`fixed bottom-[32px] left-0 top-[64px] flex shrink-0 flex-col overflow-hidden border-r border-[#e8ebef] bg-white text-[#27303b] outline-none transition-all duration-200 z-[70] shadow-xl md:z-40 md:shadow-none ${sidebarOpen ? "w-[224px] translate-x-0" : "w-0 -translate-x-full md:translate-x-0"}`}>
           {/* Fixed-width content so the collapse animates the panel instead of reflowing every row. */}
           <div className="flex h-full w-[224px] flex-col">
             <div className="flex justify-end px-2 pt-2 md:hidden">
-              <button type="button" aria-label="Close navigation" onClick={closeSidebar} className="rounded-lg p-1.5 text-[#b8c0c6] hover:bg-white/10"><X size={18} /></button>
+              <button type="button" aria-label="Close navigation" onClick={closeSidebar} className="rounded-lg p-1.5 text-[#566070] hover:bg-[#f2f4f6]"><X size={18} /></button>
             </div>
 
-            <nav aria-label="Admin navigation" className="admin-scroll-dark min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
+            <nav aria-label="Admin navigation" className="admin-scroll min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
               {NAV.map(({ id, label, href, icon: Icon }) => (
                 id === active ? (
-                  <Link key={id} href={href} aria-current="page" data-admin-nav={id} onClick={() => setSidebarOpen(false)} className="flex h-10 items-center gap-3 rounded-xl border-l-[3px] border-[#8bd340] bg-[#263a25] px-3 text-[12px] font-semibold text-[#a5ea62] shadow-[inset_0_0_0_1px_rgba(139,211,64,.1)]">
+                  <Link key={id} href={href} aria-current="page" data-admin-nav={id} onClick={() => setSidebarOpen(false)} className="flex h-10 items-center gap-3 rounded-xl border-l-[3px] border-[#4cae22] bg-[#eef7e3] px-3 text-[12px] font-semibold text-[#3f7d12]">
                     <Icon size={17} />{label}
                   </Link>
                 ) : (
-                  <Link key={id} href={href} data-admin-nav={id} onClick={() => setSidebarOpen(false)} className="flex h-10 items-center gap-3 rounded-xl px-3 text-[12px] font-medium text-[#a6afb5] transition-colors hover:bg-white/[0.06] hover:text-white">
+                  <Link key={id} href={href} data-admin-nav={id} onClick={() => setSidebarOpen(false)} className="flex h-10 items-center gap-3 rounded-xl px-3 text-[12px] font-medium text-[#5b6672] transition-colors hover:bg-[#f2f4f6] hover:text-[#171c25]">
                     <Icon size={17} />{label}
                   </Link>
                 )
               ))}
             </nav>
 
-            {/* The card is pinned under the scroll area: inside it, the fold cut the panel in half. */}
-            <div className="shrink-0 border-t border-white/[0.08] p-3">
-              <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3.5">
-                <div className="flex items-center gap-2 text-[#a9e269]"><Sparkles size={15} /><span className="text-[11px] font-bold">Create. Print. Wear.</span></div>
-                <p className="mt-2 text-[10px] leading-4 text-[#a4adb3]">Make your own style and print it on premium apparel.</p>
-                <Link href="/create" className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold text-[#a9e269] hover:text-white">Open design editor <ArrowRight size={12} /></Link>
-              </div>
-            </div>
-
-            <div className="border-t border-white/[0.08] p-3">
-              <div className="flex items-center gap-2.5 rounded-xl px-2 py-2">
-                <AdminAvatar initials={initials} />
-                <div className="min-w-0"><p className="truncate text-[11px] font-semibold text-white">{admin.name}</p><p className="truncate text-[9px] text-[#7f8b91]">{admin.email}</p></div>
-                <button type="button" onClick={handleSignOut} aria-label="Sign out of demo account" title="Sign out" className="rounded-lg p-1.5 text-[#89939a] hover:bg-white/10 hover:text-white"><LogOut size={15} /></button>
-              </div>
-            </div>
           </div>
         </aside>
 
