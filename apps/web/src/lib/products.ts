@@ -23,6 +23,8 @@ type ProductRow = {
   product_type?: string | null;
   sub_brand?: string | null;
   is_customizable?: "full" | "partial" | "none" | null;
+  /** Free words the owner types when posting the product; migration 0009 folds them into `search_text`. */
+  tags?: string[] | null;
 };
 
 type AttributeLinkRow = { attribute_type_id: string };
@@ -64,6 +66,7 @@ function toProduct(row: ProductRow, ranges: Map<string, PriceRangeRow>): Product
     imageUrl: row.image_url ?? undefined,
     isNew: row.is_new,
     productType: row.product_type ?? undefined,
+    tags: row.tags?.length ? row.tags : undefined,
     subBrand: row.sub_brand ?? undefined,
     isCustomizable: row.is_customizable ?? undefined,
     priceMinKs: range?.price_min_ks ?? 0,
@@ -179,8 +182,14 @@ export { normalizeSearchQuery } from "./search-text";
 /** The widest page a search fetches before ranking (Plan §17 S2: 80 rows in, 40 out). */
 export const SEARCH_FETCH_LIMIT = 80;
 
+const PRODUCT_COLUMNS = "id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable";
+
 function isMissingSearchText(error: { code?: string; message?: string }): boolean {
   return error.code === "42703" || /search_text/i.test(error.message ?? "");
+}
+
+function isMissingTags(error: { code?: string; message?: string }): boolean {
+  return error.code === "42703" || /tags/i.test(error.message ?? "");
 }
 
 export type SearchOutcome = {
@@ -215,29 +224,37 @@ export async function searchCatalog(query: string, limit = 40): Promise<SearchOu
   const supabase = getServerSupabase();
   if (!supabase || term.length < 2) return { products: [], approximate: false };
   const pattern = likePattern(term);
-  const columns = "id, name, slug, image_url, is_new, product_type, sub_brand, is_customizable";
   // Plan §17 S2: fetch a wider page than the answer, rank it here, return the best `limit`.
   const fetchLimit = Math.min(SEARCH_FETCH_LIMIT, Math.max(limit, limit * 2));
-  // Migration 0009 puts every searchable field in `search_text`; a shop that has not run it yet still searches
-  // the three old columns, so the storefront keeps working between a deploy and the migration.
-  let result = await supabase
-    .from("products")
-    .select(columns)
-    .ilike("search_text", pattern)
-    .limit(fetchLimit);
-  if (result.error && isMissingSearchText(result.error)) {
-    result = await supabase
-      .from("products")
-      .select(columns)
-      .or(`name.ilike.${pattern},sub_brand.ilike.${pattern},product_type.ilike.${pattern}`)
-      .limit(fetchLimit);
+  // Migration 0009 puts every searchable field in `search_text` and adds `tags`; a shop that has not run it
+  // yet still searches the three old columns without tags, so the storefront keeps working between a deploy
+  // and the migration.
+  const attempts: { columns: string; searchText: boolean }[] = [
+    { columns: `${PRODUCT_COLUMNS}, tags`, searchText: true },
+    { columns: PRODUCT_COLUMNS, searchText: true },
+    { columns: `${PRODUCT_COLUMNS}, tags`, searchText: false },
+    { columns: PRODUCT_COLUMNS, searchText: false },
+  ];
+  let rows: ProductRow[] = [];
+  let failure: { code?: string; message?: string } | null = null;
+  for (const attempt of attempts) {
+    const query = supabase.from("products").select(attempt.columns);
+    const result = attempt.searchText
+      ? await query.ilike("search_text", pattern).limit(fetchLimit)
+      : await query.or(`name.ilike.${pattern},sub_brand.ilike.${pattern},product_type.ilike.${pattern}`).limit(fetchLimit);
+    if (!result.error) {
+      rows = (result.data ?? []) as unknown as ProductRow[];
+      failure = null;
+      break;
+    }
+    failure = result.error;
+    if (!isMissingSearchText(result.error) && !isMissingTags(result.error)) break;
   }
 
-  if (result.error) {
-    console.error("searchProducts failed:", result.error.message);
+  if (failure) {
+    console.error("searchProducts failed:", failure.message);
     return { products: [], approximate: false };
   }
-  let rows = (result.data ?? []) as ProductRow[];
   let approximate = false;
   // Plan §17 S3: nothing exact, so ask the trigram fallback. A shop that has not run migration 0010 has no
   // such function; the error is expected there and simply leaves the answer empty.
@@ -252,7 +269,7 @@ export async function searchCatalog(query: string, limit = 40): Promise<SearchOu
     rows.map((row) => ({
       row,
       name: row.name,
-      text: [row.name, row.sub_brand, row.product_type, row.slug].filter(Boolean).join(" "),
+      text: [row.name, row.sub_brand, row.product_type, row.slug, ...(row.tags ?? [])].filter(Boolean).join(" "),
       popularity: row.is_new ? 1 : 0,
     })),
     term,

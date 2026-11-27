@@ -384,6 +384,8 @@ export type AdminProduct = {
   priceKs: number;
   sizes: string[];
   status: AdminProductStatus;
+  /** Extra words the shop search matches, beside the name and the category. */
+  tags: string[];
   /** Measured chart in centimetres, per size (Plan P1 item 10). Empty until the owner measures a style. */
   sizeChart?: ProductSizeChart;
 };
@@ -1016,16 +1018,36 @@ export function stockSummary(data: AdminDemoData) {
 export type AdminProductDraft = {
   name: string;
   category: AdminProductCategory;
+  /** Comma separated; `parseProductTags` turns it into the stored list. */
+  tags: string;
   fabric: string;
   gsm: string;
   priceKs: string;
   status: AdminProductStatus;
 };
 
+export const PRODUCT_TAG_LIMIT = 10;
+export const PRODUCT_TAG_MAX_LENGTH = 24;
+
+/** Tags the owner types, split on commas or new lines, trimmed, de-duplicated and capped. */
+export function parseProductTags(input: string): string[] {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const part of input.split(/[,\n]/)) {
+    const tag = part.trim().replace(/\s+/g, " ");
+    if (!tag || seen.has(tag.toLowerCase())) continue;
+    seen.add(tag.toLowerCase());
+    tags.push(tag);
+    if (tags.length === PRODUCT_TAG_LIMIT) break;
+  }
+  return tags;
+}
+
 export function productDraftFrom(product?: AdminProduct): AdminProductDraft {
   return {
     name: product?.name ?? "",
     category: product?.category ?? "T-Shirt",
+    tags: product?.tags.join(", ") ?? "",
     fabric: product?.fabric ?? "",
     gsm: product?.gsm === null || product?.gsm === undefined ? "" : String(product.gsm),
     priceKs: product ? String(product.priceKs) : "",
@@ -1041,6 +1063,11 @@ export function validateProductDraft(draft: AdminProductDraft): string[] {
   const price = Number(draft.priceKs);
   if (!Number.isFinite(price) || price <= 0) errors.push("Price must be greater than zero.");
   if (price > 10000000) errors.push("Price must stay under Ks 10,000,000.");
+  const typedTags = draft.tags.split(/[,\n]/).filter((part) => part.trim());
+  if (typedTags.length > PRODUCT_TAG_LIMIT) errors.push(`A product carries up to ${PRODUCT_TAG_LIMIT} tags.`);
+  if (parseProductTags(draft.tags).some((tag) => tag.length > PRODUCT_TAG_MAX_LENGTH)) {
+    errors.push(`Each tag must stay under ${PRODUCT_TAG_MAX_LENGTH} characters.`);
+  }
   if (APPAREL_CATEGORIES.includes(draft.category)) {
     const gsm = Number(draft.gsm);
     if (!Number.isFinite(gsm) || gsm <= 0) errors.push("Apparel needs a GSM value.");
@@ -1055,6 +1082,7 @@ export function productFromDraft(draft: AdminProductDraft, existing?: AdminProdu
     id: existing?.id ?? makeAdminId("product"),
     name: draft.name.trim(),
     category: draft.category,
+    tags: parseProductTags(draft.tags),
     fabric: draft.fabric.trim(),
     gsm: apparel && Number.isFinite(gsm) && gsm > 0 ? gsm : null,
     priceKs: Math.round(Number(draft.priceKs)),
@@ -1620,14 +1648,14 @@ const SEED_CUSTOMERS = [
 ];
 
 const SEED_PRODUCTS: Omit<AdminProduct, "sizes">[] = [
-  { id: "product-classic-tee", name: "Classic T-shirt", category: "T-Shirt", fabric: "Combed Cotton", gsm: 180, priceKs: 21000, status: "Active" },
-  { id: "product-oversized-tee", name: "Oversized T-shirt", category: "T-Shirt", fabric: "Cotton", gsm: 220, priceKs: 27000, status: "Active" },
-  { id: "product-hoodie", name: "Hoodie", category: "Hoodie", fabric: "Fleece", gsm: 320, priceKs: 42000, status: "Active" },
-  { id: "product-polo", name: "Polo Shirt", category: "Polo", fabric: "Pique Cotton", gsm: 200, priceKs: 32000, status: "Active" },
-  { id: "product-jersey", name: "Football Jersey", category: "Jersey", fabric: "Polyester Mesh", gsm: 160, priceKs: 38000, status: "Active" },
-  { id: "product-cap", name: "Cap", category: "Cap", fabric: "Cotton Twill", gsm: null, priceKs: 18000, status: "Active" },
-  { id: "product-tote", name: "Tote Bag", category: "Accessory", fabric: "Canvas", gsm: null, priceKs: 16000, status: "Draft" },
-  { id: "product-phone-cover", name: "Phone Cover", category: "Accessory", fabric: "TPU", gsm: null, priceKs: 15000, status: "Active" },
+  { id: "product-classic-tee", name: "Classic T-shirt", category: "T-Shirt", tags: ["tee", "basic", "unisex"], fabric: "Combed Cotton", gsm: 180, priceKs: 21000, status: "Active" },
+  { id: "product-oversized-tee", name: "Oversized T-shirt", category: "T-Shirt", tags: ["tee", "streetwear", "drop shoulder"], fabric: "Cotton", gsm: 220, priceKs: 27000, status: "Active" },
+  { id: "product-hoodie", name: "Hoodie", category: "Hoodie", tags: ["winter", "pullover", "unisex"], fabric: "Fleece", gsm: 320, priceKs: 42000, status: "Active" },
+  { id: "product-polo", name: "Polo Shirt", category: "Polo", tags: ["office", "collar", "pique"], fabric: "Pique Cotton", gsm: 200, priceKs: 32000, status: "Active" },
+  { id: "product-jersey", name: "Football Jersey", category: "Jersey", tags: ["sport", "team kit", "breathable"], fabric: "Polyester Mesh", gsm: 160, priceKs: 38000, status: "Active" },
+  { id: "product-cap", name: "Cap", category: "Cap", tags: ["headwear", "one size"], fabric: "Cotton Twill", gsm: null, priceKs: 18000, status: "Active" },
+  { id: "product-tote", name: "Tote Bag", category: "Accessory", tags: ["bag", "canvas", "gift"], fabric: "Canvas", gsm: null, priceKs: 16000, status: "Draft" },
+  { id: "product-phone-cover", name: "Phone Cover", category: "Accessory", tags: ["case", "gift", "custom print"], fabric: "TPU", gsm: null, priceKs: 15000, status: "Active" },
 ];
 
 const SEED_DESIGN_NAMES = [

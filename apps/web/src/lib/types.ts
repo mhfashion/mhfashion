@@ -7,6 +7,8 @@ export type Product = {
   designSvgUrl?: string;
   isNew?: boolean;
   productType?: string;
+  /** Free words the owner typed when posting the product; the shop search matches them. */
+  tags?: string[];
   /** Catalogue line: "MH Fashion", "Nyein", "Accessories", "Streetwear"... */
   subBrand?: string;
   isCustomizable?: "full" | "partial" | "none";

@@ -241,3 +241,63 @@ test("the route manifest lists /search", () => {
   const manifest = JSON.parse(readFileSync(path.join(__dirname, "..", "apps/web/public/manus-routes.json"), "utf8"));
   assert.ok(manifest.routes.some((route) => route.path === "/search"));
 });
+
+test("a product is found by a tag or its category, not only by its name", async () => {
+  const row = { id: "p9", name: "Classic T-shirt", slug: "classic-tee", image_url: null, is_new: false, product_type: "T-Shirt", sub_brand: "MH Fashion", is_customizable: "full", tags: ["unisex", "summer"] };
+  const server = http.createServer((request, response) => {
+    response.setHeader("content-type", "application/json");
+    if (request.url.includes("product_price_ranges")) return response.end(JSON.stringify([]));
+    if (request.url.includes("/rest/v1/products")) return response.end(JSON.stringify([row]));
+    response.end(JSON.stringify([]));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  process.env.NEXT_PUBLIC_SUPABASE_URL = `http://127.0.0.1:${port}`;
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+
+  try {
+    const byTag = await products.searchCatalog("summer");
+    assert.deepEqual(byTag.products.map((product) => product.slug), ["classic-tee"], "the tag is part of the ranked text");
+    assert.deepEqual(byTag.products[0].tags, ["unisex", "summer"], "the card can show what it matched");
+    const byCategory = await products.searchCatalog("t-shirt");
+    assert.deepEqual(byCategory.products.map((product) => product.slug), ["classic-tee"]);
+    const miss = await products.searchCatalog("winter coat");
+    assert.deepEqual(miss.products, [], "a word that is in neither the name, the category nor a tag does not match");
+  } finally {
+    server.close();
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  }
+});
+
+test("a shop that has not run migration 0009 still searches without tags", async () => {
+  const requests = [];
+  const server = http.createServer((request, response) => {
+    requests.push(request.url);
+    response.setHeader("content-type", "application/json");
+    if (request.url.includes("select=") && request.url.includes("tags")) {
+      response.statusCode = 400;
+      return response.end(JSON.stringify({ code: "42703", message: "column products.tags does not exist" }));
+    }
+    if (request.url.includes("product_price_ranges")) return response.end(JSON.stringify([]));
+    if (request.url.includes("/rest/v1/products")) {
+      return response.end(JSON.stringify([{ id: "p1", name: "Classic T-shirt", slug: "classic-tee", image_url: null, is_new: false, product_type: "T-Shirt", sub_brand: "MH", is_customizable: "full" }]));
+    }
+    response.end(JSON.stringify([]));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  process.env.NEXT_PUBLIC_SUPABASE_URL = `http://127.0.0.1:${port}`;
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+
+  try {
+    const outcome = await products.searchCatalog("classic");
+    assert.deepEqual(outcome.products.map((product) => product.slug), ["classic-tee"]);
+    assert.equal(outcome.products[0].tags, undefined);
+    assert.ok(requests.filter((url) => url.includes("tags")).length >= 1, "tags were asked for first");
+  } finally {
+    server.close();
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  }
+});

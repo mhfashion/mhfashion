@@ -4674,3 +4674,21 @@ would read as a finished policy. They need a human translator and the owner's re
 tofu box and a screenshot looks broken even when the markup is right. Put Noto Sans Myanmar in
 `~/.local/share/fonts` and run `fc-cache -f` before judging a picture; `document.textContent` and the
 `scrollWidth` check still tell the truth without it.
+
+## §18.5 Posting a product: tags and category reach the search
+
+- `AdminProduct` carries `tags: string[]` and `AdminProductDraft` carries the raw `tags: string`. The editor
+  turns the typed list into the stored one with `parseProductTags` (comma or new line, trimmed, spaces
+  collapsed, case-insensitive de-duplication, capped at `PRODUCT_TAG_LIMIT` = 10), shows the parsed chips
+  under the field, and validates both the count and `PRODUCT_TAG_MAX_LENGTH` = 24 per tag.
+- The products table shows the tags under the product id and the table search matches them, so the owner can
+  find a product by a tag they typed.
+- The shop search reads them too: `searchCatalog` selects `tags`, adds them to the ranked text beside the
+  name, sub-brand, product type and slug, and returns them on `Product`. `search_text` in the database
+  (migration 0009) already folds `tags` and `product_type` in, so the same query answers from SQL and from
+  the ranking pass.
+- A shop that has not run 0009 yet is handled: the query is retried without `tags`, then without
+  `search_text`, then without both. The first attempt that answers wins, so a deploy before the migration
+  does not blank the search.
+- Still open: the admin's product save writes to the local demo store, not to Supabase, so a posted product
+  only becomes searchable in the shop once an admin write path exists. The table already has the column.

@@ -10,8 +10,8 @@ import {
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { matchesSearchQuery } from "@/lib/search-text";
 import {
-  APPAREL_CATEGORIES, APPAREL_SIZES, ONE_SIZE, formatKs, productDraftFrom, productFromDraft, removeProduct,
-  upsertProduct, validateProductDraft,
+  APPAREL_CATEGORIES, APPAREL_SIZES, ONE_SIZE, PRODUCT_TAG_LIMIT, formatKs, parseProductTags, productDraftFrom,
+  productFromDraft, removeProduct, upsertProduct, validateProductDraft,
   type AdminProduct, type AdminProductCategory, type AdminProductDraft, type AdminProductStatus,
 } from "@/lib/admin-demo-data";
 import {
@@ -41,7 +41,7 @@ export default function AdminProducts() {
   const editing = editingId ? data.products.find((product) => product.id === editingId) ?? null : null;
   const filtered = useMemo(() => data.products.filter((product) => (
     (statusFilter === "All" || product.status === statusFilter)
-    && matchesSearchQuery(`${product.name} ${product.category} ${product.fabric}`, query)
+    && matchesSearchQuery(`${product.name} ${product.category} ${product.fabric} ${product.tags.join(" ")}`, query)
   )), [data.products, statusFilter, query]);
 
   function startCreate() {
@@ -144,6 +144,7 @@ export default function AdminProducts() {
                       <span className="min-w-0">
                         <span className="block font-bold text-[#303844]">{product.name}</span>
                         <span className="mt-0.5 block text-[8px] text-[#919aa6]">{product.id}</span>
+                        {product.tags.length ? <span data-product-tags className="mt-0.5 block text-[8px] text-[#4cae22]">{product.tags.join(" · ")}</span> : null}
                       </span>
                     </div>
                   </td>
@@ -205,6 +206,14 @@ export default function AdminProducts() {
                 </AdminSelect>
               </AdminField>
             </div>
+            <AdminField label="Tags" hint={`Up to ${PRODUCT_TAG_LIMIT}, comma separated. The shop search matches them.`}>
+              <AdminInput value={draft.tags} onChange={(event) => setDraft({ ...draft, tags: event.target.value })} placeholder="unisex, summer, streetwear" aria-label="Tags" />
+            </AdminField>
+            {parseProductTags(draft.tags).length ? (
+              <div data-product-tag-preview className="flex flex-wrap gap-1.5">
+                {parseProductTags(draft.tags).map((tag) => <span key={tag} className="rounded-full bg-[#eef8e6] px-2 py-0.5 text-[9px] font-bold text-[#3f8c22]">{tag}</span>)}
+              </div>
+            ) : null}
             <AdminField label="Fabric">
               <AdminInput value={draft.fabric} onChange={(event) => setDraft({ ...draft, fabric: event.target.value })} placeholder="Combed Cotton" aria-label="Fabric" />
             </AdminField>

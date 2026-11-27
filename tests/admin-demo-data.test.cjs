@@ -160,6 +160,31 @@ test("stock adjustments clamp at zero and flag low or out rows", () => {
   assert.equal(summary.units, rows.reduce((total, entry) => total + entry.quantity, 0));
 });
 
+test("a posted product keeps the tags and category the search reads", () => {
+  assert.deepEqual(admin.parseProductTags("  Summer , unisex ,, Summer  "), ["Summer", "unisex"], "trimmed, de-duplicated");
+  assert.deepEqual(admin.parseProductTags("team kit\nbreathable"), ["team kit", "breathable"], "a new line separates too");
+  const many = Array.from({ length: 15 }, (_, index) => `tag${index}`).join(",");
+  assert.equal(admin.parseProductTags(many).length, admin.PRODUCT_TAG_LIMIT, "the list is capped");
+
+  const draft = {
+    ...admin.productDraftFrom(),
+    name: "Summer Tee",
+    category: "T-Shirt",
+    fabric: "Cotton",
+    gsm: "180",
+    priceKs: "21000",
+    tags: "summer, unisex",
+  };
+  assert.deepEqual(admin.validateProductDraft(draft), []);
+  const product = admin.productFromDraft(draft);
+  assert.deepEqual(product.tags, ["summer", "unisex"]);
+  assert.equal(product.category, "T-Shirt");
+  assert.equal(admin.productDraftFrom(product).tags, "summer, unisex", "editing shows the stored tags again");
+
+  assert.ok(admin.validateProductDraft({ ...draft, tags: "x".repeat(admin.PRODUCT_TAG_MAX_LENGTH + 1) }).some((error) => /tag/i.test(error)));
+  assert.ok(admin.validateProductDraft({ ...draft, tags: many }).some((error) => /tags/i.test(error)));
+});
+
 test("product drafts are validated before they reach the catalog", () => {
   const blank = admin.productDraftFrom();
   const errors = admin.validateProductDraft(blank);

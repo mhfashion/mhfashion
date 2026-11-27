@@ -2503,3 +2503,15 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
 - Screenshots: the container has no Myanmar font, so a page renders as tofu boxes. Noto Sans Myanmar is now
   in `~/.local/share/fonts` (with `fc-cache -f`); without it, only the DOM text and the overflow number are
   trustworthy.
+
+## Product tags
+
+- Posting a product collects two things the search reads: the category (a select, one of the six the
+  catalogue uses) and free tags (a comma separated field). `parseProductTags` in `lib/admin-demo-data.ts`
+  trims, collapses spaces, de-duplicates case-insensitively and caps the list at ten; the editor renders the
+  result as chips so the owner sees exactly what will be stored.
+- `lib/products.ts` selects `tags`, puts them in the ranked text and returns them on `Product`, so a query
+  that only matches a tag still answers. The fallback chain (with tags → without tags → without
+  `search_text` → without both) keeps a shop that has not run migration 0009 searching.
+- The database side is migration 0009: `products.tags text[]` and a `search_text` that already concatenates
+  name, Myanmar name, slug, sub-brand, product type, tags and aliases.
