@@ -104,7 +104,7 @@ function PhotoCard({ photo, onAdd }: { photo: PhotoLibraryEntry; onAdd: () => vo
       <span className={CARD_FRAME}>
         {/* The photo is a remote placeholder until licensed stock lands in R2. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photo.url} alt="" loading="lazy" className="h-full w-full object-cover" />
+        <img src={photo.thumbUrl ?? photo.url} alt="" loading="lazy" className="h-full w-full object-cover" />
       </span>
     </button>
   );
@@ -155,7 +155,7 @@ function PanelContent({
   const needle = search.trim().toLowerCase();
   // The shop's own library when it has one, the built-ins and placeholders until then.
   const { photos: photoLibrary } = useEditorPhotoLibrary();
-  const { layers: patternLayers, inkByLayerId } = useEditorPatternLibrary();
+  const { layers: patternLayers, inkByLayerId, keywordsByLayerId } = useEditorPatternLibrary();
 
   if (section === "Designs") {
     const designs = MH_DESIGN_LIBRARY.filter((design) => !needle || design.name.toLowerCase().includes(needle));
@@ -215,7 +215,9 @@ function PanelContent({
   }
 
   if (section === "Patterns") {
-    const patterns = patternLayers.filter((layer) => !needle || layer.name.toLowerCase().includes(needle));
+    const patterns = patternLayers.filter(
+      (layer) => !needle || `${layer.name} ${keywordsByLayerId[layer.id] ?? ""}`.toLowerCase().includes(needle),
+    );
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <SearchField value={search} onChange={setSearch} placeholder="Search patterns" />

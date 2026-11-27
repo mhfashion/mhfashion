@@ -70,6 +70,8 @@ export type AssetObject = {
   size: number;
   etag: string | null;
   customMetadata: Record<string, string>;
+  /** When the object was written, ISO 8601, or `null` when the bucket cannot say. */
+  uploadedAt: string | null;
 };
 
 /** What `head` reports without fetching the bytes (Plan §12.2.12 item 1). */
@@ -139,6 +141,8 @@ export type MemoryAssetStore = AssetStore & {
   readonly objects: Map<string, AssetObject>;
   /** How many writes landed, so a test can prove a snapshot was not rewritten. */
   readonly writes: string[];
+  /** Write times, so a test can age a file the way a day of use would. */
+  readonly writtenAt: Map<string, string>;
 };
 
 /**
@@ -147,17 +151,19 @@ export type MemoryAssetStore = AssetStore & {
  */
 export function createMemoryAssetStore(
   entries: Record<string, string> = {},
-  options: { pageSize?: number } = {},
+  options: { pageSize?: number; now?: () => Date } = {},
 ): MemoryAssetStore {
   const files = new Map<string, string>(Object.entries(entries));
   const objects = new Map<string, AssetObject>();
   const writes: string[] = [];
+  const writtenAt = new Map<string, string>();
   const pageSize = Math.max(1, Math.floor(options.pageSize ?? 1000));
 
   return {
     files,
     objects,
     writes,
+    writtenAt,
     async list(prefix, cursor = null) {
       const keys = [...new Set([...files.keys(), ...objects.keys()])]
         .filter((key) => key.startsWith(prefix))
@@ -176,12 +182,14 @@ export function createMemoryAssetStore(
       assertSafeAssetKey(key);
       files.set(key, body);
       objects.delete(key);
+      writtenAt.set(key, (options.now?.() ?? new Date()).toISOString());
       writes.push(key);
     },
     async delete(key) {
       assertSafeAssetKey(key);
       files.delete(key);
       objects.delete(key);
+      writtenAt.delete(key);
     },
     async getObject(key) {
       assertSafeAssetKey(key);
@@ -198,19 +206,23 @@ export function createMemoryAssetStore(
         size: body.byteLength,
         etag: null,
         customMetadata: {},
+        uploadedAt: writtenAt.get(key) ?? null,
       };
     },
-    async putObject(key, body, options) {
+    async putObject(key, body, putOptions) {
       assertSafeAssetKey(key);
       const bytes = toBytes(body);
+      const at = (options.now?.() ?? new Date()).toISOString();
+      writtenAt.set(key, at);
       objects.set(key, {
         key,
         body: bytes,
-        contentType: options.contentType,
-        cacheControl: options.cacheControl ?? assetCacheControl(key),
+        contentType: putOptions.contentType,
+        cacheControl: putOptions.cacheControl ?? assetCacheControl(key),
         size: bytes.byteLength,
         etag: null,
-        customMetadata: options.customMetadata ?? {},
+        customMetadata: putOptions.customMetadata ?? {},
+        uploadedAt: at,
       });
       files.delete(key);
       writes.push(key);
@@ -219,8 +231,15 @@ export function createMemoryAssetStore(
       assertSafeAssetKey(key);
       const stored = objects.get(key);
       if (stored) {
-        const { body: _body, ...rest } = stored;
-        return rest;
+        return {
+          key: stored.key,
+          contentType: stored.contentType,
+          cacheControl: stored.cacheControl,
+          size: stored.size,
+          etag: stored.etag,
+          customMetadata: stored.customMetadata,
+          uploadedAt: stored.uploadedAt,
+        };
       }
       const text = files.get(key);
       if (text === undefined) return null;
@@ -231,6 +250,7 @@ export function createMemoryAssetStore(
         size: new TextEncoder().encode(text).byteLength,
         etag: null,
         customMetadata: {},
+        uploadedAt: writtenAt.get(key) ?? null,
       };
     },
   };
@@ -240,7 +260,7 @@ export function createMemoryAssetStore(
 export function createMemoryAssetBuckets(
   publicEntries: Record<string, string> = {},
   privateEntries: Record<string, string> = {},
-  options: { pageSize?: number } = {},
+  options: { pageSize?: number; now?: () => Date } = {},
 ): { public: MemoryAssetStore; private: MemoryAssetStore } {
   return {
     public: createMemoryAssetStore(publicEntries, options),

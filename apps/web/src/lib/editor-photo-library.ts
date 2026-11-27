@@ -17,8 +17,10 @@ export const PHOTO_LIBRARY_STATUS = "placeholder-stock";
 export type PhotoLibraryEntry = {
   id: string;
   name: string;
-  /** Where the photo is fetched from. */
+  /** Where the full picture is fetched from, when it is added to the canvas. */
   url: string;
+  /** The small picture for the grid, so the panel does not download every full photo. */
+  thumbUrl?: string;
   /** The photo's own pixel size, used to fit it onto the print canvas. */
   width: number;
   height: number;
@@ -44,10 +46,6 @@ export const MH_PHOTO_LIBRARY: PhotoLibraryEntry[] = [
   { id: "photo-print-detail", name: "Print detail", url: picsum("mh-print-detail", 1400, 1400), width: 1400, height: 1400, credit: "Lorem Picsum", placeholder: true },
   { id: "photo-cotton-texture", name: "Cotton texture", url: picsum("mh-cotton-texture", 1600, 1200), width: 1600, height: 1200, credit: "Lorem Picsum", placeholder: true },
 ];
-
-export function findPhoto(id: string): PhotoLibraryEntry | undefined {
-  return MH_PHOTO_LIBRARY.find((photo) => photo.id === id);
-}
 
 /** One item of the `photos` catalogue, as the service answers it. */
 export type PhotoCatalogueEntry = {
@@ -79,6 +77,7 @@ export function photoFromCatalogue(entry: PhotoCatalogueEntry, base: string = R2
     id: `photo-${entry.slug}`,
     name: entry.name,
     url: publicAssetUrl(base, entry.file),
+    thumbUrl: publicAssetUrl(base, entry.thumb),
     width: entry.width,
     height: entry.height,
     credit: entry.licence.credit || entry.licence.name,

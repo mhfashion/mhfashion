@@ -23,6 +23,8 @@ export type PatternLibraryEntry = {
   name: string;
   /** Painted geometry, in artwork units, already covering the canvas. */
   paths: EditorShapePath[];
+  /** The Myanmar name and the tags, so the search finds a pattern by any of them. */
+  keywords?: string;
 };
 
 function dotTile(step: number, radius: number, color: string): EditorShapePath[] {
@@ -177,10 +179,11 @@ function isPatternCatalogueEntry(value: unknown): value is PatternCatalogueEntry
 export function patternFromCatalogue(entry: PatternCatalogueEntry, svg: string): PatternLibraryEntry | null {
   const { paths } = svgShapePaths(svg);
   if (!paths.length) return null;
-  return { id: `pattern-${entry.slug}`, name: entry.name, paths };
+  const keywords = [entry.nameMy, ...(entry.tags ?? [])].filter(Boolean).join(" ");
+  return { id: `pattern-${entry.slug}`, name: entry.name, paths, keywords };
 }
 
-export type CataloguePatternLayer = { layer: DesignLibraryLayer; ink: PatternInk };
+export type CataloguePatternLayer = { layer: DesignLibraryLayer; ink: PatternInk; keywords: string };
 
 /**
  * The shop's own patterns, after the nine built-in ones. A pattern whose SVG cannot be read is skipped
@@ -203,7 +206,9 @@ export async function loadCataloguePatterns(
   for (const item of items.filter(isPatternCatalogueEntry)) {
     try {
       const pattern = patternFromCatalogue(item, await loadSvg(publicAssetUrl(base, item.file)));
-      if (pattern) loaded.push({ layer: patternToDesignLayer(pattern), ink: item.ink ?? "dark" });
+      if (pattern) {
+        loaded.push({ layer: patternToDesignLayer(pattern), ink: item.ink ?? "dark", keywords: pattern.keywords ?? "" });
+      }
     } catch {
       // A file that cannot be fetched leaves the built-ins alone.
     }
@@ -215,6 +220,8 @@ export async function loadCataloguePatterns(
 export function useEditorPatternLibrary(): {
   layers: DesignLibraryLayer[];
   inkByLayerId: Record<string, PatternInk>;
+  /** The Myanmar name and tags of a catalogue pattern, so the search can reach them. */
+  keywordsByLayerId: Record<string, string>;
   fromCatalogue: boolean;
 } {
   const [added, setAdded] = useState<CataloguePatternLayer[]>([]);
@@ -237,10 +244,15 @@ export function useEditorPatternLibrary(): {
     return () => { live = false; };
   }, []);
   const inkByLayerId: Record<string, PatternInk> = {};
-  for (const entry of added) inkByLayerId[entry.layer.id] = entry.ink;
+  const keywordsByLayerId: Record<string, string> = {};
+  for (const entry of added) {
+    inkByLayerId[entry.layer.id] = entry.ink;
+    keywordsByLayerId[entry.layer.id] = entry.keywords ?? "";
+  }
   return {
     layers: added.length ? [...MH_PATTERN_LAYERS, ...added.map((entry) => entry.layer)] : MH_PATTERN_LAYERS,
     inkByLayerId,
+    keywordsByLayerId,
     fromCatalogue: added.length > 0,
   };
 }

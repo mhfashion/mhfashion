@@ -33,6 +33,12 @@ test("a catalogue photo becomes an entry the sidebar and the canvas can use", ()
   for (const word of ["ရန်ကုန်လမ်း", "city", "downtown"]) assert.match(entry.keywords, new RegExp(word));
 });
 
+test("the grid loads the thumbnail and the canvas the full picture", () => {
+  const entry = photos.photoFromCatalogue(PHOTO, "https://cdn.example");
+  assert.equal(entry.thumbUrl, "https://cdn.example/photos/yangon-street/thumb.webp");
+  assert.equal(entry.url, "https://cdn.example/photos/yangon-street/photo.webp");
+});
+
 test("the photo catalogue answer keeps the usable items and drops the rest", () => {
   const entries = photos.photosFromCatalogue(
     { version: 1, kind: "photos", items: [PHOTO, { slug: "broken" }, null] },
@@ -64,6 +70,14 @@ test("a pattern SVG becomes the same kind of shape layer as a built-in pattern",
   assert.match(layer.paths[0].d, /^M 400 600 C /);
   const builtIn = patterns.MH_PATTERN_LAYERS[0];
   assert.equal(typeof builtIn.paths[0].d, "string", "a built-in pattern is the same shape");
+});
+
+test("a pattern's Myanmar name and tags are searchable", async () => {
+  const [loaded] = await patterns.loadCataloguePatterns(
+    async () => ({ items: [{ slug: "terrazzo", name: "Terrazzo", nameMy: "တာရာဇို", ink: "light", file: "patterns/terrazzo/pattern.svg", tags: ["stone", "floor"] }] }),
+    async () => '<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="#111"/></svg>',
+  );
+  for (const word of ["တာရာဇို", "stone", "floor"]) assert.match(loaded.keywords, new RegExp(word));
 });
 
 test("a pattern file a shape cannot carry is skipped, and the built-ins stay", () => {

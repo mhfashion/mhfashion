@@ -1010,6 +1010,18 @@ ink from `meta.json`. `tests/asset-photo-pattern.test.cjs`, `tests/editor-svg-sh
 `tests/editor-catalogue-client.test.cjs` cover the new rules; the browser check shows nine placeholder photos with the
 note, nine built-in patterns, and no console errors.
 
+**The rest of the list, built (2026-11-21, second pass).** The 24-hour rule of §12.2.7 is now code as well as bucket
+configuration: `asset-tmp-sweep.ts` walks `tmp/` page by page, deletes a file whose write time is older than a day, and
+keeps — and names — a file the bucket cannot date, because a customer's photo is never deleted on a guess. The Worker's
+hourly `scheduled` pass rebuilds every catalogue and then sweeps, returning both counts
+(`handleScheduled` → `ScheduledSummary.sweptTmp`). `AssetObject`/`AssetObjectHead` carry `uploadedAt`, filled from R2's
+own `uploaded` date (or the upload route's `uploadedAt` metadata) and from the memory store's write clock, so the sweep
+and its tests agree. The Photos grid loads `thumb.webp` and only fetches the full picture when the photo is added
+(`PhotoLibraryEntry.thumbUrl`); a pattern's Myanmar name and tags are searchable beside its English name
+(`PatternLibraryEntry.keywords`). `npm run assets:check` now reads a pattern SVG with the editor's own reader and fails
+on an element a shape cannot carry, and prints the licence path each photo still needs in the private bucket.
+`Doc/R2-STORAGE.md` documents both libraries (sections 3.5 and 3.6) and the private bucket's layout (3.7).
+
 #### 12.2.13 Moving from today
 
 1. Create `mh-fashion-private` and bind it as `MH_FASHION_PRIVATE`; create `mh-fashion-backup`. Nothing customer-related

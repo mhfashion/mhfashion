@@ -5,9 +5,10 @@
 > key rules, retention and backups are in `Plan/PLAN.md` section 12.2. Do not put anything about a customer or an order in the
 > public bucket.
 >
-> **Added 2026-11-26:** the editor's Photos and Patterns libraries (`photos/<slug>/`, `patterns/<slug>/`) and a customer's files under
-> `users/<account-uuid>/` (private bucket) are decided in section 12.2. The upload instructions for photos and patterns are added to this
-> document when `npm run assets:check` supports them; until then, do not upload either.
+> **Added 2026-11-21:** the editor's Photos and Patterns libraries (`photos/<slug>/`, `patterns/<slug>/`) and a customer's files under
+> `users/<account-uuid>/` (private bucket) are built and checked: `npm run assets:check -- <folder>` now reads a photo's licence and a
+> pattern's SVG, and the two sections below (3.5 and 3.6) say exactly what to upload. A photo is only offered in the editor once its
+> licence document is in `mh-fashion-private` under `licences/photos/<slug>/`.
 
 MH Fashion serves product mockups, design files and post artwork from Cloudflare R2. This is the
 contract the code already expects; follow it and nothing has to change in the app. The catalogue
@@ -61,6 +62,11 @@ mh-fashion-assets/
 │   └── <font-slug>/<style>.woff2                      ← one file per weight and style
 ├── designs/<design-slug>/design.svg                   ← design library artwork
 ├── designs/<design-slug>/meta.json                    ← its name, shelf and files (3.2)
+├── photos/<photo-slug>/photo.<webp|png|jpg>           ← the editor's Photos section (3.5)
+├── photos/<photo-slug>/thumb.webp                     ← the grid thumbnail, ≤ 512 px
+├── photos/<photo-slug>/meta.json                      ← name, size, tags and licence (3.5)
+├── patterns/<pattern-slug>/pattern.svg                ← the editor's Patterns section (3.6)
+├── patterns/<pattern-slug>/meta.json                  ← name, ink and tags (3.6)
 └── posts/<post-slug>.svg                              ← T-shirt post artwork
 ```
 
@@ -246,6 +252,79 @@ Rules the editor enforces (a bad entry is skipped and named, never fatal — the
 
 Optional server-side copy of the "Print files ZIP" contents, so a job survives a browser
 reset: `<order-id>/<design-file>.svg`, `<design-file>-mockup.svg`, `manifest.json`.
+
+### 3.5 Photos — `photos/<photo-slug>/photo.<ext>` + `thumb.webp` + `meta.json`
+
+The editor's Photos section lists these; a photo appears only when the folder is complete.
+
+| File | What it is | Limits |
+|---|---|---|
+| `photo.<webp\|png\|jpg>` | the picture that lands on the canvas | 8 MB, 4000 px on the long side; PNG or a WebP with transparency only for a cut-out |
+| `thumb.webp` | the small picture in the grid | 40 KB, 512 px |
+| `meta.json` | the description below | 20 KB |
+
+```json
+{
+  "slug": "yangon-street",
+  "name": "Yangon street",
+  "nameMy": "ရန်ကုန်လမ်း",
+  "width": 1600,
+  "height": 1200,
+  "transparent": false,
+  "tags": ["city", "street"],
+  "aliases": ["downtown"],
+  "licence": {
+    "name": "Unsplash+",
+    "source": "https://unsplash.com/licence",
+    "commercialPrintAllowed": true,
+    "credit": "Daw Mya"
+  }
+}
+```
+
+- `width` and `height` are the photo's own pixel size, in pixels. The canvas uses them to fit the
+  photo and to warn about a low-resolution print, so they must be the real numbers.
+- `licence.commercialPrintAllowed` must be `true`. A photo without it is listed as an issue and
+  **not offered**, because the shop would be printing it without the right to.
+- The licence document itself goes in the **private** bucket: `licences/photos/<slug>/<file>.pdf`.
+  The rebuild checks for it; without it the photo is an issue.
+- `thumb.webp` is what the grid loads; the full picture is only fetched when the photo is added.
+
+### 3.6 Patterns — `patterns/<pattern-slug>/pattern.svg` + `meta.json`
+
+One SVG that already covers the **1000 × 1200** artwork space, plus its description.
+
+```json
+{ "slug": "terrazzo", "name": "Terrazzo", "nameMy": "တာရာဇို", "ink": "light", "tags": ["stone"] }
+```
+
+- `ink` is `dark`, `light` or `color`, and it decides the card behind the thumbnail, so a light
+  pattern is not lost on a white card.
+- The editor paints a pattern as a shape layer, so the SVG may use `path`, `rect`, `circle`,
+  `ellipse`, `line`, `polygon` and `polyline`, with a solid `fill` or a `stroke`, inside `<g>`
+  groups whose `transform` is `translate`, `scale` or `matrix`. A gradient or pattern fill, a
+  filter, an embedded `<image>`, text or a rotation cannot be a shape: flatten it first.
+  `npm run assets:check` names every element that has to be flattened before the upload.
+
+### 3.7 A customer's own files (private bucket `mh-fashion-private`)
+
+Nothing here is uploaded by hand; the site writes it. The prefixes are listed so a support call can
+find a file, and so the 24-hour rule is visible.
+
+```
+mh-fashion-private/
+├── catalog/<kind>.json                        ← the eight catalogue snapshots (with their issues)
+├── tmp/<account-uuid>/<upload-id>.<ext>       ← a photo that no saved design keeps yet (24 hours)
+├── tmp/<account-uuid>/quota.json              ← the hourly upload counter
+├── users/<account-uuid>/uploads/<upload-id>.<ext>   ← kept once a design that uses it is saved
+├── users/<account-uuid>/designs/<design-id>/thumbnail.webp
+├── orders/<order-id>/...                      ← the frozen copy of what the press receives
+└── licences/<fonts|photos>/<slug>/<file>.pdf  ← proof of the right to use a font or a photo
+```
+
+A customer reads only `tmp/<their-uuid>/` and `users/<their-uuid>/`; an admin reads everything and
+each admin read of a customer's file writes one audit line. The Worker's hourly pass deletes every
+`tmp/` file older than 24 hours (a file it cannot date is kept and reported, never deleted blind).
 
 ## 4. Uploading files
 

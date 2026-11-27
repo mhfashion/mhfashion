@@ -12,6 +12,7 @@ const { loadModule } = require("../tests/helpers/load-ts-module.cjs");
 const storeLib = loadModule("apps/web/src/lib/asset-store.ts");
 const keyLib = loadModule("apps/web/src/lib/asset-keys.ts");
 const catalogue = loadModule("apps/web/src/lib/asset-catalogue.ts");
+const shapes = loadModule("apps/web/src/lib/editor-svg-shapes.ts");
 
 function walk(directory, root = directory) {
   const entries = [];
@@ -62,8 +63,8 @@ async function main() {
     const duplicate = seen.get(entry.key.toLowerCase());
     if (duplicate) problems.push(`${entry.key}: twice (also ${duplicate})`);
     seen.set(entry.key.toLowerCase(), entry.key);
-    // The builders read meta.json; every other file is only listed, so its text is not needed here.
-    files[entry.key] = entry.key.endsWith(".json") ? data.toString("utf8") : "";
+    // The builders read meta.json and the pattern SVG; every other file is only listed.
+    files[entry.key] = entry.key.endsWith(".json") || entry.key.endsWith(".svg") ? data.toString("utf8") : "";
   }
 
   const store = storeLib.createMemoryAssetStore(files);
@@ -71,6 +72,25 @@ async function main() {
     const built = await catalogue.buildAssetCatalogue(store, kind);
     for (const issue of built.issues) problems.push(`${issue.key}: ${issue.reason} (${kind})`);
     console.log(`${kind.padEnd(12)} ${built.items.length} ${built.items.length === 1 ? "item" : "items"}, ${built.issues.length} ${built.issues.length === 1 ? "issue" : "issues"}`);
+    // A photo is only sellable with its licence document, which lives in the private bucket and is
+    // therefore not in the folder being checked: say so rather than let it pass silently.
+    if (kind === "photos") {
+      for (const photo of built.items) {
+        console.log(`  licence: put the PDF at licences/photos/${photo.slug}/ in mh-fashion-private`);
+      }
+    }
+    // A pattern is painted as a shape layer, so the editor can only carry what a shape carries.
+    if (kind === "patterns") {
+      for (const pattern of built.items) {
+        const reading = shapes.svgShapePaths(files[pattern.file] ?? "");
+        for (const issue of reading.issues) {
+          problems.push(`${pattern.file}: <${issue.element}> ${issue.reason} (patterns)`);
+        }
+        if (!reading.paths.length && !reading.issues.length) {
+          problems.push(`${pattern.file}: nothing the editor can paint (patterns)`);
+        }
+      }
+    }
   }
 
   if (warnings.length) {

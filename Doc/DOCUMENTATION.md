@@ -1328,11 +1328,21 @@ admin still reads everything, and the Worker now writes one audit line for an ad
 (`assets: audit admin-read admin=… key=… at=…`) because that is a support action, not routine work. The old `uploads/`
 and `saved/` prefixes are gone; nothing customer-related had been written to R2, so no data moved.
 
+**The 24-hour rule is code too.** `asset-tmp-sweep.ts` walks `tmp/` a page at a time, deletes what is older than a day
+and keeps — naming it in the log — anything the bucket cannot date, because a photo is never deleted on a guess. The
+Worker's hourly pass runs the rebuild and the sweep together (`handleScheduled` now returns `sweptTmp`), and the store
+contract carries `uploadedAt` from R2's own write date (or the upload route's metadata), so the sweep and its tests read
+the same clock. The Photos grid downloads `thumb.webp` and only fetches the full picture when a photo is added, and a
+pattern is searchable by its Myanmar name and tags as well as its English name. `npm run assets:check` reads a pattern
+SVG with the editor's own reader, so an element a shape cannot carry (a gradient, a filter, text) fails the check before
+the upload, and it prints the licence path every photo still needs in the private bucket.
+
 `tests/asset-photo-pattern.test.cjs` covers the two catalogues, the licence rules and the new access paths;
 `tests/editor-svg-shapes.test.cjs` covers the SVG reader (scaling, nested transforms, shapes, and the refusals);
-`tests/editor-catalogue-client.test.cjs` covers the mapping into the sidebar and the fallbacks. The asset, worker and
-sidebar tests were updated to the new prefixes. A browser check on `/create` shows nine placeholder photos with the
-note, nine built-in patterns, and no console errors; the full suite is 869 tests, all passing.
+`tests/editor-catalogue-client.test.cjs` covers the mapping into the sidebar, the thumbnail and the search keywords;
+`tests/asset-tmp-sweep.test.cjs` covers the sweep (old, fresh, undated, paging, and the hourly pass). The asset, worker
+and sidebar tests were updated to the new prefixes. A browser check on `/create` shows nine placeholder photos with the
+note, nine built-in patterns, and no console errors.
 
 ### 2026-11-21 — The footer stays on the home page
 

@@ -9,6 +9,8 @@ type R2ObjectBodyLike = {
   arrayBuffer(): Promise<ArrayBuffer>;
   size?: number;
   etag?: string;
+  /** R2 reports when the object was written; the store keeps it for the 24-hour sweep. */
+  uploaded?: Date;
   httpMetadata?: { contentType?: string; cacheControl?: string };
   customMetadata?: Record<string, string>;
 };
@@ -71,6 +73,7 @@ export function createR2AssetStore(bucket: R2BucketLike, name: "public" | "priva
         size: object.size ?? body.byteLength,
         etag: object.etag ?? null,
         customMetadata: object.customMetadata ?? {},
+        uploadedAt: uploadedAt(object),
       };
     },
     async putObject(key, body, options) {
@@ -94,8 +97,15 @@ export function createR2AssetStore(bucket: R2BucketLike, name: "public" | "priva
         size: object.size ?? 0,
         etag: object.etag ?? null,
         customMetadata: object.customMetadata ?? {},
+        uploadedAt: uploadedAt(object),
       };
     },
   };
+}
+
+/** The write time R2 reports, falling back to what the upload route recorded. */
+function uploadedAt(object: R2ObjectHeadLike): string | null {
+  if (object.uploaded instanceof Date) return object.uploaded.toISOString();
+  return object.customMetadata?.uploadedAt ?? null;
 }
 

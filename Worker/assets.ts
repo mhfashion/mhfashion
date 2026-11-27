@@ -5,6 +5,7 @@
 import { canReadPrivateAsset, canWriteAdmin, isAdminCustomerFileRead, type AssetViewer } from "../apps/web/src/lib/asset-access";
 import { rebuildAssetCatalogues, type CatalogueRebuildSummary } from "../apps/web/src/lib/asset-catalogue-rebuild";
 import { kindsForAssetKeys } from "../apps/web/src/lib/asset-events";
+import { sweepTemporaryUploads, type TmpSweepResult } from "../apps/web/src/lib/asset-tmp-sweep";
 import { MIME_BY_TYPE, sha256Hex } from "../apps/web/src/lib/asset-file-type";
 import {
   ASSET_SHAPES,
@@ -316,10 +317,20 @@ export async function handleQueue(batch: QueueBatch, env: AssetsEnv, deps?: Asse
 }
 
 /** The hourly safety net: a full pass, in case an event was lost. */
-export async function handleScheduled(env: AssetsEnv, deps?: AssetsDeps): Promise<CatalogueRebuildSummary> {
+export type ScheduledSummary = CatalogueRebuildSummary & { sweptTmp: TmpSweepResult };
+
+/**
+ * The hourly pass (Plan §12.2.9 and §12.2.7): rebuild every catalogue in case an event was lost, then
+ * delete the temporary uploads that no saved design kept.
+ */
+export async function handleScheduled(env: AssetsEnv, deps?: AssetsDeps): Promise<ScheduledSummary> {
   const buckets = bucketsFor(env, deps);
   if (!buckets) throw new Error("assets_unbound: MH_FASHION_ASSETS and MH_FASHION_PRIVATE must both be bound");
-  return rebuildAssetCatalogues(buckets, deps?.now?.() ?? new Date(), deps?.log ?? ((line) => console.log(line)));
+  const now = deps?.now?.() ?? new Date();
+  const log = deps?.log ?? ((line: string) => console.log(line));
+  const summary = await rebuildAssetCatalogues(buckets, now, log);
+  const sweptTmp = await sweepTemporaryUploads(buckets.private, now, { log });
+  return { ...summary, sweptTmp };
 }
 
 export default {

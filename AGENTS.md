@@ -1251,6 +1251,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The sidebar keeps the nine built-in patterns first and the Lorem Picsum photos (marked `placeholder`) until the first
   licensed photo arrives; `useEditorPhotoLibrary` / `useEditorPatternLibrary` swap them in when the catalogue answers.
 - An admin read of `users/…` or `tmp/…` writes `assets: audit admin-read admin=… key=… at=…` (Plan §12.2.6).
+- `asset-tmp-sweep.ts` deletes `tmp/` files older than 24 hours in the Worker's hourly pass; it reads `uploadedAt`
+  (R2's `uploaded`, else the upload route's metadata) and **keeps** a file it cannot date. `createMemoryAssetStore`
+  takes `now` so a test can age a file instead of waiting a day.
+- The Photos grid uses `thumbUrl`; the full picture is only fetched when the photo is added.
 
 ## Testing pitfalls
 - `next start` keeps the port after a rebuild: a stale `next-server` will serve an old build. Kill the process holding port 3000 (`/proc/*/cmdline` contains `next-server`) before restarting, or your CDP probes test stale code.
