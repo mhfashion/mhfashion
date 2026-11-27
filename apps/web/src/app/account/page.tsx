@@ -105,7 +105,7 @@ const COPY = {
     notifications: "Notifications",
   },
   my: {
-    welcome: "ပြန်လည်ကြိုဆိုပါတယ်! 👋",
+    welcome: "ပြန်လည်ကြိုဆိုပါတယ်!",
     welcomeSub: "အံ့သြဖွယ်ဒီဇိုင်းတစ်ခုကို အတူဖန်တီးကြရအောင်!",
     start: "ဒီဇိုင်းစတင်ရန်",
     totalOrders: "အော်ဒါစုစုပေါင်း",
@@ -129,14 +129,14 @@ const COPY = {
     notificationSettings: "အသိပေးချက်ဆက်တင်များ",
     privacy: "ကိုယ်ရေးကိုယ်တာနှင့် လုံခြုံရေး",
     needHelp: "အကူအညီလိုပါသလား?",
-    support: "ကျွန်ုပ်တို့၏ support team က ကူညီပေးရန် အသင့်ရှိပါတယ်",
+    support: "ကျွန်ုပ်တို့၏ ပံ့ပိုးကူညီရေး အဖွဲ့က ကူညီပေးရန် အသင့်ရှိပါတယ်",
     faqs: "မေးလေ့ရှိသောမေးခွန်းများ",
     contact: "ဆက်သွယ်ရန်",
     chat: "Live Chat",
     earn: "အမှတ်များပိုမိုရယူပါ!",
     earnSub: "ဝယ်ယူ၊ မျှဝေ၊ ပျော်ရွှင်ပါ!",
     learn: "ပိုမိုလေ့လာရန်",
-    member: "Gold Member",
+    member: "ရွှေအဖွဲ့ဝင်",
     profile: "ကိုယ်ရေးအချက်အလက်",
     fullName: "အမည်အပြည့်အစုံ",
     email: "အီးမေးလ်",
@@ -157,6 +157,7 @@ function OrderStageBadge({ stage }: { stage: string }) {
 }
 
 function AccountOrderCard({ order, formatMoney, detailed = false }: { order: AdminOrder; formatMoney: (value: number) => string; detailed?: boolean }) {
+  const { t } = useI18n();
   const units = orderUnits(order);
   const [asking, setAsking] = useState(false);
   const [reason, setReason] = useState<RefundReasonId>(REFUND_REASONS[0].id);
@@ -226,7 +227,7 @@ function AccountOrderCard({ order, formatMoney, detailed = false }: { order: Adm
           </p>
           {latest.note ? <p className="mt-1 text-[11px] text-text-secondary">{latest.note}</p> : null}
           {latest.reply ? <p className="mt-1 text-[11px] text-text-secondary">MH Fashion: {latest.reply}</p> : null}
-          {latest.status === "Requested" ? <p className="mt-1 text-[10px] text-text-muted">We answer within one working day.</p> : null}
+          {latest.status === "Requested" ? <p className="mt-1 text-[10px] text-text-muted">{t("account.refundReply")}</p> : null}
         </div>
       ) : null}
       {blocker && !latest ? <p className="mt-3 text-[10px] text-text-muted">{blocker}</p> : null}
@@ -234,27 +235,27 @@ function AccountOrderCard({ order, formatMoney, detailed = false }: { order: Adm
         asking ? (
           <div className="mt-3 rounded-xl border border-border bg-bg p-3" data-account-refund-form>
             <label className="block text-[10px] font-bold uppercase tracking-wide text-text-muted">
-              What went wrong
+              {t("account.refundReason")}
               <select aria-label="Refund reason" value={reason} onChange={(event) => setReason(event.target.value as RefundReasonId)} className="mt-1 w-full rounded-lg border border-border bg-bg-surface px-2 py-2 text-xs font-semibold">
                 {REFUND_REASONS.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
               </select>
             </label>
             <label className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-text-muted">
-              Tell us what happened
+              {t("account.refundDetail")}
               <textarea aria-label="Refund note" rows={3} value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-bg-surface px-2 py-2 text-xs" placeholder="A photo helps; attach it in the reply or send it through the contact page." />
             </label>
             <p className="mt-2 text-[10px] text-text-muted">
               Printed pieces are made for one order, so a refund covers a misprint, a wrong item or damage — not a change of mind.{" "}
-              <Link href="/returns" className="font-semibold text-accent">Read the policy</Link>
+              <Link href="/returns" className="font-semibold text-accent">{t("account.refundPolicy")}</Link>
             </p>
             {problems.map((problem) => <p key={problem} role="alert" className="mt-1 text-[10px] font-semibold text-[#a33]">{problem}</p>)}
             <div className="mt-2 flex gap-2">
-              <button type="button" onClick={send} className="rounded-full bg-accent px-3 py-2 text-[11px] font-bold text-accent-foreground">Send the request</button>
-              <button type="button" onClick={() => { setAsking(false); setProblems([]); }} className="rounded-full border border-border px-3 py-2 text-[11px] font-bold">Cancel</button>
+              <button type="button" onClick={send} className="rounded-full bg-accent px-3 py-2 text-[11px] font-bold text-accent-foreground">{t("account.refundSend")}</button>
+              <button type="button" onClick={() => { setAsking(false); setProblems([]); }} className="rounded-full border border-border px-3 py-2 text-[11px] font-bold">{t("actions.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button type="button" data-account-refund-open onClick={() => setAsking(true)} className="mt-3 text-[11px] font-bold text-accent">Request a refund</button>
+          <button type="button" data-account-refund-open onClick={() => setAsking(true)} className="mt-3 text-[11px] font-bold text-accent">{t("account.refundRequest")}</button>
         )
       ) : null}
     </div>
@@ -272,6 +273,7 @@ export default function AccountPage() {
   const { theme, toggleTheme } = useTheme();
   const { locale, t } = useI18n();
   const copy = COPY[locale];
+  const my = locale === "my";
   const formatMoney = (value: number) => `${value.toLocaleString("en-US")} ${currency}`;
   const wishlist = useWishlist();
   const store = useAdminDemoData();
@@ -331,18 +333,18 @@ export default function AccountPage() {
             </section>
             {sectionContent === "dashboard" ? (
               <>
-                <section className="relative isolate mb-5 min-h-[205px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-6 py-7 text-[#172810] sm:px-9 sm:py-9"><div className="relative z-10 max-w-[58%]"><h1 ref={headingRef} tabIndex={-1} className="text-3xl font-black leading-tight sm:text-4xl">{copy.welcome}</h1><p className="mt-3 text-sm text-[#355128]">{copy.welcomeSub}</p><button onClick={() => window.location.href = "/create"} className="mt-5 inline-flex items-center rounded-full bg-[#55a918] px-4 py-2.5 text-xs font-bold text-white">{copy.start} <ArrowRight size={15} className="ml-1.5" /></button></div><div className="absolute -right-8 -top-12 h-72 w-72 rounded-full bg-[#9bda45]/50" /><div className="absolute bottom-[-55px] right-[18%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block"><div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div></div><div className="absolute bottom-5 right-6 text-3xl font-black italic text-[#54a817]/80 sm:right-12">Create<br />Your Style</div></section>
-                <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard Icon={ShoppingBag} label={copy.totalOrders} value={String(orders.length)} helper={orders.length ? copy.recentOrders : copy.viewAllOrders} /><StatCard Icon={Star} label={copy.points} value={String(points.total)} helper={points.permanent ? `${points.permanent} kept + ${points.daily} daily` : `${points.daily} daily`} tone="yellow" /><StatCard Icon={Wallet} label={copy.wallet} value={formatMoney(12500)} helper={`↑ +${formatMoney(2000)}`} tone="blue" /><StatCard Icon={Heart} label={copy.wishlist} value={String(wishlist.count)} helper="View all →" tone="red" /></section>
+                <section className="relative isolate mb-5 min-h-[205px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-6 py-7 text-[#172810] sm:px-9 sm:py-9"><div className="relative z-10 max-w-[58%]"><h1 ref={headingRef} tabIndex={-1} className="text-3xl font-black leading-tight sm:text-4xl">{copy.welcome}</h1><p className="mt-3 text-sm text-[#355128]">{copy.welcomeSub}</p><button onClick={() => window.location.href = "/create"} className="mt-5 inline-flex items-center rounded-full bg-[#55a918] px-4 py-2.5 text-xs font-bold text-white">{copy.start} <ArrowRight size={15} className="ml-1.5" /></button></div><div className="absolute -right-8 -top-12 h-72 w-72 rounded-full bg-[#9bda45]/50" /><div className="absolute bottom-[-55px] right-[18%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block"><div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div></div><div className="absolute bottom-5 right-6 text-3xl font-black italic text-[#54a817]/80 sm:right-12">{t("account.createMark1")}<br />{t("account.createMark2")}</div></section>
+                <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard Icon={ShoppingBag} label={copy.totalOrders} value={String(orders.length)} helper={orders.length ? copy.recentOrders : copy.viewAllOrders} /><StatCard Icon={Star} label={copy.points} value={String(points.total)} helper={points.permanent ? (my ? `သိမ်းထား ${points.permanent} + နေ့စဉ် ${points.daily}` : `${points.permanent} kept + ${points.daily} daily`) : (my ? `နေ့စဉ် ${points.daily}` : `${points.daily} daily`)} tone="yellow" /><StatCard Icon={Wallet} label={copy.wallet} value={formatMoney(12500)} helper={`↑ +${formatMoney(2000)}`} tone="blue" /><StatCard Icon={Heart} label={copy.wishlist} value={String(wishlist.count)} helper={my ? "အားလုံး ကြည့်ရန် →" : "View all →"} tone="red" /></section>
                 <div className="grid gap-5 lg:grid-cols-[1.25fr_0.9fr]">
                   <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><ShoppingBag size={19} className="text-accent" /> {copy.recentOrders}</h2><button onClick={() => setActive("orders")} className="text-xs font-semibold text-accent">{copy.viewAllOrders} <ArrowRight size={13} className="ml-1 inline" /></button></div>{orders.length ? (
                     <div className="space-y-3">{orders.slice(0, 3).map((order) => <AccountOrderCard key={order.id} order={order} formatMoney={formatMoney} />)}</div>
                   ) : (
                     <div data-account-recent-orders-empty className="rounded-xl border border-dashed border-border p-5 text-center">
-                      <p className="text-xs text-text-muted">No orders on this device yet. Design something and check out — the order will land here.</p>
-                      <Link href="/products" className="mt-3 inline-flex rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">Browse products</Link>
+                      <p className="text-xs text-text-muted">{t("account.ordersEmpty")}</p>
+                      <Link href="/products" className="mt-3 inline-flex rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">{t("actions.browseProducts")}</Link>
                     </div>
                   )}</section>
-                  <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><Star size={19} className="text-accent" /> {copy.rewards}</h2><button onClick={() => setActive("points")} className="text-xs font-semibold text-accent">{copy.viewHistory} <ArrowRight size={13} className="ml-1 inline" /></button></div><div className="flex items-center gap-5"><div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-[10px] border-accent/25 border-l-accent border-t-accent"><div className="text-center"><p data-account-points-total className="text-2xl font-black">{points.total}</p><p className="text-[10px] text-text-muted">Points</p></div></div><div><p className="text-xs text-text-muted">{copy.nextReward}</p><p className="mt-1 text-lg font-black text-accent">{nextTierInfo ? `${nextTierInfo.tier.name} · ${formatMoney(nextTierInfo.remainingKs)} to go` : `${tier?.name ?? "Member"} · ${tier?.discountPercent ?? 0}% off`}</p><p className="mt-2 text-xs leading-relaxed text-text-secondary">{points.expiresAt ? `${points.daily} daily points lapse at ${formatOrderDate(points.expiresAt)}.` : copy.closer}</p></div></div><button onClick={() => setActive("points")} className="mt-5 w-full rounded-full bg-accent py-2.5 text-xs font-bold text-accent-foreground">{copy.explore} <ArrowRight size={14} className="ml-1 inline" /></button></section>
+                  <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><Star size={19} className="text-accent" /> {copy.rewards}</h2><button onClick={() => setActive("points")} className="text-xs font-semibold text-accent">{copy.viewHistory} <ArrowRight size={13} className="ml-1 inline" /></button></div><div className="flex items-center gap-5"><div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-[10px] border-accent/25 border-l-accent border-t-accent"><div className="text-center"><p data-account-points-total className="text-2xl font-black">{points.total}</p><p className="text-[10px] text-text-muted">{t("account.pointsLabel")}</p></div></div><div><p className="text-xs text-text-muted">{copy.nextReward}</p><p className="mt-1 text-lg font-black text-accent">{nextTierInfo ? (my ? `${nextTierInfo.tier.name} · ${formatMoney(nextTierInfo.remainingKs)} လိုသေးသည်` : `${nextTierInfo.tier.name} · ${formatMoney(nextTierInfo.remainingKs)} to go`) : (my ? `${tier?.name ?? "အဖွဲ့ဝင်"} · ${tier?.discountPercent ?? 0}% လျှော့` : `${tier?.name ?? "Member"} · ${tier?.discountPercent ?? 0}% off`)}</p><p className="mt-2 text-xs leading-relaxed text-text-secondary">{points.expiresAt ? (my ? `နေ့စဉ်အမှတ် ${points.daily} သည် ${formatOrderDate(points.expiresAt)} တွင် သက်တမ်းကုန်မည်။` : `${points.daily} daily points lapse at ${formatOrderDate(points.expiresAt)}.`) : copy.closer}</p></div></div><button onClick={() => setActive("points")} className="mt-5 w-full rounded-full bg-accent py-2.5 text-xs font-bold text-accent-foreground">{copy.explore} <ArrowRight size={14} className="ml-1 inline" /></button></section>
                 </div>
                 <div className="mt-5 grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-border bg-bg-surface p-5"><h2 className="text-lg font-black"><Settings size={18} className="mr-2 inline text-accent" />{copy.accountSettings}</h2><p className="mt-1 text-xs text-text-muted">{copy.manage}</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{[{ Icon: Pencil, label: copy.editProfile }, { Icon: ShieldCheck, label: copy.changePassword }, { Icon: Bell, label: copy.notificationSettings }, { Icon: ShieldCheck, label: copy.privacy }].map(({ Icon, label }) => <button key={label} onClick={() => setActive("settings")} className="flex items-center gap-2 rounded-xl border border-border px-3 py-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}</button>)}</div></section><section className="rounded-2xl border border-border bg-bg-surface p-5"><h2 className="text-lg font-black"><HelpCircle size={18} className="mr-2 inline text-accent" />{copy.needHelp}</h2><p className="mt-1 text-xs text-text-muted">{copy.support}</p><div className="mt-4 space-y-2">{[{ Icon: HelpCircle, label: copy.faqs }, { Icon: MapPin, label: copy.contact }, { Icon: Bell, label: copy.chat }].map(({ Icon, label }) => <button key={label} className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}<ChevronRight size={14} className="ml-auto text-text-muted" /></button>)}</div></section></div>
               </>
@@ -351,16 +353,16 @@ export default function AccountPage() {
                 <div className="mb-6 flex items-end justify-between border-b border-border pb-5"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent">{t("account.eyebrow")}</p><h1 ref={headingRef} tabIndex={-1} className="mt-2 text-2xl font-black">{sectionLabel(SECTIONS.find((section) => section.id === active) ?? SECTIONS[0])}</h1></div><button onClick={() => setActive("dashboard")} className="text-xs font-semibold text-accent">← {t("account.dashboard")}</button></div>
                 {active === "orders" && (orders.length ? (
                   <div data-account-orders>
-                    <p className="mb-3 text-xs text-text-muted">{orders.length} {orders.length === 1 ? "order" : "orders"} placed on this device.</p>
+                    <p className="mb-3 text-xs text-text-muted">{my ? `ဒီစက်မှာ အော်ဒါ ${orders.length} ခု မှာယူထားသည်။` : `${orders.length} ${orders.length === 1 ? "order" : "orders"} placed on this device.`}</p>
                     <div className="space-y-3">{orders.map((order) => <AccountOrderCard key={order.id} order={order} formatMoney={formatMoney} detailed />)}</div>
                   </div>
                 ) : (
                   <div data-account-orders-empty className="rounded-xl border border-border p-6 text-center">
-                    <p className="text-sm font-semibold">No orders yet</p>
-                    <p className="mx-auto mt-1 max-w-sm text-xs text-text-muted">An order you place on this device shows up here, with the print details and the stage the print desk has it at.</p>
+                    <p className="text-sm font-semibold">{t("account.ordersNone")}</p>
+                    <p className="mx-auto mt-1 max-w-sm text-xs text-text-muted">{t("account.ordersHelp")}</p>
                     <div className="mt-3 flex flex-wrap justify-center gap-2">
-                      <Link href="/products" className="rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">Browse products</Link>
-                      <Link href="/new" className="rounded-full border border-border px-4 py-2 text-[11px] font-bold">New arrivals</Link>
+                      <Link href="/products" className="rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">{t("actions.browseProducts")}</Link>
+                      <Link href="/new" className="rounded-full border border-border px-4 py-2 text-[11px] font-bold">{t("nav.newArrivals")}</Link>
                     </div>
                   </div>
                 ))}
@@ -370,8 +372,8 @@ export default function AccountPage() {
                   wishlist.count ? (
                     <div data-account-wishlist>
                       <div className="mb-3 flex items-center justify-between">
-                        <p className="text-xs text-text-muted">{wishlist.count} {wishlist.count === 1 ? "item" : "items"} saved on this device.</p>
-                        <Link href="/wishlist" className="text-xs font-bold text-accent">Open the wishlist</Link>
+                        <p className="text-xs text-text-muted">{my ? `ဒီစက်မှာ ${wishlist.count} ခု သိမ်းထားသည်။` : `${wishlist.count} ${wishlist.count === 1 ? "item" : "items"} saved on this device.`}</p>
+                        <Link href="/wishlist" className="text-xs font-bold text-accent">{t("account.openWishlist")}</Link>
                       </div>
                       <div className="grid gap-4 sm:grid-cols-4">
                         {wishlist.items.map((product) => (
@@ -395,9 +397,9 @@ export default function AccountPage() {
                     </div>
                   ) : (
                     <div data-account-wishlist-empty className="rounded-xl border border-border p-6 text-center">
-                      <p className="text-sm font-semibold">Nothing saved yet</p>
-                      <p className="mt-1 text-xs text-text-muted">Tap the heart on any product and it will wait for you here.</p>
-                      <Link href="/products" className="mt-3 inline-flex rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">Browse products</Link>
+                      <p className="text-sm font-semibold">{t("account.emptyWishlistTitle")}</p>
+                      <p className="mt-1 text-xs text-text-muted">{t("account.wishlistHelp")}</p>
+                      <Link href="/products" className="mt-3 inline-flex rounded-full bg-accent px-4 py-2 text-[11px] font-bold text-accent-foreground">{t("actions.browseProducts")}</Link>
                     </div>
                   )
                 )}
@@ -408,49 +410,49 @@ export default function AccountPage() {
                         <p className="text-xs text-text-muted">{copy.daily}</p>
                         <p className="mt-2 text-3xl font-black text-accent">{dailyPoints}</p>
                         <p className="mt-2 text-[10px] leading-relaxed text-text-muted">
-                          Granted once a day and unused daily points expire after {store.loyalty.rules.dailyExpiryHours} hours.
-                          {points.expiresAt ? ` You have ${points.daily} that lapse at ${formatOrderDate(points.expiresAt)}.` : ""}
+                          {my ? `တစ်ရက်လျှင် တစ်ကြိမ် ပေးအပ်သည်၊ မသုံးလိုက်သော နေ့စဉ်အမှတ်များ ${store.loyalty.rules.dailyExpiryHours} နာရီအကြာတွင် သက်တမ်းကုန်သည်။` : `Granted once a day and unused daily points expire after ${store.loyalty.rules.dailyExpiryHours} hours.`}
+                          {points.expiresAt ? (my ? ` သင့်တွင် ${points.daily} ရှိပြီး ${formatOrderDate(points.expiresAt)} တွင် သက်တမ်းကုန်မည်။` : ` You have ${points.daily} that lapse at ${formatOrderDate(points.expiresAt)}.`) : ""}
                         </p>
                       </div>
                       <div className="rounded-xl border border-border p-5">
                         <p className="text-xs text-text-muted">{copy.purchase}</p>
                         <p className="mt-2 text-3xl font-black">{points.permanent}</p>
-                        <p className="mt-2 text-[10px] leading-relaxed text-text-muted">Earned {purchasePoints} points per piece bought. These never expire.</p>
+                        <p className="mt-2 text-[10px] leading-relaxed text-text-muted">{my ? `ဝယ်ယူသော ပစ္စည်း တစ်ခုစီအတွက် ${purchasePoints} အမှတ် ရသည်။ သက်တမ်း မကုန်ပါ။` : `Earned ${purchasePoints} points per piece bought. These never expire.`}</p>
                       </div>
                     </div>
                     <div className="rounded-xl border border-border p-5">
-                      <p className="text-xs font-bold">Tier · {tier?.name ?? "Member"} · {tier?.discountPercent ?? 0}% off</p>
+                      <p className="text-xs font-bold">{my ? `အဆင့် · ${tier?.name ?? "အဖွဲ့ဝင်"} · ${tier?.discountPercent ?? 0}% လျှော့` : `Tier · ${tier?.name ?? "Member"} · ${tier?.discountPercent ?? 0}% off`}</p>
                       <p className="mt-1 text-[10px] text-text-muted">
-                        {formatMoney(spendKs)} kept with MH Fashion.
-                        {nextTierInfo ? ` ${nextTierInfo.tier.name} starts at ${formatMoney(nextTierInfo.tier.minSpendKs)}.` : " That is the top tier."}
+                        {my ? `MH Fashion နှင့် စုစုပေါင်း ${formatMoney(spendKs)} သုံးထားသည်။` : `${formatMoney(spendKs)} kept with MH Fashion.`}
+                        {nextTierInfo ? (my ? ` ${nextTierInfo.tier.name} သည် ${formatMoney(nextTierInfo.tier.minSpendKs)} မှ စတင်သည်။` : ` ${nextTierInfo.tier.name} starts at ${formatMoney(nextTierInfo.tier.minSpendKs)}.`) : (my ? " ဤအဆင့်သည် အမြင့်ဆုံးဖြစ်သည်။" : " That is the top tier.")}
                       </p>
                       {milestones.length ? (
                         <ul className="mt-3 space-y-1.5">
                           {milestones.map((entry) => (
                             <li key={entry.milestone.id} className="flex items-center justify-between gap-2 text-[11px]">
                               <span className={entry.reached ? "font-semibold text-accent" : "text-text-secondary"}>{entry.reached ? "✓ " : ""}{entry.milestone.label}</span>
-                              <span className="shrink-0 text-[10px] text-text-muted">{entry.reached ? "Reached" : `${entry.current.toLocaleString("en-US")} / ${entry.target.toLocaleString("en-US")}`}</span>
+                              <span className="shrink-0 text-[10px] text-text-muted">{entry.reached ? (my ? "ရောက်ပြီး" : "Reached") : `${entry.current.toLocaleString("en-US")} / ${entry.target.toLocaleString("en-US")}`}</span>
                             </li>
                           ))}
                         </ul>
                       ) : null}
                     </div>
                     <div className="rounded-xl border border-border p-5">
-                      <p className="text-xs font-bold">History</p>
+                      <p className="text-xs font-bold">{t("account.history")}</p>
                       {history.length ? (
                         <ul className="mt-2 divide-y divide-border text-[11px]">
                           {history.map((entry) => (
                             <li key={entry.id} className="flex items-center justify-between gap-2 py-1.5">
                               <span className="min-w-0 text-text-secondary">
-                                {entry.kind === "daily" ? "Daily points" : `Bought ${entry.orderId ?? "an order"}`}
+                                {entry.kind === "daily" ? (my ? "နေ့စဉ်အမှတ်" : "Daily points") : my ? `ဝယ်ယူသည် ${entry.orderId ?? "အော်ဒါ"}` : `Bought ${entry.orderId ?? "an order"}`}
                                 <span className="ml-1 text-text-muted">· {formatOrderDate(entry.at)}</span>
-                                {entry.expired ? <span className="ml-1 text-[10px] text-[#a33]">expired</span> : null}
+                                {entry.expired ? <span className="ml-1 text-[10px] text-[#a33]">{t("account.expired")}</span> : null}
                               </span>
                               <span className={`shrink-0 font-semibold ${entry.expired ? "text-text-muted line-through" : "text-accent"}`}>+{entry.points}</span>
                             </li>
                           ))}
                         </ul>
-                      ) : <p className="mt-1 text-[10px] text-text-muted">No points yet. The daily grant lands the first time you open this page, and each bought piece adds {purchasePoints}.</p>}
+                      ) : <p className="mt-1 text-[10px] text-text-muted">{my ? `အမှတ် မရှိသေးပါ။ ဒီစာမျက်နှာကို ပထမဆုံး ဖွင့်တဲ့အခါ နေ့စဉ်အမှတ် ရပါမည်၊ ဝယ်ယူတဲ့ ပစ္စည်း တစ်ခုစီက ${purchasePoints} ထပ်တိုးပါသည်။` : `No points yet. The daily grant lands the first time you open this page, and each bought piece adds ${purchasePoints}.`}</p>}
                     </div>
                   </div>
                 )}

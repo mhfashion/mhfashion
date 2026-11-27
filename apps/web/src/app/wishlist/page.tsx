@@ -6,9 +6,11 @@ import { Heart, ShoppingBag, Trash2 } from "lucide-react";
 import Header from "@/components/Header";
 import ProductCard from "@/components/ProductCard";
 import { useWishlist } from "@/lib/wishlist-context";
+import { useI18n } from "@/lib/i18n";
 
 export default function WishlistPage() {
   const { items, count, clear } = useWishlist();
+  const { t } = useI18n();
   const [notice, setNotice] = useState("");
   const previousItems = useRef(items);
   const clearing = useRef(false);
@@ -38,14 +40,14 @@ export default function WishlistPage() {
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-accent"><Heart size={13} /> Saved</p>
-              <h1 className="mt-2 text-2xl font-black sm:text-4xl">Wishlist</h1>
+              <h1 className="mt-2 text-2xl font-black sm:text-4xl">{t("wishlist.title")}</h1>
               <p data-wishlist-summary className="mt-1 text-xs text-text-muted sm:text-sm">
-                {count === 0 ? "Nothing saved yet." : `${count} ${count === 1 ? "item" : "items"} saved on this device.`}
+                {count === 0 ? t("account.emptyWishlist") : `${count} ${count === 1 ? "item" : "items"} saved on this device.`}
               </p>
             </div>
             {count > 0 ? (
               <button type="button" onClick={() => { clearing.current = true; clear(); }} data-wishlist-clear className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-[11px] font-bold hover:border-accent hover:text-accent">
-                <Trash2 size={13} /> Clear wishlist
+                <Trash2 size={13} /> {t("wishlist.clear")}
               </button>
             ) : null}
           </div>
@@ -61,14 +63,14 @@ export default function WishlistPage() {
           ) : (
             <div data-wishlist-empty className="rounded-2xl border border-border bg-bg-surface p-10 text-center">
               <Heart size={28} className="mx-auto text-text-muted" />
-              <h2 ref={emptyHeadingRef} tabIndex={-1} className="mt-3 text-base font-black">No saved designs yet</h2>
+              <h2 ref={emptyHeadingRef} tabIndex={-1} className="mt-3 text-base font-black">{t("wishlist.emptyTitle")}</h2>
               <p className="mx-auto mt-1 max-w-md text-xs text-text-muted">
-                Tap the heart on any product to keep it here. The list stays on this device — the price you see on the product page is always the current one.
+                {t("wishlist.emptyHelp")}
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
-                <Link href="/products" className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-[11px] font-bold text-accent-foreground"><ShoppingBag size={13} /> Browse products</Link>
-                <Link href="/new" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[11px] font-bold">New arrivals</Link>
-                <Link href="/popular" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[11px] font-bold">Popular</Link>
+                <Link href="/products" className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-[11px] font-bold text-accent-foreground"><ShoppingBag size={13} /> {t("actions.browseProducts")}</Link>
+                <Link href="/new" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[11px] font-bold">{t("nav.newArrivals")}</Link>
+                <Link href="/popular" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-[11px] font-bold">{t("nav.popular")}</Link>
               </div>
             </div>
           )}

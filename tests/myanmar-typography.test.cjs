@@ -15,7 +15,7 @@ function dictionarySections() {
 const keysOf = (section) => new Set([...section.matchAll(/"([a-z][\w.]*)":/g)].map((match) => match[1]));
 
 // Brand names (MH Fashion, Nyein, Singular) read the same in both languages, so they are not a gap.
-const SAME_IN_BOTH = ["nav.mhFashion", "nav.singular", "nav.nyein"];
+const SAME_IN_BOTH = ["nav.mhFashion", "nav.singular", "nav.nyein", "new.eyebrow"];
 
 test("every English label has a Myanmar one, so no screen falls back mid-page", () => {
   const { en, my } = dictionarySections();

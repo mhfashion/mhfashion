@@ -4626,3 +4626,28 @@ Chromium at 1440x900 and 390x844 in Myanmar mode, a scan for leftover English ch
 `/`, `/cart` and the guide landing page (only guide article titles remain); `overflowX` is 0 at 390 px; no
 console errors. `tests/admin-ads.test.cjs` now asserts the hero copy comes from `home.heroTitle1` in the
 dictionary rather than from a literal in the page.
+
+### 18.4 The second sweep: account, wishlist, landing pages, error screens
+The first sweep covered the pages a visitor lands on; the second covered the pages behind them.
+
+| Screen | What moved |
+|---|---|
+| `/account` | order/wishlist empty states, the refund dialog (reason, detail, policy link, send, cancel, "we answer within one working day"), the loyalty card sentences, the four dashboard tiles, the points ledger rows, "History", "expired" |
+| `/wishlist` | heading, clear button, empty state, "Browse products", both shortcut buttons |
+| `/products`, `/checkout` | eyebrow, title, lead, empty-catalogue note |
+| `/popular`, `/new`, `/collections` | the whole hero (eyebrow, two-line title, lead, CTA, the rotated mark), list headings, badge, empty note; the six collection tiles now carry `collections.item.*` keys |
+| `/offline`, `error.tsx`, `guide/error.tsx` | every sentence |
+
+Two implementation notes:
+
+- The account page keeps a page-local `COPY = { en, my }` for its dashboard wording. The newer blocks
+  (orders, refunds, points) had been written straight into JSX after that object existed, so they are
+  translated with a `const my = locale === "my"` switch at each sentence — the sentences interpolate counts,
+  money and dates, which a flat dictionary cannot express. `AccountOrderCard` had no `t` in scope; it now
+  calls `useI18n()` itself.
+- `global-error.tsx` stays English on purpose: it replaces the root layout, so `LocaleProvider` is not
+  mounted and `useI18n()` throws. A screen that only appears when the app has already failed must not throw
+  again.
+
+Still English by design: tier names (`Silver`, `Gold`), the demo wallet/handle values, guide articles, and
+`formatOrderDate`'s `28 Nov 2026` month names. Those are data or a date formatter, not chrome.
