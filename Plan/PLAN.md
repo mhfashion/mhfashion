@@ -4589,3 +4589,40 @@ brand 75-210, search from x=275, brand before search), the sidebar sits at y=64 
 there through a 400 px scroll, and its width goes 0 → 224 → 0. At 390x844 the drawer opens below the header
 (`0,64,224x780`) with the header still on screen. Escape closes and returns focus to the ☰; picking a row
 navigates and leaves the panel closed. `/admin/jersey` answers **404**.
+
+## 18. The storefront speaks Myanmar — all of it, not just the dictionary
+
+The dictionary was complete after §17, yet the home page still read English end to end: the hero, the
+two product strips, both promo cards, the category heading, the cart header, the guide banner, the phone
+drawer and the `NEW` badge on every card each carried their own copy in JSX. Those are the pages a visitor
+lands on, so the half-translated dictionary never showed.
+
+### 18.1 What moved into the dictionary
+| Area | Keys |
+|---|---|
+| Home hero | `home.heroTitle1/2`, `home.heroSub`, `home.heroCta`, `home.heroMark1/2` |
+| Home strips | `home.popular`, `home.newArrivals`, `home.viewAll`, `home.emptyStrip` |
+| Home promo cards | `home.promoTitle/Sub/Cta`, `home.rewards`, `home.rewardsTitle1/2`, `home.rewardsSub`, `home.rewardsCta` |
+| Category row | `home.categoryHeading`, `home.categoryViewAll`, `category.<slug>` for the five default chips |
+| Cart | `cart.subtitle` (the title already had `cart.title`) |
+| Guide chrome | `guide.heroTag`, `guide.lead`, `guide.earnTitle1/2`, `guide.earnSub`, `guide.joinNow`, `guide.learnCreate1/2`, `guide.browseAll`, `guide.noGuidesMatch`, `guide.allGuides` |
+| Phone drawer | `nav.tShirts`, `nav.cups`, `nav.phoneCovers`, `nav.bags`, `nav.hoodies`, `nav.language` (the rest reuse `nav.*`) |
+| Product card | the `NEW` badge reads `nav.new` |
+
+`MobileNav`'s four link arrays now carry `labelKey` instead of a label and `LinkRow` translates them, so a
+drawer row cannot be English while the dictionary holds the same word. `CategoryRow` became a client
+component and looks up `category.<slug>`, falling back to the catalogue name for a category the dictionary
+does not know (the owner can add chips from the admin without waiting for a translation).
+
+### 18.2 What is still English on purpose
+Guide **articles** — titles, excerpts, bodies and category names — come from the `guide_posts` /
+`guide_categories` rows seeded by `lib/guide-starter.ts`. That is editorial content, not chrome: the owner
+writes the Myanmar version of a post the same way they write the English one. The chrome around it (banner,
+lead, buttons, empty state, category shortcuts) is translated.
+
+### 18.3 Checks
+`tsc --noEmit` clean; `eslint` 0 errors; `node --test tests/*.test.cjs` **923 passing, 0 failing**. In
+Chromium at 1440x900 and 390x844 in Myanmar mode, a scan for leftover English chrome returns nothing on
+`/`, `/cart` and the guide landing page (only guide article titles remain); `overflowX` is 0 at 390 px; no
+console errors. `tests/admin-ads.test.cjs` now asserts the hero copy comes from `home.heroTitle1` in the
+dictionary rather than from a literal in the page.

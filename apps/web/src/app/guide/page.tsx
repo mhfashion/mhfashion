@@ -18,6 +18,7 @@ import Header from "@/components/Header";
 import GuideBanner from "@/components/guide/GuideBanner";
 import GuideLabel from "@/components/guide/GuideLabel";
 import GuidePostGrid from "@/components/guide/GuidePostGrid";
+import T from "@/components/T";
 import { filterGuidePosts, getGuideCatalog, type GuideCategory } from "@/lib/guides";
 import { guideMetadata } from "@/lib/guide-metadata";
 
@@ -106,7 +107,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
             <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#69b917] via-[#4a9d0f] to-[#25720b] p-5 text-white shadow-sm">
               <BookOpen size={34} strokeWidth={2.5} aria-hidden="true" />
               <h2 className="mt-5 text-2xl font-black leading-none">MH Fashion<br />Guide</h2>
-              <p className="mt-3 text-xs leading-relaxed text-white/85">Everything you need to know</p>
+              <p className="mt-3 text-xs leading-relaxed text-white/85"><T k="guide.heroTag" /></p>
               <div className="mt-5 h-1 w-12 rounded-full bg-white/80" />
             </div>
             <nav aria-label="Guide categories" className="rounded-2xl border border-border bg-bg-surface p-2">
@@ -130,9 +131,9 @@ export default async function GuidePage({ searchParams }: PageProps) {
             </nav>
             <div className="overflow-hidden rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]">
               <Sparkles size={25} className="mx-auto text-[#6eae18]" aria-hidden="true" />
-              <h3 className="mt-3 text-base font-black">Earn Points<br />with Every Order!</h3>
-              <p className="mt-2 text-[10px]">Shop · Learn · Earn</p>
-              <Link href="/account" className="mt-4 inline-flex rounded-full bg-[#54a817] px-4 py-2 text-[10px] font-bold text-white">Join Now <ArrowRight size={13} className="ml-1" /></Link>
+              <h3 className="mt-3 text-base font-black"><T k="guide.earnTitle1" /><br /><T k="guide.earnTitle2" /></h3>
+              <p className="mt-2 text-[10px]"><T k="guide.earnSub" /></p>
+              <Link href="/account" className="mt-4 inline-flex rounded-full bg-[#54a817] px-4 py-2 text-[10px] font-bold text-white"><T k="guide.joinNow" /> <ArrowRight size={13} className="ml-1" /></Link>
             </div>
           </aside>
 
@@ -140,11 +141,11 @@ export default async function GuidePage({ searchParams }: PageProps) {
             <div className="mb-4">
               <GuideBanner
                 eyebrow="MH Fashion Guide"
-                title={<>Learn. Create.<br /><em className="text-[#54a817]">Enjoy!</em></>}
-                lead="Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience."
+                title={<><T k="guide.learnCreate1" /><br /><em className="text-[#54a817]"><T k="guide.learnCreate2" /></em></>}
+                lead={<T k="guide.lead" />}
                 action={
                   <Link href="#articles" className="inline-flex items-center rounded-full bg-[#55a918] px-2.5 py-1 text-[9px] font-bold text-white shadow-sm sm:px-3.5 sm:py-1.5 sm:text-[11px]">
-                    Browse All Guides <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" />
+                    <T k="guide.browseAll" /> <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" />
                   </Link>
                 }
               />
@@ -155,7 +156,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
             <div className="mb-4 -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:hidden">
               <Link href={guideUrl("", query)} className={`group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><BookOpen size={13} /></span>
-                <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs">All Guides</span>
+                <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs"><T k="guide.allGuides" /></span>
               </Link>
               <Link href={otherGuideHref} data-guide-editor className="group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface p-1.5 hover:border-accent/60 sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><Pencil size={13} /></span>
@@ -189,7 +190,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
                   />
                 </>
               ) : (
-                <div className="rounded-2xl border border-border bg-bg-surface px-6 py-12 text-center"><Search size={26} className="mx-auto mb-4 text-text-muted" /><h3 className="text-lg font-bold">No guides match your search.</h3></div>
+                <div className="rounded-2xl border border-border bg-bg-surface px-6 py-12 text-center"><Search size={26} className="mx-auto mb-4 text-text-muted" /><h3 className="text-lg font-bold"><T k="guide.noGuidesMatch" /></h3></div>
               )}
             </section>
           </div>

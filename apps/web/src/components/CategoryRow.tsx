@@ -1,5 +1,9 @@
+"use client";
+
 import { Shirt, ShoppingBag, Coffee, Smartphone, Star } from "lucide-react";
 import type { Category } from "@/lib/types";
+import T from "@/components/T";
+import { useI18n } from "@/lib/i18n";
 
 const ICONS: Record<string, React.ElementType> = {
   shirt: Shirt,
@@ -23,6 +27,9 @@ const DEFAULT_CATEGORIES: Category[] = [
 const REPEAT = 5;
 
 function CategoryItem({ cat }: { cat: Category }) {
+  const { t } = useI18n();
+  const key = `category.${cat.slug}`;
+  const translated = t(key);
   const Icon = ICONS[cat.icon] ?? ICONS.default;
   return (
     <a
@@ -32,7 +39,7 @@ function CategoryItem({ cat }: { cat: Category }) {
       <div className="w-11 h-11 rounded-full bg-bg-surface flex items-center justify-center">
         <Icon size={18} />
       </div>
-      <span className="text-[10px] whitespace-nowrap">{cat.name}</span>
+      <span className="text-[10px] whitespace-nowrap">{translated === key ? cat.name : translated}</span>
     </a>
   );
 }
@@ -45,9 +52,9 @@ export default function CategoryRow({
   return (
     <section className="px-6 md:px-8 py-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-bold">SHOP BY CATEGORY</h2>
+        <h2 className="text-sm font-bold"><T k="home.categoryHeading" /></h2>
         <a href="/categories" className="text-xs text-accent">
-          View all →
+          <T k="home.categoryViewAll" /> →
         </a>
       </div>
 

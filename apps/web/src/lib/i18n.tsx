@@ -20,6 +20,24 @@ const en: Dictionary = {
   "editor.pageTitle": "Design your own print", "editor.customDesign": "Custom Design", "editor.undo": "Undo", "editor.redo": "Redo", "editor.save": "Save", "editor.addToCart": "Add to cart", "editor.buyNow": "Buy now", "editor.attachFirst": "Attach the mockup first", "editor.stroke": "Stroke", "editor.width": "Width 2px", "editor.front": "Front", "editor.back": "Back", "editor.selected": "selected", "editor.mockup": "Mockup", "editor.attach": "Attach to mockup", "editor.attached": "Mockup attached ✓", "editor.unlock": "Attach the design to the mockup to unlock Add to cart / Buy now",
   "guide.blog": "MH Fashion blog posts", "guide.blogPosts": "Blog posts", "guide.search": "Search posts", "guide.searchPlaceholder": "Search products, payments, design…", "guide.featured": "Featured post", "guide.read": "Read post", "guide.latest": "Latest posts", "guide.all": "All posts", "guide.post": "post", "guide.posts": "posts", "guide.clear": "Clear filters", "guide.unavailable": "Posts are temporarily unavailable.", "guide.unavailableHelp": "We could not load the posts. Please try again in a moment.", "guide.tryAgain": "Try again", "guide.noMatch": "No posts match your search.", "guide.newPosts": "New posts are on the way.", "guide.browse": "Browse all posts", "guide.starter": "Starter posts · Guides written from the shop as it works today. Where a feature is still being built, the article says so.", "guide.idea": "Your idea. Your next piece.", "guide.explore": "Explore the design workspace and see how it comes together.", "guide.editor": "Explore the editor", "guide.home": "Home", "guide.article": "Article", "guide.handbook": "MH Fashion handbook", "guide.starterGuide": "MH Fashion Guide · Where a feature is still being built, this article says so.", "guide.allGuides": "All guides", "guide.moreIn": "More in", "guide.onPage": "On this page", "guide.keepExploring": "Keep exploring",
   "search.title": "Search", "search.kicker": "Shop", "search.inputLabel": "Search products, guides and designs", "search.placeholder": "Search a product, a guide or a design", "search.submit": "Search", "search.clear": "Clear search", "search.resultCount": "{count} results for “{term}”", "search.resultCountOne": "1 result for “{term}”", "search.approximate": "No exact product matched “{term}”, so these are the closest ones.", "search.matched": "Matched on the name, the line, the type, the tags and the guide text.", "search.browseAll": "Browse all products", "search.tablist": "Result groups", "search.tab.products": "Products", "search.tab.guides": "Guides", "search.tab.designs": "Designs", "search.group.product": "product", "search.group.guide": "guide", "search.group.design": "design", "search.groupEmpty": "No {group} matched “{term}”", "search.groupEmptyHelp": "Another group may have an answer — try the other tabs.", "search.openEditor": "Open the editor", "search.emptyTitle": "Nothing matched “{term}”", "search.emptyHelp": "Try a shorter word, a colour, or one of these:", "search.popular": "Popular right now", "search.idleTitle": "What are you looking for?", "search.idleShort": "Type at least two characters", "search.idleHelp": "Search the catalog by product name, by line (MH Sport, Nyein), by product type, or the guides.",
+  "home.heroTitle1": "Design Your", "home.heroTitle2": "Own Style!", "home.heroSub": "Wear what defines you — custom prints made your way.", "home.heroCta": "Start Designing",
+  "home.heroMark1": "Be Creative", "home.heroMark2": "Be Unique",
+  "home.popular": "Popular Products", "home.newArrivals": "New Arrivals", "home.viewAll": "View All",
+  "home.promoTitle": "Premium Cotton T-Shirts", "home.promoSub": "Soft · Breathable · Durable", "home.promoCta": "Shop Now",
+  "home.rewards": "Rewards", "home.rewardsTitle1": "Get Rewards", "home.rewardsTitle2": "with MH Points!", "home.rewardsSub": "Shop more, earn more.", "home.rewardsCta": "Learn More",
+  "home.categoryHeading": "SHOP BY CATEGORY", "home.categoryViewAll": "View all",
+  "home.emptyStrip": "Products will appear here soon.",
+  "cart.subtitle": "Review your selected designs before checkout.",
+
+  "guide.heroTag": "Everything you need to know", "guide.earnTitle1": "Earn Points", "guide.earnTitle2": "with Every Order!", "guide.earnSub": "Shop · Learn · Earn", "guide.joinNow": "Join Now",
+  "guide.learnCreate1": "Learn. Create.", "guide.learnCreate2": "Enjoy!", "guide.browseAll": "Browse All Guides", "guide.noGuidesMatch": "No guides match your search.",
+
+  "nav.tShirts": "T-Shirts", "nav.cups": "Cups", "nav.phoneCovers": "Phone Covers", "nav.bags": "Bags", "nav.hoodies": "Hoodies", "nav.language": "Language",
+
+  "category.t-shirts": "T-Shirts", "category.kids-t-shirts": "Kids T-Shirts", "category.phone-covers": "Phone Covers", "category.bags": "Bags", "category.cups": "Cups",
+
+  "guide.lead": "Explore our helpful guides, tutorials and tips to make the most of your MH Fashion experience.",
+
 };
 
 const my: Dictionary = {
@@ -60,6 +78,19 @@ const my: Dictionary = {
   "guide.explore": "ဒီဇိုင်း အလုပ်ခန်းကို လေ့လာပြီး ဘယ်လို ပေါင်းစပ်သွားတယ်ဆိုတာ ကြည့်ပါ။",
   "guide.handbook": "MH Fashion လက်စွဲ",
   "guide.starterGuide": "MH Fashion လမ်းညွှန် · လုပ်ဆောင်နေဆဲ feature ဆိုရင် ဒီဆောင်းပါးမှာ ဖော်ပြထားပါတယ်။",
+  "home.heroTitle1": "ကိုယ်ပိုင်", "home.heroTitle2": "စတိုင် ဖန်တီးပါ!", "home.heroSub": "သင့်ကို ဖော်ပြတဲ့ အဝတ်အစား ဝတ်ပါ — သင်လိုချင်တဲ့အတိုင်း ပရင့် ထုတ်ပေးပါတယ်။", "home.heroCta": "ဒီဇိုင်း စတင်ရန်",
+  "home.heroMark1": "ဖန်တီးပါ", "home.heroMark2": "ထူးခြားပါ",
+  "home.popular": "လူကြိုက်များ ထုတ်ကုန်များ", "home.newArrivals": "အသစ်ရောက်လာမှုများ", "home.viewAll": "အားလုံး ကြည့်ရန်",
+  "home.promoTitle": "ပရီမီယံ ချည်သား တီရှပ်များ", "home.promoSub": "နူးညံ့ · လေဝင်လေထွက်ကောင်း · ကြာရှည်ခံ", "home.promoCta": "ယခု ဝယ်ပါ",
+  "home.rewards": "ဆုလာဘ်များ", "home.rewardsTitle1": "ဆုလာဘ် ရယူပါ", "home.rewardsTitle2": "MH Point နဲ့!", "home.rewardsSub": "ပိုဝယ်လေ ပိုရလေ။", "home.rewardsCta": "ပိုမို လေ့လာရန်",
+  "home.categoryHeading": "အမျိုးအစားအလိုက် ဝယ်ယူရန်", "home.categoryViewAll": "အားလုံး ကြည့်ရန်",
+  "home.emptyStrip": "ထုတ်ကုန်များ မကြာမီ ဒီနေရာမှာ ပေါ်လာပါမည်။",
+  "cart.subtitle": "မဝယ်မီ သင်ရွေးထားတဲ့ ဒီဇိုင်းများကို ပြန်စစ်ပါ။",
+  "guide.heroTag": "သိသင့်သမျှ အားလုံး", "guide.earnTitle1": "Point ရယူပါ", "guide.earnTitle2": "အော်ဒါတိုင်းနဲ့!", "guide.earnSub": "ဝယ် · လေ့လာ · ရယူ", "guide.joinNow": "ယခု ပါဝင်ပါ",
+  "guide.learnCreate1": "လေ့လာပါ။ ဖန်တီးပါ။", "guide.learnCreate2": "ခံစားပါ!", "guide.browseAll": "လမ်းညွှန် အားလုံး ကြည့်ရန်", "guide.noGuidesMatch": "သင့်ရှာဖွေမှုနဲ့ ကိုက်ညီတဲ့ လမ်းညွှန် မရှိပါ။",
+  "nav.tShirts": "တီရှပ်များ", "nav.cups": "ခွက်များ", "nav.phoneCovers": "ဖုန်းအိတ်များ", "nav.bags": "အိတ်များ", "nav.hoodies": "ဟူဒီများ", "nav.language": "ဘာသာစကား",
+  "category.t-shirts": "တီရှပ်များ", "category.kids-t-shirts": "ကလေး တီရှပ်များ", "category.phone-covers": "ဖုန်းအိတ်များ", "category.bags": "အိတ်များ", "category.cups": "ခွက်များ",
+  "guide.lead": "MH Fashion ကို အကောင်းဆုံး အသုံးချနိုင်ဖို့ အထောက်အကူဖြစ်တဲ့ လမ်းညွှန်၊ သင်ခန်းစာနဲ့ အကြံပြုချက်များ။",
 };
 
 const dictionaries: Record<Locale, Dictionary> = { en, my };

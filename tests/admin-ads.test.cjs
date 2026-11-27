@@ -283,7 +283,8 @@ test("the home page renders the live hero ad and falls back to the green hero", 
   const home = readFileSync(path.join(__dirname, "..", "apps/web/src/app/page.tsx"), "utf8");
   assert.match(home, /<AdSlotBanner slot="home-hero" variant="hero">/);
   assert.match(home, /<AdSlotBanner slot="home-strip" \/>/);
-  assert.match(home, /Design Your/);
+  assert.match(home, /<T k="home\.heroTitle1" \/>/);
+  assert.match(readFileSync(path.join(__dirname, "..", "apps/web/src/lib/i18n.tsx"), "utf8"), /"home\.heroTitle1": "Design Your"/);
 
   const banner = readFileSync(path.join(__dirname, "..", "apps/web/src/components/AdSlotBanner.tsx"), "utf8");
   for (const marker of ["data-ad-image", "data-ad-video", "autoPlay", "muted", "loop", "playsInline", "data-ad-slot-banner={slot}", "children ?? null", 'ad.fit === "contain" ? "block h-auto w-full" : "h-full w-full object-cover"']) {

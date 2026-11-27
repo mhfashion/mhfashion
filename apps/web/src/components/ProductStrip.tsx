@@ -1,5 +1,6 @@
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/lib/types";
+import T from "@/components/T";
 
 const BADGES = ["BEST SELLER", "TRENDING", "POPULAR"];
 
@@ -16,7 +17,7 @@ export default function ProductStrip({
   href?: string;
 }) {
   if (!products.length) {
-    return <div className="rounded-xl border border-border bg-bg-surface px-5 py-10 text-center text-xs text-text-muted">Products will appear here soon.</div>;
+    return <div className="rounded-xl border border-border bg-bg-surface px-5 py-10 text-center text-xs text-text-muted"><T k="home.emptyStrip" /></div>;
   }
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">

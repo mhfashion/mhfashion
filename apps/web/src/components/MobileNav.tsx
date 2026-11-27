@@ -17,34 +17,34 @@ import NotificationBell from "./NotificationBell";
 import { CurrencyIcon, FlagIcon, LANGUAGE_LABEL } from "./SwitcherIcons";
 
 const NAV_LINKS = [
-  { label: "New", href: "/new" },
-  { label: "MH Fashion", href: "/mh-fashion" },
-  { label: "Nyein", href: "/nyein" },
-  { label: "Guide", href: "/guide" },
+  { labelKey: "nav.new", href: "/new" },
+  { labelKey: "nav.mhFashion", href: "/mh-fashion" },
+  { labelKey: "nav.nyein", href: "/nyein" },
+  { labelKey: "nav.guide", href: "/guide" },
 ];
 
 const COLLECTION_LINKS = [
-  { label: "T-Shirt", href: "/collections?category=t-shirts" },
-  { label: "Cup", href: "/collections?category=cups" },
-  { label: "Kids", href: "/collections?category=kids" },
-  { label: "Phone Covers", href: "/collections?category=phone-covers" },
-  { label: "Bags", href: "/collections?category=bags" },
-  { label: "Hoodies", href: "/collections?category=hoodies" },
+  { labelKey: "nav.tShirts", href: "/collections?category=t-shirts" },
+  { labelKey: "nav.cups", href: "/collections?category=cups" },
+  { labelKey: "nav.kids", href: "/collections?category=kids" },
+  { labelKey: "nav.phoneCovers", href: "/collections?category=phone-covers" },
+  { labelKey: "nav.bags", href: "/collections?category=bags" },
+  { labelKey: "nav.hoodies", href: "/collections?category=hoodies" },
 ];
 
 const HELP_LINKS = [
-  { label: "FAQ", href: "/faq" },
-  { label: "Contact Form", href: "/contact" },
-  { label: "Shipping Info", href: "/shipping" },
-  { label: "Returns & Exchanges", href: "/returns" },
-  { label: "Size Guide", href: "/size-guide" },
+  { labelKey: "nav.faq", href: "/faq" },
+  { labelKey: "nav.contact", href: "/contact" },
+  { labelKey: "nav.shipping", href: "/shipping" },
+  { labelKey: "nav.returns", href: "/returns" },
+  { labelKey: "nav.sizeGuide", href: "/size-guide" },
 ];
 
 const LEGAL_LINKS = [
-  { label: "About Us", href: "/about" },
-  { label: "Terms of Use", href: "/terms" },
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Cookie Policy", href: "/cookie-policy" },
+  { labelKey: "nav.about", href: "/about" },
+  { labelKey: "nav.terms", href: "/terms" },
+  { labelKey: "nav.privacy", href: "/privacy" },
+  { labelKey: "nav.cookies", href: "/cookie-policy" },
 ];
 
 function GroupHeading({ children }: { children: React.ReactNode }) {
@@ -56,21 +56,22 @@ function GroupHeading({ children }: { children: React.ReactNode }) {
 }
 
 function LinkRow({
-  label,
+  labelKey,
   href,
   onClick,
 }: {
-  label: string;
+  labelKey: string;
   href: string;
   onClick: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <a
       href={href}
       onClick={onClick}
       className="block px-4 py-2 text-sm border-b border-border/40 last:border-0"
     >
-      {label}
+      {t(labelKey)}
     </a>
   );
 }
@@ -198,7 +199,7 @@ export default function MobileNav() {
           ))}
 
           <div className="flex items-center justify-between border-b border-border/40 px-4 py-2.5 text-xs">
-            <span className="text-text-muted">Language</span>
+            <span className="text-text-muted">{t("nav.language")}</span>
             <div className="flex items-center gap-1.5" data-header-language={locale}>
               {(["en", "my"] as const).map((code) => (
                 <button
@@ -215,7 +216,7 @@ export default function MobileNav() {
             </div>
           </div>
 
-          <GroupHeading>Collections</GroupHeading>
+          <GroupHeading>{t("nav.collectionsPlural")}</GroupHeading>
           {COLLECTION_LINKS.map((link) => (
             <LinkRow key={link.href} {...link} onClick={close} />
           ))}

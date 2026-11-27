@@ -24,7 +24,7 @@ export default function ProductCard({ product, boxed = false, href }: { product:
         )}
 
         {product.isNew && (
-          <span className="absolute left-1.5 top-1.5 rounded bg-accent px-1 py-0.5 text-[6px] font-bold text-accent-foreground sm:text-[7px]">NEW</span>
+          <span className="absolute left-1.5 top-1.5 rounded bg-accent px-1 py-0.5 text-[6px] font-bold text-accent-foreground sm:text-[7px]">{t("nav.new")}</span>
         )}
 
         <button

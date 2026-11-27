@@ -1752,3 +1752,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   props are meant to stay English.
 - Screenshots in this container need `fonts-noto-core` installed (it is not there by default), or every Burmese
   glyph is tofu and you cannot judge the layout.
+
+## Storefront copy must come from the dictionary
+- A complete dictionary does not mean a translated site: `app/page.tsx` (hero, both strips, both promo cards), the cart header, the guide banner, the phone drawer, the `NEW` badge and the category chips each held their own English copy while `home.*` / `nav.*` keys existed or were easy to add. All of it reads `T`/`t()` now.
+- `MobileNav`'s link arrays carry `labelKey`, not `label`; `LinkRow` translates. Do not put English strings back into those arrays.
+- `CategoryRow` is a client component that looks up `category.<slug>` and falls back to the catalogue name for unknown slugs, so admin-added chips keep working untranslated.
+- Guide **articles** (titles, excerpts, bodies, category names) are `guide_posts` / `guide_categories` rows from `lib/guide-starter.ts` — editorial content, still English by design. The chrome around them is translated.
+- `tests/admin-ads.test.cjs` asserts the hero copy is `home.heroTitle1` in the dictionary; keep the assertion in sync when that markup changes.

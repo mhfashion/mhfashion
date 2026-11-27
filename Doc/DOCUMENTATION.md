@@ -2432,3 +2432,23 @@ carried its own Myanmar array with `Popular` and `Cart` left in English, and now
 so the two menus cannot drift apart again.
 A grep for each long dictionary value inside `src/**/*.tsx` finds the remaining cases; today the only matches
 are the guide's pre-hydration `fallback=` props, which are meant to be English.
+
+## Storefront copy lives in the dictionary
+
+Translating the dictionary is not the same as translating the site. After the labels were finished the home
+page still read "Design Your Own Style!", "Popular Products", "Shop Now" and "Get Rewards with MH Points!"
+because those strings were typed straight into `app/page.tsx`. Every one of them now reads a `home.*` key,
+and the same sweep covered the cart header (`cart.subtitle`), the guide banner (`guide.lead`, `guide.heroTag`,
+the rewards card and the empty state), the phone drawer (`nav.*`, including the collection rows that had no
+key at all) and the `NEW` badge on product cards (`nav.new`).
+
+Two structures made this drift possible and are now closed:
+
+- `MobileNav` held four arrays of `{ label, href }` in English. They carry `labelKey` now and `LinkRow`
+  translates, so a drawer row cannot stay English while the dictionary has the word.
+- `CategoryRow` printed `cat.name` from the catalogue. It is a client component now and reads
+  `category.<slug>`, falling back to the catalogue name for a chip the dictionary does not know — an admin
+  can add a category without waiting for a translation, and the built-in five are already translated.
+
+Guide **articles** stay English: their titles, excerpts and bodies are rows in `guide_posts`, seeded from
+`lib/guide-starter.ts`. That is content the owner writes, not chrome, and the chrome around it is translated.

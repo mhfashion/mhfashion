@@ -13,7 +13,7 @@ export default function GuideBanner({
 }: {
   eyebrow: string;
   title: ReactNode;
-  lead?: string;
+  lead?: ReactNode;
   meta?: ReactNode;
   action?: ReactNode;
 }) {
