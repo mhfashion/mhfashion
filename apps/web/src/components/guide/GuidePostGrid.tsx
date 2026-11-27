@@ -41,7 +41,7 @@ export default function GuidePostGrid({
             type="button"
             data-guide-see-more
             onClick={() => setVisible((count) => count + GUIDE_GRID_PAGE_SIZE)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-full bg-accent px-6 py-2 text-xs font-bold text-accent-foreground shadow-sm outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:min-h-11"
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-6 text-xs font-bold text-accent-foreground shadow-sm outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent [@media(pointer:coarse)]:min-h-11"
           >
             See more
             <span className="rounded-full bg-black/15 px-2 py-0.5 text-[10px] font-semibold">{remaining}</span>

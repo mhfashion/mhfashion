@@ -100,7 +100,7 @@ export default async function GuideArticlePage({ params }: PageProps) {
               <div className="my-2 border-t border-border" />
               <Link href="/faq" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> <T k="nav.faq" /></Link>
             </nav>
-            <div className="rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]"><Sparkles size={24} className="mx-auto text-[#6eae18]" /><p className="mt-3 text-sm font-black"><T k="guide.keepLearning" /><br /><T k="guide.keepCreating" /></p><Link href="/create" className="mt-4 inline-flex rounded-full bg-[#54a817] px-4 py-2 text-[10px] font-bold text-white"><T k="guide.createDesign" /> <ArrowRight size={13} className="ml-1" /></Link></div>
+            <div className="rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]"><Sparkles size={24} className="mx-auto text-[#6eae18]" /><p className="mt-3 text-sm font-black"><T k="guide.keepLearning" /><br /><T k="guide.keepCreating" /></p><Link href="/create" className="mt-4 inline-flex h-8 items-center rounded-full bg-[#54a817] px-4 text-[10px] font-bold text-white"><T k="guide.createDesign" /> <ArrowRight size={13} className="ml-1" /></Link></div>
           </aside>
 
           <div className="min-w-0">

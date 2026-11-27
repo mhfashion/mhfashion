@@ -60,7 +60,7 @@ function CategoryShortcut({
   return (
     <Link
       href={guideUrl(category.slug, query)}
-      className={`group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4 ${selected ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}
+      className={`group flex h-[68px] w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:p-4 ${selected ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}
       aria-current={selected ? "page" : undefined}
     >
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground sm:h-10 sm:w-10 sm:rounded-xl">
@@ -116,24 +116,24 @@ export default async function GuidePage({ searchParams }: PageProps) {
                 <GuideLabel id="guide.allGuides" fallback="All Guides" />
               </Link>
               {catalog.categories.map((category) => (
-                <Link key={category.id} href={guideUrl(category.slug, query)} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold ${selectedCategory === category.slug ? "bg-accent/10 text-accent" : "hover:bg-bg"}`}>
+                <Link key={category.id} href={guideUrl(category.slug, query)} className={`flex h-[52px] items-center gap-3 rounded-xl px-3 text-xs font-semibold ${selectedCategory === category.slug ? "bg-accent/10 text-accent" : "hover:bg-bg"}`}>
                   <span className="flex h-7 w-7 items-center justify-center text-text-secondary"><CategoryIcon slug={category.slug} size={16} /></span>
-                  {category.name}
+                  <span className="min-w-0 truncate">{category.name}</span>
                 </Link>
               ))}
-              <Link href={otherGuideHref} data-guide-editor className={`flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold ${otherGuide && selectedCategory === otherGuide.slug ? "bg-accent/10 text-accent" : "hover:bg-bg"}`}>
+              <Link href={otherGuideHref} data-guide-editor className={`flex h-[52px] items-center gap-3 rounded-xl px-3 text-xs font-semibold ${otherGuide && selectedCategory === otherGuide.slug ? "bg-accent/10 text-accent" : "hover:bg-bg"}`}>
                 <span className="flex h-7 w-7 items-center justify-center text-text-secondary"><Pencil size={16} aria-hidden="true" /></span>
-                {otherGuideName}
+                <span className="min-w-0 truncate">{otherGuideName}</span>
               </Link>
               <div className="my-2 border-t border-border" />
-              <Link href="/faq" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> FAQ</Link>
-              <Link href="/contact" data-guide-contact className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-semibold hover:bg-bg"><ShieldAlert size={17} /> Contact / copyright claim</Link>
+              <Link href="/faq" className="flex h-[42px] items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-bg"><HelpCircle size={17} /> <span className="min-w-0 truncate">FAQ</span></Link>
+              <Link href="/contact" data-guide-contact className="flex h-[42px] items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-bg"><ShieldAlert size={17} /> <span className="min-w-0 truncate">Contact / copyright claim</span></Link>
             </nav>
             <div className="overflow-hidden rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]">
               <Sparkles size={25} className="mx-auto text-[#6eae18]" aria-hidden="true" />
               <h3 className="mt-3 text-base font-black"><T k="guide.earnTitle1" /><br /><T k="guide.earnTitle2" /></h3>
               <p className="mt-2 text-[10px]"><T k="guide.earnSub" /></p>
-              <Link href="/account" className="mt-4 inline-flex rounded-full bg-[#54a817] px-4 py-2 text-[10px] font-bold text-white"><T k="guide.joinNow" /> <ArrowRight size={13} className="ml-1" /></Link>
+              <Link href="/account" className="mt-4 inline-flex h-8 items-center rounded-full bg-[#54a817] px-4 text-[10px] font-bold text-white"><T k="guide.joinNow" /> <ArrowRight size={13} className="ml-1" /></Link>
             </div>
           </aside>
 
@@ -154,7 +154,7 @@ export default async function GuidePage({ searchParams }: PageProps) {
             <AdSlotBanner slot="guide-top" />
 
             <div className="mb-4 -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:hidden">
-              <Link href={guideUrl("", query)} className={`group flex w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>
+              <Link href={guideUrl("", query)} className={`group flex h-[68px] w-[74px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto sm:min-h-[92px] sm:min-w-[150px] sm:flex-row sm:justify-start sm:gap-3 sm:p-4 ${!selectedCategory && !query ? "border-accent bg-accent/10" : "border-border bg-bg-surface hover:border-accent/60"}`}>
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-xl"><BookOpen size={13} /></span>
                 <span className="text-center text-[9px] font-bold leading-tight sm:text-left sm:text-xs"><T k="guide.allGuides" /></span>
               </Link>

@@ -4732,3 +4732,19 @@ tofu box and a screenshot looks broken even when the markup is right. Put Noto S
   behind it; the phone dimmer stops at the same line, so the bar stays visible while the menu is open.
 - The site-wide `CopyrightBar` returns null under `/admin`, so there is only one copyright bar on those
   screens. `<main>` carries `pb-14` so the last row clears the pinned bar.
+
+## §18.9 Switching language never resizes a control
+
+- The Myanmar line box rule now has two halves: prose (`p, li, h1-h6, dd, dt, blockquote, figcaption,
+  td, th, textarea`) keeps `line-height: 2.1`, and controls (`a, span, label, button, input, select`)
+  keep `1.5` through `:where()` so an explicit `leading-*` utility still wins. Before this, every button,
+  pill, nav link and input grew about 1em when the locale switched, so the header jumped 56 -> 65px.
+- Chrome sizes are pinned rather than inherited: the header pill is `h-14`, the search field
+  `h-[30px]` (`h-10` for the compact one), the language/currency pills 22px, payment badges `h-5`,
+  app-store links `h-6`, the phone tab bar `h-[60px]` with `h-[52px]` items, the home/guide/account
+  CTAs `h-6..h-10`, and menu rows `h-[42px]` / `h-[52px]` with a truncating label.
+- Measured with Chromium at 1440x900 and 390x844 across `/`, `/create`, `/collections`, `/cart`,
+  `/account`, `/search`, `/guide`, `/nyein`, `/checkout`: every control box keeps the same **height**
+  in EN and MM. Widths still follow the label, because a Burmese label is a different length.
+- Content blocks (the hero, the `min-h-[150px]` promo tiles) still grow with the copy; pinning them
+  would clip Burmese text.

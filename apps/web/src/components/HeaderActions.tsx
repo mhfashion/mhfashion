@@ -82,7 +82,7 @@ export default function HeaderActions() {
           role="search"
           onSubmit={submitSearch}
           data-header-search="desktop"
-          className="flex items-center gap-2 bg-bg-surface border border-border rounded-full px-3 py-1.5 w-56 text-text-secondary focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40"
+          className="flex h-[30px] w-56 items-center gap-2 rounded-full border border-border bg-bg-surface px-3 text-text-secondary focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40"
         >
           <Search size={15} />
           <input
@@ -94,7 +94,7 @@ export default function HeaderActions() {
             onFocus={desktopSuggestions.onFocus}
             onBlur={desktopSuggestions.onBlur}
             placeholder={t("actions.searchProducts")}
-            className="bg-transparent outline-none text-xs w-full placeholder:text-text-faint"
+            className="w-full bg-transparent text-xs leading-none outline-none placeholder:text-text-faint"
           />
         </form>
         {desktopSuggestions.focused ? <HeaderSearchSuggestions query={searchTerm} onPick={() => { desktopSuggestions.close(); setSearchTerm(""); }} /> : null}
@@ -114,7 +114,7 @@ export default function HeaderActions() {
             role="search"
             onSubmit={submitSearch}
             data-header-search="compact"
-            className="absolute right-0 top-full mt-3 w-64 bg-bg-surface border border-border rounded-full px-3 py-2 shadow-xl flex items-center gap-2 text-text-secondary z-50 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40"
+            className="absolute right-0 top-full z-50 mt-3 flex h-10 w-64 items-center gap-2 rounded-full border border-border bg-bg-surface px-3 text-text-secondary shadow-xl focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40"
           >
             <Search size={15} />
             <input
@@ -127,7 +127,7 @@ export default function HeaderActions() {
               onFocus={compactSuggestions.onFocus}
               onBlur={compactSuggestions.onBlur}
               placeholder={t("actions.searchProducts")}
-              className="bg-transparent outline-none text-xs w-full placeholder:text-text-faint"
+              className="w-full bg-transparent text-xs leading-none outline-none placeholder:text-text-faint"
             />
             {compactSuggestions.focused ? <HeaderSearchSuggestions query={searchTerm} onPick={() => { compactSuggestions.close(); setSearchOpen(false); setSearchTerm(""); }} /> : null}
           </form>

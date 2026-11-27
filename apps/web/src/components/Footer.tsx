@@ -88,9 +88,9 @@ export default function Footer() {
             {t("footer.myanmarPayment")}
           </p>
           <div className="flex flex-wrap gap-1.5 text-[9px] text-text-secondary">
-            <span className="border border-border-light rounded px-1.5 py-0.5">KBZPay</span>
-            <span className="border border-border-light rounded px-1.5 py-0.5">Wave Pay</span>
-            <span className="border border-border-light rounded px-1.5 py-0.5">AYA Pay</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">KBZPay</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">Wave Pay</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">AYA Pay</span>
           </div>
         </div>
 
@@ -101,13 +101,13 @@ export default function Footer() {
           <div className="flex gap-1.5 md:justify-center">
             <a
               href="#"
-              className="border border-border-light rounded px-2.5 py-1 text-[9px] text-text-secondary"
+              className="inline-flex h-6 items-center rounded border border-border-light px-2.5 text-[9px] leading-none text-text-secondary"
             >
               App Store
             </a>
             <a
               href="#"
-              className="border border-border-light rounded px-2.5 py-1 text-[9px] text-text-secondary"
+              className="inline-flex h-6 items-center rounded border border-border-light px-2.5 text-[9px] leading-none text-text-secondary"
             >
               Google Play
             </a>
@@ -119,8 +119,8 @@ export default function Footer() {
             {t("footer.internationalPayment")}
           </p>
           <div className="flex flex-wrap gap-1.5 text-[9px] text-text-secondary md:justify-end">
-            <span className="border border-border-light rounded px-1.5 py-0.5">Visa</span>
-            <span className="border border-border-light rounded px-1.5 py-0.5">Mastercard</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">Visa</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">Mastercard</span>
           </div>
         </div>
       </div>

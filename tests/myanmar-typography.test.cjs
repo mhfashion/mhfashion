@@ -77,3 +77,15 @@ test("the font stack names each platform's Myanmar face", () => {
   assert.ok(order.indexOf("Roboto") < order.indexOf("Noto Sans Myanmar"), "Latin faces come first so English keeps the system font");
   assert.equal(order[order.length - 1], "sans-serif", "the generic family stays last");
 });
+
+test("a language switch never resizes a control", () => {
+  // Prose keeps the tall box; a control keeps the 1.5 it was laid out with, so nothing jumps in size
+  // when the locale changes. Without the second rule every button, pill and nav link grew ~1em.
+  const css = read("apps/web/src/app/globals.css");
+  assert.match(css, /html\[lang="my"\] :is\(p, li, h1, h2, h3, h4, h5, h6, dd, dt, blockquote, figcaption, td, th, textarea\) \{\n  line-height: 2\.1;/);
+  assert.match(css, /html\[lang="my"\] :where\(a, span, label, button, input, select\) \{\n  line-height: 1\.5;/);
+  assert.match(read("apps/web/src/components/Header.tsx"), /<header className="flex h-14 items-center justify-between/, "the header pill keeps its height");
+  assert.match(read("apps/web/src/components/HeaderActions.tsx"), /flex h-\[30px\] w-56 items-center/, "the search field keeps its height");
+  assert.match(read("apps/web/src/components/MobileBottomNav.tsx"), /fixed inset-x-0 bottom-0 z-\[60\] h-\[60px\]/, "the phone tab bar keeps its height");
+  assert.match(read("apps/web/src/components/Footer.tsx"), /inline-flex h-5 items-center rounded border border-border-light/, "payment badges keep their height");
+});

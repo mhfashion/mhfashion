@@ -135,7 +135,7 @@ export default function MobileNav() {
           >
             <Menu size={20} />
           </button>
-          <span className="font-bold text-sm">
+          <span className="text-sm font-bold leading-none">
             <span className="text-accent">MH</span> FASHION.
           </span>
         </div>
@@ -146,7 +146,7 @@ export default function MobileNav() {
           <NotificationBell />
         </div>
         {searchOpen && (
-          <form action="/search" method="get" role="search" data-header-search="mobile" className="absolute left-3 right-3 top-full z-[60] mt-2 flex items-center gap-2 rounded-full border border-border bg-bg-surface px-3 py-2 shadow-xl">
+          <form action="/search" method="get" role="search" data-header-search="mobile" className="absolute left-3 right-3 top-full z-[60] mt-2 flex h-10 items-center gap-2 rounded-full border border-border bg-bg-surface px-3 shadow-xl">
             <Search size={15} className="text-text-muted" />
             <input
               autoFocus
@@ -158,7 +158,7 @@ export default function MobileNav() {
               onChange={(event) => setSearchTerm(event.target.value)}
               onFocus={suggestions.onFocus}
               onBlur={suggestions.onBlur}
-              className="w-full bg-transparent text-xs outline-none placeholder:text-text-faint"
+              className="w-full bg-transparent text-xs leading-none outline-none placeholder:text-text-faint"
             />
             {suggestions.focused ? (
               <HeaderSearchSuggestions
@@ -281,25 +281,25 @@ export default function MobileNav() {
 
           <GroupHeading>{t("footer.myanmarPayment")}</GroupHeading>
           <div className="flex flex-wrap gap-1.5 px-4 pb-3 text-[9px] text-text-secondary">
-            <span className="border border-border-light rounded px-1.5 py-0.5">KBZPay</span>
-            <span className="border border-border-light rounded px-1.5 py-0.5">Wave Pay</span>
-            <span className="border border-border-light rounded px-1.5 py-0.5">AYA Pay</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">KBZPay</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">Wave Pay</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">AYA Pay</span>
           </div>
 
           <GroupHeading>{t("footer.download")}</GroupHeading>
           <div className="flex gap-1.5 px-4 pb-3">
-            <a href="#" className="border border-border-light rounded px-2.5 py-1 text-[9px]">
+            <a href="#" className="inline-flex h-6 items-center rounded border border-border-light px-2.5 text-[9px] leading-none">
               App Store
             </a>
-            <a href="#" className="border border-border-light rounded px-2.5 py-1 text-[9px]">
+            <a href="#" className="inline-flex h-6 items-center rounded border border-border-light px-2.5 text-[9px] leading-none">
               Google Play
             </a>
           </div>
 
           <GroupHeading>{t("footer.internationalPayment")}</GroupHeading>
           <div className="flex flex-wrap gap-1.5 px-4 pb-4 text-[9px] text-text-secondary">
-            <span className="border border-border-light rounded px-1.5 py-0.5">Visa</span>
-            <span className="border border-border-light rounded px-1.5 py-0.5">Mastercard</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">Visa</span>
+            <span className="inline-flex h-5 items-center rounded border border-border-light px-1.5 leading-none">Mastercard</span>
           </div>
 
           <div className="border-t border-border" />

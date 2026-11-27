@@ -2533,3 +2533,9 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
 - `AdminShell` owns the admin footer: a fixed 32px bar (`data-admin-footer`) with the preview note on the left and "© {year} MH Fashion. All rights reserved." on the right. It does not scroll.
 - The sidebar and its phone dimmer end at the bar's top edge (`bottom-[32px]`), so nothing is drawn behind the bar.
 - `CopyrightBar` renders nothing under `/admin`; the other screens keep the site bar.
+
+## Language switch and box sizes
+
+- `globals.css` gives Myanmar prose a 2.1 line box and gives controls (`a, span, label, button, input, select`) a 1.5 line box via `:where()`, so switching language never resizes a button, pill, nav link or input.
+- Control heights are fixed in the markup: header pill `h-14`, header search `h-[30px]`, language/currency pills 22px, footer payment badges `h-5`, app-store links `h-6`, phone tab bar `h-[60px]` with `h-[52px]` items, CTA pills `h-6..h-10`, account/guide menu rows `h-[42px]` / `h-[52px]`.
+- Widths still follow the label text. Content blocks (hero, promo tiles) still grow with the copy; forcing them would clip Burmese text.

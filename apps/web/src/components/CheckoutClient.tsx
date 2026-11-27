@@ -229,7 +229,7 @@ export default function CheckoutClient() {
         <ShoppingBag size={40} className="mx-auto text-text-muted" />
         <h2 className="mt-4 text-lg font-black">Nothing to check out</h2>
         <p className="mt-2 text-xs text-text-muted">Your cart is empty, so there is no order to place.</p>
-        <a href="/new" className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-accent px-5 py-2.5 text-xs font-bold text-accent-foreground">Browse products <ArrowRight size={14} /></a>
+        <a href="/new" className="mt-5 inline-flex h-9 items-center gap-1.5 rounded-full bg-accent px-5 text-xs font-bold text-accent-foreground">Browse products <ArrowRight size={14} /></a>
       </section>
     );
   }

@@ -42,7 +42,7 @@ export default async function NyeinPage() {
               </p>
               <a
                 href="#nyein-pieces"
-                className="mt-3 inline-flex items-center rounded-full bg-[#55a918] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:px-4 sm:py-2.5 sm:text-xs"
+                className="mt-3 inline-flex h-7 items-center rounded-full bg-[#55a918] px-3 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:h-9 sm:px-4 sm:text-xs"
               >
                 <T k="nyein.cta" />
                 <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" />
