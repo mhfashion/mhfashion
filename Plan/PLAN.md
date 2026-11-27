@@ -4761,3 +4761,12 @@ tofu box and a screenshot looks broken even when the markup is right. Put Noto S
 - The account and its sign-out appear once, in the header bar. They used to be duplicated in both places.
 - `admin-scroll` (formerly `admin-scroll-dark`) paints a grey thumb, because a light-on-white scrollbar is
   invisible.
+
+## §18.11 The customer dashboard has no wallet
+
+- A wallet balance implies a prepaid balance the customer can top up, and there is no top-up in this shop:
+  every order is paid at checkout (Visa or one of the three wallets as a *payment method*). The
+  "Wallet Balance" card (a hard-coded Ks 12,500 with a fake "+Ks 2,000" credit) is removed from
+  `/account`, and its label is gone from both dictionaries.
+- The stat row is now three cards — Total Orders, My Points, Wishlist — on `sm:grid-cols-2 xl:grid-cols-3`,
+  so they still fill the width evenly.

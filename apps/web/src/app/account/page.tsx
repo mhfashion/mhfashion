@@ -22,7 +22,6 @@ import {
   Star,
   Trash2,
   User,
-  Wallet,
 } from "lucide-react";
 import Header from "@/components/Header";
 import { useCurrency } from "@/lib/currency-context";
@@ -64,7 +63,6 @@ const COPY = {
     start: "Start Designing",
     totalOrders: "Total Orders",
     points: "My Points",
-    wallet: "Wallet Balance",
     wishlist: "Wishlist",
     thisMonth: "this month",
     recentOrders: "Recent Orders",
@@ -110,7 +108,6 @@ const COPY = {
     start: "ဒီဇိုင်းစတင်ရန်",
     totalOrders: "အော်ဒါစုစုပေါင်း",
     points: "ကျွန်ုပ်၏အမှတ်များ",
-    wallet: "ပိုက်ဆံအိတ်လက်ကျန်",
     wishlist: "ဆန္ဒစာရင်း",
     thisMonth: "ဒီလ",
     recentOrders: "လတ်တလောအော်ဒါများ",
@@ -334,7 +331,7 @@ export default function AccountPage() {
             {sectionContent === "dashboard" ? (
               <>
                 <section className="relative isolate mb-5 min-h-[205px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdb] via-[#e0f7c4] to-[#c4ee9c] px-6 py-7 text-[#172810] sm:px-9 sm:py-9"><div className="relative z-10 max-w-[58%]"><h1 ref={headingRef} tabIndex={-1} className="text-3xl font-black leading-tight sm:text-4xl">{copy.welcome}</h1><p className="mt-3 text-sm text-[#355128]">{copy.welcomeSub}</p><button onClick={() => window.location.href = "/create"} className="mt-5 inline-flex h-9 items-center rounded-full bg-[#55a918] px-4 text-xs font-bold text-white">{copy.start} <ArrowRight size={15} className="ml-1.5" /></button></div><div className="absolute -right-8 -top-12 h-72 w-72 rounded-full bg-[#9bda45]/50" /><div className="absolute bottom-[-55px] right-[18%] hidden h-64 w-44 rotate-[-8deg] rounded-[45%] bg-white/80 shadow-xl sm:block"><div className="absolute left-1/2 top-16 -translate-x-1/2 text-center text-2xl font-black leading-none text-[#4c9d16]">MH<br /><span className="text-xs">FASHION</span></div></div><div className="absolute bottom-5 right-6 text-3xl font-black italic text-[#54a817]/80 sm:right-12">{t("account.createMark1")}<br />{t("account.createMark2")}</div></section>
-                <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard Icon={ShoppingBag} label={copy.totalOrders} value={String(orders.length)} helper={orders.length ? copy.recentOrders : copy.viewAllOrders} /><StatCard Icon={Star} label={copy.points} value={String(points.total)} helper={points.permanent ? (my ? `သိမ်းထား ${points.permanent} + နေ့စဉ် ${points.daily}` : `${points.permanent} kept + ${points.daily} daily`) : (my ? `နေ့စဉ် ${points.daily}` : `${points.daily} daily`)} tone="yellow" /><StatCard Icon={Wallet} label={copy.wallet} value={formatMoney(12500)} helper={`↑ +${formatMoney(2000)}`} tone="blue" /><StatCard Icon={Heart} label={copy.wishlist} value={String(wishlist.count)} helper={my ? "အားလုံး ကြည့်ရန် →" : "View all →"} tone="red" /></section>
+                <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3"><StatCard Icon={ShoppingBag} label={copy.totalOrders} value={String(orders.length)} helper={orders.length ? copy.recentOrders : copy.viewAllOrders} /><StatCard Icon={Star} label={copy.points} value={String(points.total)} helper={points.permanent ? (my ? `သိမ်းထား ${points.permanent} + နေ့စဉ် ${points.daily}` : `${points.permanent} kept + ${points.daily} daily`) : (my ? `နေ့စဉ် ${points.daily}` : `${points.daily} daily`)} tone="yellow" /><StatCard Icon={Heart} label={copy.wishlist} value={String(wishlist.count)} helper={my ? "အားလုံး ကြည့်ရန် →" : "View all →"} tone="red" /></section>
                 <div className="grid gap-5 lg:grid-cols-[1.25fr_0.9fr]">
                   <section className="rounded-2xl border border-border bg-bg-surface p-5"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><ShoppingBag size={19} className="text-accent" /> {copy.recentOrders}</h2><button onClick={() => setActive("orders")} className="text-xs font-semibold text-accent">{copy.viewAllOrders} <ArrowRight size={13} className="ml-1 inline" /></button></div>{orders.length ? (
                     <div className="space-y-3">{orders.slice(0, 3).map((order) => <AccountOrderCard key={order.id} order={order} formatMoney={formatMoney} />)}</div>

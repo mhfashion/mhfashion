@@ -2546,3 +2546,8 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
 - The promo card ("Create. Print. Wear." / "Open design editor") is removed; so is the sidebar account row. The account and its sign-out live in the header bar, once.
 - Active nav row: `bg-[#eef7e3]`, `#4cae22` left edge, `#3f7d12` text. Inactive: `#5b6672`, hover `#f2f4f6`.
 - `.admin-scroll` styles the nav scrollbar with a grey thumb for the light panel.
+
+## Customer dashboard stats
+
+- The `/account` dashboard shows three cards: Total Orders, My Points, Wishlist (`sm:grid-cols-2 xl:grid-cols-3`).
+- There is no wallet balance: customers cannot top up, and payment happens at checkout. KBZPay / Wave Pay / AYA Pay are payment methods, not a stored balance.

@@ -98,3 +98,13 @@ test("the account page reads the store instead of inventing orders", () => {
   assert.match(page, /value=\{String\(orders\.length\)\}/, "the dashboard counter must be the real order count");
   assert.ok(!/#MH20250|const ORDERS/.test(page), "the invented order list must stay deleted");
 });
+
+test("the account dashboard has no wallet: customers cannot top up", () => {
+  const page = readFileSync(path.join(__dirname, "..", "apps/web/src/app/account/page.tsx"), "utf8");
+  assert.doesNotMatch(page, /Wallet Balance/, "no wallet balance card");
+  assert.doesNotMatch(page, /ပိုက်ဆံအိတ်လက်ကျန်/, "no wallet label in the Myanmar copy");
+  assert.doesNotMatch(page, /Icon=\{Wallet\}/, "no wallet stat card");
+  const statRow = page.match(/<section className="mb-6 grid gap-3 ([^"]+)">/);
+  assert.ok(statRow, "the dashboard still renders its stat row");
+  assert.match(statRow[1], /xl:grid-cols-3/, "three cards fill the row");
+});
