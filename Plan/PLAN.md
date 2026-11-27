@@ -2229,12 +2229,26 @@ Verified gaps:
    answer keeps those rows last (`SEARCH_RANK_APPROXIMATE`), and the page says they are close matches. Verified
    in PostgreSQL 17: `buterfly` → Butterfly Effect, `yangn street` → Yangon Street Tee, nonsense and two-letter
    terms find nothing, and `explain` shows the GIN index answering the filter.
-4. **Partly done 2026-11-21:** the grouped `/search` page. `apps/web/src/lib/search-caps.ts` holds the caps
-   (products 40, guides 10, designs 12) and the `?type=` rules; the page renders three `role="tab"` groups with
-   their counts, keeps `?q=`/`?type=` in the address, shows guides as article cards and the editor's design
-   templates as a third group, and falls back to products for an unknown `type`. Still to do: the header's
-   five-suggestion list and the `search_misses` table.
-5. Admin search against Supabase, with paging.
+4. ~~The grouped `/search` page, the header suggestions and the `search_misses` table.~~ **Done 2026-11-21:**
+   `apps/web/src/lib/search-caps.ts` holds the caps (products 40, guides 10, designs 12) and the `?type=` rules;
+   the page renders three `role="tab"` groups with their counts, keeps `?q=`/`?type=` in the address, shows
+   guides as article cards and the editor's design templates as a third group, and falls back to products for an
+   unknown `type`. The header suggests while typing: `/api/search/suggest` answers with at most five rows
+   (3 products, 1 guide, 1 design) after a 200 ms pause, the count is announced through `aria-live`, and the
+   panel is wired into all three header fields (desktop inline, compact popover, phone drawer). A search that
+   finds nothing calls `record_search_miss` (`SQL/0011_search_misses.sql`): the folded term and a count, no
+   user, dropped after 90 days. The admin dashboard reads the week's misses through
+   `/api/admin/search-misses`, which needs `SUPABASE_SERVICE_ROLE_KEY` because `top_search_misses` is granted to
+   `service_role` only.
+5. ~~Admin search, with paging.~~ **Done 2026-11-21:** the admin lists search the handles a desk actually
+   holds — an order by number, buyer, phone, delivery name/phone/address/township/city, stage, payment method,
+   payment reference, tracking number, print-desk note and items; a customer by name, email and phone.
+   `matchesSearchQuery` now compares a second time with every space removed, so a phone typed as `09771234567`
+   finds `09 771 234 567`. Orders and customers render 50 rows at a time with a "Show N more" footer, and a new
+   search or sort starts the list over at 50. The order drawer gained the tracking number and payment reference
+   (both saved to the order and searched). The lists still read the browser demo store, not Supabase — the
+   filtering and paging live in `lib/admin-order-search.ts`, so moving them to SQL later is a swap of that one
+   module plus the query.
 
 ### 17.4 Acceptance
 

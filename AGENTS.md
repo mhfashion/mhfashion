@@ -1211,6 +1211,32 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - `tests/search-http.test.cjs` needs a running server (like `guide-http`), `SEARCH_TEST_ORIGIN` overrides it.
   It checks the tab counts, the guide and design cards and the caps against the real rendered HTML.
 
+## Header search suggestions and the misses log (Plan §17 S6/S8)
+- There are **three** header search fields: `data-header-search="desktop"` (inline, `lg+`), `"compact"` (the
+  icon popover in `HeaderActions`) and `"mobile"` (the phone drawer in `MobileNav.tsx`). A phone user only ever
+  sees the `mobile` one, so a change to suggestions must be wired in all three — they share
+  `components/HeaderSearchSuggestions.tsx`.
+- The panel fetches `/api/search/suggest` after a 200 ms pause and shows at most five rows (3 products,
+  1 guide, 1 design). `useSuggestionsFocus` delays the blur by 150 ms so a click on a row lands first.
+- Do not call `setState` synchronously in the suggestion effect (the React lint rule flags it): the debounce
+  callback owns `setLoading`, and the panel simply renders nothing under two characters.
+- `recordSearchMiss` is called by the suggest route only when nothing matched. It ignores errors: a shop
+  without migration 0011 has no such function.
+- `top_search_misses` is `service_role` only on purpose. The admin panel reads `/api/admin/search-misses`,
+  which returns `{configured:false}` when `SUPABASE_SERVICE_ROLE_KEY` is missing; never grant that function to
+  `anon` to make the panel "work".
+
+## Admin search and paging (Plan §17 S9)
+- `lib/admin-order-search.ts` holds `orderSearchText`, `customerSearchText`, `ADMIN_PAGE_SIZE` (50),
+  `pageSlice` and `nextPageSize`. Both lists use them, so the searched fields cannot drift between screens.
+- `matchesSearchQuery` compares the text a second time with every space removed, so `09771234567` finds
+  `09 771 234 567`. Without that pass a phone number typed compactly never matches.
+- Paging resets by deriving the page size from a `filterKey` during render
+  (`paging.key === filterKey ? paging.shown : ADMIN_PAGE_SIZE`). A `useEffect(() => setShown(...))` triggers the
+  `react-hooks/set-state-in-effect` warning and paints the old size first.
+- The admin lists read the browser demo store, not Supabase. Filtering and paging live in that one module so
+  the move to SQL is a swap of the module plus the query.
+
 ## Font outline files (plan E17 step 3, decision D14)
 - `EditorFontFile.outline` names a bucket-relative `.ttf`/`.otf` beside the woff2; HarfBuzz cannot shape
   woff2, so a weight without one cannot be bent (E19) while it still displays fine.

@@ -2323,3 +2323,52 @@ The groups are `role="tab"` links carrying their count in `data-search-tab-count
 in the address (products is the default and is left out), and an unknown `type` falls back to products. The total
 is announced with `aria-live="polite"`; a group with no answer shows its own note while the other tabs stay
 reachable, and a query that answers nothing at all still shows the suggestion list and the popular products.
+
+## Typing in the header, and what the shop learned from empty searches (2026-11-21, Plan §17 S6/S8/S9)
+
+**The header suggests while typing.** Three fields exist — the inline desktop field, the compact popover
+(`lg:hidden`) and the phone drawer in `MobileNav` — and all three render the same
+`components/HeaderSearchSuggestions.tsx`. It waits 200 ms after the last keystroke, asks
+`/api/search/suggest?q=`, and shows at most five rows:
+
+| Group | Cap | Row |
+|---|---|---|
+| Products | 3 | name, sub-brand · type → `/products/<slug>` |
+| Guides | 1 | title, category → `/guide/<slug>` |
+| Designs | 1 | design name, layer names → `/create` |
+
+The list announces its own length through `aria-live` ("2 suggestions"), and every row is a real link, so a
+keyboard or screen-reader user never needs the pointer. The route folds the query with the same
+`normalizeSearchQuery` the storefront uses, so punctuation that would break a PostgREST `or()` filter
+(`tee(black)`, `50%`) cannot reach the query.
+
+**A miss is recorded.** When nothing matched, the route calls `record_search_miss` from
+`SQL/0011_search_misses.sql`:
+
+```sql
+create table public.search_misses (term text primary key, hits integer, first_seen, last_seen);
+-- security definer: the anon role may call it but not read the table
+create function public.record_search_miss(p_term text) …
+  on conflict (term) do update set hits = search_misses.hits + 1, last_seen = now();
+  delete from public.search_misses where last_seen < now() - interval '90 days';
+```
+
+Only the folded term and a count are stored — no user, no address, no order — and the table is swept on every
+write, so it cannot grow past 90 days of distinct terms. `top_search_misses(days, limit)` is granted to
+`service_role` alone; a visitor must not be able to read the shop's search log. The admin dashboard shows the
+week through `/api/admin/search-misses`, and says "the search log is not connected" until
+`SUPABASE_SERVICE_ROLE_KEY` is set, rather than pretending the log is empty.
+
+**Admin search now uses the handles a desk holds.** `lib/admin-order-search.ts`:
+
+| List | Searched | Paged |
+|---|---|---|
+| Orders | number, buyer, email, phone, delivery name/phone/address/township/city, stage, payment method, payment reference, tracking number, print-desk note, items | 50 rows |
+| Customers | name, email, phone | 50 rows |
+
+`matchesSearchQuery` gained a second pass with every space removed, because a phone is typed `09771234567`
+but stored `09 771 234 567`. The order drawer now carries the two handles that tie money and parcels to an
+order — a tracking number and a payment reference — and both are searched. Paging keeps 50 rows in view and
+adds 50 per press ("Show 36 more · Showing 50 of 86 orders"); a new search or sort starts again at 50. The
+reset is derived from a `filterKey` during render rather than an effect, so a filter change never paints the
+old page size first.

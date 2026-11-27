@@ -20,13 +20,14 @@ import {
   decideRefund, pendingRefundRequests, refundReasonLabel, type AdminOrderRefundRequest,
 } from "@/lib/order-refunds";
 import { stockStatus, syncStockWithStage } from "@/lib/stock-movement";
+import { ADMIN_PAGE_SIZE, nextPageSize, orderSearchText, pageSlice } from "@/lib/admin-order-search";
 import { matchesSearchQuery } from "@/lib/search-text";
 import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
   adminDayKey, adminDayLabel, adminTodayKey, buildMockupDiagramSvg, designLayerSize,
   formatAdminDateTime, formatKs, nextOrderStage,
   lastOrderReprint, orderDateRangeForPreset, orderDayGroups, orderPrintRuns, orderStageIndex, orderTotalKs, orderUnits,
-  ordersInDateRange, recordOrderReprint, replaceOrder, setOrderNote, setOrderStage, sortOrders, summarizeOrders,
+  ordersInDateRange, recordOrderReprint, replaceOrder, setOrderFulfilment, setOrderNote, setOrderStage, sortOrders, summarizeOrders,
   type AdminDateRange, type AdminOrder, type AdminOrderDatePreset, type AdminOrderSort,
   type AdminOrderStage,
 } from "@/lib/admin-demo-data";
@@ -57,10 +58,6 @@ function count(value: number, word: string) {
   return `${value} ${word}${value === 1 ? "" : "s"}`;
 }
 
-function orderSearchText(order: AdminOrder) {
-  return `${order.id} ${order.customerName} ${order.customerEmail} ${order.stage} ${order.payment} ${order.items.map((item) => `${item.name} ${item.size} ${item.color}`).join(" ")}`.toLowerCase();
-}
-
 export default function AdminOrders() {
   const data = useAdminDemoData();
   const [search, setSearch] = useState("");
@@ -71,6 +68,10 @@ export default function AdminOrders() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [refundReply, setRefundReply] = useState("");
+  const [trackingDraft, setTrackingDraft] = useState("");
+  const [referenceDraft, setReferenceDraft] = useState("");
+  // Plan §17 S9: 50 rows at a time, and the list starts over whenever the filter changes the answer.
+  const [paging, setPaging] = useState({ key: "", shown: ADMIN_PAGE_SIZE });
 
   // The QR on a printed sheet links to `/admin?order=…`. Read it after mount so the server render
   // and the first client render agree; the panel opens on the next paint.
@@ -89,6 +90,9 @@ export default function AdminOrders() {
     (filter === "All" || order.stage === filter) && matchesSearchQuery(orderSearchText(order), query)
   )), sort), [inRange, filter, query, sort]);
   const filteredSummary = useMemo(() => summarizeOrders(filtered), [filtered]);
+  const filterKey = `${query}|${filter}|${range.from}|${range.to}|${sort}`;
+  const shown = paging.key === filterKey ? paging.shown : ADMIN_PAGE_SIZE;
+  const visible = useMemo(() => pageSlice(filtered, shown), [filtered, shown]);
   const rangeLabel = range.from || range.to
     ? `${range.from ? adminDayLabel(range.from) : "Start"} → ${range.to ? adminDayLabel(range.to) : "Today"}`
     : "All time";
@@ -112,6 +116,8 @@ export default function AdminOrders() {
     setOpenId(order.id);
     setNoteDraft(order.note);
     setRefundReply("");
+    setTrackingDraft(order.trackingNumber ?? "");
+    setReferenceDraft(order.paymentReference ?? "");
   }
 
   function answerRefund(order: AdminOrder, request: AdminOrderRefundRequest, decision: "Approved" | "Declined") {
@@ -137,6 +143,13 @@ export default function AdminOrders() {
 
   function saveNote(order: AdminOrder) {
     updateAdminData((current) => setOrderNote(current, order.id, noteDraft.trim()));
+  }
+
+  function saveFulfilment(order: AdminOrder) {
+    updateAdminData((current) => setOrderFulfilment(current, order.id, {
+      trackingNumber: trackingDraft,
+      paymentReference: referenceDraft,
+    }));
   }
 
   /** Every run of the press sheet is recorded, so a second print is visible as a reprint. */
@@ -264,7 +277,7 @@ export default function AdminOrders() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f2f4]">
-              {filtered.length ? filtered.map((order) => {
+              {visible.length ? visible.map((order) => {
                 const next = nextOrderStage(order.stage);
                 return (
                   <tr key={order.id} className="hover:bg-[#fafbfc]">
@@ -297,6 +310,16 @@ export default function AdminOrders() {
             </tbody>
           </table>
         </div>
+        {filtered.length > visible.length ? (
+          <div className="flex items-center justify-between gap-3 border-t border-[#f0f2f4] px-4 py-3 sm:px-5">
+            <p className="text-[9px] text-[#87909b]" data-admin-orders-shown={visible.length}>
+              Showing {visible.length} of {filtered.length} orders
+            </p>
+            <AdminButton compact variant="secondary" onClick={() => setPaging({ key: filterKey, shown: nextPageSize(shown, filtered.length) })}>
+              Show {Math.min(ADMIN_PAGE_SIZE, filtered.length - visible.length)} more
+            </AdminButton>
+          </div>
+        ) : null}
       </AdminCard>
 
       <AdminDrawer
@@ -328,6 +351,13 @@ export default function AdminOrders() {
               <p className="mt-0.5 text-[9px] text-[#87909b]">{selected.customerEmail}</p>
               <p className="mt-0.5 text-[9px] text-[#87909b]">{selected.customerPhone}</p>
               {selected.shipTo ? <p className="mt-1 text-[9px] leading-snug text-[#87909b]">{selected.shipTo.address}<br />{selected.shipTo.township}, {selected.shipTo.city}</p> : null}
+              {selected.trackingNumber || selected.paymentReference ? (
+                <p className="mt-1 text-[9px] leading-snug text-[#87909b]">
+                  {selected.trackingNumber ? <>Tracking <span className="font-semibold text-[#394250]" data-order-tracking>{selected.trackingNumber}</span></> : null}
+                  {selected.trackingNumber && selected.paymentReference ? " · " : null}
+                  {selected.paymentReference ? <>Paid ref <span className="font-semibold text-[#394250]" data-order-reference>{selected.paymentReference}</span></> : null}
+                </p>
+              ) : null}
               <div className="mt-2 flex items-center gap-2">
                 <AdminBadge tone={STAGE_TONES[selected.stage]}>{selected.stage}</AdminBadge>
                 <AdminBadge tone="slate">{selected.payment}</AdminBadge>
@@ -509,6 +539,22 @@ export default function AdminOrders() {
                 })}
               </ol>
               {selected.stage === "Cancelled" || selected.stage === "Refunded" ? <p className="mt-2 rounded-lg bg-[#fff6f6] px-2.5 py-1.5 text-[9px] font-semibold text-[#c9424a]">This order is {selected.stage.toLowerCase()} and left the production pipeline.</p> : null}
+            </div>
+
+            <div>
+              <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#7b8492]">Parcel and payment</h3>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <AdminField label="Tracking number">
+                  <AdminInput value={trackingDraft} onChange={(event) => setTrackingDraft(event.target.value)} aria-label="Tracking number" placeholder="MH-000-000" />
+                </AdminField>
+                <AdminField label="Payment reference">
+                  <AdminInput value={referenceDraft} onChange={(event) => setReferenceDraft(event.target.value)} aria-label="Payment reference" placeholder="KBZ 2600…" />
+                </AdminField>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <p className="text-[8px] text-[#9aa2ae]">Both are searched from the order list.</p>
+                <AdminButton compact variant="secondary" onClick={() => saveFulfilment(selected)}>Save parcel</AdminButton>
+              </div>
             </div>
 
             <div>

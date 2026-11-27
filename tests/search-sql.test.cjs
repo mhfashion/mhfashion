@@ -33,6 +33,7 @@ const MIGRATIONS = [
   "SQL/0008_product_options_public_read.sql",
   "SQL/0009_search_text.sql",
   "SQL/0010_search_trigram.sql",
+  "SQL/0011_search_misses.sql",
 ];
 
 function psql(database, sql) {
@@ -117,6 +118,29 @@ test("migrations 0009 and 0010 fold every record and still find a typo", { skip 
     assert.equal(psql(database, `select count(*) from public.search_products_fuzzy('zzzzqqqq', 40)`), "0", "nonsense finds nothing");
     assert.equal(psql(database, `select count(*) from public.search_products_fuzzy('te', 40)`), "0", "two letters are not a typo search");
     assert.equal(psql(database, `select count(*) from public.search_products_fuzzy('buterfly', 1)`), "1", "the limit is honoured");
+
+    // Plan §17 S8: a search that found nothing is counted, folded, and kept 90 days.
+    psql(database, `select public.record_search_miss('  Hoodiee '), public.record_search_miss('hoodiee')`);
+    assert.equal(psql(database, `select term || ' ' || hits from public.search_misses`), "hoodiee 2", "one row, folded, counted");
+    psql(database, `select public.record_search_miss('x')`);
+    assert.equal(psql(database, `select count(*) from public.search_misses`), "1", "a one-letter term is not a miss");
+    assert.equal(psql(database, `select term from public.top_search_misses(7, 10)`), "hoodiee");
+    psql(database, `
+      insert into public.search_misses (term, hits, first_seen, last_seen)
+      values ('old-term', 9, now() - interval '120 days', now() - interval '100 days')
+    `);
+    psql(database, `select public.record_search_miss('new-term')`);
+    assert.equal(psql(database, `select count(*) from public.search_misses where term = 'old-term'`), "0", "misses older than 90 days are dropped");
+    assert.equal(
+      psql(database, `select has_function_privilege('anon', 'public.top_search_misses(integer,integer)', 'execute')`),
+      "f",
+      "a visitor must not read the shop's search log"
+    );
+    assert.equal(
+      psql(database, `select has_function_privilege('anon', 'public.record_search_miss(text)', 'execute')`),
+      "t",
+      "the storefront may record a miss"
+    );
   } finally {
     psql(url, `drop database if exists ${database}`);
   }

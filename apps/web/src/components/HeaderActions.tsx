@@ -16,6 +16,7 @@ import { useCurrency } from "@/lib/currency-context";
 import { useCart } from "@/lib/cart-context";
 import { useWishlist } from "@/lib/wishlist-context";
 import { useI18n } from "@/lib/i18n";
+import HeaderSearchSuggestions, { useSuggestionsFocus } from "./HeaderSearchSuggestions";
 import NotificationBell from "./NotificationBell";
 import CartBox from "./CartBox";
 import { CURRENCY_LABEL, CurrencyIcon, FlagIcon, LANGUAGE_LABEL } from "./SwitcherIcons";
@@ -29,6 +30,8 @@ export default function HeaderActions() {
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const desktopSuggestions = useSuggestionsFocus();
+  const compactSuggestions = useSuggestionsFocus();
 
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -74,23 +77,28 @@ export default function HeaderActions() {
   return (
     <div className="flex items-center gap-3">
       {/* Inline search field (desktop, lg+): submitting goes to /search */}
-      <form
-        role="search"
-        onSubmit={submitSearch}
-        data-header-search="desktop"
-        className="hidden lg:flex items-center gap-2 bg-bg-surface border border-border rounded-full px-3 py-1.5 w-56 text-text-secondary focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40"
-      >
-        <Search size={15} />
-        <input
-          type="search"
-          name="q"
-          aria-label={t("actions.searchProducts")}
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder={t("actions.searchProducts")}
-          className="bg-transparent outline-none text-xs w-full placeholder:text-text-faint"
-        />
-      </form>
+      <div className="relative hidden lg:block">
+        <form
+          role="search"
+          onSubmit={submitSearch}
+          data-header-search="desktop"
+          className="flex items-center gap-2 bg-bg-surface border border-border rounded-full px-3 py-1.5 w-56 text-text-secondary focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40"
+        >
+          <Search size={15} />
+          <input
+            type="search"
+            name="q"
+            aria-label={t("actions.searchProducts")}
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            onFocus={desktopSuggestions.onFocus}
+            onBlur={desktopSuggestions.onBlur}
+            placeholder={t("actions.searchProducts")}
+            className="bg-transparent outline-none text-xs w-full placeholder:text-text-faint"
+          />
+        </form>
+        {desktopSuggestions.focused ? <HeaderSearchSuggestions query={searchTerm} onPick={() => { desktopSuggestions.close(); setSearchTerm(""); }} /> : null}
+      </div>
 
       {/* Search icon + dropdown (md–lg, where the inline field is hidden) */}
       <div className="relative lg:hidden" ref={searchRef}>
@@ -116,9 +124,12 @@ export default function HeaderActions() {
               aria-label={t("actions.searchProducts")}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
+              onFocus={compactSuggestions.onFocus}
+              onBlur={compactSuggestions.onBlur}
               placeholder={t("actions.searchProducts")}
               className="bg-transparent outline-none text-xs w-full placeholder:text-text-faint"
             />
+            {compactSuggestions.focused ? <HeaderSearchSuggestions query={searchTerm} onPick={() => { compactSuggestions.close(); setSearchOpen(false); setSearchTerm(""); }} /> : null}
           </form>
         )}
       </div>

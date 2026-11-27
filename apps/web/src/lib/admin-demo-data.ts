@@ -193,6 +193,10 @@ export type AdminOrder = {
   stockShortfall?: { productId: string; size: string; wanted: number; available: number }[];
   /** When a refund or cancellation gave the pieces back. */
   stockRestoredAt?: string;
+  /** The courier's tracking number, once the parcel is handed over (Plan §17 S9 searches it). */
+  trackingNumber?: string;
+  /** The bank or wallet reference the customer paid with, so a transfer can be matched to the order. */
+  paymentReference?: string;
 };
 
 const DESIGN_INKS = ["#2f7d32", "#c08a2e", "#203459", "#b83219", "#4b3f8f", "#1f7a6d", "#8a1f5c", "#33413a"];
@@ -728,6 +732,24 @@ export function lastOrderReprint(order: AdminOrder): AdminOrderReprint | null {
 
 export function replaceOrder(data: AdminDemoData, order: AdminOrder): AdminDemoData {
   return { ...data, orders: data.orders.map((entry) => (entry.id === order.id ? order : entry)) };
+}
+
+/** The two handles a desk uses to match money and parcels to an order (Plan §17 S9). */
+export function setOrderFulfilment(
+  data: AdminDemoData,
+  orderId: string,
+  fields: { trackingNumber?: string; paymentReference?: string }
+): AdminDemoData {
+  return {
+    ...data,
+    orders: data.orders.map((order) => (order.id === orderId
+      ? {
+        ...order,
+        trackingNumber: fields.trackingNumber?.trim() || undefined,
+        paymentReference: fields.paymentReference?.trim() || undefined,
+      }
+      : order)),
+  };
 }
 
 export function setOrderNote(data: AdminDemoData, orderId: string, note: string): AdminDemoData {

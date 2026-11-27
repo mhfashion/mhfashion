@@ -12,6 +12,7 @@ import { useTheme } from "@/lib/theme-context";
 import { useCurrency } from "@/lib/currency-context";
 import { useI18n } from "@/lib/i18n";
 import { useWishlist } from "@/lib/wishlist-context";
+import HeaderSearchSuggestions, { useSuggestionsFocus } from "./HeaderSearchSuggestions";
 import NotificationBell from "./NotificationBell";
 import { CurrencyIcon, FlagIcon, LANGUAGE_LABEL } from "./SwitcherIcons";
 
@@ -77,6 +78,8 @@ function LinkRow({
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const suggestions = useSuggestionsFocus();
   const drawerRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const { theme, toggleTheme } = useTheme();
@@ -141,7 +144,33 @@ export default function MobileNav() {
           </button>
           <NotificationBell />
         </div>
-        {searchOpen && <form action="/search" method="get" role="search" data-header-search="mobile" className="absolute left-3 right-3 top-full z-[60] mt-2 flex items-center gap-2 rounded-full border border-border bg-bg-surface px-3 py-2 shadow-xl"><Search size={15} className="text-text-muted" /><input autoFocus name="q" type="search" aria-label={t("actions.searchProducts")} placeholder={t("actions.searchProducts")} className="w-full bg-transparent text-xs outline-none placeholder:text-text-faint" /></form>}
+        {searchOpen && (
+          <form action="/search" method="get" role="search" data-header-search="mobile" className="absolute left-3 right-3 top-full z-[60] mt-2 flex items-center gap-2 rounded-full border border-border bg-bg-surface px-3 py-2 shadow-xl">
+            <Search size={15} className="text-text-muted" />
+            <input
+              autoFocus
+              name="q"
+              type="search"
+              aria-label={t("actions.searchProducts")}
+              placeholder={t("actions.searchProducts")}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              onFocus={suggestions.onFocus}
+              onBlur={suggestions.onBlur}
+              className="w-full bg-transparent text-xs outline-none placeholder:text-text-faint"
+            />
+            {suggestions.focused ? (
+              <HeaderSearchSuggestions
+                query={searchTerm}
+                onPick={() => {
+                  suggestions.close();
+                  setSearchOpen(false);
+                  setSearchTerm("");
+                }}
+              />
+            ) : null}
+          </form>
+        )}
       </div>
 
       {/* Backdrop — dims the page below the header, closes the drawer on click */}

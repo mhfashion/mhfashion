@@ -6,6 +6,7 @@ import {
   ArrowRight, ArrowUpRight, CalendarDays, ClipboardList, CreditCard, Layers3,
   Package, Search, ShoppingBag, Sparkles, Users,
 } from "lucide-react";
+import AdminSearchMisses from "@/components/admin/AdminSearchMisses";
 import AdminShell, { AdminAvatar } from "@/components/admin/AdminShell";
 import { AdminBadge, AdminCard, AdminCardHeader, AdminEmpty, AdminStat, type AdminTone } from "@/components/admin/AdminUi";
 import { useAdminDemoData } from "@/lib/admin-demo-store";
@@ -254,6 +255,10 @@ export default function AdminDashboard() {
             </table>
           </div>
         </AdminCard>
+      </section>
+
+      <section aria-label="Search misses" className="mt-3 grid gap-3">
+        <AdminSearchMisses days={period} />
       </section>
 
       <section aria-label="Admin shortcuts" className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

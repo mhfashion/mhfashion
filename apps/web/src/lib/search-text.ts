@@ -74,5 +74,22 @@ export function matchesSearchQuery(haystack: string | null | undefined, query: s
   const words = searchWords(query);
   if (!words.length) return true;
   const text = normalizeSearchText(haystack);
-  return words.every((word) => text.includes(word));
+  if (words.every((word) => text.includes(word))) return true;
+  // A phone number is typed without spaces but stored with them ("09771234567" vs "09 771 234 567"), so
+  // the digit run is compared a second time with every space removed.
+  const compact = text.replace(/\s+/g, "");
+  return words.every((word) => compact.includes(word.replace(/\s+/g, "")));
+}
+
+/**
+ * The storefront query, ready to compare: the shared fold, then everything PostgREST could misread is
+ * replaced with a space (commas and parentheses would break the `or()` filter), and the term is capped at 60
+ * characters. Myanmar combining marks are kept, or "အင်္ကျီ" would lose its vowels.
+ */
+export function normalizeSearchQuery(input: string | null | undefined): string {
+  return normalizeSearchText(input)
+    .replace(/[^\p{L}\p{M}\p{N}\s'&.+-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60);
 }

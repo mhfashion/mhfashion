@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { ProductOptionGroup } from "./product-options";
 import { optionKeyForAttributeName } from "./product-options";
 import { rankSearchResults } from "./search-rank";
-import { normalizeSearchText } from "./search-text";
+import { normalizeSearchQuery, normalizeSearchText } from "./search-text";
 import type { Product } from "./types";
 
 // Server-side client — safe to use the anon key here since catalog data
@@ -174,14 +174,7 @@ export async function getAllProducts(limit = 60): Promise<Product[]> {
  * PostgREST splits `or()` on commas and treats `%`, `_`, `*` and brackets as syntax, so a search
  * term is reduced to letters, digits, spaces and a few safe marks before it reaches the query.
  */
-export function normalizeSearchQuery(input: string | null | undefined): string {
-  return normalizeSearchText(input)
-    // \p{M} keeps Myanmar combining marks (င်, ျ, ီ); without it "အင်္ကျီ" loses its vowels.
-    .replace(/[^\p{L}\p{M}\p{N}\s'&.+-]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 60);
-}
+export { normalizeSearchQuery } from "./search-text";
 
 /** The widest page a search fetches before ranking (Plan §17 S2: 80 rows in, 40 out). */
 export const SEARCH_FETCH_LIMIT = 80;
@@ -195,6 +188,23 @@ export type SearchOutcome = {
   /** True when the exact search found nothing and these are the close matches a typo search returned. */
   approximate: boolean;
 };
+
+/**
+ * Plan §17 S8: a search that found nothing is worth knowing about. The row holds the folded term and a
+ * count — no user, no address — and the database drops it after 90 days. A shop that has not run migration
+ * 0011 has no such function; the failure is expected and swallowed.
+ */
+export async function recordSearchMiss(term: string): Promise<void> {
+  const client = getServerSupabase();
+  if (!client) return;
+  const folded = normalizeSearchText(term);
+  if (folded.length < 2 || folded.length > 60) return;
+  try {
+    await client.rpc("record_search_miss", { p_term: folded });
+  } catch (error) {
+    console.warn("record_search_miss failed:", error);
+  }
+}
 
 export async function searchProducts(query: string, limit = 40): Promise<Product[]> {
   return (await searchCatalog(query, limit)).products;

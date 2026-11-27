@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import { Search, Users, Wallet } from "lucide-react";
 import AdminShell, { AdminAvatar } from "@/components/admin/AdminShell";
-import { AdminBadge, AdminCard, AdminCardHeader, AdminEmpty, AdminSelect, AdminStat } from "@/components/admin/AdminUi";
+import { AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminEmpty, AdminSelect, AdminStat } from "@/components/admin/AdminUi";
 import { useAdminDemoData } from "@/lib/admin-demo-store";
 import { aggregateCustomers, formatAdminDate, formatKs, type AdminCustomer } from "@/lib/admin-demo-data";
+import { ADMIN_PAGE_SIZE, customerSearchText, nextPageSize, pageSlice } from "@/lib/admin-order-search";
 import { matchesSearchQuery } from "@/lib/search-text";
 
 type SortKey = "spend" | "orders" | "recent";
@@ -23,13 +24,19 @@ export default function AdminCustomers() {
 
   const query = search;
   const customers = useMemo(() => aggregateCustomers(data.orders), [data.orders]);
-  const visible = useMemo(() => customers
-    .filter((customer) => matchesSearchQuery(`${customer.name} ${customer.email} ${customer.phone}`, query))
+  const filtered = useMemo(() => customers
+    .filter((customer) => matchesSearchQuery(customerSearchText(customer), query))
     .sort((a, b) => {
       if (sort === "orders") return b.orders - a.orders;
       if (sort === "recent") return new Date(b.lastOrderAt).getTime() - new Date(a.lastOrderAt).getTime();
       return b.spendKs - a.spendKs;
     }), [customers, query, sort]);
+
+  // Plan §17 S9: 50 rows at a time, from the top whenever the search or the sort changes.
+  const [paging, setPaging] = useState({ key: "", shown: ADMIN_PAGE_SIZE });
+  const filterKey = `${query}|${sort}`;
+  const shown = paging.key === filterKey ? paging.shown : ADMIN_PAGE_SIZE;
+  const visible = useMemo(() => pageSlice(filtered, shown), [filtered, shown]);
 
   const repeat = customers.filter((customer) => customer.orders > 1).length;
   const spendTotal = customers.reduce((total, customer) => total + customer.spendKs, 0);
@@ -104,10 +111,18 @@ export default function AdminCustomers() {
                         : <AdminBadge tone="slate">New</AdminBadge>}
                   </td>
                 </tr>
-              )) : <tr><td colSpan={7}><AdminEmpty title="No customers match this search" description="Try a different name or email." /></td></tr>}
+              )) : <tr><td colSpan={7}><AdminEmpty title="No customers match this search" description="Try a different name, email or phone number." /></td></tr>}
             </tbody>
           </table>
         </div>
+        {filtered.length > visible.length ? (
+          <div className="flex items-center justify-between gap-3 border-t border-[#f0f2f4] px-4 py-3 sm:px-5">
+            <p className="text-[9px] text-[#87909b]" data-admin-customers-shown={visible.length}>Showing {visible.length} of {filtered.length} customers</p>
+            <AdminButton compact variant="secondary" onClick={() => setPaging({ key: filterKey, shown: nextPageSize(shown, filtered.length) })}>
+              Show {Math.min(ADMIN_PAGE_SIZE, filtered.length - visible.length)} more
+            </AdminButton>
+          </div>
+        ) : null}
       </AdminCard>
     </AdminShell>
   );
