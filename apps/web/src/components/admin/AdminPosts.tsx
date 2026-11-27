@@ -21,6 +21,7 @@ import { chainAsPostAttributes } from "@/lib/admin-attributes";
 import { GUIDE_STARTER_CATALOG } from "@/lib/guide-starter";
 import { guideProductLinkSummary } from "@/lib/guide-products";
 import { storePostSvg } from "@/lib/post-assets";
+import { matchesSearchQuery } from "@/lib/search-text";
 
 type PostTab = "guide" | "tshirt" | "nyein";
 
@@ -53,11 +54,11 @@ export default function AdminPosts() {
   const [svgError, setSvgError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
-  const query = search.trim().toLowerCase();
+  const query = search;
   const editing = editingId ? data.tshirtPosts.find((post) => post.id === editingId) ?? null : null;
   const filtered = useMemo(() => data.tshirtPosts.filter((post) => (
     (statusFilter === "All" || post.status === statusFilter)
-    && `${post.title} ${post.description}`.toLowerCase().includes(query)
+    && matchesSearchQuery(`${post.title} ${post.description}`, query)
   )), [data.tshirtPosts, statusFilter, query]);
   const guidePosts = GUIDE_STARTER_CATALOG.posts;
   const activeAttributes = draft ? tshirtDraftAttributes(draft) : [];

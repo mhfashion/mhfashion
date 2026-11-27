@@ -7,6 +7,7 @@ import { AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminDrawer, Admin
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { formatAdminDate } from "@/lib/admin-demo-data";
 import { CONTACT_EMAIL } from "@/lib/storefront-info";
+import { matchesSearchQuery } from "@/lib/search-text";
 import {
   CONTACT_TOPIC_LABEL, CONTACT_TOPICS, contactInbox, contactReplyMailto, setContactStatus, unreadContactCount,
   type ContactMessage, type ContactMessageStatus, type ContactTopic,
@@ -25,12 +26,12 @@ export default function AdminMessages() {
   const [topicFilter, setTopicFilter] = useState<ContactTopic | "All">("All");
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const query = search.trim().toLowerCase();
+  const query = search;
   const inbox = useMemo(() => contactInbox(data.contactMessages), [data.contactMessages]);
   const visible = useMemo(() => inbox
     .filter((message) => statusFilter === "All" || message.status === statusFilter)
     .filter((message) => topicFilter === "All" || message.topic === topicFilter)
-    .filter((message) => `${message.id} ${message.name} ${message.email} ${message.orderNumber ?? ""} ${message.body}`.toLowerCase().includes(query)),
+    .filter((message) => matchesSearchQuery(`${message.id} ${message.name} ${message.email} ${message.orderNumber ?? ""} ${message.body}`, query)),
   [inbox, statusFilter, topicFilter, query]);
 
   const unread = unreadContactCount(data.contactMessages);

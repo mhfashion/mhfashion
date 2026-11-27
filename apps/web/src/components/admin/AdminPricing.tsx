@@ -9,6 +9,7 @@ import { useModalFocus } from "@/lib/use-modal-focus";
 import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { formatKs, type AdminDemoData } from "@/lib/admin-demo-data";
+import { matchesSearchQuery } from "@/lib/search-text";
 import {
   applyPriceChanges, pricingScopes, scopeAttributes, scopeHistory, scopePrices, scopeRows, scopeVersions,
   type PriceChange, type PricingScope, type PricingScopeKind,
@@ -138,8 +139,8 @@ export default function AdminPricing() {
     for (const [key, values] of Object.entries(filters)) {
       if (values.length && !values.includes(row.options[key] ?? "")) return false;
     }
-    const query = search.trim().toLowerCase();
-    return !query || combinationSearchText(attributes, row.options).includes(query);
+    const query = search;
+    return matchesSearchQuery(combinationSearchText(attributes, row.options), query);
   }), [rows, filters, search, unpricedOnly, prices, attributes]);
 
   const groups = useMemo(() => groupRows(attributes, filtered, groupBy), [attributes, filtered, groupBy]);

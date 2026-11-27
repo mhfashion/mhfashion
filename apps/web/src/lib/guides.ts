@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { GUIDE_STARTER_CATALOG } from "./guide-starter";
 import { normalizeGuideProductLinks, type GuideProductLink } from "./guide-products";
+import { normalizeSearchText } from "./search-text";
 
 /** A photo inside an article. The caption is what the photo shows, and it doubles as the alt text. */
 export type GuideImage = {
@@ -73,7 +74,7 @@ const GUIDE_QUERY_TIMEOUT_MS = 8_000;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function normalizeText(value: string): string {
-  return value.toLocaleLowerCase().replace(/\s+/g, " ").trim();
+  return normalizeSearchText(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -389,6 +390,8 @@ export function filterGuidePosts(
         ]),
       ].join(" ")
     );
+    // A guide is long prose, so the query must appear as a phrase; matching word by word would let any
+    // two common words pull in every article. Both sides still go through the shared normaliser.
     return searchableText.includes(normalizedQuery);
   });
 }

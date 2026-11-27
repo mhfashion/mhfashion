@@ -45,6 +45,9 @@ test("the photo catalogue answer keeps the usable items and drops the rest", () 
     "https://cdn.example",
   );
   assert.deepEqual(entries.map((entry) => entry.id), ["photo-yangon-street"]);
+  // A photo without its thumbnail is not offered: the grid would download the full picture for it.
+  const { thumb, ...withoutThumb } = PHOTO;
+  assert.deepEqual(photos.photosFromCatalogue({ items: [withoutThumb] }, "https://cdn.example"), []);
   assert.deepEqual(photos.photosFromCatalogue({ items: "nope" }), []);
   assert.deepEqual(photos.photosFromCatalogue(null), []);
 });

@@ -8,6 +8,7 @@ import {
   AdminInput, AdminSelect, AdminStat, type AdminTone,
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
+import { matchesSearchQuery } from "@/lib/search-text";
 import {
   formatAdminDate, formatKs, promotionDiscountKs, promotionDraftFrom, promotionFromDraft,
   promotionStatus, removePromotion, togglePromotion, upsertPromotion, validatePromotionDraft,
@@ -31,10 +32,10 @@ export default function AdminPromotions() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [previewSubtotal, setPreviewSubtotal] = useState("50000");
 
-  const query = search.trim().toLowerCase();
+  const query = search;
   const editing = editingId ? data.promotions.find((promotion) => promotion.id === editingId) ?? null : null;
   const visible = useMemo(() => data.promotions.filter((promotion) => (
-    `${promotion.code} ${promotion.kind} ${promotionStatus(promotion)}`.toLowerCase().includes(query)
+    matchesSearchQuery(`${promotion.code} ${promotion.kind} ${promotionStatus(promotion)}`, query)
   )), [data.promotions, query]);
 
   const activeCount = data.promotions.filter((promotion) => promotionStatus(promotion) === "Active").length;

@@ -6,6 +6,7 @@ import AdminShell, { AdminAvatar } from "@/components/admin/AdminShell";
 import { AdminBadge, AdminCard, AdminCardHeader, AdminEmpty, AdminSelect, AdminStat } from "@/components/admin/AdminUi";
 import { useAdminDemoData } from "@/lib/admin-demo-store";
 import { aggregateCustomers, formatAdminDate, formatKs, type AdminCustomer } from "@/lib/admin-demo-data";
+import { matchesSearchQuery } from "@/lib/search-text";
 
 type SortKey = "spend" | "orders" | "recent";
 
@@ -20,10 +21,10 @@ export default function AdminCustomers() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("spend");
 
-  const query = search.trim().toLowerCase();
+  const query = search;
   const customers = useMemo(() => aggregateCustomers(data.orders), [data.orders]);
   const visible = useMemo(() => customers
-    .filter((customer) => `${customer.name} ${customer.email} ${customer.phone}`.toLowerCase().includes(query))
+    .filter((customer) => matchesSearchQuery(`${customer.name} ${customer.email} ${customer.phone}`, query))
     .sort((a, b) => {
       if (sort === "orders") return b.orders - a.orders;
       if (sort === "recent") return new Date(b.lastOrderAt).getTime() - new Date(a.lastOrderAt).getTime();

@@ -8,6 +8,7 @@ import {
   AdminInput, AdminSelect, type AdminTone,
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
+import { matchesSearchQuery } from "@/lib/search-text";
 import {
   APPAREL_CATEGORIES, APPAREL_SIZES, ONE_SIZE, formatKs, productDraftFrom, productFromDraft, removeProduct,
   upsertProduct, validateProductDraft,
@@ -36,11 +37,11 @@ export default function AdminProducts() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [chart, setChart] = useState<ProductSizeChart>({});
 
-  const query = search.trim().toLowerCase();
+  const query = search;
   const editing = editingId ? data.products.find((product) => product.id === editingId) ?? null : null;
   const filtered = useMemo(() => data.products.filter((product) => (
     (statusFilter === "All" || product.status === statusFilter)
-    && `${product.name} ${product.category} ${product.fabric}`.toLowerCase().includes(query)
+    && matchesSearchQuery(`${product.name} ${product.category} ${product.fabric}`, query)
   )), [data.products, statusFilter, query]);
 
   function startCreate() {

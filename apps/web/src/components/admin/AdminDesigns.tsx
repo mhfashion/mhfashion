@@ -6,6 +6,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { AdminBadge, AdminButton, AdminCard, AdminDrawer, AdminEmpty, AdminField, AdminInput, AdminStat, AdminTextarea, type AdminTone } from "@/components/admin/AdminUi";
 import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
+import { matchesSearchQuery } from "@/lib/search-text";
 import {
   designTakedownsFor, formatAdminDate, recordDesignTakedown, removeDesign, setDesignStatus,
   type AdminDesign, type AdminDesignStatus,
@@ -29,10 +30,10 @@ export default function AdminDesigns() {
   const [claimNote, setClaimNote] = useState("");
   const [takedownMessage, setTakedownMessage] = useState("");
 
-  const query = search.trim().toLowerCase();
+  const query = search;
   const visible = useMemo(() => data.designs
     .filter((design) => statusFilter === "All" || design.status === statusFilter)
-    .filter((design) => `${design.name} ${design.author} ${design.product}`.toLowerCase().includes(query))
+    .filter((design) => matchesSearchQuery(`${design.name} ${design.author} ${design.product}`, query))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [data.designs, statusFilter, query]);
 
   const downloads = data.designs.reduce((total, design) => total + design.downloads, 0);

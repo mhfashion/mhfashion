@@ -2173,8 +2173,8 @@ author's, taken on the owner's instruction to decide everything.
 |---|---|---|
 | Storefront `/search?q=` | Server-rendered. `normalizeSearchQuery` keeps letters, combining marks, digits, spaces and `' & . + -`, cuts the text at 60 characters and needs 2 characters. `searchProducts` asks Supabase for `ilike %term%` on `name`, `sub_brand` and `product_type`, ordered by name, at most 40 products, with a price range per product. With no hit the page shows popular products. The header search form goes to this page. | `lib/products.ts`, `app/search/page.tsx`, `components/HeaderActions.tsx` |
 | Guide `/guide?q=&category=` | Server-side. The text is normalised and matched with `includes` over each article's searchable fields; it composes with the category filter. | `lib/guides.ts` |
-| Editor | In the browser. The Edit sidebar search (Designs, Elements, Photos, Patterns, Text) and the font picker filter their lists with a lower-case `includes` on names. | `EditorEditSidebar`, `EditorAdjustmentsPanel` |
-| Admin | In the browser, over the demo data. Each list (orders, products, posts, customers, designs, availability, promotions, settlements, the pricing grid) filters on one joined text made from its own fields; orders use id, customer, email and more. | `components/admin/*`, `lib/pricing-combinations.ts` |
+| Editor | In the browser. The Edit sidebar search (Designs, Elements, Photos, Patterns, Text) and the font picker filter their lists with `matchesSearchQuery` from `lib/search-text.ts` (S1, S2, S5), over the name plus the Myanmar name, tags and aliases. | `EditorEditSidebar`, `EditorAdjustmentsPanel`, `lib/search-text.ts` |
+| Admin | In the browser, over the demo data. Each list (orders, products, posts, customers, designs, availability, promotions, settlements, the pricing grid, ads, messages) filters one joined text through `matchesSearchQuery`, so the query and the text fold the same way; orders use id, customer, email and more. | `components/admin/*`, `lib/pricing-combinations.ts`, `lib/search-text.ts` |
 
 Verified gaps:
 1. Matching is a plain substring and nothing is ranked; the storefront simply orders by name.
@@ -2205,7 +2205,13 @@ Verified gaps:
 
 ### 17.3 Rollout
 
-1. `search-text.ts` with its tests, and every existing search moved onto it. Nothing else changes for the user.
+1. ~~`search-text.ts` with its tests, and every existing search moved onto it.~~ **Done 2026-11-21:**
+   `apps/web/src/lib/search-text.ts` (`normalizeSearchText`, `searchWords`, `matchesSearchQuery`) and
+   `tests/search-text.test.cjs` (8 tests). The Edit sidebar's five lists, the font picker, the storefront's
+   `normalizeSearchQuery` (now folded by the same normaliser before its allow-list), the guide search and all
+   eleven admin screens use it. The guide keeps phrase matching on purpose: a guide is long prose, and word-wise
+   matching would let any two common words pull in every article. Verified in Chromium at 1440 × 900: `street`
+   finds 2 photos, `street portrait` finds 1, `street hoodie` finds none and shows the empty note.
 2. Ranking and the `search_text` columns (a `SQL/` migration).
 3. `pg_trgm` typo tolerance.
 4. The grouped `/search` page, suggestions and the `search_misses` table.
@@ -2214,7 +2220,8 @@ Verified gaps:
 ### 17.4 Acceptance
 
 - Two spellings of the same Burmese word (with and without a zero-width character, with the medial signs in a
-  different order) return the same results.
+  different order) return the same results. *(The normaliser half is tested in `tests/search-text.test.cjs`; the
+  storefront half waits for the `search_text` column in step 2.)*
 - The Burmese test strings မြန်မာ, ကြောင်, ပြည်ထောင်စု and သင်္ကြန် each find their record by a part of the word.
 - An English name and its Myanmar name find the same record.
 - A one-letter Latin typo finds the product once phase 3 is in; before then it finds nothing.

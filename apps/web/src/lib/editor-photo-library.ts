@@ -67,6 +67,7 @@ function isPhotoCatalogueEntry(value: unknown): value is PhotoCatalogueEntry {
   const entry = value as Partial<PhotoCatalogueEntry>;
   return typeof entry.slug === "string" && typeof entry.file === "string" && typeof entry.name === "string"
     && typeof entry.width === "number" && typeof entry.height === "number"
+    && typeof entry.thumb === "string" && entry.thumb.length > 0
     && typeof entry.licence === "object" && entry.licence !== null;
 }
 

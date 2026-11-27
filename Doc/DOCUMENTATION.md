@@ -2191,3 +2191,42 @@ the page. And the width animation needs fixed-width content: the aside animates 
 Scope note: an earlier revision of this change put a menu drawer on the **storefront** header. The owner
 wanted the **admin dashboard** changed, so that drawer (`SiteMenu.tsx`) was deleted and `Header.tsx` /
 `MobileNav.tsx` were restored. The shop surface is unchanged.
+
+## One search text for every screen (2026-11-21, Plan §17 S1/S2/S5)
+
+Before this change every screen folded its own text: the Edit sidebar used `name.toLowerCase().includes(needle)`,
+each admin list built a joined string and lower-cased it, the guide used `toLocaleLowerCase`, and the storefront
+had its own allow-list. None of them removed zero-width characters, so two spellings of one Burmese word — one
+with a stray ZWSP, one without — did not find each other.
+
+`apps/web/src/lib/search-text.ts` is now the one place a search text is folded:
+
+```ts
+normalizeSearchText("  Tee   BLACK ")      // "tee black"
+normalizeSearchText("မြန်\u200Bမာ")        // "မြန်မာ"   (zero-width removed)
+normalizeSearchText("\u1000\u103D\u103B")  // "\u1000\u103B\u103D"  (medial ya before medial wa)
+matchesSearchQuery("Tee — black", "black tee")   // true: every word must appear
+matchesSearchQuery("Tee — black", "black hoodie") // false
+```
+
+`normalizeSearchText` applies Unicode NFC, drops U+200B/U+200C/U+200D/U+FEFF, collapses spaces, lower-cases, and
+puts each run of signs that follows a consonant into the storage order the Unicode Standard's Myanmar chapter
+lists (medial ya, ra, wa, ha; the e vowel; i/u/ai; anusvara; aa; dot below; visarga; asat). U+1039 (virama) is
+left alone because it joins the next consonant.
+
+Who uses it:
+
+| Screen | Change |
+|---|---|
+| Edit sidebar (Designs, Elements, Photos, Patterns, Text) | each list filters with `matchesSearchQuery`, over the name plus the Myanmar name, tags and aliases |
+| Font picker (`EditorAdjustmentsPanel`) | same matcher |
+| Storefront `/search` | `normalizeSearchQuery` now folds with `normalizeSearchText` before its allow-list and 60-character cap, so the database filter is unchanged |
+| Guide `/guide` | `normalizeText` is `normalizeSearchText`; the filter keeps **phrase** matching on purpose (long prose + word-wise matching would match everything) |
+| Admin (11 screens) | every list filters with `matchesSearchQuery`; the query is no longer lower-cased by hand |
+
+Measured in Chromium at 1440 × 900 on `/create`: `street` → 2 photos, `street portrait` → 1, `street hoodie` → 0
+with the "No photo matches that search." note, clearing → 9. No console errors.
+
+Tests: `tests/search-text.test.cjs` (8) covers the folds, the sign order, the four acceptance words
+(မြန်မာ, ကြောင်, ပြည်ထောင်စု, သင်္ကြန်), the storefront query, and asserts the sidebar and admin sources no
+longer keep their own filters. The full suite is 890 passing.

@@ -20,6 +20,7 @@ import {
   decideRefund, pendingRefundRequests, refundReasonLabel, type AdminOrderRefundRequest,
 } from "@/lib/order-refunds";
 import { stockStatus, syncStockWithStage } from "@/lib/stock-movement";
+import { matchesSearchQuery } from "@/lib/search-text";
 import {
   ADMIN_ORDER_DATE_PRESETS, ADMIN_ORDER_SORTS, ADMIN_ORDER_STAGES,
   adminDayKey, adminDayLabel, adminTodayKey, buildMockupDiagramSvg, designLayerSize,
@@ -78,14 +79,14 @@ export default function AdminOrders() {
     if (linked) setOpenId(linked);
   }, []);
 
-  const query = search.trim().toLowerCase();
+  const query = search;
   const summary = useMemo(() => summarizeOrders(data.orders), [data.orders]);
   const todayKey = adminTodayKey();
   const today = useMemo(() => summarizeOrders(data.orders.filter((order) => adminDayKey(order.placedAt) === todayKey)), [data.orders, todayKey]);
   const inRange = useMemo(() => ordersInDateRange(data.orders, range), [data.orders, range]);
   const dayGroups = useMemo(() => orderDayGroups(inRange), [inRange]);
   const filtered = useMemo(() => sortOrders(inRange.filter((order) => (
-    (filter === "All" || order.stage === filter) && orderSearchText(order).includes(query)
+    (filter === "All" || order.stage === filter) && matchesSearchQuery(orderSearchText(order), query)
   )), sort), [inRange, filter, query, sort]);
   const filteredSummary = useMemo(() => summarizeOrders(filtered), [filtered]);
   const rangeLabel = range.from || range.to

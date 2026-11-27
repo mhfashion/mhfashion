@@ -1170,6 +1170,19 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Never `git reset --hard origin/main` without a `git fetch` first: the tracking ref lags, and the
   reset silently drops local commits that were already pushed (recover them from the pushed branch).
 
+## Search text (`apps/web/src/lib/search-text.ts`, Plan §17 S1/S2/S5)
+- `normalizeSearchText` is the one fold: NFC, zero-width removed, spaces collapsed, lower case, and each run of
+  Myanmar signs that follows a consonant put into Unicode's storage order (medial ya/ra/wa/ha, e, i/u/ai, anusvara,
+  aa, dot below, visarga, asat). U+1039 (virama) must stay out of that table: it joins the next consonant.
+- `matchesSearchQuery(haystack, query)` needs **every** query word, so `street portrait` matches "Street portrait"
+  and `street hoodie` matches nothing. An empty query matches everything.
+- The Edit sidebar's five lists, the font picker and all eleven admin screens use it; do not reintroduce a local
+  `toLowerCase().includes(...)` filter, `tests/search-text.test.cjs` fails if one comes back.
+- The guide keeps **phrase** matching (`searchableText.includes(normalizedQuery)`) on purpose: word-wise matching
+  over a whole article body matches almost anything.
+- The storefront's `normalizeSearchQuery` folds with `normalizeSearchText` and then applies its allow-list and
+  60-character cap; that allow-list is the PostgREST safety rule, so keep it.
+
 ## Font outline files (plan E17 step 3, decision D14)
 - `EditorFontFile.outline` names a bucket-relative `.ttf`/`.otf` beside the woff2; HarfBuzz cannot shape
   woff2, so a weight without one cannot be bent (E19) while it still displays fine.

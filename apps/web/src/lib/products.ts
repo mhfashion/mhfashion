@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ProductOptionGroup } from "./product-options";
 import { optionKeyForAttributeName } from "./product-options";
+import { normalizeSearchText } from "./search-text";
 import type { Product } from "./types";
 
 // Server-side client — safe to use the anon key here since catalog data
@@ -173,7 +174,7 @@ export async function getAllProducts(limit = 60): Promise<Product[]> {
  * term is reduced to letters, digits, spaces and a few safe marks before it reaches the query.
  */
 export function normalizeSearchQuery(input: string | null | undefined): string {
-  return (input ?? "")
+  return normalizeSearchText(input)
     // \p{M} keeps Myanmar combining marks (င်, ျ, ီ); without it "အင်္ကျီ" loses its vowels.
     .replace(/[^\p{L}\p{M}\p{N}\s'&.+-]/gu, " ")
     .replace(/\s+/g, " ")

@@ -9,6 +9,7 @@ import {
 import AdminShell, { AdminAvatar } from "@/components/admin/AdminShell";
 import { AdminBadge, AdminCard, AdminCardHeader, AdminEmpty, AdminStat, type AdminTone } from "@/components/admin/AdminUi";
 import { useAdminDemoData } from "@/lib/admin-demo-store";
+import { matchesSearchQuery } from "@/lib/search-text";
 import {
   formatAdminDateTime, formatKs, orderTotalKs, revenueByDay, summarizeOrders,
   topProducts, type AdminOrderStage,
@@ -117,7 +118,7 @@ export default function AdminDashboard() {
   const data = useAdminDemoData();
   const [search, setSearch] = useState("");
   const [period, setPeriod] = useState(7);
-  const query = search.trim().toLowerCase();
+  const query = search;
 
   const summary = useMemo(() => summarizeOrders(data.orders), [data.orders]);
   const buckets = useMemo(() => revenueByDay(data.orders, period), [data.orders, period]);
@@ -125,9 +126,9 @@ export default function AdminDashboard() {
   const customerCount = useMemo(() => new Set(data.orders.map((order) => order.customerEmail)).size, [data.orders]);
   const publishedDesigns = useMemo(() => data.designs.filter((design) => design.status === "Published").length, [data.designs]);
   const recentOrders = useMemo(() => data.orders
-    .filter((order) => `${order.id} ${order.customerName} ${order.items.map((item) => item.name).join(" ")} ${order.stage}`.toLowerCase().includes(query))
+    .filter((order) => matchesSearchQuery(`${order.id} ${order.customerName} ${order.items.map((item) => item.name).join(" ")} ${order.stage}`, query))
     .slice(0, 6), [data.orders, query]);
-  const visibleProducts = useMemo(() => ranked.filter((product) => product.name.toLowerCase().includes(query)), [ranked, query]);
+  const visibleProducts = useMemo(() => ranked.filter((product) => matchesSearchQuery(product.name.toLowerCase(), query)), [ranked, query]);
   const activity = useMemo(() => {
     const events = [
       ...data.orders.slice(0, 5).map((order) => ({

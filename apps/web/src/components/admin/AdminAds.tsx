@@ -8,6 +8,7 @@ import {
   AdminInput, AdminSelect, AdminStat, type AdminTone,
 } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
+import { matchesSearchQuery } from "@/lib/search-text";
 import {
   ADS_ROTATION_CHOICES, formatAdminDate, normalizeAdsRotationSeconds,
   type AdminAd, type AdFit, type AdMediaType, type AdSlotId,
@@ -63,15 +64,17 @@ export default function AdminAds() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const posterInput = useRef<HTMLInputElement>(null);
 
-  const query = search.trim().toLowerCase();
+  const query = search;
   const editing = editingId && editingId !== "new" ? data.ads.find((ad) => ad.id === editingId) ?? null : null;
 
   // One row per place, and every banner filed under that place inside it — a place can hold many.
   const board = useMemo(() => AD_SLOTS.map((slot) => ({ slot, banners: adsForSlot(data.ads, slot.id) })), [data.ads]);
-  const visible = board.filter(({ slot, banners }) => (
-    `${slot.label} ${slot.page} ${slot.where} ${banners.map((ad) => ad.name).join(" ")} ${banners.map((ad) => adStatus(ad)).join(" ")}`
-      .toLowerCase().includes(query)
-  ));
+  const visible = board.filter(({ slot, banners }) =>
+    matchesSearchQuery(
+      `${slot.label} ${slot.page} ${slot.where} ${banners.map((ad) => ad.name).join(" ")} ${banners.map((ad) => adStatus(ad)).join(" ")}`,
+      query,
+    ),
+  );
   const liveBanners = data.ads.filter((ad) => adStatus(ad) === "Live").length;
   const scheduled = data.ads.filter((ad) => adStatus(ad) === "Scheduled").length;
   const emptyPlaces = board.filter(({ banners }) => banners.length === 0).length;

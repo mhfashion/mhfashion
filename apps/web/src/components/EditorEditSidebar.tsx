@@ -30,6 +30,7 @@ import { useEditorPatternLibrary } from "@/lib/editor-pattern-library";
 import { useEditorPhotoLibrary } from "@/lib/editor-photo-library";
 import type { PhotoLibraryEntry } from "@/lib/editor-photo-library";
 import { formatByteSize } from "@/lib/editor-upload";
+import { matchesSearchQuery } from "@/lib/search-text";
 
 type SidebarSection = "Designs" | "Elements" | "Photos" | "Patterns" | "Text" | "Uploads" | "Image Create";
 
@@ -152,13 +153,13 @@ function PanelContent({
 }: PanelProps) {
   const [search, setSearch] = useState("");
   const [prompt, setPrompt] = useState("");
-  const needle = search.trim().toLowerCase();
+  const query = search;
   // The shop's own library when it has one, the built-ins and placeholders until then.
   const { photos: photoLibrary } = useEditorPhotoLibrary();
   const { layers: patternLayers, inkByLayerId, keywordsByLayerId } = useEditorPatternLibrary();
 
   if (section === "Designs") {
-    const designs = MH_DESIGN_LIBRARY.filter((design) => !needle || design.name.toLowerCase().includes(needle));
+    const designs = MH_DESIGN_LIBRARY.filter((design) => matchesSearchQuery(design.name, query));
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <SearchField value={search} onChange={setSearch} placeholder="Search designs" />
@@ -172,12 +173,7 @@ function PanelContent({
   }
 
   if (section === "Elements") {
-    const layers = MH_DESIGN_LAYERS.filter(
-      (layer) =>
-        !needle ||
-        layer.name.toLowerCase().includes(needle) ||
-        layer.designName.toLowerCase().includes(needle),
-    );
+    const layers = MH_DESIGN_LAYERS.filter((layer) => matchesSearchQuery(`${layer.name} ${layer.designName}`, query));
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <SearchField value={search} onChange={setSearch} placeholder="Search elements" />
@@ -192,9 +188,7 @@ function PanelContent({
   }
 
   if (section === "Photos") {
-    const photos = photoLibrary.filter(
-      (photo) => !needle || `${photo.name} ${photo.keywords ?? ""}`.toLowerCase().includes(needle),
-    );
+    const photos = photoLibrary.filter((photo) => matchesSearchQuery(`${photo.name} ${photo.keywords ?? ""}`, query));
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <SearchField value={search} onChange={setSearch} placeholder="Search photos" />
@@ -215,8 +209,8 @@ function PanelContent({
   }
 
   if (section === "Patterns") {
-    const patterns = patternLayers.filter(
-      (layer) => !needle || `${layer.name} ${keywordsByLayerId[layer.id] ?? ""}`.toLowerCase().includes(needle),
+    const patterns = patternLayers.filter((layer) =>
+      matchesSearchQuery(`${layer.name} ${keywordsByLayerId[layer.id] ?? ""}`, query),
     );
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
@@ -238,7 +232,7 @@ function PanelContent({
   }
 
   if (section === "Text") {
-    const textLayers = MH_DESIGN_TEXT_LAYERS.filter((layer) => !needle || layer.name.toLowerCase().includes(needle));
+    const textLayers = MH_DESIGN_TEXT_LAYERS.filter((layer) => matchesSearchQuery(layer.name, query));
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <SearchField value={search} onChange={setSearch} placeholder="Search text" />

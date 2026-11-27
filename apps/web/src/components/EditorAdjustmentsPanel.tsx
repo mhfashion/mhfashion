@@ -13,6 +13,7 @@ import { STRICTEST_MIN_STROKE_MM } from "@/lib/print-quality";
 import { EditorTextArtwork } from "@/components/EditorLayerPreview";
 import { useEditorFontLibrary } from "@/lib/editor-font-library";
 import { EDITOR_RECENT_LIMIT, type EditorPreset, type EditorPresetGroup, type EditorPresetLibrary } from "@/lib/editor-presets";
+import { matchesSearchQuery } from "@/lib/search-text";
 
 const PANEL_WIDTH = "min(16rem, 86vw)";
 
@@ -653,10 +654,10 @@ export default function EditorAdjustmentsPanel({ open, onToggle, selectedLayer, 
     : text.textEffect === "outline"
       ? [{ id: "legacy-outline", kind: "outline", color: text.effectColor ?? "#000000", width: text.outlineWidth ?? 6 }]
       : []) : [];
-  const filteredFonts = useMemo(() => {
-    const needle = fontQuery.trim().toLowerCase();
-    return fontLibrary.names.filter((font) => !needle || font.toLowerCase().includes(needle));
-  }, [fontLibrary.names, fontQuery]);
+  const filteredFonts = useMemo(
+    () => fontLibrary.names.filter((font) => matchesSearchQuery(font, fontQuery)),
+    [fontLibrary.names, fontQuery],
+  );
   function toggleSection(section: string) { setOpenSection((current) => current === section ? "" : section); }
   function chooseFont(fontFamily: string) {
     onUpdateTextStyle({ fontFamily });

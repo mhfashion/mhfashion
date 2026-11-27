@@ -5,6 +5,7 @@ import { AlertTriangle, Box, Minus, Plus, Search } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminEmpty, AdminInput, AdminStat } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
+import { matchesSearchQuery } from "@/lib/search-text";
 import {
   adjustStock, setStockQuantity, stockRows, stockSummary,
 } from "@/lib/admin-demo-data";
@@ -16,10 +17,10 @@ export default function AdminInventory() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StockFilter>("all");
 
-  const query = search.trim().toLowerCase();
+  const query = search;
   const summary = useMemo(() => stockSummary(data), [data]);
   const rows = useMemo(() => stockRows(data)
-    .filter((row) => row.product.toLowerCase().includes(query))
+    .filter((row) => matchesSearchQuery(row.product.toLowerCase(), query))
     .filter((row) => (filter === "low" ? row.low : filter === "out" ? row.out : true)), [data, query, filter]);
 
   function change(productId: string, size: string, delta: number) {
