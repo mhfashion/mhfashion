@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Shapes, Shirt } from "lucide-react";
+import { BookOpen, Shirt } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { searchHref, type SearchType } from "@/lib/search-caps";
 
 const TABS: { type: SearchType; icon: typeof Shirt }[] = [
   { type: "products", icon: Shirt },
   { type: "guides", icon: BookOpen },
-  { type: "designs", icon: Shapes },
 ];
 
 export default function SearchTabs({ term, type, counts }: { term: string; type: SearchType; counts: Record<SearchType, number> }) {

@@ -2515,3 +2515,9 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
   `search_text` → without both) keeps a shop that has not run migration 0009 searching.
 - The database side is migration 0009: `products.tags text[]` and a `search_text` that already concatenates
   name, Myanmar name, slug, sub-brand, product type, tags and aliases.
+
+## Designs live on the product
+
+- There is no Designs module and no Designs group in search. A product post carries its artwork: `AdminProduct.designName` (required) and `designSvgUrl` (optional) are edited in the product drawer, and the products table prints the design name under the product name.
+- `/search` has two groups (products, guides). `readSearchType` falls back to `products` for anything else, so an old `?type=designs` link still lands on a working page.
+- Demo data written by an older build has no `designName`; `readAdminDemoData` backfills it from the product name and defaults `tags` to `[]`. Keep the mapped `products` in the cache object — spreading `...parsed` after it discards the backfill.

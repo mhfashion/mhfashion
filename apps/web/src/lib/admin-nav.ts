@@ -8,7 +8,6 @@ export const ADMIN_NAV: { id: AdminModuleId; label: string; href: string }[] = [
   { id: "dashboard", label: "Dashboard", href: "/admin" },
   { id: "orders", label: "Orders", href: "/admin/orders" },
   { id: "products", label: "Products", href: "/admin/products" },
-  { id: "designs", label: "Designs", href: "/admin/designs" },
   { id: "posts", label: "Posts", href: "/admin/posts" },
   { id: "ads", label: "Ads", href: "/admin/ads" },
   { id: "pricing", label: "Pricing", href: "/admin/pricing" },

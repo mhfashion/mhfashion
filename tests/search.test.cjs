@@ -204,14 +204,14 @@ test("the fuzzy search is not asked for a two-letter term, nor when it is missin
 
 test("the result groups have their own caps and live in the address", () => {
   const caps = loadModule("apps/web/src/lib/search-caps.ts");
-  assert.deepEqual(caps.SEARCH_CAPS, { products: 40, guides: 10, designs: 12 });
+  assert.deepEqual(caps.SEARCH_CAPS, { products: 40, guides: 10 }, "a design is posted with its product, so it is not a group");
   assert.equal(caps.readSearchType(undefined), "products");
   assert.equal(caps.readSearchType("guides"), "guides");
-  assert.equal(caps.readSearchType("designs"), "designs");
+  assert.equal(caps.readSearchType("designs"), "products", "a designs tab is no longer a group");
   assert.equal(caps.readSearchType("posters"), "products", "an unknown group falls back to products");
   assert.equal(caps.searchHref("tee", "products"), "/search?q=tee");
   assert.equal(caps.searchHref("tee", "guides"), "/search?q=tee&type=guides");
-  assert.equal(caps.searchHref("", "designs"), "/search?type=designs");
+  assert.equal(caps.searchHref("", "guides"), "/search?type=guides");
   assert.equal(caps.searchHref("", "products"), "/search");
 });
 

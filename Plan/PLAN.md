@@ -4692,3 +4692,21 @@ tofu box and a screenshot looks broken even when the markup is right. Put Noto S
   does not blank the search.
 - Still open: the admin's product save writes to the local demo store, not to Supabase, so a posted product
   only becomes searchable in the shop once an admin write path exists. The table already has the column.
+
+## §18.6 A design is posted with its product, not on its own
+
+- The owner does not post designs separately, so there is no Designs module any more: the sidebar entry, the
+  `/admin/designs` route, `AdminDesigns.tsx`, the module id and the dashboard's "Published Designs" stat are
+  gone. `/admin/designs` answers 404 and the route manifest no longer lists it.
+- The product editor carries the design instead: a **Design** block with a required `Design name` and an
+  optional `Artwork file URL` (`AdminProduct.designName` / `designSvgUrl`). The products table shows the
+  design name under the product name, so the artwork is visible where it is posted.
+- The shop has no designs group either: `/search` answers Products and Guides, `SearchTabs` renders two
+  tabs, `SEARCH_CAPS` is `{ products: 40, guides: 10 }`, `?type=designs` falls back to products, and
+  `/api/search/suggest` returns `product` and `guide` suggestions only.
+- The editor's built-in starter templates (`MH_DESIGN_LIBRARY`) are untouched: they are a starting point
+  inside the editor, not a catalogue entry.
+- Stored demo data saved before this change has no `designName`; the loader backfills it from the product
+  name (and an empty `tags` list) so an old row can still be opened and saved. The loader now also stores
+  the mapped `products` it builds — it previously spread `...parsed` over them, which silently dropped every
+  product backfill.

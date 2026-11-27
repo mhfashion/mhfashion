@@ -174,6 +174,7 @@ test("a posted product keeps the tags and category the search reads", () => {
     gsm: "180",
     priceKs: "21000",
     tags: "summer, unisex",
+    designName: "Street Vibes",
   };
   assert.deepEqual(admin.validateProductDraft(draft), []);
   const product = admin.productFromDraft(draft);
@@ -193,7 +194,7 @@ test("product drafts are validated before they reach the catalog", () => {
   assert.ok(errors.some((error) => /price/i.test(error)));
   assert.ok(errors.some((error) => /gsm/i.test(error)));
 
-  const capDraft = { ...blank, name: "Cap", category: "Cap", fabric: "Cotton Twill", priceKs: "18000", status: "Active" };
+  const capDraft = { ...blank, name: "Cap", category: "Cap", fabric: "Cotton Twill", priceKs: "18000", status: "Active", designName: "Golden Peacock" };
   assert.deepEqual(admin.validateProductDraft(capDraft), [], "a cap needs no GSM");
 
   const apparelDraft = { ...capDraft, name: "Hoodie", category: "Hoodie", gsm: "320" };
@@ -253,16 +254,16 @@ test("promotions validate, expire and discount against the subtotal", () => {
 test("team drafts require a module for every non-super role", () => {
   const draft = { name: "Nandar Win", email: "nandar@mhfashion.com", role: "Post Admin", modules: [] };
   assert.ok(admin.validateTeamDraft(draft).some((error) => /module/i.test(error)));
-  assert.deepEqual(admin.validateTeamDraft({ ...draft, modules: ["designs"] }), []);
+  assert.deepEqual(admin.validateTeamDraft({ ...draft, modules: ["posts"] }), []);
   assert.deepEqual(admin.validateTeamDraft({ ...draft, role: "Super Admin" }), []);
-  assert.ok(admin.validateTeamDraft({ ...draft, email: "not-an-email", modules: ["designs"] }).length > 0);
+  assert.ok(admin.validateTeamDraft({ ...draft, email: "not-an-email", modules: ["posts"] }).length > 0);
 
   const superAdmin = { id: "t1", name: "Owner", email: "owner@mhfashion.com", role: "Super Admin", modules: [], active: true };
-  const postAdmin = { id: "t2", name: "Post", email: "post@mhfashion.com", role: "Post Admin", modules: ["designs"], active: true };
+  const postAdmin = { id: "t2", name: "Post", email: "post@mhfashion.com", role: "Post Admin", modules: ["posts"], active: true };
   assert.equal(admin.canAccessModule(superAdmin, "settings"), true, "super admins reach every module");
-  assert.equal(admin.canAccessModule(postAdmin, "designs"), true);
+  assert.equal(admin.canAccessModule(postAdmin, "posts"), true);
   assert.equal(admin.canAccessModule(postAdmin, "orders"), false);
-  assert.equal(admin.canAccessModule({ ...postAdmin, active: false }, "designs"), false);
+  assert.equal(admin.canAccessModule({ ...postAdmin, active: false }, "posts"), false);
 
   const data = admin.upsertTeamMember(admin.createAdminDemoData(NOW), postAdmin);
   assert.ok(data.team.some((member) => member.id === "t2"));

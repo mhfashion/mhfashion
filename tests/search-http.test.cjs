@@ -1,4 +1,4 @@
-// Plan §17 S6: the search page answers in three groups. Needs a server:
+// Plan §17 S6: the search page answers in two groups. Needs a server:
 //   npm run start --workspace=apps/web -- --port 3000
 // then `node --test tests/search-http.test.cjs` (SEARCH_TEST_ORIGIN overrides the address).
 const assert = require("node:assert/strict");
@@ -17,10 +17,10 @@ function tabCount(html, type) {
   return match ? Number(match[1]) : null;
 }
 
-test("a query answers with the three group tabs and their counts", async () => {
+test("a query answers with the two group tabs and their counts", async () => {
   const { response, html } = await page("/search?q=guide");
   assert.equal(response.status, 200);
-  for (const type of ["products", "guides", "designs"]) {
+  for (const type of ["products", "guides"]) {
     assert.ok(html.includes(`data-search-tab="${type}"`), `the ${type} tab is missing`);
     assert.ok(tabCount(html, type) !== null, `the ${type} tab has no count`);
   }
@@ -38,12 +38,11 @@ test("the guides tab lists guide articles that link to their own page", async ()
   assert.match(html, /data-search-group="guides"/);
 });
 
-test("the designs tab lists the editor design templates and is capped at 12", async () => {
+test("the shop has no designs group: artwork is posted with its product", async () => {
   const { html } = await page("/search?q=wave&type=designs");
-  const designs = [...html.matchAll(/data-search-design="([^"]+)"/g)].map((match) => match[1]);
-  assert.ok(designs.length > 0, "no design was rendered");
-  assert.ok(designs.length <= 12, "the designs group is capped at 12");
-  assert.match(html, /href="\/create"/);
+  assert.equal(html.includes('data-search-tab="designs"'), false, "no designs tab is offered");
+  assert.equal(html.includes("data-search-design="), false, "no design card is rendered");
+  assert.equal(html.includes('data-search-group="designs"'), false);
 });
 
 test("an unknown group falls back to products, and a miss shows the empty state", async () => {

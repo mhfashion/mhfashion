@@ -6,11 +6,9 @@ import ProductCard from "@/components/ProductCard";
 import SearchField from "@/components/SearchField";
 import SearchTabs, { SearchGroupEmpty } from "@/components/SearchTabs";
 import T from "@/components/T";
-import { MH_DESIGN_LIBRARY } from "@/lib/editor-design-library";
 import { filterGuidePosts, getGuideCatalog, type GuidePost } from "@/lib/guides";
 import { getBestSellers, normalizeSearchQuery, searchCatalog } from "@/lib/products";
 import { SEARCH_CAPS, readSearchType, type SearchType } from "@/lib/search-caps";
-import { matchesSearchQuery } from "@/lib/search-text";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Search — MH Fashion", description: "Search the MH Fashion catalog by product name, line or product type.", robots: { index: false, follow: true } };
@@ -36,13 +34,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const guides: GuidePost[] = searching
     ? filterGuidePosts((await getGuideCatalog()).posts, "", term).slice(0, SEARCH_CAPS.guides)
     : [];
-  const designs = searching
-    ? MH_DESIGN_LIBRARY
-      .filter((design) => matchesSearchQuery([design.name, ...design.layers.map((layer) => layer.name)].join(" "), term))
-      .slice(0, SEARCH_CAPS.designs)
-    : [];
-  const counts: Record<SearchType, number> = { products: products.products.length, guides: guides.length, designs: designs.length };
-  const total = counts.products + counts.guides + counts.designs;
+  const counts: Record<SearchType, number> = { products: products.products.length, guides: guides.length };
+  const total = counts.products + counts.guides;
   const popular = searching && !total ? await getBestSellers(6) : [];
 
   return (
@@ -97,21 +90,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               ) : <SearchGroupEmpty group="guides" term={term} />
             ) : null}
 
-            {type === "designs" ? (
-              designs.length ? (
-                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-search-group="designs">
-                  {designs.map((design) => (
-                    <li key={design.id}>
-                      <Link href="/create" data-search-design={design.id} className="flex h-full flex-col rounded-xl border border-border bg-bg-surface p-4 hover:border-accent">
-                        <span className="text-sm font-black">{design.name}</span>
-                        <span className="mt-1 line-clamp-2 text-xs text-text-muted">{design.layers.map((layer) => layer.name).join(" · ")}</span>
-                        <span className="mt-2 text-[10px] font-bold text-accent"><T k="search.openEditor" /></span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : <SearchGroupEmpty group="designs" term={term} />
-            ) : null}
           </div>
 
           {!total ? (

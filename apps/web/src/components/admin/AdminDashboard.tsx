@@ -125,7 +125,7 @@ export default function AdminDashboard() {
   const buckets = useMemo(() => revenueByDay(data.orders, period), [data.orders, period]);
   const ranked = useMemo(() => topProducts(data.orders, 5), [data.orders]);
   const customerCount = useMemo(() => new Set(data.orders.map((order) => order.customerEmail)).size, [data.orders]);
-  const publishedDesigns = useMemo(() => data.designs.filter((design) => design.status === "Published").length, [data.designs]);
+  const activeProducts = useMemo(() => data.products.filter((product) => product.status === "Active").length, [data.products]);
   const recentOrders = useMemo(() => data.orders
     .filter((order) => matchesSearchQuery(`${order.id} ${order.customerName} ${order.items.map((item) => item.name).join(" ")} ${order.stage}`, query))
     .slice(0, 6), [data.orders, query]);
@@ -139,16 +139,9 @@ export default function AdminDashboard() {
         at: order.placedAt,
         href: "/admin/orders",
       })),
-      ...data.designs.slice(0, 3).map((design) => ({
-        id: `design-${design.id}`,
-        title: design.name,
-        detail: `${design.author} · ${design.status}`,
-        at: design.createdAt,
-        href: "/admin/designs",
-      })),
     ];
     return events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 4);
-  }, [data.orders, data.designs]);
+  }, [data.orders]);
 
   return (
     <AdminShell
@@ -177,7 +170,7 @@ export default function AdminDashboard() {
         <AdminStat label="Total Orders" value={String(summary.count)} hint={`${summary.units} units in the queue`} icon={<ShoppingBag size={21} />} />
         <AdminStat label="Total Revenue" value={formatKs(summary.revenueKs)} hint={`Avg ${formatKs(summary.averageOrderKs)} per order`} icon={<CreditCard size={21} />} />
         <AdminStat label="Customers" value={String(customerCount)} hint="Unique buyers in this preview set" icon={<Users size={21} />} />
-        <AdminStat label="Published Designs" value={String(publishedDesigns)} hint={`${data.designs.length} designs in total`} icon={<Layers3 size={21} />} />
+        <AdminStat label="Active Products" value={String(activeProducts)} hint={`${data.products.length} in the catalog`} icon={<Layers3 size={21} />} />
       </section>
 
       <section aria-label="Preview analytics" className="mt-3 grid gap-3 xl:grid-cols-[1.15fr_.95fr_300px]">
@@ -196,7 +189,7 @@ export default function AdminDashboard() {
         </AdminCard>
 
         <AdminCard className="overflow-hidden">
-          <AdminCardHeader title="Recent Activity" description="Orders and designs" actions={<Link href="/admin/orders" className="text-[9px] font-bold text-[#4c9d38]">View all <ArrowRight size={11} className="ml-0.5 inline" /></Link>} />
+          <AdminCardHeader title="Recent Activity" description="Latest orders" actions={<Link href="/admin/orders" className="text-[9px] font-bold text-[#4c9d38]">View all <ArrowRight size={11} className="ml-0.5 inline" /></Link>} />
           <div className="space-y-0.5">
             {activity.map((event) => (
               <Link key={event.id} href={event.href} className="flex gap-2.5 border-b border-[#f0f2f4] px-4 py-3 last:border-0 hover:bg-[#fafbfc] sm:px-5">

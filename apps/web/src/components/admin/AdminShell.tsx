@@ -12,7 +12,6 @@ const NAV_ICONS: Record<AdminModuleId, LucideIcon> = {
   dashboard: House,
   orders: ClipboardList,
   products: Package,
-  designs: Layers3,
   posts: Newspaper,
   ads: Megaphone,
   pricing: Tags,

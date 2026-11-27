@@ -143,6 +143,7 @@ export default function AdminProducts() {
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef1f5]"><Package size={17} className="text-[#5e6b77]" /></span>
                       <span className="min-w-0">
                         <span className="block font-bold text-[#303844]">{product.name}</span>
+                        <span className="mt-0.5 block text-[8px] text-[#7b8492]">{product.designName}</span>
                         <span className="mt-0.5 block text-[8px] text-[#919aa6]">{product.id}</span>
                         {product.tags.length ? <span data-product-tags className="mt-0.5 block text-[8px] text-[#4cae22]">{product.tags.join(" · ")}</span> : null}
                       </span>
@@ -194,6 +195,20 @@ export default function AdminProducts() {
             <AdminField label="Product name">
               <AdminInput value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Classic T-shirt" aria-label="Product name" />
             </AdminField>
+            <div className="rounded-xl border border-[#eef1f5] bg-[#fbfcfd] p-3" data-product-design>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[#7b8492]">Design</p>
+              <p className="mb-2 mt-0.5 text-[9px] leading-4 text-[#87909b]">
+                The artwork is posted together with the product, so there is no separate design post.
+              </p>
+              <div className="space-y-2">
+                <AdminField label="Design name">
+                  <AdminInput value={draft.designName} onChange={(event) => setDraft({ ...draft, designName: event.target.value })} placeholder="Street Vibes" aria-label="Design name" />
+                </AdminField>
+                <AdminField label="Artwork file URL" hint="Optional. The mockup prints this SVG; a product without one shows the plain garment.">
+                  <AdminInput value={draft.designSvgUrl} onChange={(event) => setDraft({ ...draft, designSvgUrl: event.target.value })} placeholder="https://…/art.svg" aria-label="Artwork file URL" />
+                </AdminField>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <AdminField label="Category">
                 <AdminSelect value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value as AdminProductCategory })} aria-label="Category">

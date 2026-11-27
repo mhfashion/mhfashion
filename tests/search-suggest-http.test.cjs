@@ -17,7 +17,7 @@ test("a two-letter query answers with at most five suggestions, each with a link
   assert.ok(Array.isArray(body.suggestions));
   assert.ok(body.suggestions.length <= 5, `expected at most 5, got ${body.suggestions.length}`);
   for (const suggestion of body.suggestions) {
-    assert.ok(["product", "guide", "design"].includes(suggestion.kind), `unexpected kind ${suggestion.kind}`);
+    assert.ok(["product", "guide"].includes(suggestion.kind), `unexpected kind ${suggestion.kind}`);
     assert.ok(suggestion.title, "a suggestion needs a title");
     assert.ok(suggestion.href.startsWith("/"), "a suggestion needs a link");
   }
@@ -28,7 +28,7 @@ test("one character is not a search, and neither is an empty query", async () =>
     const { response, body } = await suggest(query);
     assert.equal(response.status, 200);
     assert.deepEqual(body.suggestions, [], `"${query}" should suggest nothing`);
-    assert.deepEqual(body.counts, { products: 0, guides: 0, designs: 0 });
+    assert.deepEqual(body.counts, { products: 0, guides: 0 });
   }
 });
 

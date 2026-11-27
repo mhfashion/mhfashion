@@ -72,7 +72,7 @@ test("the admin lists search through the shared normaliser", () => {
   }
   const wired = fs.readdirSync(dir).filter((name) => name.endsWith(".tsx"))
     .filter((name) => fs.readFileSync(`${dir}/${name}`, "utf8").includes("matchesSearchQuery"));
-  assert.ok(wired.length >= 11, `only ${wired.length} admin screens use the matcher`);
+  assert.ok(wired.length >= 10, `only ${wired.length} admin screens use the matcher`);
 });
 
 test("every Edit sidebar list searches through the shared normaliser", () => {

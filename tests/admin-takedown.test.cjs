@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { existsSync, readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const ts = require("typescript");
@@ -85,19 +85,15 @@ test("the seed carries an empty takedown log and stored data is backfilled", () 
   assert.match(source, /designTakedowns: Array\.isArray\(parsed\.designTakedowns\) \? parsed\.designTakedowns : \[\]/);
 });
 
-test("the Designs module exposes the claim form and states the paid-order rule", () => {
-  const source = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminDesigns.tsx"), "utf8");
-  for (const marker of [
-    "recordDesignTakedown",
-    "designTakedownsFor",
-    "Record a takedown for",
-    'aria-label="Claimant"',
-    'aria-label="Claim note"',
-    "Hide and record",
-    "Orders that are already paid still print and ship",
-    "Record for this design",
-  ]) {
-    assert.ok(source.includes(marker), `AdminDesigns is missing ${marker}`);
+test("there is no separate Designs module: the design ships with the product", () => {
+  const root = path.join(__dirname, "..", "apps/web/src");
+  assert.equal(existsSync(path.join(root, "components/admin/AdminDesigns.tsx")), false, "the Designs screen is deleted");
+  assert.equal(existsSync(path.join(root, "app/admin/designs/page.tsx")), false, "the Designs route is deleted");
+  const nav = readFileSync(path.join(root, "lib/admin-nav.ts"), "utf8");
+  assert.equal(nav.includes('"designs"'), false, "the sidebar has no Designs entry");
+  const editor = readFileSync(path.join(root, "components/admin/AdminProducts.tsx"), "utf8");
+  for (const marker of ['aria-label="Design name"', 'aria-label="Artwork file URL"', "posted together with the product"]) {
+    assert.ok(editor.includes(marker), `the product editor is missing ${marker}`);
   }
 });
 

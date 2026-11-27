@@ -30,7 +30,6 @@ export type AdminModuleId =
   | "dashboard"
   | "orders"
   | "products"
-  | "designs"
   | "posts"
   | "ads"
   | "pricing"
@@ -386,6 +385,9 @@ export type AdminProduct = {
   status: AdminProductStatus;
   /** Extra words the shop search matches, beside the name and the category. */
   tags: string[];
+  /** The artwork this product prints. A product is posted together with its design; there is no separate post. */
+  designName: string;
+  designSvgUrl?: string;
   /** Measured chart in centimetres, per size (Plan P1 item 10). Empty until the owner measures a style. */
   sizeChart?: ProductSizeChart;
 };
@@ -628,7 +630,6 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "orders", label: "Orders" },
   { id: "products", label: "Products" },
-  { id: "designs", label: "Designs" },
   { id: "posts", label: "Posts" },
   { id: "ads", label: "Ads" },
   { id: "pricing", label: "Pricing" },
@@ -1020,6 +1021,8 @@ export type AdminProductDraft = {
   category: AdminProductCategory;
   /** Comma separated; `parseProductTags` turns it into the stored list. */
   tags: string;
+  designName: string;
+  designSvgUrl: string;
   fabric: string;
   gsm: string;
   priceKs: string;
@@ -1048,6 +1051,8 @@ export function productDraftFrom(product?: AdminProduct): AdminProductDraft {
     name: product?.name ?? "",
     category: product?.category ?? "T-Shirt",
     tags: product?.tags.join(", ") ?? "",
+    designName: product?.designName ?? "",
+    designSvgUrl: product?.designSvgUrl ?? "",
     fabric: product?.fabric ?? "",
     gsm: product?.gsm === null || product?.gsm === undefined ? "" : String(product.gsm),
     priceKs: product ? String(product.priceKs) : "",
@@ -1060,6 +1065,7 @@ export function validateProductDraft(draft: AdminProductDraft): string[] {
   if (!draft.name.trim()) errors.push("Product name is required.");
   if (draft.name.trim().length > 60) errors.push("Product name must stay under 60 characters.");
   if (!draft.fabric.trim()) errors.push("Fabric is required.");
+  if (!draft.designName.trim()) errors.push("Design name is required — the artwork is posted with the product.");
   const price = Number(draft.priceKs);
   if (!Number.isFinite(price) || price <= 0) errors.push("Price must be greater than zero.");
   if (price > 10000000) errors.push("Price must stay under Ks 10,000,000.");
@@ -1083,6 +1089,8 @@ export function productFromDraft(draft: AdminProductDraft, existing?: AdminProdu
     name: draft.name.trim(),
     category: draft.category,
     tags: parseProductTags(draft.tags),
+    designName: draft.designName.trim(),
+    designSvgUrl: draft.designSvgUrl.trim() || undefined,
     fabric: draft.fabric.trim(),
     gsm: apparel && Number.isFinite(gsm) && gsm > 0 ? gsm : null,
     priceKs: Math.round(Number(draft.priceKs)),
@@ -1648,14 +1656,14 @@ const SEED_CUSTOMERS = [
 ];
 
 const SEED_PRODUCTS: Omit<AdminProduct, "sizes">[] = [
-  { id: "product-classic-tee", name: "Classic T-shirt", category: "T-Shirt", tags: ["tee", "basic", "unisex"], fabric: "Combed Cotton", gsm: 180, priceKs: 21000, status: "Active" },
-  { id: "product-oversized-tee", name: "Oversized T-shirt", category: "T-Shirt", tags: ["tee", "streetwear", "drop shoulder"], fabric: "Cotton", gsm: 220, priceKs: 27000, status: "Active" },
-  { id: "product-hoodie", name: "Hoodie", category: "Hoodie", tags: ["winter", "pullover", "unisex"], fabric: "Fleece", gsm: 320, priceKs: 42000, status: "Active" },
-  { id: "product-polo", name: "Polo Shirt", category: "Polo", tags: ["office", "collar", "pique"], fabric: "Pique Cotton", gsm: 200, priceKs: 32000, status: "Active" },
-  { id: "product-jersey", name: "Football Jersey", category: "Jersey", tags: ["sport", "team kit", "breathable"], fabric: "Polyester Mesh", gsm: 160, priceKs: 38000, status: "Active" },
-  { id: "product-cap", name: "Cap", category: "Cap", tags: ["headwear", "one size"], fabric: "Cotton Twill", gsm: null, priceKs: 18000, status: "Active" },
-  { id: "product-tote", name: "Tote Bag", category: "Accessory", tags: ["bag", "canvas", "gift"], fabric: "Canvas", gsm: null, priceKs: 16000, status: "Draft" },
-  { id: "product-phone-cover", name: "Phone Cover", category: "Accessory", tags: ["case", "gift", "custom print"], fabric: "TPU", gsm: null, priceKs: 15000, status: "Active" },
+  { id: "product-classic-tee", name: "Classic T-shirt", category: "T-Shirt", designName: "Street Vibes", tags: ["tee", "basic", "unisex"], fabric: "Combed Cotton", gsm: 180, priceKs: 21000, status: "Active" },
+  { id: "product-oversized-tee", name: "Oversized T-shirt", category: "T-Shirt", designName: "Neon Grid", tags: ["tee", "streetwear", "drop shoulder"], fabric: "Cotton", gsm: 220, priceKs: 27000, status: "Active" },
+  { id: "product-hoodie", name: "Hoodie", category: "Hoodie", designName: "Mandalay Nights", tags: ["winter", "pullover", "unisex"], fabric: "Fleece", gsm: 320, priceKs: 42000, status: "Active" },
+  { id: "product-polo", name: "Polo Shirt", category: "Polo", designName: "Minimal Bloom", tags: ["office", "collar", "pique"], fabric: "Pique Cotton", gsm: 200, priceKs: 32000, status: "Active" },
+  { id: "product-jersey", name: "Football Jersey", category: "Jersey", designName: "Team Spirit 09", tags: ["sport", "team kit", "breathable"], fabric: "Polyester Mesh", gsm: 160, priceKs: 38000, status: "Active" },
+  { id: "product-cap", name: "Cap", category: "Cap", designName: "Golden Peacock", tags: ["headwear", "one size"], fabric: "Cotton Twill", gsm: null, priceKs: 18000, status: "Active" },
+  { id: "product-tote", name: "Tote Bag", category: "Accessory", designName: "Retro Waves", tags: ["bag", "canvas", "gift"], fabric: "Canvas", gsm: null, priceKs: 16000, status: "Draft" },
+  { id: "product-phone-cover", name: "Phone Cover", category: "Accessory", designName: "Minimal Bloom", tags: ["case", "gift", "custom print"], fabric: "TPU", gsm: null, priceKs: 15000, status: "Active" },
 ];
 
 const SEED_DESIGN_NAMES = [
@@ -1969,7 +1977,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
       name: "Nandar Win",
       email: "nandar.win@mhfashion.com",
       role: "Post Admin",
-      modules: ["dashboard", "designs", "customers", "reports"],
+      modules: ["dashboard", "posts", "customers", "reports"],
       active: true,
     },
     {
@@ -2047,6 +2055,10 @@ export function readAdminDemoData(): AdminDemoData {
         // Entries saved before the Posts module existed have no tshirtPosts key.
         const products = (Array.isArray(parsed.products) ? parsed.products : []).map((product) => ({
           ...product,
+          // Products saved before the design moved onto the post have no design name; the product name
+          // stands in until the owner edits one, so an old row can still be saved.
+          designName: typeof product.designName === "string" ? product.designName : product.name,
+          tags: Array.isArray(product.tags) ? product.tags : [],
           sizeChart: normalizeSizeChart(product.sizeChart),
         }));
         const orders = parsed.orders.map((order) => ({
@@ -2055,6 +2067,8 @@ export function readAdminDemoData(): AdminDemoData {
         }));
         cache = {
           ...parsed,
+          products,
+          orders,
           designTakedowns: Array.isArray(parsed.designTakedowns) ? parsed.designTakedowns : [],
           contactMessages: normalizeContactMessages(parsed.contactMessages),
           attributeChain: Array.isArray(parsed.attributeChain) && parsed.attributeChain.length
@@ -2082,7 +2096,6 @@ export function readAdminDemoData(): AdminDemoData {
             ? parsed.ads.filter((ad) => ad?.mediaType === "image" || ad?.mediaType === "video")
             : createSeedAds(),
           adsRotationSeconds: normalizeAdsRotationSeconds(parsed.adsRotationSeconds),
-          orders,
           tshirtPosts: Array.isArray(parsed.tshirtPosts)
             ? parsed.tshirtPosts.map(normalizeTshirtPost)
             : createSeedTshirtPosts(Date.now()).map(normalizeTshirtPostOptions),

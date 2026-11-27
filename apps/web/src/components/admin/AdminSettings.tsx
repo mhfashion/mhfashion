@@ -20,7 +20,7 @@ import {
 
 const ROLES: AdminTeamRole[] = ["Super Admin", "Post Admin", "Print Admin", "Support"];
 
-const EMPTY_MEMBER: AdminTeamDraft = { name: "", email: "", role: "Post Admin", modules: ["dashboard", "designs"] };
+const EMPTY_MEMBER: AdminTeamDraft = { name: "", email: "", role: "Post Admin", modules: ["dashboard", "posts"] };
 
 export default function AdminSettings() {
   const router = useRouter();

@@ -25,10 +25,6 @@
       "title": "Admin Customers"
     },
     {
-      "path": "/admin/designs",
-      "title": "Admin Designs"
-    },
-    {
       "path": "/admin/inventory",
       "title": "Admin Inventory"
     },
