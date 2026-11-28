@@ -610,6 +610,13 @@ for every post, and search matches title, description, category and both languag
 changing the category drops a product that belongs elsewhere. A tag editor adds pairs by hand (English and
 မြန်မာ inputs, Enter or Add tag), offers `POST_TAG_SUGGESTIONS` as one-click chips, and removes tags with ×.
 
+**Bilingual data contract (applies to every field the owner types in two languages).** A tag stores
+**both** languages in one record, `{ en, my }`; English is required because it is the fallback, and a
+missing Burmese side copies the English rather than rendering blank. The storefront picks the side it is
+rendering (`postTagLabel`), search reads both (`postTagsText`), and a screen never invents a translation.
+Any future bilingual field (a category label, a promotion description, an ad headline) follows the same
+shape and the same fallback rule instead of adding a second column or a lookup table.
+
 **Seed.** Posts now cover T-Shirt (2), Kids T-Shirt, Hoodie, Cap and Cup, each with bilingual tags, so the
 grouped board is visible on first open.
 
@@ -787,16 +794,22 @@ the refund reversal, expiry, tiers, milestones and the read repair.
 
 ## 10. Admin System
 
-**Built modules (2026-11-21).** `/admin` is no longer a dashboard preview: every module in the left
-navigation is a real page — `/admin` (dashboard), `orders`, `products`, `inventory`, `customers`,
-`designs`, `promotions`, `posts`, `reports`, `settings`. They share one typed browser-local store
+**Built modules (2026-11-21).** `/admin` is no longer a dashboard preview: `ADMIN_MODULES` holds
+**fifteen** modules and every one is a real page — `dashboard`, `orders`, `products`, `posts`, `ads`,
+`pricing` (Price Table), `attributes` (Attribute Management), `settlements`, `loyalty`, `customers`,
+`inventory`, `promotions`, `reports`, `messages` (contact inbox) and `settings`. They share one typed
+browser-local store
 (`lib/admin-demo-data.ts` over `useSyncExternalStore`, persisted to `localStorage` under
-`mh-fashion-admin-demo-data-v1`). Orders have stage chips, search, a Today card, date presets, a
+`mh-fashion-admin-demo-data-v1`), and that store also holds the orders the storefront checkout
+actually writes, not only seed data. Orders have stage chips, search, a Today card, date presets, a
 From/To range, a sort select, an Orders-by-day strip and a detail drawer with items, timeline,
 print-desk note, cancel/refund, production CSV, the A4 print sheet, the A5 receipt, the print
 bundle ZIP and the MH Delivery quote JSON. Products have a validated create/edit drawer, archive and
-two-step delete; Inventory has per-size stock with low/out filters; Customers are grouped from the
-orders by email with VIP/repeat/new segments; Designs can be published, hidden or deleted;
+two-step delete; Inventory has per-size stock with low/out filters; Customers groups the orders by
+email with VIP/repeat/new segments **and** carries one `customerAccounts` record per customer with a
+salted PBKDF2 password — hash only, never rendered — that the owner can set, generate, force a change
+on or block (§4.5.8); the customer signs in with that password on `/account` and can change it only
+while signed in (§4.5.9); Designs can be published, hidden or deleted;
 Promotions validate codes, value, minimum spend, limits and window; Reports show revenue buckets,
 top products, payment mix, pipeline and low-stock; Settings hold the store profile, the team with
 per-module permissions, and a demo-data reset. Posts live at `/admin/posts` with Guide, Product and
@@ -1377,6 +1390,13 @@ backup place.
   yet** (section 12, section 16 P1).
 - Further editor tools and layer-panel features; further admin permissions.
 - Refund request flow; mobile app scope; email provider.
+- **Customer accounts are browser-local (2026-11-21).** `customerAccounts` and the 12-hour customer
+  session live in `localStorage` (P0-1), so a customer's password signs them in only in the browser that
+  holds the record. Owner-visible consequence: a customer on another phone cannot sign in yet, and the
+  owner cannot manage an account from a second device either. Do not describe this as a working account
+  system until the table lands.
+- **A published post has no storefront page (2026-11-21).** See P1-11: `tshirtPosts` is read by the admin
+  board and the Price Table only, so a post cannot be seen, bought or searched by a customer yet.
 
 **Owner answers (2026-11-21) — all five questions closed**
 
@@ -1396,7 +1416,43 @@ backup place.
 
 ## 14. Build Status
 
-**Repository-source audit (2026-11-13, commit `90dc398`; production was not re-probed in this audit):** `/create` is currently only the EditorCanvas shell described in §6. The older detailed editor feature descriptions in this section are historical and do not match the audited code.
+**Status snapshot 2026-11-21 — read this line first; every dated snapshot below it is history.**
+
+- `main` is at `daf4efb`. `node --test tests/*.test.cjs` reports **1001 tests, 1000 pass, 0 fail**
+  (one is skipped on purpose) with a server on port 3000; `npx tsc -p apps/web/tsconfig.json --noEmit`
+  is clean and `npm run build --workspace=apps/web` compiles.
+- The admin workspace is a real, typed, browser-local application with **fifteen modules** (§10),
+  including the Price Table, Attribute Management, Posts, Ads, Loyalty, Settlements and the Messages
+  inbox. It is still **not** a security boundary (P0-1, P0-2).
+- The editor is **built**, not a shell: §6 and Part II hold its contracts and its status. The 2026-11-13
+  audit line below described the shell that existed then; it no longer describes `/create`.
+- Checkout, the payment intent/webhook contract, delivery quotes, search, wishlist, size charts, the
+  contact inbox, SEO structured data, print-quality checks, CSV hardening and the customer password flow
+  are in the tree; §16 lists what remains.
+- **Deployment:** the answer lives in "Deployment status" immediately below and nowhere else.
+
+### Deployment status — the one place this question is answered *(2026-11-21)*
+
+Four paragraphs elsewhere in this file describe the pipeline as it was on 2026-11-10, 2026-11-12 and
+earlier on 2026-11-21. They are history; this block replaces them.
+
+- Every push to `main` runs `.github/workflows/deploy-cloudflare.yml` (owner answer, §13 item 2). There
+  is no staging branch.
+- The job's **first step** checks that `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` exist. If either
+  is missing it exits 1 and every later step is skipped, so nothing is deployed and the Worker keeps
+  serving the last successful build.
+- The Actions-secret state is **unconfirmed**. AGENTS.md recorded "no secrets configured", yet a probe on
+  2026-11-21 saw pages that only exist after `501e16b`, which means a deploy did run at some point. Do not
+  repeat either claim: check GitHub → Settings → Secrets and variables → Actions, then record the answer
+  here with the date it was checked.
+- `Workers Builds: mhfashion` (the Cloudflare-side build, not the GitHub workflow) fails on every branch
+  including `main`. It is not a regression from any change.
+- A merge therefore does not prove production changed. After a deploy, re-probe `/`, `/nyein`,
+  `/products/butterfly-effect` and `/admin/login`.
+
+**Historical snapshots (kept for the record; superseded by the snapshot above).**
+
+**Repository-source audit (2026-11-13, commit `90dc398`; production was not re-probed in this audit):** at that commit `/create` was only the EditorCanvas shell described in §6, with no editable canvas wired to the route. The detailed editor feature descriptions in this section were already historical then and did not match the audited code.
 
 **Live in production** (status last externally probed on 2026-11-12; not re-probed during this code audit; mhfashion.mhfashionmm.workers.dev was then serving the pre-upgrade build described below): scaffold and Cloudflare deploy, the Supabase
 schema migrations `0001`–`0007` (Guide content and Super Admin roles included;
@@ -1408,7 +1464,7 @@ detail, and the cart page. Probed on 2026-11-12: `/`, `/new`, `/popular`,
 `/products/butterfly-effect`, `/cart`, `/account`, `/create` and `/admin/login` return 200;
 `/admin/register` returns 404.
 
-**Recorded deployment status (2026-11-12; not re-probed during this code audit):** the plan reported the Next.js 16.4.6 / React 19.3.1 / Fabric.js
+**Historical deployment status (2026-11-12; superseded by "Deployment status" in this section):** the plan reported the Next.js 16.4.6 / React 19.3.1 / Fabric.js
 7.4.0 upgrade, the restored Cloudflare deploy workflow, the related-product card
 and section styling, and the Footer/CopyrightBar corrections (commits `9cb5e21`
 through `47e63fb`). Every workflow run since `9cb5e21` stops at the
@@ -1476,18 +1532,22 @@ storage; Front/Back draft state; layer visibility/lock, creation, duplication,
 
 ---
 
-**Status snapshot 2026-11-21 (re-checked, replaces the 2026-11-12 line):** `main` is at `ca454da`
-and the repository test suite passes 220/220 (`node --test tests/*.test.cjs`), TypeScript is clean
-and the Next.js production build passes. The production Worker was re-probed on 2026-11-21:
-`/`, `/nyein`, `/admin/login` and `/products/butterfly-effect` all return 200, the removed
-delivery/support promises are absent from the product page, and `/nyein` serves the new brand
-collection page — so the deploy pipeline has run at least through `501e16b`. That contradicts the
-earlier "no Actions secrets configured" note in `AGENTS.md`; treat the secret state as
-**unconfirmed** and verify in GitHub → Settings → Secrets before relying on either statement.
-Supabase migrations `0001`–`0007` remain owner-managed, and the admin workspace is still
-browser-local demo data (section 16 P0).
+**Earlier status snapshot 2026-11-21 (superseded by the snapshot at the top of this section; kept
+because it records the one live probe):** `main` was then at `ca454da` and the suite passed 220/220.
+The production Worker was probed on 2026-11-21: `/`, `/nyein`, `/admin/login` and
+`/products/butterfly-effect` all returned 200, the removed delivery/support promises were absent from
+the product page, and `/nyein` served the brand collection page — so the deploy pipeline has run at
+least through `501e16b`. The secret question is answered in **Deployment status** above, not here.
+Supabase migrations `0001`–`0007` remain owner-managed, and the admin workspace is still browser-local
+(section 16 P0).
 
 ## Change Log
+
+> **How to read this log.** Entries are appended in the order the work was recorded, and a `§4.5.x`
+> section carries the date of the owner request that started it, which is not always the date the work
+> was recorded. Where a section and an entry disagree about a date, the section is the detail and this
+> log is the chronology; nothing here is a promise of when a feature shipped to production — that is
+> "Deployment status" in §14.
 
 - Initial consolidated plan created from the planning conversation.
 - Editor page now shows the site Header bar at the top; removed it from "Next".
@@ -1735,11 +1795,25 @@ browser-local demo data (section 16 P0).
   `%`, `_` and `\` before every `ilike` (§17 S10). The font stack now names each platform's Myanmar face and
   `html[lang="my"]` gives Burmese a 2.1 line box, because Noto Sans Myanmar's own line box is 2.17em and a
   Latin line height made two lines collide on a phone.
+- 2026-11-21: **one Price Table wired to everything** (§4.5.6): a post's own price rows seed that
+  product's variants, the editor header, the shop and the sale all read the same table, MMK and USD sit
+  side by side, and an unlisted combination is not sold.
+- 2026-11-21: **per-category attributes and presets** (§4.5.7): every category prices on its own
+  specification preset (phone, cup, bag, jersey, kids, cap), all of them in one chain, switched on per
+  product.
+- 2026-11-21: **customer records and password management** (§4.5.8): `customerAccounts` stores a salted
+  PBKDF2 hash only, and the admin drawer sets, generates, forces a change on, or blocks an account.
+- 2026-11-21: **the customer signs in and changes their own password** (§4.5.9): `customer-session.ts`
+  verifies the hash, keeps a 12-hour session, and refuses a change with no session before touching an
+  account; `/account` Settings mounts `AccountPasswordPanel`.
+- 2026-11-21: **a post for every product category, with bilingual tags** (§4.5.10): `category` and
+  `tags: {en, my}` on a post, `groupPostsByCategory` on the board, a category filter and per-group "New"
+  button, and a tag editor with suggestions; older stored posts load as T-Shirt with no tags.
 - 2026-11-26: §12.2 now covers the editor's Photos and Patterns libraries (`photos/`, `patterns/`) and moves customers' files to `users/<account-uuid>/` and `tmp/<account-uuid>/`; decisions R2-10 to R2-14; the code changes this needs are listed in §12.2.12; Part II (II.2, E1, E10, the inputs list) and §17 search follow.
 
 
 
-## Production publishing status snapshot (2026-11-10; superseded by the current follow-up below)
+## Production publishing status snapshot (2026-11-10; superseded by "Deployment status" in §14)
 
 > Historical record. The versions and audit results below were current on
 > 2026-11-10 and are kept as written. The stack has since moved to Next.js
@@ -1792,7 +1866,23 @@ This section records the current repository state and overrides earlier draft bu
 - `/products/[slug]` — compact marketplace-style product detail with gallery, actual catalog details table, options, reviews, related products and Buy Now/Add to Cart/Edit Design actions.
 - `/create` — browser-local Fabric.js editor prototype with responsive desktop/phone workspace, tools, layers, text/elements, Product and separate Mockup controls. No site copyright strip or Footer is shown in this editor workspace.
 - `/cart` — client-side cart page with persistent localStorage items, quantity controls, item removal, clear cart, subtotal/total and empty state.
-- `/account` — responsive account prototype with profile, order/design/wishlist/points/settings presentation using placeholder/local state where backend data is not yet connected.
+- `/account` — responsive account page with dashboard, profile, orders (the orders this browser actually
+  bought), designs, wishlist, points and settings. **Settings carries the password panel (2026-11-21):** the
+  customer signs in with the password the owner set and can change it only while signed in (§4.5.9); signed
+  out, the change fields do not render. Profile and points stay local until P0-1.
+- `/checkout` — address, note and payment method (KBZPay / Wave Pay / AYA Pay / Visa), the terms gate and
+  the delivery quote; `placeOrder` writes the order into the admin store with a `checkoutKey` (§16 P0-4).
+- `/search?q=` — catalog search over name, line and product type, reached from the desktop field, the tablet
+  dropdown and the phone field (§16, P1 item 10).
+- `/wishlist` — the browser-saved products, with the snapshot that was saved and its save date.
+- `/size-guide` — every Active style that has size-chart numbers, with a cm/in switch.
+- Info pages: `/about`, `/faq`, `/shipping`, `/returns`, `/terms`, `/privacy`, `/cookie-policy` (bilingual
+  through `lib/storefront-info.ts`) and `/contact`, whose "Send to the shop" writes the Messages inbox.
+- `/admin/*` — fifteen modules behind the demo session: `dashboard`, `orders`, `products`, `posts`, `ads`,
+  `pricing`, `attributes`, `settlements`, `loyalty`, `customers`, `inventory`, `promotions`, `reports`,
+  `messages`, `settings` (§10).
+- `/api/*` — `payments/intent`, `payments/status/[ref]`, `payments/webhook/[provider]`, `payments/simulate`,
+  `delivery/quote`, `search`, `upload` and the R2 asset route (§12.1).
 
 ### 15.2 Global UI decisions that must not regress
 
@@ -1911,11 +2001,16 @@ proposal, not an approved order.
 
 ### P0 — foundation
 
-1. **Real backend for admin data.** Orders, products, per-size stock, posts, promotions, designs and
-   settings live in browser `localStorage` (`mh-fashion-admin-demo-data-v1`). Define Supabase
-   tables and a one-time migration for `orders`, `order_items` (spec snapshot, design layout, print
-   position), `tshirt_posts`, `price_combinations`, `price_history`, `designs`, `promotions`,
-   `stock` and `settings`.
+1. **Real backend for admin data.** Orders, products, per-size stock, posts, promotions, designs,
+   customer accounts, the contact inbox, ads and settings live in browser `localStorage`
+   (`mh-fashion-admin-demo-data-v1`). Define Supabase tables and a one-time migration for `orders`,
+   `order_items` (spec snapshot, design layout, print position), `products`, `attribute_chain` (the
+   price specification chain and its presets), `tshirt_posts` **with its category and bilingual tags**
+   (`post_tags`, or a JSONB column), `price_combinations`, `price_history`, `designs`, `promotions`,
+   `stock`, `customer_accounts` (hash only, never the plain password), `contact_messages`, `ads` and
+   `settings`. Until this lands, two things are preview-only and must be described as such: a customer
+   password signs in **only in the browser that set it** (§4.5.9), and a published post is visible only
+   in the admin board (P1-11).
 2. **Supabase Auth + RLS + server-side role checks**, replacing the demo session (15.9). Module
    permissions must be enforced on the server, not only drawn as checkboxes.
 3. **Fix the Cloudflare deploy pipeline** (secrets) and settle the staging question (13, item 2).
@@ -2086,10 +2181,23 @@ proposal, not an approved order.
     policy; the rendered pages were checked in Chromium (4 nodes on a product and a guide article, 3 on
     `/faq`, 2 on the home page, no relative URL, no `undefined`).
 
+11. **A published post reaches no storefront page.** A post is created, given a category and bilingual
+    tags, priced, and published in `/admin/posts`; its prices seed the Price Table (§4.5.6) and the board
+    groups it by category (§4.5.10). That is where it stops: **no public route reads `tshirtPosts`**, so a
+    customer cannot see, buy or search a design from a post, and "Publish" today only changes the admin
+    board and the Price Table. Decide the surface (a `/drops` listing, the category pages, or a home
+    strip), how a category group becomes a page, and whether the tags become filters — then build it on
+    the backend of P0-1. Record the decision here before building, because the page shape decides what
+    the post document must carry.
+
 ### P2 — later
 
-11. **Posts ↔ Product relationship** as a data model (how a T-shirt post relates to
+12. **Posts ↔ Product relationship** as a data model (how a T-shirt post relates to
     Product → Style → Color and to fixed-design products). The Nyein brief is still pending.
+    **Product posts (2026-11-21):** a post now names one **category** from `POST_CATEGORIES` and the
+    product it is sold as, its prices seed that product's variants (§4.5.6), the board groups and filters
+    it by category, and it carries bilingual tags (§4.5.10). **Still open:** the Nyein brief itself, the
+    storefront surface for a published post (P1-11), and turning tags into storefront filters.
     **The part that does not need the brief shipped 2026-11-22:** a guide post now names the products it
     sells, in the order it mentions them, each with an optional "as shown" note
     (`lib/guide-products.ts`, column `guide_posts.product_links`). The post page shows **Shop this look**
@@ -2105,7 +2213,7 @@ proposal, not an approved order.
     and fixed-design variants, and editing the links from the admin (the guide posts come from the
     starter catalogue or Supabase, while the admin Posts module edits a separate demo model) wait for the
     Nyein brief.
-12. ~~**Admin modules not yet built:** Brush Management only.~~ **Brush Management shipped 2026-11-22:**
+13. ~~**Admin modules not yet built:** Brush Management only.~~ **Brush Management shipped 2026-11-22:**
     `/admin/brushes` lists the brushes the editor picker will offer. Each brush carries the id that is also
     its bucket folder (`brushes/<id>/texture.png`, shown on every row because R2 is not connected), a name,
     one of five shelves, a round or square tip, size, spacing, opacity and softness, and an on/off switch;
@@ -2140,7 +2248,7 @@ proposal, not an approved order.
     filters, fee against courier cost with the margin per row and per courier, "Mark settled" as a
     batch that never overwrites an existing stamp, "Reopen", and a CSV sheet with a total block.
     Returns keep their cost, so a returned parcel shows a negative margin instead of hiding it.
-13. **Order operations:** **order QR shipped** — `lib/order-qr.ts` prints a vector QR of the order link
+14. **Order operations:** **order QR shipped** — `lib/order-qr.ts` prints a vector QR of the order link
     on the press sheet (`tests/order-qr.test.cjs`). **Reprint flow shipped:** every run of the press
     sheet is recorded on the order (`AdminOrder.reprints`, `recordOrderReprint`), the sheet prints
     "First print" or "Reprint N" with who ran it, and the order drawer shows the count and switches its
@@ -2164,7 +2272,7 @@ proposal, not an approved order.
     back from their own widths in `tests/order-barcode.test.cjs`, and the rendered sheet was measured in
     Chromium (28 drawn runs, first bar at the quiet zone, total width = modules + both quiet zones).
     If a particular scanner wants another symbology (Code 39, EAN), the encoder is one table away.
-14. **Operations:** error monitoring, Supabase backups. **Timestamps are done:** everything is stored
+15. **Operations:** error monitoring, Supabase backups. **Timestamps are done:** everything is stored
     as UTC ISO strings and every admin screen and printable document shows them in `Asia/Yangon`
     (`YANGON_TIME_ZONE`), so the device clock cannot change an hour or move an order to another day.
     **Error monitoring, first step shipped 2026-11-22:** the site now has its own crash page
@@ -2179,7 +2287,7 @@ proposal, not an approved order.
     appeared in the open Settings table without a reload, and Clear emptied both the table and the key.
     **Still open:** a *server-side* feed, so a crash on a customer's phone reaches the owner — that needs
     a provider (Sentry or a Supabase table plus an endpoint) and therefore a decision and a key.
-15. **Mobile app decision:** PWA first vs React Native. The editor cannot be ported to React
+16. **Mobile app decision:** PWA first vs React Native. The editor cannot be ported to React
     Native directly, so **the PWA is what shipped 2026-11-22**: `app/manifest.ts` (standalone, 192/512
     icons plus a maskable tile drawn as real PNGs), `public/sw.js`, an install prompt that only appears
     where Chrome offers it (`PwaInstall`), and an offline page. The rule the worker keeps is that a shop
@@ -2189,7 +2297,7 @@ proposal, not an approved order.
     stopped: an unvisited page, `/create` and `/admin` show "You are offline"; `/faq`, opened online
     first, opens in full; nothing under `/create` is ever written to a cache. `tests/pwa.test.cjs`.
     Still open: an app-store build (Capacitor/Tauri) if the owner wants one, and a push channel.
-16. **Customer notification channel** (13, owner decision 5).
+17. **Customer notification channel** (13, owner decision 5).
 
 **Assumption — Inventory:** the Inventory module (stock per product × size) means **blank garment
 stock**. *Owner to confirm; if it means a sellable-quantity cap instead, the stock-decrement rules
@@ -2209,7 +2317,7 @@ Latest `main` also closes public `/admin/register` and adds migration `0007_crea
 
 
 
-## Cloudflare deployment follow-up (2026-11-12)
+## Cloudflare deployment follow-up (2026-11-12; superseded by "Deployment status" in §14)
 
 Commit `9cb5e21` is now on `main`, and the Cloudflare workflow is active. The base production site, `https://mhfashion.mhfashionmm.workers.dev`, responds with HTTP 200. Both the push-triggered run and its rerun stopped at the safe secret-presence check: GitHub Actions saw `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as missing. The hosted unit/build/deploy steps did not run, so the upgrade is not yet live; the existing production version remains in service. The CLI cannot inspect repository secret metadata (HTTP 403), and no secret values were read. Add both names under the repository's Settings → Secrets and variables → Actions → Repository secrets, or provide the GitHub Environment name if they were added as environment-scoped secrets, then rerun the workflow. Local audit, typecheck, guide tests, Next build, Worker build and dry-run passed.
 
@@ -2759,7 +2867,7 @@ Source of scope: owner request and supplied Google Drive dashboard references (`
 - Evidence: final Next.js and Cloudflare builds, dry-run, 9 unit tests, and 5 production HTTP tests passed. The existing public homepage returned HTTP 200 via curl; the security upgrade still awaits deployment.
 
 
-## Cloudflare deployment follow-up (2026-11-12)
+## Cloudflare deployment follow-up (2026-11-12; superseded by "Deployment status" in §14)
 
 - [x] Push the security-upgrade code and Cloudflare deployment workflow to `main` as commit `9cb5e21`.
 - [x] Recheck the production workflow after the owner reported adding secrets. The push-triggered run and its rerun both stopped before CI at the required-secret check; GitHub Actions evaluated `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as missing. The existing production site remains reachable, but the upgrade was not deployed.

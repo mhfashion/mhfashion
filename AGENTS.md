@@ -118,7 +118,7 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - There is no Android SDK, JDK or Xcode in this workspace, so `flutter build apk/ipa` cannot run here.
 
 ## Testing notes
-- `node --test tests/*.test.cjs` reports 460 tests, all passing when a server is running on port 3000. The `guide-http` tests fail with `ECONNREFUSED 127.0.0.1:3000` when no server is running — that is environmental, not a code failure. Start the server (above) and they pass.
+- `node --test tests/*.test.cjs` reports **1001 tests, 1000 pass, 0 fail** (one is skipped on purpose) when a server is running on port 3000. Without a server the `guide-http` and route tests fail with `ECONNREFUSED 127.0.0.1:3000` — that is environmental, not a code failure. When many files fail at once, check the port before reading it as a regression: `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/`.
 - The upload section feeds a `DataTransfer` file straight into the hidden
   `input[aria-label="Upload an image to the canvas"]`: a renamed non-image must name itself in the
   notice (`compressImageUpload` catches the decode `DOMException`, which otherwise only reads "The
@@ -135,7 +135,11 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The caret pan follows `window.visualViewport`, not the layout box: a phone keyboard shrinks the visual viewport only, so clamping to `viewport.getBoundingClientRect()` leaves the caret under the keyboard (measured 490-529 against a visible bottom of 334 at 390x844). It also re-runs on `resize`, `orientationchange` and the visual viewport's `resize`/`scroll`, because the keyboard opening moves the caret without changing the text.
 - Typing past the viewport edge: `keepTextCaretVisible` pans the workspace by the caret's own line (`editorTop + caretLine * lineHeight`), not by the textarea box. The textarea grows taller than the viewport after ~12 lines, so following its box made the pan oscillate and left the caret off-screen. Calls are coalesced through `caretPanFrameRef`, otherwise the value effect and the caret listeners each shift in the same frame and the pan overshoots by a full line. Verified on desktop/laptop/phone at 26 lines: the caret line stays inside the viewport.
 - Re-entering an existing text layer must place the caret at the end (the overlay's `textAreaRef` effect); otherwise Enter inserts a line above the text and typing overwrites the start.
-- Pushing to GitHub from this environment is blocked: the injected `GITHUB_TOKEN` authenticates as the `mhfashion` user and can read the repo, but every write path (`git push`, `POST /git/refs`, `gh api`) returns `403 Resource not accessible by integration`. The commits are prepared locally on the branch; a human or a token with `contents: write` must push them.
+- The ambient `GITHUB_TOKEN` is read-only (`403 Resource not accessible by integration`), but the owner
+  has supplied a fine-grained PAT with `Contents: write` and `main` is pushed with it. Pass it inline and
+  leave `origin` on its read-only URL:
+  `git push "https://x-access-token:$TOKEN@github.com/mhfashion/mhfashion.git" HEAD:main`.
+  A 403 again means the PAT is missing or expired — a credential problem, not a repository problem.
 
 ## Posts module (`/admin/posts`)
 - Posting is three tabs: `data-post-tab="guide" | "tshirt" | "nyein"`. Guide lists the starter catalog read-only; Nyein is a placeholder until its brief lands; T-shirt posts are the working module (`components/admin/AdminPosts.tsx`).
