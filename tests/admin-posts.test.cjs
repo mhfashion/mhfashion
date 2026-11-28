@@ -23,6 +23,8 @@ function attributes(optionsByKey) {
 
 function draft(overrides = {}) {
   return {
+    category: "T-Shirt",
+    tags: [],
     title: "Peacock Line Tee",
     description: "Single-colour line art.",
     svg: { url: "data:image/svg+xml;utf8,%3Csvg%2F%3E", fileName: "peacock.svg", sizeBytes: 512 },

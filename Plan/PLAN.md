@@ -587,6 +587,40 @@ notice, was refused with *"The current password does not match."* for a wrong cu
 changed it — the stored record went to a 64-hex hash at 210 000 iterations with
 `passwordUpdatedBy: "Aung Ko (self)"` and `mustChangePassword: false`; signing out restored the refusal.
 
+#### 4.5.10 A post for every product category, with bilingual tags  *(owner request 2026-11-21, part 7)*
+
+The owner asked that posting stop being a T-shirt-only screen: **every category must be able to hold
+posts**, posts must be **kept apart by category** rather than mixed in one list, and each post must carry
+**tags written in English and in Burmese**.
+
+**Model.** `AdminTshirtPost` gains `category: AdminProductCategory` and `tags: AdminPostTag[]`, where a
+tag is `{ en, my }`. `POST_CATEGORIES` is the single ordered list (T-Shirt, Kids T-Shirt, Hoodie, Polo,
+Jersey, Cap, Cup, Accessory); `postCategoryOf` reads a stored category or follows the linked product;
+`groupPostsByCategory` returns only the categories that hold posts, in board order. `normalizeTshirtPostOptions`
+fills a category and cleans tags on read, so a browser that stored posts before this change keeps them.
+Validation requires a category and checks each tag (`POST_TAG_LIMIT` 8, `POST_TAG_MAX_LENGTH` 24, English
+required, Burmese falls back to English).
+
+**Board.** The Posts tab is now **Product posts**. A category chip row (with counts) filters the table, and
+the rows are grouped under category headings, each with its own "New in <category>" button that opens the
+drawer already filed and linked to that category's first product. A Tags column shows `English · မြန်မာ`
+for every post, and search matches title, description, category and both languages of every tag.
+
+**Drawer.** Category is chosen first; the "Sold as" product list only offers products of that category, and
+changing the category drops a product that belongs elsewhere. A tag editor adds pairs by hand (English and
+မြန်မာ inputs, Enter or Add tag), offers `POST_TAG_SUGGESTIONS` as one-click chips, and removes tags with ×.
+
+**Seed.** Posts now cover T-Shirt (2), Kids T-Shirt, Hoodie, Cap and Cup, each with bilingual tags, so the
+grouped board is visible on first open.
+
+**Verified 2026-11-21** in Chromium 1440x900 against a production build: five category groups rendered with
+counts and their own "New in …" buttons; creating a post from the Cup group opened the drawer on Cup with
+only the Ceramic Cup product offered; a hand-typed tag (`Jasmine` / `စံပယ်ပန်း`) and the `Gift` suggestion
+were stored as `[{en:"Jasmine",my:"စံပယ်ပန်း"},{en:"Gift",my:"လက်ဆောင်"}]` under `category:"Cup"`; the table
+showed both languages; the Cup chip narrowed the board to Cup; searching `စံပယ်ပန်း` found the post. The
+headless container has no Myanmar system font, so the screenshot shows boxes where a customer's device
+renders the Burmese glyphs.
+
 ### 4.6 Product detail presentation
 
 **Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and
@@ -765,9 +799,11 @@ two-step delete; Inventory has per-size stock with low/out filters; Customers ar
 orders by email with VIP/repeat/new segments; Designs can be published, hidden or deleted;
 Promotions validate codes, value, minimum spend, limits and window; Reports show revenue buckets,
 top products, payment mix, pipeline and low-stock; Settings hold the store profile, the team with
-per-module permissions, and a demo-data reset. Posts live at `/admin/posts` with Guide, T-shirt and
-Nyein tabs; a T-shirt post carries a title, description, one attached SVG and one hand-typed price
-per full attribute combination (no base price, no derived delta, unlisted combinations not sold).
+per-module permissions, and a demo-data reset. Posts live at `/admin/posts` with Guide, Product and
+Nyein tabs; a product post is filed under one product category (every category can hold posts), carries a
+title, description, one attached SVG, bilingual English/Burmese tags, and one hand-typed price per full
+attribute combination (no base price, no derived delta, unlisted combinations not sold). The board groups
+posts by category and filters by it.
 This remains a preview, not a security boundary — Supabase Auth, RLS and server-side role checks are
 still required before live admin data is exposed.
 

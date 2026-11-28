@@ -1926,3 +1926,19 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   server table, so accounts do not sync across devices yet. Say so rather than implying otherwise.
 - Editing the admin tick: `savePassword` passes `mustChangePassword: account.mustChangePassword`; a
   hard-coded `false` silently discarded the "Change at next sign-in" tick (fixed 2026-11-21).
+
+## Posts: every category, grouped, with bilingual tags (`AdminPosts.tsx`, `admin-demo-data.ts`)
+- A post belongs to one `category` (`POST_CATEGORIES`, eight values in board order) and carries
+  `tags: { en, my }[]`. `groupPostsByCategory` drives the board; do not go back to one flat list.
+- The product select only offers products of the chosen category, and `chooseCategory` clears a linked
+  product from another category. Creating from a group header preselects that category's first product so
+  the attribute specs match the Price Table.
+- Tags: `POST_TAG_LIMIT` 8, `POST_TAG_MAX_LENGTH` 24, English required, Burmese falls back to English.
+  `postTagsText` feeds search, so both languages are searchable — keep it in the filter.
+- `normalizeTshirtPostOptions` backfills `category: "T-Shirt"` and cleans tags; older stored posts must keep
+  loading. Any new seed post needs a category, tags and options that exist in the chain
+  (`TSHIRT_POST_ATTRIBUTES` + `CATEGORY_POST_ATTRIBUTES`).
+- `tests/editor-attributes.test.cjs` checks seed attributes against both vocabularies; a category-specific
+  seed post (cupType, kidsSizeBand, capStyle, …) needs that union, not just the T-shirt list.
+- The headless container has no Myanmar font: Burmese text renders as boxes in screenshots. Verify Burmese
+  by reading DOM text, not pixels.

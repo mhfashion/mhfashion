@@ -2832,3 +2832,49 @@ Verified in Chromium 1440x900: the signed-out panel had no Save button, a passwo
 refused, the temporary notice appeared after the owner set one, a wrong current password was refused,
 the real change stored a 64-hex hash with `(self)` attribution and the flag cleared, and signing out
 restored the refusal.
+
+## Product posts for every category, with bilingual tags (owner request 2026-11-21, part 7)
+
+The Posts board (`/admin/posts?tab=tshirt`, labelled **Product posts**) is no longer T-shirt-only.
+
+**Model** (`apps/web/src/lib/admin-demo-data.ts`)
+- `POST_CATEGORIES` — the eight categories in board order: T-Shirt, Kids T-Shirt, Hoodie, Polo, Jersey,
+  Cap, Cup, Accessory.
+- `AdminTshirtPost` now has `category` and `tags: AdminPostTag[]`; a tag is `{ en, my }`.
+- `postCategoryOf(post, products)` — the stored category, else the linked product's category, else T-Shirt.
+- `groupPostsByCategory(posts, products)` — `[{ category, posts }]` in board order, empty categories omitted.
+- `normalizePostTag` / `normalizePostTags` — trim, collapse spaces, require English, fall back the Burmese
+  side to English, drop duplicates (case-insensitive) and cap at `POST_TAG_LIMIT` (8).
+- `addPostTag` / `removePostTag` / `postTagErrors` / `postTagLabel` / `postTagsText` — the editor helpers;
+  `postTagsText` is what search reads.
+- `POST_TAG_SUGGESTIONS` — ten ready pairs (New arrival / အသစ်ရောက်, Best seller / အရောင်းရဆုံး, …).
+- `validateTshirtPostDraft` requires a category and validates every tag (`POST_TAG_MAX_LENGTH` 24).
+- `normalizeTshirtPostOptions` fills a missing category with T-Shirt and cleans tags, so previously stored
+  posts load unchanged.
+
+**Board**
+- Category chip row (`data-post-category-filter`) with counts for all eight categories plus All.
+- Rows grouped under category headings (`data-post-category-group`), each heading carrying
+  `data-post-category-new` — "New in <category>" opens the drawer filed under that category and linked to
+  its first product.
+- Tags column (`data-post-row-tags`) shows `English · မြန်မာ` for each post.
+- Search matches title, description, category and both languages of every tag.
+
+**Drawer**
+- Category select (`data-post-category`) sits above "Sold as"; the product select only lists products of
+  the chosen category, and changing category drops a product that belongs elsewhere.
+- Tag editor: chips (`data-post-tag` with `data-post-tag-en` / `data-post-tag-my`), two inputs
+  (`data-post-tag-en-input`, `data-post-tag-my-input`, Enter adds), `data-post-tag-add`, an inline
+  `data-post-tag-error`, and `data-post-tag-suggest` chips from `POST_TAG_SUGGESTIONS`.
+
+**Seed** — T-Shirt (2), Kids T-Shirt, Hoodie, Cap and Cup posts, each with bilingual tags.
+
+**Tests** — `tests/post-categories.test.cjs` (10): every category saves a post, the seed covers ≥4
+categories, grouping order and completeness, category fallback to the linked product, tag normalisation and
+dedupe, add/remove/cap, tag validation, draft → post → draft round-trip, validation refusals, and the screen
+wiring. `tests/editor-attributes.test.cjs` now checks post attributes against the T-shirt **and**
+category vocabulary.
+
+**Verified** in Chromium 1440x900: five groups with counts, Cup drawer limited to the Ceramic Cup product,
+`Jasmine`/`စံပယ်ပန်း` + `Gift` stored under `category:"Cup"`, both languages in the table, Cup filter
+narrowing the board, and a Burmese-tag search finding the post.

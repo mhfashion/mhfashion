@@ -71,6 +71,10 @@ export type AdminProductCategory =
   | "Cap"
   | "Cup"
   | "Accessory";
+/** The categories a post can be filed under, in the order the screens list them. */
+export const POST_CATEGORIES: AdminProductCategory[] = [
+  "T-Shirt", "Kids T-Shirt", "Hoodie", "Polo", "Jersey", "Cap", "Cup", "Accessory",
+];
 export type AdminProductStatus = "Active" | "Draft" | "Archived";
 export type AdminDesignStatus = "Published" | "Draft" | "Hidden";
 export type AdminPromotionKind = "percent" | "amount";
@@ -439,6 +443,10 @@ export type AdminTshirtPost = {
   id: string;
   /** The product this design is sold as; its Price Table variants start from the post's prices. */
   productId?: string;
+  /** The category the post is filed under, so the board can group posts by product type. */
+  category: AdminProductCategory;
+  /** Every tag carries both languages; the storefront picks the one it is rendering. */
+  tags: AdminPostTag[];
   title: string;
   description: string;
   svg: AdminPostSvg | null;
@@ -448,6 +456,101 @@ export type AdminTshirtPost = {
   createdAt: string;
   publishedAt: string | null;
 };
+
+/** A post tag, written in English and in Burmese, so one tag serves both storefronts. */
+export type AdminPostTag = { en: string; my: string };
+
+export const POST_TAG_LIMIT = 8;
+export const POST_TAG_MAX_LENGTH = 24;
+
+export const POST_TAG_SUGGESTIONS: AdminPostTag[] = [
+  { en: "New arrival", my: "အသစ်ရောက်" },
+  { en: "Best seller", my: "အရောင်းရဆုံး" },
+  { en: "Limited drop", my: "အကန့်အသတ်" },
+  { en: "Football", my: "ဘောလုံး" },
+  { en: "Kids", my: "ကလေးများ" },
+  { en: "Gift", my: "လက်ဆောင်" },
+  { en: "Premium", my: "ပရီမီယံ" },
+  { en: "Sale", my: "လျှော့စျေး" },
+  { en: "Myanmar art", my: "မြန်မာပန်းချီ" },
+  { en: "Minimal", my: "ရိုးရှင်း" },
+];
+
+/** The English side is required; a missing Burmese side falls back to it. */
+export function normalizePostTag(value: unknown): AdminPostTag | null {
+  if (!value || typeof value !== "object") return null;
+  const entry = value as Partial<AdminPostTag>;
+  const en = typeof entry.en === "string" ? entry.en.trim().replace(/\s+/g, " ") : "";
+  const my = typeof entry.my === "string" ? entry.my.trim().replace(/\s+/g, " ") : "";
+  if (!en) return null;
+  return { en: en.slice(0, POST_TAG_MAX_LENGTH), my: (my || en).slice(0, POST_TAG_MAX_LENGTH) };
+}
+
+export function normalizePostTags(values: unknown): AdminPostTag[] {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set<string>();
+  const tags: AdminPostTag[] = [];
+  for (const value of values) {
+    const tag = normalizePostTag(value);
+    if (!tag) continue;
+    const key = tag.en.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tags.push(tag);
+    if (tags.length === POST_TAG_LIMIT) break;
+  }
+  return tags;
+}
+
+export function postTagErrors(tag: AdminPostTag): string[] {
+  const errors: string[] = [];
+  if (!tag.en.trim()) errors.push("A tag needs its English text.");
+  if (tag.en.length > POST_TAG_MAX_LENGTH) errors.push(`Keep the English tag under ${POST_TAG_MAX_LENGTH} characters.`);
+  if (tag.my.length > POST_TAG_MAX_LENGTH) errors.push(`Keep the Burmese tag under ${POST_TAG_MAX_LENGTH} characters.`);
+  return errors;
+}
+
+/** Adds a tag unless the English side is already there; the caller caps the list. */
+export function addPostTag(tags: readonly AdminPostTag[], tag: AdminPostTag): AdminPostTag[] {
+  const normalized = normalizePostTag(tag);
+  if (!normalized) return [...tags];
+  if (tags.some((entry) => entry.en.toLowerCase() === normalized.en.toLowerCase())) return [...tags];
+  return [...tags, normalized].slice(0, POST_TAG_LIMIT);
+}
+
+export function removePostTag(tags: readonly AdminPostTag[], en: string): AdminPostTag[] {
+  const key = en.trim().toLowerCase();
+  return tags.filter((tag) => tag.en.toLowerCase() !== key);
+}
+
+/** The tag as one string in the language being rendered. */
+export function postTagLabel(tag: AdminPostTag, locale: "en" | "my" = "en"): string {
+  return locale === "my" ? tag.my || tag.en : tag.en;
+}
+
+export function postTagsText(post: Pick<AdminTshirtPost, "tags">): string {
+  return (post.tags ?? []).map((tag) => `${tag.en} ${tag.my}`).join(" ");
+}
+
+/** The category a post belongs to; a saved post without one follows its linked product. */
+export function postCategoryOf(post: Pick<AdminTshirtPost, "category" | "productId">, products: readonly AdminProduct[] = []): AdminProductCategory {
+  if (post.category && POST_CATEGORIES.includes(post.category)) return post.category;
+  const linked = post.productId ? products.find((product) => product.id === post.productId) : undefined;
+  return linked?.category ?? "T-Shirt";
+}
+
+/** Posts grouped under their category, in the board's order; empty categories are left out. */
+export function groupPostsByCategory(
+  posts: readonly AdminTshirtPost[],
+  products: readonly AdminProduct[] = [],
+): { category: AdminProductCategory; posts: AdminTshirtPost[] }[] {
+  return POST_CATEGORIES
+    .map((category) => ({
+      category,
+      posts: posts.filter((post) => postCategoryOf(post, products) === category),
+    }))
+    .filter((group) => group.posts.length > 0);
+}
 
 export type AdminPromotion = {
   id: string;
@@ -1453,6 +1556,8 @@ export type AdminTshirtPostDraftAttribute = AdminTshirtPostAttribute & { enabled
 
 export type AdminTshirtPostDraft = {
   productId: string;
+  category: AdminProductCategory;
+  tags: AdminPostTag[];
   title: string;
   description: string;
   svg: AdminPostSvg | null;
@@ -1479,6 +1584,10 @@ const LEGACY_POST_OPTION_VALUES: Record<string, string> = {
 
 export function normalizeTshirtPostOptions(post: AdminTshirtPost): AdminTshirtPost {
   let changed = false;
+  const tags = normalizePostTags(post.tags);
+  const category = post.category && POST_CATEGORIES.includes(post.category) ? post.category : "T-Shirt";
+  if (!post.category || category !== post.category) changed = true;
+  if (JSON.stringify(tags) !== JSON.stringify(post.tags ?? [])) changed = true;
   const attributes = post.attributes.map((attribute) => {
     const known = TSHIRT_POST_ATTRIBUTES.find((entry) => entry.key === attribute.key);
     if (!known) return attribute;
@@ -1497,7 +1606,7 @@ export function normalizeTshirtPostOptions(post: AdminTshirtPost): AdminTshirtPo
   });
   // Identity stays stable for an already-normalised post, so the store does not hand out a new
   // object on every read.
-  return changed ? { ...post, attributes, prices } : post;
+  return changed ? { ...post, attributes, prices, tags, category } : post;
 }
 
 export function tshirtPostDraftFrom(
@@ -1506,6 +1615,8 @@ export function tshirtPostDraftFrom(
 ): AdminTshirtPostDraft {
   return {
     productId: post?.productId ?? "",
+    category: post?.category ?? "T-Shirt",
+    tags: (post?.tags ?? []).map((tag) => ({ ...tag })),
     title: post?.title ?? "",
     description: post?.description ?? "",
     svg: post?.svg ?? null,
@@ -1575,6 +1686,10 @@ function postPriceError(value: string) {
 export function validateTshirtPostDraft(draft: AdminTshirtPostDraft): string[] {
   const errors: string[] = [];
   const attributes = tshirtDraftAttributes(draft);
+  if (!draft.category || !POST_CATEGORIES.includes(draft.category)) errors.push("Choose the product category this post belongs to.");
+  const tags = draft.tags ?? [];
+  if (tags.length > POST_TAG_LIMIT) errors.push(`A post carries up to ${POST_TAG_LIMIT} tags.`);
+  for (const tag of tags) errors.push(...postTagErrors(tag));
   if (!draft.title.trim()) errors.push("Post title is required.");
   if (draft.title.trim().length > 80) errors.push("Post title must stay under 80 characters.");
   if (!draft.svg) errors.push("Attach the SVG file for this post.");
@@ -1623,6 +1738,8 @@ export function tshirtPostFromDraft(draft: AdminTshirtPostDraft, existing?: Admi
       priceKs: Math.round(Number(row.priceKs || 0)),
     })),
     ...(draft.productId ? { productId: draft.productId } : {}),
+    category: draft.category ?? "T-Shirt",
+    tags: (draft.tags ?? []).map((tag) => ({ ...tag })),
     status: draft.status,
     createdAt: existing?.createdAt ?? now.toISOString(),
     publishedAt: draft.status === "Published" ? existing?.publishedAt ?? now.toISOString() : null,
@@ -1668,6 +1785,7 @@ export function normalizeTshirtPost(post: AdminTshirtPost | (Record<string, unkn
     publishedAt?: string | null;
     sizes?: { size: string; priceKs: number }[];
     colors?: { name: string; hex: string; priceKs: number }[];
+    tags?: unknown;
   };
   if (Array.isArray((post as AdminTshirtPost).attributes) && Array.isArray((post as AdminTshirtPost).prices)) {
     return normalizeTshirtPostOptions(post as AdminTshirtPost);
@@ -1686,6 +1804,8 @@ export function normalizeTshirtPost(post: AdminTshirtPost | (Record<string, unkn
   })));
   return normalizeTshirtPostOptions({
     id: legacy.id,
+    category: "T-Shirt",
+    tags: normalizePostTags(legacy.tags),
     title: legacy.title ?? "Untitled post",
     description: legacy.description ?? "",
     svg: legacy.svg ?? null,
@@ -2035,6 +2155,11 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
   return [
     {
       id: "post-peacock-line",
+      category: "T-Shirt",
+      tags: [
+        { en: "New arrival", my: "အသစ်ရောက်" },
+        { en: "Myanmar art", my: "မြန်မာပန်းချီ" },
+      ],
       title: "Peacock Line Tee",
       description: "Single-colour line art printed on combed cotton.",
       svg: seedPostSvg("PEACOCK", "#236b42"),
@@ -2059,6 +2184,11 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
     },
     {
       id: "post-mandalay-nights",
+      category: "T-Shirt",
+      tags: [
+        { en: "Limited drop", my: "အကန့်အသတ်" },
+        { en: "Myanmar art", my: "မြန်မာပန်းချီ" },
+      ],
       title: "Mandalay Nights Tee",
       description: "Two-colour night market print, oversized fit.",
       svg: seedPostSvg("MANDALAY", "#b83219"),
@@ -2077,6 +2207,94 @@ function createSeedTshirtPosts(now: number): AdminTshirtPost[] {
       ],
       status: "Draft",
       createdAt: daysAgo(2),
+      publishedAt: null,
+    },
+    {
+      id: "post-lantern-hoodie",
+      category: "Hoodie",
+      tags: [
+        { en: "New arrival", my: "အသစ်ရောက်" },
+        { en: "Premium", my: "ပရီမီယံ" },
+      ],
+      title: "Lantern Night Hoodie",
+      description: "Brushed fleece hoodie with a lantern print across the chest.",
+      svg: seedPostSvg("LANTERN", "#2f3f6b"),
+      attributes: [
+        { key: "size", label: "Size", options: ["M", "L", "XL"] },
+        { key: "gsm", label: "GSM", options: ["240 GSM"] },
+        { key: "color", label: "Color", options: ["Black", "Sand"] },
+      ],
+      prices: [
+        { id: "price-lantern-1", options: { size: "M", gsm: "240 GSM", color: "Black" }, priceKs: 42000 },
+        { id: "price-lantern-2", options: { size: "L", gsm: "240 GSM", color: "Sand" }, priceKs: 44000 },
+      ],
+      status: "Published",
+      createdAt: daysAgo(4),
+      publishedAt: daysAgo(3),
+    },
+    {
+      id: "post-kids-elephant",
+      category: "Kids T-Shirt",
+      tags: [
+        { en: "Kids", my: "ကလေးများ" },
+        { en: "Gift", my: "လက်ဆောင်" },
+      ],
+      title: "Little Elephant Kids Tee",
+      description: "Soft combed cotton tee for ages 1 to 14.",
+      svg: seedPostSvg("ELEPHANT", "#3f8c22"),
+      attributes: [
+        { key: "kidsSizeBand", label: "Kids Age Band", options: ["1-2Y", "3-4Y", "5-6Y"] },
+        { key: "kidsSet", label: "Kids Pack", options: ["Single", "2-pack"] },
+      ],
+      prices: [
+        { id: "price-kids-1", options: { kidsSizeBand: "1-2Y", kidsSet: "Single" }, priceKs: 12000 },
+        { id: "price-kids-2", options: { kidsSizeBand: "3-4Y", kidsSet: "2-pack" }, priceKs: 21000 },
+      ],
+      status: "Published",
+      createdAt: daysAgo(8),
+      publishedAt: daysAgo(7),
+    },
+    {
+      id: "post-monsoon-cup",
+      category: "Cup",
+      tags: [
+        { en: "Gift", my: "လက်ဆောင်" },
+        { en: "Minimal", my: "ရိုးရှင်း" },
+      ],
+      title: "Monsoon Line Cup",
+      description: "Ceramic cup with a single-line monsoon motif.",
+      svg: seedPostSvg("MONSOON", "#203459"),
+      attributes: [
+        { key: "cupType", label: "Cup Type", options: ["Ceramic", "Glass"] },
+        { key: "capacity", label: "Capacity", options: ["330 ml", "450 ml"] },
+      ],
+      prices: [
+        { id: "price-cup-1", options: { cupType: "Ceramic", capacity: "330 ml" }, priceKs: 15000 },
+        { id: "price-cup-2", options: { cupType: "Ceramic", capacity: "450 ml" }, priceKs: 17500 },
+      ],
+      status: "Published",
+      createdAt: daysAgo(11),
+      publishedAt: daysAgo(10),
+    },
+    {
+      id: "post-script-cap",
+      category: "Cap",
+      tags: [
+        { en: "Best seller", my: "အရောင်းရဆုံး" },
+      ],
+      title: "MH Script Cap",
+      description: "Six-panel cap with an embroidered script mark.",
+      svg: seedPostSvg("SCRIPT", "#b83219"),
+      attributes: [
+        { key: "capStyle", label: "Cap Style", options: ["Six panel", "Five panel"] },
+        { key: "color", label: "Color", options: ["Black", "Sand"] },
+      ],
+      prices: [
+        { id: "price-cap-1", options: { capStyle: "Six panel", color: "Black" }, priceKs: 18000 },
+        { id: "price-cap-2", options: { capStyle: "Five panel", color: "Sand" }, priceKs: 19000 },
+      ],
+      status: "Draft",
+      createdAt: daysAgo(1),
       publishedAt: null,
     },
   ];

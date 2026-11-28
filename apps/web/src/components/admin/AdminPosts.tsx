@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight, FileUp, Newspaper, Pencil, Plus, Search, Trash2, X } from "lucide-react";
@@ -11,11 +11,13 @@ import {
 } from "@/components/admin/AdminUi";
 import { readAdminDemoData, updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import {
-  emptyTshirtPriceRow, formatAdminDate, formatKs, reconcileTshirtPriceRows,
-  removeTshirtPost, tshirtCombinationLabel, tshirtDraftAttributes, tshirtPostDraftFrom,
-  tshirtPostFromDraft, tshirtPostFromPriceKs, upsertTshirtPost, validateTshirtPostDraft,
-  type AdminPostStatus, type AdminTshirtPost, type AdminTshirtPostAttributeKey,
-  type AdminTshirtPostDraft,
+  POST_CATEGORIES, POST_TAG_LIMIT, POST_TAG_SUGGESTIONS, addPostTag, emptyTshirtPriceRow,
+  formatAdminDate, formatKs, groupPostsByCategory, postTagErrors, postTagsText,
+  reconcileTshirtPriceRows, removePostTag, removeTshirtPost, tshirtCombinationLabel,
+  tshirtDraftAttributes, tshirtPostDraftFrom, tshirtPostFromDraft, tshirtPostFromPriceKs,
+  upsertTshirtPost, validateTshirtPostDraft,
+  type AdminPostStatus, type AdminPostTag, type AdminProductCategory, type AdminTshirtPost,
+  type AdminTshirtPostAttributeKey, type AdminTshirtPostDraft,
 } from "@/lib/admin-demo-data";
 import { chainAsPostAttributes } from "@/lib/admin-attributes";
 import { productAttributeKeys, syncPostPricing, variantRows } from "@/lib/pricing-variants";
@@ -28,7 +30,7 @@ type PostTab = "guide" | "tshirt" | "nyein";
 
 const TABS: { id: PostTab; label: string }[] = [
   { id: "guide", label: "Guide posts" },
-  { id: "tshirt", label: "T-shirt posts" },
+  { id: "tshirt", label: "Product posts" },
   { id: "nyein", label: "Nyein posts" },
 ];
 
@@ -49,6 +51,10 @@ export default function AdminPosts() {
   const [tab, setTab] = useState<PostTab>(isPostTab(requestedTab) ? requestedTab : "tshirt");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<AdminPostStatus | "All">("All");
+  const [categoryFilter, setCategoryFilter] = useState<AdminProductCategory | "All">("All");
+  const [tagEn, setTagEn] = useState("");
+  const [tagMy, setTagMy] = useState("");
+  const [tagError, setTagError] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<AdminTshirtPostDraft | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
@@ -60,16 +66,34 @@ export default function AdminPosts() {
   const editing = editingId ? data.tshirtPosts.find((post) => post.id === editingId) ?? null : null;
   const filtered = useMemo(() => data.tshirtPosts.filter((post) => (
     (statusFilter === "All" || post.status === statusFilter)
-    && matchesSearchQuery(`${post.title} ${post.description}`, query)
-  )), [data.tshirtPosts, statusFilter, query]);
+    && (categoryFilter === "All" || post.category === categoryFilter)
+    && matchesSearchQuery(`${post.title} ${post.description} ${post.category} ${postTagsText(post)}`, query)
+  )), [data.tshirtPosts, statusFilter, categoryFilter, query]);
+  const groups = useMemo(() => groupPostsByCategory(filtered, data.products), [filtered, data.products]);
   const guidePosts = GUIDE_STARTER_CATALOG.posts;
   const activeAttributes = draft ? tshirtDraftAttributes(draft) : [];
 
-  function startCreate() {
+  /** A new post starts on the category's first product, so its specs match the Price Table at once. */
+  function startCreate(category: AdminProductCategory = "T-Shirt") {
     setEditingId("new");
-    setDraft(tshirtPostDraftFrom(undefined, chainAsPostAttributes(data)));
+    const base = tshirtPostDraftFrom(undefined, chainAsPostAttributes(data));
+    const product = data.products.find((entry) => entry.category === category) ?? null;
+    if (!product) {
+      setDraft({ ...base, category });
+    } else {
+      const keys = new Set(productAttributeKeys(data, product));
+      const attributes = base.attributes.map((attribute) => ({
+        ...attribute,
+        enabled: attribute.key === "size" ? true : keys.has(attribute.key),
+      }));
+      const active = attributes.filter((attribute) => attribute.enabled && attribute.options.length > 0);
+      setDraft({ ...base, category, productId: product.id, attributes, prices: reconcileTshirtPriceRows(active, base.prices) });
+    }
     setErrors([]);
     setSvgError(null);
+    setTagEn("");
+    setTagMy("");
+    setTagError("");
     setNotice("");
   }
 
@@ -104,6 +128,9 @@ export default function AdminPosts() {
     setDraft(tshirtPostDraftFrom(post, chainAsPostAttributes(data)));
     setErrors([]);
     setSvgError(null);
+    setTagEn("");
+    setTagMy("");
+    setTagError("");
     setNotice("");
   }
 
@@ -112,6 +139,35 @@ export default function AdminPosts() {
     setDraft(null);
     setErrors([]);
     setSvgError(null);
+    setTagError("");
+  }
+
+  /** Changing the category drops a linked product that belongs to another category. */
+  function chooseCategory(category: AdminProductCategory) {
+    if (!draft) return;
+    const product = data.products.find((entry) => entry.id === draft.productId);
+    if (product && product.category !== category) {
+      setDraft({ ...draft, category, productId: "" });
+      return;
+    }
+    setDraft({ ...draft, category });
+  }
+
+  function attachTag(tag: AdminPostTag) {
+    if (!draft) return;
+    if (draft.tags.length >= POST_TAG_LIMIT) {
+      setTagError(`A post carries up to ${POST_TAG_LIMIT} tags.`);
+      return;
+    }
+    const found = postTagErrors(tag);
+    if (found.length) {
+      setTagError(found[0]);
+      return;
+    }
+    setDraft({ ...draft, tags: addPostTag(draft.tags, tag) });
+    setTagError("");
+    setTagEn("");
+    setTagMy("");
   }
 
   function save() {
@@ -216,12 +272,12 @@ export default function AdminPosts() {
     <AdminShell
       active="posts"
       title="Posts"
-      description="Guide articles, T-shirt drops and the Nyein collection, from one place."
-      actions={tab === "tshirt" ? <AdminButton onClick={startCreate}><Plus size={14} /> New T-shirt post</AdminButton> : undefined}
+      description="Guide articles, product posts for every category, and the Nyein collection, from one place."
+      actions={tab === "tshirt" ? <AdminButton onClick={() => startCreate()}><Plus size={14} /> New product post</AdminButton> : undefined}
       search={tab === "tshirt" ? (
         <label className="flex h-10 w-full max-w-[420px] items-center gap-2.5 rounded-full border border-[#e6e9ed] bg-[#f8f9fb] px-3.5 text-[#8c95a1] focus-within:border-[#a5d972] focus-within:bg-white">
           <Search size={16} className="shrink-0" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search posts" placeholder="Search T-shirt posts..." className="min-w-0 flex-1 bg-transparent text-[11px] text-[#252c37] outline-none placeholder:text-[#9da5af]" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search posts" placeholder="Search posts, categories or tags (EN / မြန်မာ)..." className="min-w-0 flex-1 bg-transparent text-[11px] text-[#252c37] outline-none placeholder:text-[#9da5af]" />
         </label>
       ) : undefined}
     >
@@ -275,7 +331,27 @@ export default function AdminPosts() {
 
       {tab === "tshirt" ? (
         <>
-          <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter T-shirt posts by status">
+          <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter posts by category">
+            {(["All", ...POST_CATEGORIES] as (AdminProductCategory | "All")[]).map((category) => {
+              const count = category === "All"
+                ? data.tshirtPosts.length
+                : data.tshirtPosts.filter((post) => post.category === category).length;
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  data-post-category-filter={category}
+                  aria-pressed={categoryFilter === category}
+                  onClick={() => setCategoryFilter(category)}
+                  className={`rounded-full border px-2.5 py-1 text-[9px] font-bold transition-colors ${categoryFilter === category ? "border-[#4cae22] bg-[#eef8e6] text-[#3f8c22]" : "border-[#e4e8ed] bg-white text-[#6c7683] hover:bg-[#f7f9fb]"}`}
+                >
+                  {category} <span className="ml-1 text-[8px] opacity-70">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Filter posts by status">
             {(["All", ...STATUSES] as (AdminPostStatus | "All")[]).map((status) => {
               const count = status === "All" ? data.tshirtPosts.length : data.tshirtPosts.filter((post) => post.status === status).length;
               return (
@@ -300,15 +376,30 @@ export default function AdminPosts() {
                     <th className="px-4 py-2.5 font-semibold sm:px-5">Post</th>
                     <th className="px-3 py-2.5 font-semibold">SVG</th>
                     <th className="px-3 py-2.5 font-semibold">Attributes</th>
+                    <th className="px-3 py-2.5 font-semibold">Tags</th>
                     <th className="px-3 py-2.5 font-semibold">Price combinations</th>
                     <th className="px-3 py-2.5 font-semibold">Status</th>
                     <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f0f2f4]">
-                  {filtered.length ? filtered.map((post) => (
+                  {groups.length ? groups.map((group) => (
+                    <Fragment key={group.category}>
+                      <tr data-post-category-group={group.category} className="bg-[#f6f8fa]">
+                        <td colSpan={8} className="px-4 py-1.5 sm:px-5">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="text-[9px] font-black uppercase tracking-wide text-[#4a5462]">{group.category}</span>
+                            <span className="text-[8px] font-semibold text-[#919aa6]">{group.posts.length} post{group.posts.length === 1 ? "" : "s"}</span>
+                            <button type="button" data-post-category-new={group.category} onClick={() => startCreate(group.category)} className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#cfe3bd] bg-white px-2 py-0.5 text-[8px] font-bold text-[#3f8c22] hover:bg-[#f3faea]">
+                              <Plus size={10} /> New in {group.category}
+                            </button>
+                          </span>
+                        </td>
+                      </tr>
+                      {group.posts.map((post) => (
                     <tr key={post.id} className="hover:bg-[#fafbfc]">
                       <td className="px-4 py-2.5 sm:px-5">
+                        <span className="mb-0.5 inline-flex rounded-full bg-[#eef1f5] px-1.5 py-0.5 text-[8px] font-bold text-[#4a5462]" data-post-row-category={post.id}>{post.category}</span>
                         <span className="block font-bold text-[#303844]">{post.title}</span>
                         <span className="mt-0.5 block max-w-[240px] truncate text-[8px] text-[#919aa6]">{post.description || post.id}</span>
                         {(() => {
@@ -344,6 +435,15 @@ export default function AdminPosts() {
                         </span>
                       </td>
                       <td className="px-3 py-2.5">
+                        <span className="flex max-w-[220px] flex-wrap gap-1" data-post-row-tags={post.id}>
+                          {post.tags.length ? post.tags.map((tag) => (
+                            <span key={tag.en} title={`${tag.en} · ${tag.my}`} className="rounded-full bg-[#f3f5f7] px-1.5 py-0.5 text-[8px] font-semibold text-[#4a5462]">
+                              {tag.en} · {tag.my}
+                            </span>
+                          )) : <span className="text-[8px] text-[#a2aab4]">No tags</span>}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">
                         <span className="block text-[9px] font-semibold text-[#4a5462]">{post.prices.length} combination{post.prices.length === 1 ? "" : "s"}</span>
                         <span className="mt-0.5 block text-[8px] text-[#919aa6]">from {formatKs(tshirtPostFromPriceKs(post))}</span>
                       </td>
@@ -355,7 +455,9 @@ export default function AdminPosts() {
                         </div>
                       </td>
                     </tr>
-                  )) : <tr><td colSpan={6}><AdminEmpty title="No T-shirt posts match this filter" description="Try another search or create the first drop." /></td></tr>}
+                  ))}
+                    </Fragment>
+                  )) : <tr><td colSpan={8}><AdminEmpty title="No product posts match this filter" description="Try another search, another category, or create the first post." /></td></tr>}
                 </tbody>
               </table>
             </div>
@@ -371,8 +473,8 @@ export default function AdminPosts() {
 
       <AdminDrawer
         open={Boolean(editingId && draft)}
-        title={editingId === "new" ? "New T-shirt post" : `Edit ${editing?.title ?? "T-shirt post"}`}
-        description="Attach the print SVG, tick the attributes you sell, then price each combination by hand."
+        title={editingId === "new" ? `New ${draft?.category ?? "product"} post` : `Edit ${editing?.title ?? "product post"}`}
+        description="Pick the category and product, attach the print SVG, add bilingual tags, then price each combination."
         onClose={closeEditor}
         footer={(
           <div className="flex items-center justify-end gap-2">
@@ -389,6 +491,19 @@ export default function AdminPosts() {
               </ul>
             ) : null}
 
+            <AdminField label="Category" hint="Posts are filed and listed under this category, so every product type has its own board.">
+              <AdminSelect
+                aria-label="Post category"
+                data-post-category
+                value={draft.category}
+                onChange={(event) => chooseCategory(event.target.value as AdminProductCategory)}
+              >
+                {POST_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </AdminSelect>
+            </AdminField>
+
             <AdminField label="Sold as" hint="The product this design is priced as. Its Price Table supplies the specifications and the shop price.">
               <div className="space-y-1.5">
                 <AdminSelect
@@ -398,7 +513,7 @@ export default function AdminPosts() {
                   onChange={(event) => chooseProduct(event.target.value)}
                 >
                   <option value="">Not linked yet</option>
-                  {data.products.map((entry) => (
+                  {data.products.filter((entry) => entry.category === draft.category).map((entry) => (
                     <option key={entry.id} value={entry.id}>{entry.name} · {entry.category}</option>
                   ))}
                 </AdminSelect>
@@ -422,6 +537,80 @@ export default function AdminPosts() {
 
             <AdminField label="Description">
               <AdminTextarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} rows={3} placeholder="Single-colour line art on combed cotton." aria-label="Post description" />
+            </AdminField>
+
+            <AdminField label="Tags" hint={`Up to ${POST_TAG_LIMIT} tags. Write each tag in English and in Burmese; both are searched and shown.`}>
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1" data-post-tags>
+                  {draft.tags.length ? draft.tags.map((tag) => (
+                    <span key={tag.en} data-post-tag={tag.en} className="inline-flex items-center gap-1 rounded-full border border-[#cfe3bd] bg-[#f6fbf1] px-2 py-0.5 text-[9px] font-bold text-[#3f8c22]">
+                      <span data-post-tag-en>{tag.en}</span>
+                      <span aria-hidden className="text-[#93a0ad]">·</span>
+                      <span data-post-tag-my lang="my">{tag.my}</span>
+                      <button
+                        type="button"
+                        aria-label={`Remove tag ${tag.en}`}
+                        onClick={() => setDraft({ ...draft, tags: removePostTag(draft.tags, tag.en) })}
+                        className="text-[#87909b] hover:text-[#c9424a]"
+                      >
+                        <X size={9} />
+                      </button>
+                    </span>
+                  )) : <span className="text-[9px] text-[#919aa6]">No tags yet.</span>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <label className="min-w-0">
+                    <span className="block text-[8px] font-bold uppercase tracking-wide text-[#9aa3ad]">English</span>
+                    <input
+                      value={tagEn}
+                      onChange={(event) => { setTagEn(event.target.value); setTagError(""); }}
+                      onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); attachTag({ en: tagEn, my: tagMy || tagEn }); } }}
+                      aria-label="Tag in English"
+                      data-post-tag-en-input
+                      placeholder="New arrival"
+                      className="h-8 w-full min-w-0 rounded border border-[#e6e9ed] bg-white px-2 text-[10px] text-[#252c37] outline-none focus:border-[#a5d972]"
+                    />
+                  </label>
+                  <label className="min-w-0">
+                    <span className="block text-[8px] font-bold uppercase tracking-wide text-[#9aa3ad]">မြန်မာ</span>
+                    <input
+                      value={tagMy}
+                      onChange={(event) => { setTagMy(event.target.value); setTagError(""); }}
+                      onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); attachTag({ en: tagEn, my: tagMy || tagEn }); } }}
+                      aria-label="Tag in Burmese"
+                      data-post-tag-my-input
+                      lang="my"
+                      placeholder="အသစ်ရောက်"
+                      className="h-8 w-full min-w-0 rounded border border-[#e6e9ed] bg-white px-2 text-[10px] text-[#252c37] outline-none focus:border-[#a5d972]"
+                    />
+                  </label>
+                </div>
+                <AdminButton
+                  compact
+                  variant="secondary"
+                  onClick={() => attachTag({ en: tagEn, my: tagMy || tagEn })}
+                  disabled={!tagEn.trim()}
+                  data-post-tag-add
+                >
+                  <Plus size={12} /> Add tag
+                </AdminButton>
+                {tagError ? <p className="text-[9px] font-semibold text-[#c9424a]" data-post-tag-error>{tagError}</p> : null}
+
+                <div className="flex flex-wrap gap-1" aria-label="Suggested tags">
+                  {POST_TAG_SUGGESTIONS.filter((tag) => !draft.tags.some((entry) => entry.en.toLowerCase() === tag.en.toLowerCase())).map((tag) => (
+                    <button
+                      key={tag.en}
+                      type="button"
+                      data-post-tag-suggest={tag.en}
+                      onClick={() => attachTag(tag)}
+                      className="rounded-full border border-dashed border-[#cfd6dd] bg-white px-1.5 py-0.5 text-[8px] font-semibold text-[#4a5462] hover:border-[#a5d972] hover:text-[#3f8c22]"
+                    >
+                      + {tag.en} · {tag.my}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </AdminField>
 
             <AdminField label="SVG file" hint="Stored per post; the R2 upload replaces the local copy once the bucket is live.">

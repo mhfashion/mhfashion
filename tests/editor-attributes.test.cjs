@@ -108,7 +108,7 @@ test("the seeded posts already speak the new vocabulary", () => {
   const data = admin.createAdminDemoData(Date.UTC(2026, 10, 21));
   for (const post of data.tshirtPosts) {
     for (const attribute of post.attributes) {
-      const known = admin.TSHIRT_POST_ATTRIBUTES.find((entry) => entry.key === attribute.key);
+      const known = [...admin.TSHIRT_POST_ATTRIBUTES, ...admin.CATEGORY_POST_ATTRIBUTES].find((entry) => entry.key === attribute.key);
       assert.equal(attribute.label, known.label, `${post.id} carries a stale label`);
       for (const option of attribute.options) {
         assert.ok(known.options.includes(option), `${post.id} offers ${option}, which the chain does not`);
@@ -116,7 +116,7 @@ test("the seeded posts already speak the new vocabulary", () => {
     }
     for (const row of post.prices) {
       for (const [key, value] of Object.entries(row.options)) {
-        const known = admin.TSHIRT_POST_ATTRIBUTES.find((entry) => entry.key === key);
+        const known = [...admin.TSHIRT_POST_ATTRIBUTES, ...admin.CATEGORY_POST_ATTRIBUTES].find((entry) => entry.key === key);
         assert.ok(known.options.includes(value), `${post.id} prices ${key}: ${value}, which the chain does not offer`);
       }
     }
