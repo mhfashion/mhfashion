@@ -1,7 +1,6 @@
-import AdminPriceTable from "@/components/admin/AdminPriceTable";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Price Table · MH Fashion Admin" };
-
+// The spec-box sheet now lives inside Pricing, so the old route only forwards.
 export default function AdminPriceTablePage() {
-  return <AdminPriceTable />;
+  redirect("/admin/pricing");
 }

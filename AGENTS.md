@@ -1848,3 +1848,28 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - The admin sidebar is the same white panel as the header bar (`bg-white`, `border-r border-[#e8ebef]`) and holds the navigation only — no promo card, no account row. The account and its single sign-out control live in the header bar; a test in `tests/admin-sidebar-colour.test.cjs` asserts there is exactly one of each in `AdminShell.tsx`.
 - The customer `/account` dashboard has no wallet balance card: there is no top-up, so a balance would be a fake number. Its stat row is Total Orders / My Points / Wishlist on `xl:grid-cols-3`; `tests/account-orders.test.cjs` pins that the wallet does not come back. KBZPay / Wave Pay / AYA Pay are checkout payment methods only.
 - A language switch must not resize a box. Banners carry `data-hero` with a fixed height per breakpoint, always the guide banner height (`h-[206px] sm:h-[250px] lg:h-[267px]`), and a Myanmar headline scale (`html[lang="my"] [data-hero] h1` at 16/20/24px, `<br>` hidden, copy column 84/66/52%) — Burmese needs a 2.1em line box, so the headline shrinks instead of the banner growing. Tiles/cards take the taller (Burmese) measure as `min-h`; `data-tight-line` keeps the Latin 1.5 line box for one-line bars and link lists; CTA pills carry a `min-w` for their wider Burmese label. Verify by dumping every painted box per route in both locales at 1440x900 and 390x844 and diffing width/height; only text containers (page titles) may differ.
+
+## One Price Table, and what feeds it (`apps/web/src/lib/pricing-variants.ts`)
+- `/admin/pricing` **is** the Price Table. `apps/web/src/app/admin/price-table/page.tsx` only
+  `redirect("/admin/pricing")`, `ADMIN_NAV` has a single `pricing` entry labelled "Price Table", and
+  `AdminPricingManagement` mounts `<AdminPriceTable embedded />` in its "Price Table" tab. `AdminPriceTable`
+  takes `embedded` and renders through a local `Screen` wrapper: with the shell when it owns a route,
+  without it inside Pricing. Do not re-add a second sidebar entry.
+- `syncPostPricing(data, post)` seeds published posts into the table: one row per stocked size carrying
+  the post's MMK and a **null USD**. It skips any variant that already has a stored row, so a re-publish
+  never overwrites an owner's price; a Draft returns the data untouched.
+- Posts carry `productId` (`AdminTshirtPost` / `AdminTshirtPostDraft`); the editor's `data-post-product`
+  select sets it and enables exactly `productAttributeKeys(data, product)`. `tshirtPostFromDraft` adds
+  `productId` only when set, otherwise the round-trip equality test breaks on `{ productId: undefined }`.
+- `createSeedAttributeChain` returns `[...TSHIRT_POST_ATTRIBUTES, ...CATEGORY_POST_ATTRIBUTES]` with every
+  attribute **enabled**: a phone cover, cup or tote is priced from the same chain. Which attributes a
+  product prices still comes from `productPricingAttributes` / the size default, and a new post starts
+  on `DEFAULT_TSHIRT_DRAFT_ATTRIBUTES`.
+- Shop side: `variant-price.ts` (`findVariant`, `variantIsSellable`, `variantNotice`) reads
+  `Product.variants`, loaded by `getProductVariants` from the SQL function `product_variant_prices`.
+  `formatPrice`/`pickPrice` in `currency-context.tsx` choose a stored column; converting with
+  `exchangeRate` is the regression the owner rejected.
+- Sales: `applyVariantStockForOrder(data, orderId, "take" | "restore")` stamps the order
+  (`variantStockConsumedAt` / `variantStockRestoredAt`) and is called from `syncStockWithStage`.
+- Tests: `tests/pricing-connections.test.cjs`. Its loader needs `jsx: ts.JsxEmit.React` to import
+  `currency-context.tsx`, and `createAdminDemoData` wants a `Date`, not a string.

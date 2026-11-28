@@ -11,6 +11,7 @@ import {
   type AdminAttributeDefinition,
   type AdminAvailability,
   type AdminDemoData,
+  type AdminOrderItem,
   type AdminPriceHistoryEntry,
   type AdminProduct,
   type AdminStock,
@@ -555,4 +556,147 @@ export function sortVariants(rows: readonly VariantRow[], sort: VariantSort): Va
     return copy.sort((a, b) => new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime());
   }
   return copy;
+}
+
+/** What a post hands to the Price Table: its spec attributes and the price of each combination. */
+export type PostPricingInput = {
+  productId?: string;
+  status: "Draft" | "Published";
+  attributes: { key: string; label: string; options: string[]; enabled: boolean }[];
+  prices: { options: Record<string, string | undefined>; priceKs: number }[];
+};
+
+/**
+ * Posting a design hooks it to the Price Table: the product starts pricing the post's specifications,
+ * and every combination the post priced gets a variant row per stocked size seeded from that price.
+ * An existing price is never overwritten — the console only fills what is still missing — and the
+ * USD price stays empty (Missing price) until the owner types one.
+ */
+export function syncPostPricing(data: AdminDemoData, post: PostPricingInput): { data: AdminDemoData; seeded: number; issues: string[] } {
+  const issues: string[] = [];
+  const product = data.products.find((entry) => entry.id === post.productId);
+  if (post.status !== "Published") return { data, seeded: 0, issues };
+  if (!product) {
+    if (post.productId) issues.push("The linked product no longer exists.");
+    return { data, seeded: 0, issues };
+  }
+
+  const known = new Set<string>(pricingAttributes(data).map((attribute) => attribute.key));
+  const postKeys = post.attributes.filter((attribute) => attribute.enabled && attribute.options.length).map((attribute) => attribute.key);
+  const missingKeys = postKeys.filter((key) => !known.has(key));
+  if (missingKeys.length) issues.push(`The post uses ${missingKeys.join(", ")}, which the Price Table does not define.`);
+
+  const usable = postKeys.filter((key) => known.has(key) && key !== "size");
+  const nextKeys = [...new Set([...productAttributeKeys(data, product), ...usable])];
+  const withAttributes = nextKeys.length === productAttributeKeys(data, product).length
+    ? data
+    : setProductAttributes(data, product.id, nextKeys);
+
+  // A price the owner already set is never touched: only variants with no stored row are seeded.
+  const hasStored = (options: PricingOptions, size: string) => withAttributes.productPrices.some((row) => {
+    if (row.productId !== product.id || row.size !== size) return false;
+    const stored = rowOptions(row);
+    return Object.keys(options).every((key) => key === "size" || stored[key] === options[key]);
+  });
+
+  const changes: VariantChange[] = [];
+  for (const row of post.prices) {
+    if (!(row.priceKs > 0)) continue;
+    const options: PricingOptions = {};
+    for (const key of usable) {
+      const value = row.options[key];
+      if (value) options[key] = value;
+    }
+    for (const size of product.sizes) {
+      if (hasStored(options, size)) continue;
+      changes.push({ options, size, priceKs: row.priceKs, expectedVersion: 0 });
+    }
+  }
+  if (!changes.length) return { data: withAttributes, seeded: 0, issues };
+
+  const result = saveVariantChanges(withAttributes, product.id, changes, "Post", new Date().toISOString());
+  return { data: result.data, seeded: result.applied, issues };
+}
+
+/** The order item fields that name a variant attribute, mapped to the chain's option labels. */
+export function orderItemOptions(item: AdminOrderItem): PricingOptions {
+  const options: PricingOptions = { size: item.size || "" };
+  if (item.color) options.color = item.color;
+  if (item.material) options.material = item.material;
+  if (item.fit) options.fit = item.fit;
+  if (item.sleeve) options.sleeve = item.sleeve;
+  if (item.printMethod) options.print = item.printMethod;
+  if (typeof item.gsm === "number" && item.gsm > 0) options.gsm = `${item.gsm} GSM`;
+  return options;
+}
+
+/** The variant a sold line names: it matches on every key the line can name, preferring a full match. */
+export function variantRowForItem(data: AdminDemoData, item: AdminOrderItem): VariantRow | null {
+  const product = data.products.find((entry) => entry.id === item.productId);
+  if (!product) return null;
+  const wanted = orderItemOptions(item);
+  const keys = Object.keys(wanted);
+  const candidates = variantRows(data, product).filter((row) => keys.every((key) => row.options[key] === wanted[key]));
+  if (!candidates.length) return null;
+  return candidates.find((row) => Object.keys(row.options).length === keys.length) ?? candidates[0];
+}
+
+const rowKeyOf = (options: PricingOptions) => Object.entries(options).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `${key}=${value}`).join("|");
+
+/**
+ * A sale moves the variant's own stock when its product tracks stock. The Inventory module keeps
+ * blank-garment counts; this keeps the Price Table's per-variant figure, and a refund puts it back.
+ * A caller passes "take" once per paid order and "restore" once per refund or cancellation.
+ */
+export function applyVariantStockForOrder(
+  data: AdminDemoData,
+  orderId: string,
+  direction: "take" | "restore",
+): { data: AdminDemoData; moved: { key: string; quantity: number }[] } {
+  const order = data.orders.find((entry) => entry.id === orderId);
+  if (!order) return { data, moved: [] };
+  // The stamp keeps a replayed payment from taking the stock twice, and a second refund from adding it.
+  if (direction === "take" && order.variantStockConsumedAt && !order.variantStockRestoredAt) return { data, moved: [] };
+  if (direction === "restore" && (!order.variantStockConsumedAt || order.variantStockRestoredAt)) return { data, moved: [] };
+  const at = new Date().toISOString();
+
+  const wanted = new Map<string, { productId: string; options: PricingOptions; quantity: number }>();
+  for (const item of order.items) {
+    const row = variantRowForItem(data, item);
+    if (!row?.stock?.tracking) continue;
+    const key = `${item.productId}|${rowKeyOf(row.options)}`;
+    const existing = wanted.get(key);
+    const quantity = Math.max(1, item.quantity);
+    if (existing) existing.quantity += quantity;
+    else wanted.set(key, { productId: item.productId, options: row.options, quantity });
+  }
+  if (!wanted.size) return { data, moved: [] };
+
+  const moved: { key: string; quantity: number }[] = [];
+  const productPrices = data.productPrices.map((row) => {
+    const key = `${row.productId}|${rowKeyOf(rowOptions(row))}`;
+    const line = wanted.get(key);
+    if (!line?.quantity || !row.stock?.tracking) return row;
+    const nextQuantity = direction === "take"
+      ? Math.max(0, row.stock.quantity - line.quantity)
+      : row.stock.quantity + line.quantity;
+    if (nextQuantity === row.stock.quantity) return row;
+    moved.push({ key, quantity: nextQuantity - row.stock.quantity });
+    return {
+      ...row,
+      stock: { ...row.stock, quantity: nextQuantity },
+      availability: nextQuantity > 0 ? row.availability : "Out of Stock",
+      version: row.version + 1,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+  const orders = data.orders.map((entry) => (entry.id === orderId
+    ? {
+      ...entry,
+      ...(direction === "take"
+        ? { variantStockConsumedAt: at, variantStockRestoredAt: undefined }
+        : { variantStockRestoredAt: at }),
+    }
+    : entry));
+  return { data: { ...data, productPrices, orders }, moved };
 }

@@ -14,6 +14,7 @@ import {
   Search, Trash2, Upload, X,
 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
+import AdminPriceTable from "@/components/admin/AdminPriceTable";
 import { AdminButton, AdminCard, AdminCardHeader, AdminEmpty, AdminInput, AdminSelect, AdminStat } from "@/components/admin/AdminUi";
 import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
@@ -963,21 +964,9 @@ export default function AdminPricingManagement() {
         ) : null}
 
         {tab === "table" ? (
-          <AdminCard className="overflow-hidden">
-            <AdminCardHeader
-              title="Per-specification price table"
-              description="Prices set once per specification, read by every product made to it."
-              actions={<Link href="/admin/price-table" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#3f8c22] hover:underline">Open the table →</Link>}
-            />
-            <ul className="divide-y divide-[#f0f2f4]">
-              {pricingAttributes(data).map((attribute) => (
-                <li key={attribute.key} className="flex items-start justify-between gap-3 px-4 py-2 text-[10px] sm:px-5">
-                  <span className="font-bold text-[#333c49]">{attribute.label}</span>
-                  <span className="text-right font-semibold text-[#6c7683]">{attribute.options.join(", ")}</span>
-                </li>
-              ))}
-            </ul>
-          </AdminCard>
+          <div data-pricing-spec-sheet>
+            <AdminPriceTable embedded />
+          </div>
         ) : null}
 
         {tab === "history" ? (

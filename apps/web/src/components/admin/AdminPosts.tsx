@@ -9,7 +9,7 @@ import {
   AdminBadge, AdminButton, AdminCard, AdminDrawer, AdminEmpty, AdminField,
   AdminInput, AdminSelect, AdminTextarea, type AdminTone,
 } from "@/components/admin/AdminUi";
-import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
+import { readAdminDemoData, updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import {
   emptyTshirtPriceRow, formatAdminDate, formatKs, reconcileTshirtPriceRows,
   removeTshirtPost, tshirtCombinationLabel, tshirtDraftAttributes, tshirtPostDraftFrom,
@@ -18,6 +18,7 @@ import {
   type AdminTshirtPostDraft,
 } from "@/lib/admin-demo-data";
 import { chainAsPostAttributes } from "@/lib/admin-attributes";
+import { productAttributeKeys, syncPostPricing, variantRows } from "@/lib/pricing-variants";
 import { GUIDE_STARTER_CATALOG } from "@/lib/guide-starter";
 import { guideProductLinkSummary } from "@/lib/guide-products";
 import { storePostSvg } from "@/lib/post-assets";
@@ -53,6 +54,7 @@ export default function AdminPosts() {
   const [errors, setErrors] = useState<string[]>([]);
   const [svgError, setSvgError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
 
   const query = search;
   const editing = editingId ? data.tshirtPosts.find((post) => post.id === editingId) ?? null : null;
@@ -68,13 +70,41 @@ export default function AdminPosts() {
     setDraft(tshirtPostDraftFrom(undefined, chainAsPostAttributes(data)));
     setErrors([]);
     setSvgError(null);
+    setNotice("");
   }
+
+  /** Picking the product this drop is sold as turns on exactly the specifications its Price Table prices. */
+  function chooseProduct(productId: string) {
+    if (!draft) return;
+    const product = data.products.find((entry) => entry.id === productId);
+    if (!product) {
+      setDraft({ ...draft, productId: "" });
+      return;
+    }
+    const keys = new Set(productAttributeKeys(data, product));
+    const attributes = draft.attributes.map((attribute) => ({
+      ...attribute,
+      enabled: attribute.key === "size" ? true : keys.has(attribute.key),
+    }));
+    const active = attributes.filter((attribute) => attribute.enabled && attribute.options.length > 0);
+    setDraft({
+      ...draft,
+      productId,
+      attributes,
+      prices: reconcileTshirtPriceRows(active, draft.prices),
+    });
+  }
+
+  const linkedProduct = data.products.find((entry) => entry.id === draft?.productId) ?? null;
+  const linkedRows = linkedProduct ? variantRows(data, linkedProduct) : [];
+  const linkedMissingUsd = linkedRows.filter((row) => row.priceUsd === null).length;
 
   function startEdit(post: AdminTshirtPost) {
     setEditingId(post.id);
     setDraft(tshirtPostDraftFrom(post, chainAsPostAttributes(data)));
     setErrors([]);
     setSvgError(null);
+    setNotice("");
   }
 
   function closeEditor() {
@@ -92,8 +122,26 @@ export default function AdminPosts() {
       return;
     }
     const post = tshirtPostFromDraft(draft, editing ?? undefined);
-    updateAdminData((current) => upsertTshirtPost(current, post));
+    const current = readAdminDemoData();
+    const saved = upsertTshirtPost(current, post);
+    const sync = syncPostPricing(saved, {
+      productId: post.productId,
+      status: post.status,
+      attributes: post.attributes.map((attribute) => ({
+        key: attribute.key,
+        label: attribute.label,
+        options: attribute.options,
+        enabled: attribute.options.length > 0 && draft.attributes.some((entry) => entry.key === attribute.key && entry.enabled),
+      })),
+      prices: post.prices.map((row) => ({ options: row.options, priceKs: row.priceKs })),
+    });
+    updateAdminData(() => sync.data);
     closeEditor();
+    setNotice(post.status === "Published"
+      ? (post.productId
+        ? `Published and connected to the Price Table: ${sync.seeded} variant${sync.seeded === 1 ? "" : "s"} seeded${sync.issues.length ? ` — ${sync.issues.join(" ")}` : ""}. Set the USD price there.`
+        : "Published. Pick the product it is sold as to price it in the Price Table.")
+      : "Saved as a draft; the Price Table is untouched until it is published.");
   }
 
   function remove(post: AdminTshirtPost) {
@@ -177,6 +225,8 @@ export default function AdminPosts() {
         </label>
       ) : undefined}
     >
+      {notice ? <p role="status" data-post-notice className="rounded-lg bg-[#f7fbf3] px-3 py-2 text-[10px] font-semibold text-[#4a6b33]">{notice}</p> : null}
+
       <div role="tablist" aria-label="Post types" className="flex flex-wrap gap-1.5">
         {TABS.map((entry) => {
           const count = entry.id === "guide"
@@ -261,6 +311,16 @@ export default function AdminPosts() {
                       <td className="px-4 py-2.5 sm:px-5">
                         <span className="block font-bold text-[#303844]">{post.title}</span>
                         <span className="mt-0.5 block max-w-[240px] truncate text-[8px] text-[#919aa6]">{post.description || post.id}</span>
+                        {(() => {
+                          const linked = data.products.find((entry) => entry.id === post.productId);
+                          if (!linked) return <span className="mt-0.5 block text-[8px] font-bold text-[#c58a2a]">Not linked to a product</span>;
+                          const rowCount = variantRows(data, linked).length;
+                          return (
+                            <span data-post-product-link={post.id} className="mt-0.5 block text-[8px] font-bold text-[#3f8c22]">
+                              {linked.category} · {linked.name} · {rowCount} variant{rowCount === 1 ? "" : "s"} priced
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-3 py-2.5">
                         {post.svg ? (
@@ -328,6 +388,33 @@ export default function AdminPosts() {
                 {errors.map((error) => <li key={error}>{error}</li>)}
               </ul>
             ) : null}
+
+            <AdminField label="Sold as" hint="The product this design is priced as. Its Price Table supplies the specifications and the shop price.">
+              <div className="space-y-1.5">
+                <AdminSelect
+                  aria-label="Product this post is sold as"
+                  data-post-product
+                  value={draft.productId}
+                  onChange={(event) => chooseProduct(event.target.value)}
+                >
+                  <option value="">Not linked yet</option>
+                  {data.products.map((entry) => (
+                    <option key={entry.id} value={entry.id}>{entry.name} · {entry.category}</option>
+                  ))}
+                </AdminSelect>
+                <p data-post-pricing className="rounded-lg bg-[#f7fbf3] px-2 py-1.5 text-[9px] font-semibold text-[#4a6b33]">
+                  {linkedProduct ? (
+                    <>
+                      {linkedProduct.category} · {linkedRows.length} variant{linkedRows.length === 1 ? "" : "s"} in the Price Table,{" "}
+                      {linkedMissingUsd} missing a USD price.{" "}
+                      <Link href="/admin/pricing" className="font-bold text-[#3f8c22] hover:underline">Open the Price Table →</Link>
+                    </>
+                  ) : (
+                    <>Pick the product to connect this drop to the Price Table. Specifications come from Attribute Management.</>
+                  )}
+                </p>
+              </div>
+            </AdminField>
 
             <AdminField label="Post title">
               <AdminInput value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Peacock Line Tee" aria-label="Post title" />

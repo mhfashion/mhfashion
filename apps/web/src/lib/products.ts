@@ -4,6 +4,7 @@ import { optionKeyForAttributeName } from "./product-options";
 import { rankSearchResults } from "./search-rank";
 import { likePattern, normalizeSearchQuery, normalizeSearchText } from "./search-text";
 import type { Product } from "./types";
+import type { ProductVariantPrice } from "./variant-price";
 
 // Server-side client — safe to use the anon key here since catalog data
 // (products, pricing) has no RLS restriction; it's meant to be public.
@@ -295,8 +296,31 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     return null;
   }
   const row = data as ProductRow;
-  const ranges = await getPriceRanges([row.id]);
-  return toProduct(row, ranges);
+  const [ranges, variants] = await Promise.all([getPriceRanges([row.id]), getProductVariants(row.id)]);
+  return { ...toProduct(row, ranges), ...(variants.length ? { variants } : {}) };
+}
+
+/**
+ * The variants the Price Table holds for a product, with both stored currencies. A product with no
+ * rows comes back empty, so the shop falls back to its catalogue range instead of inventing a price.
+ */
+export async function getProductVariants(productId: string): Promise<ProductVariantPrice[]> {
+  const supabase = getServerSupabase();
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("product_variant_prices", { p_product_id: productId });
+  if (error || !data) {
+    if (error) console.error("product_variant_prices failed:", error.message);
+    return [];
+  }
+  return (data as { signature: string; options: Record<string, string> | null; price_ks: number | null; price_usd: number | null; availability: string }[])
+    .map((row) => ({
+      signature: row.signature,
+      options: row.options ?? {},
+      size: row.options?.size ?? "",
+      priceKs: row.price_ks,
+      priceUsd: row.price_usd === null ? null : Number(row.price_usd),
+      availability: row.availability,
+    }));
 }
 
 /**

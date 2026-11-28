@@ -127,7 +127,23 @@ function TypeCard({
   );
 }
 
-export default function AdminPriceTable() {
+/** The spec-box sheet renders inside the merged Price Table, or on its own route. */
+function Screen({ embedded, title, description, search, children }: {
+  embedded: boolean;
+  title: string;
+  description: string;
+  search?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  if (embedded) return <>{children}</>;
+  return (
+    <AdminShell active="pricing" title={title} description={description} search={search}>
+      {children}
+    </AdminShell>
+  );
+}
+
+export default function AdminPriceTable({ embedded = false }: { embedded?: boolean } = {}) {
   const data = useAdminDemoData();
   const [pending, setPending] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
@@ -222,17 +238,17 @@ export default function AdminPriceTable() {
 
   if (!data.products.length) {
     return (
-      <AdminShell active="price-table" title="Price Table" description="Prices are set here, once per spec, and posting never types one.">
+      <Screen embedded={embedded} title="Price Table" description="Prices are set here, once per spec, and posting never types one.">
         <AdminEmpty title="No products yet" description="Post a product first; its spec then appears here for pricing." />
-      </AdminShell>
+      </Screen>
     );
   }
 
   const active = visible.find((sheet) => sheet.type === openType) ?? visible[0] ?? null;
 
   return (
-    <AdminShell
-      active="price-table"
+    <Screen
+      embedded={embedded}
       title="Price Table"
       description="Prices are set here, once per spec — never on a product, and never while posting."
       search={(
@@ -301,6 +317,6 @@ export default function AdminPriceTable() {
           <Link href="/admin/pricing" className="font-semibold text-[#3f8c22] hover:underline">Admin → Pricing</Link>.
         </p>
       </div>
-    </AdminShell>
+    </Screen>
   );
 }

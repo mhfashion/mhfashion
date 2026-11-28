@@ -14,6 +14,8 @@ export type Product = {
   isCustomizable?: "full" | "partial" | "none";
   priceMinKs: number;
   priceMaxKs: number;
+  /** The owner's stored MMK/USD per variant. Absent until the Price Table carries rows. */
+  variants?: import("./variant-price").ProductVariantPrice[];
 };
 
 export type Category = {

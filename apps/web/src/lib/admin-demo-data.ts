@@ -193,6 +193,9 @@ export type AdminOrder = {
   stockShortfall?: { productId: string; size: string; wanted: number; available: number }[];
   /** When a refund or cancellation gave the pieces back. */
   stockRestoredAt?: string;
+  /** The Price Table's own per-variant stock took this order, and when it gave it back. */
+  variantStockConsumedAt?: string;
+  variantStockRestoredAt?: string;
   /** The courier's tracking number, once the parcel is handed over (Plan §17 S9 searches it). */
   trackingNumber?: string;
   /** The bank or wallet reference the customer paid with, so a transfer can be matched to the order. */
@@ -421,6 +424,8 @@ export type AdminPostSvg = {
 
 export type AdminTshirtPost = {
   id: string;
+  /** The product this design is sold as; its Price Table variants start from the post's prices. */
+  productId?: string;
   title: string;
   description: string;
   svg: AdminPostSvg | null;
@@ -652,8 +657,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "products", label: "Products" },
   { id: "posts", label: "Posts" },
   { id: "ads", label: "Ads" },
-  { id: "pricing", label: "Pricing" },
-  { id: "price-table", label: "Price Table" },
+  { id: "pricing", label: "Price Table" },
   { id: "attributes", label: "Attributes" },
   { id: "settlements", label: "Settlements" },
   { id: "loyalty", label: "Loyalty" },
@@ -1225,7 +1229,15 @@ export type AdminTshirtPostAttributeKey =
   | "sleeve"
   | "gsm"
   | "cutting"
-  | "print";
+  | "print"
+  // The specs that only apply outside the T-shirt range; off by default, switched on per product.
+  | "phoneBrand"
+  | "phoneModel"
+  | "caseType"
+  | "magSafe"
+  | "cupType"
+  | "capacity"
+  | "bagSize";
 
 export type AdminTshirtPostAttribute = {
   key: AdminTshirtPostAttributeKey;
@@ -1250,13 +1262,28 @@ export const TSHIRT_POST_ATTRIBUTES: AdminTshirtPostAttribute[] = [
   { key: "print", label: "Print Method", options: [...PRINT_METHOD_OPTIONS] },
 ];
 
+/**
+ * Specs the other product types are priced by. They sit in the same chain, off by default, so one
+ * price table serves a T-shirt, a phone cover and a cup without a second model.
+ */
+export const CATEGORY_POST_ATTRIBUTES: AdminTshirtPostAttribute[] = [
+  { key: "phoneBrand", label: "Phone Brand", options: ["Apple", "Samsung", "Xiaomi", "Oppo"] },
+  { key: "phoneModel", label: "Phone Model", options: ["iPhone 15", "iPhone 14", "iPhone 13", "Galaxy S24", "Redmi Note 13"] },
+  { key: "caseType", label: "Case Type", options: ["Slim", "Clear", "Tough"] },
+  { key: "magSafe", label: "MagSafe Support", options: ["Yes", "No"] },
+  { key: "cupType", label: "Cup Type", options: ["Ceramic", "Glass", "Steel"] },
+  { key: "capacity", label: "Capacity", options: ["330 ml", "450 ml"] },
+  { key: "bagSize", label: "Bag Size", options: ["Small", "Medium", "Large"] },
+];
+
 /** Built-in chain used for new demo data and as the reset target. */
 export function createSeedAttributeChain(): AdminAttributeDefinition[] {
-  return TSHIRT_POST_ATTRIBUTES.map((attribute) => ({
+  return [...TSHIRT_POST_ATTRIBUTES, ...CATEGORY_POST_ATTRIBUTES].map((attribute) => ({
     key: attribute.key,
     label: attribute.label,
     options: [...attribute.options],
-    enabled: DEFAULT_TSHIRT_DRAFT_ATTRIBUTES.includes(attribute.key),
+    // Every attribute is available; which ones a product prices is chosen per product.
+    enabled: true,
   }));
 }
 
@@ -1337,6 +1364,7 @@ export type AdminTshirtPostDraftPriceRow = {
 export type AdminTshirtPostDraftAttribute = AdminTshirtPostAttribute & { enabled: boolean };
 
 export type AdminTshirtPostDraft = {
+  productId: string;
   title: string;
   description: string;
   svg: AdminPostSvg | null;
@@ -1389,6 +1417,7 @@ export function tshirtPostDraftFrom(
   chain: AdminTshirtPostAttribute[] = TSHIRT_POST_ATTRIBUTES,
 ): AdminTshirtPostDraft {
   return {
+    productId: post?.productId ?? "",
     title: post?.title ?? "",
     description: post?.description ?? "",
     svg: post?.svg ?? null,
@@ -1505,6 +1534,7 @@ export function tshirtPostFromDraft(draft: AdminTshirtPostDraft, existing?: Admi
       options: Object.fromEntries(attributes.map((attribute) => [attribute.key, row.options[attribute.key] ?? attribute.options[0]])),
       priceKs: Math.round(Number(row.priceKs || 0)),
     })),
+    ...(draft.productId ? { productId: draft.productId } : {}),
     status: draft.status,
     createdAt: existing?.createdAt ?? now.toISOString(),
     publishedAt: draft.status === "Published" ? existing?.publishedAt ?? now.toISOString() : null,

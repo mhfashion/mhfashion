@@ -450,6 +450,53 @@ import that stages prices before any save.
 stock" view listed only M, and the Matrix showed 9 colours × 5 sizes with 45 MMK and 45 USD cells.
 Tests: `tests/pricing-management.test.cjs` (17).
 
+#### 4.5.6 One Price Table, wired to posts, attributes, the shop and a sale  *(owner request 2026-11-21, part 3)*
+
+The owner asked that Price Table and Pricing be **one screen**, that a **Product Post be connected to
+it**, that **Attribute Management** feed it, and that this work for **every category**, not only the
+T-shirt. Everything below is built and tested.
+
+**One screen.** `/admin/pricing` is *Price Table* — the sidebar has a single entry and the old
+`/admin/price-table` route only `redirect("/admin/pricing")`. Its **Price Table** tab now hosts the
+per-specification sheet (`<AdminPriceTable embedded />`, which skips the admin shell) beside the five
+tabs of 4.5.4.
+
+**Post → Price Table.** A T-shirt post gained `productId`: the editor's **Sold as** select lists every
+product with its category, and picking one turns on exactly the specifications that product prices
+(`productAttributeKeys`). On publish, `syncPostPricing(data, post)` in `lib/pricing-variants.ts` seeds
+the post's combinations into the product's variants — one row per stocked size, carrying the post's
+MMK price and a **null USD price**, so the row appears as *Missing price* until the owner types the
+dollar figure. A price that already exists is never overwritten, and a Draft post leaves the table
+untouched. The editor shows the live state ("Accessory · 1 variant in the Price Table, 0 missing a
+USD price") and links to the merged screen; the post list shows which product each post is sold as.
+
+**Attributes → everything.** `createSeedAttributeChain` now carries the specs the other product types
+need — Phone Brand, Phone Model, Case Type, MagSafe Support, Cup Type, Capacity, Bag Size — in the same
+chain as Size/Fabric/GSM/Print. Every attribute is *available*; which ones a product prices is chosen
+per product in Pricing, and a new post starts on the four T-shirt defaults with the rest one tick away.
+Renaming or adding an option in Attribute Management therefore reaches the post editor and the price
+grid with no second model, and turning a spec on for a phone cover builds its grid
+(`phoneBrand × caseType × size`).
+
+**Shop reads the stored price.** `SQL/0012_pricing_management.sql` adds
+`product_variant_prices(p_product_id)` returning signature, options, both prices and availability;
+`getProductVariants` in `lib/products.ts` reads it into `Product.variants`, and `ProductDetailClient`
+prices the picked combination from the matching row. `formatPrice` in `lib/currency-context.tsx` only
+**chooses a column**: Ks shows the stored MMK, USD shows the stored USD, and a missing currency shows
+the one that exists — never `amountKs / exchangeRate`. A combination that is unpriced, out of stock or
+switched off cannot be added to the cart and says why (`variantNotice`).
+
+**A sale moves variant stock.** `applyVariantStockForOrder` takes each ordered line's variant stock on
+a paid order and gives it back on a refund or cancellation, once per order (`variantStockConsumedAt` /
+`variantStockRestoredAt`), called from `syncStockWithStage` beside the Inventory movement.
+
+**Verified 2026-11-21** in Chromium 1440x900 against a production build: the post editor listed seven
+products across five categories, picking *Phone Cover · Accessory* switched the summary to
+"Accessory · 1 variant in the Price Table, 0 missing a USD price"; `/admin/pricing` showed the five
+tabs and the merged sheet with all seven product types (T-Shirt, Hoodie, Polo, Jersey, Cap, Tote Bag,
+Phone Cover); `/admin/price-table` redirected to `/admin/pricing`. Tests:
+`tests/pricing-connections.test.cjs` (8) and the full suite — 969 tests, 0 failures.
+
 ### 4.6 Product detail presentation
 
 **Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and

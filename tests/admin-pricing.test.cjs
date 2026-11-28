@@ -210,13 +210,19 @@ test("seeded post prices are all valid combinations", () => {
 });
 
 test("the Pricing module is registered and routed", () => {
-  assert.ok(admin.ADMIN_MODULES.some((module) => module.id === "pricing" && module.label === "Pricing"));
+  assert.ok(admin.ADMIN_MODULES.some((module) => module.id === "pricing" && module.label === "Price Table"));
   // The shell's sidebar and the storefront menu share one list.
   const shell = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminShell.tsx"), "utf8");
   const nav = readFileSync(path.join(__dirname, "..", "apps/web/src/lib/admin-nav.ts"), "utf8");
   assert.match(shell, /ADMIN_NAV\.map\(\(entry\) => \(/);
-  assert.match(nav, /id: "pricing", label: "Pricing", href: "\/admin\/pricing"/);
+  assert.match(nav, /id: "pricing", label: "Price Table", href: "\/admin\/pricing"/);
   assert.ok(existsSync(path.join(__dirname, "..", "apps/web/src/app/admin/pricing/page.tsx")));
+  // Price Table and Pricing are one screen: the old route forwards, and the sidebar lists it once.
+  assert.doesNotMatch(nav, /price-table", label/, "there is no second Price Table entry");
+  const legacy = readFileSync(path.join(__dirname, "..", "apps/web/src/app/admin/price-table/page.tsx"), "utf8");
+  assert.match(legacy, /redirect\("\/admin\/pricing"\)/, "the old route forwards into Pricing");
+  const screen = readFileSync(path.join(__dirname, "..", "apps/web/src/components/admin/AdminPricingManagement.tsx"), "utf8");
+  assert.match(screen, /<AdminPriceTable embedded \/>/, "the spec sheet is one of the Pricing tabs");
 });
 
 test("the web grid keeps the spec's controls and no derived-delta tools", () => {

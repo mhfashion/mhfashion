@@ -222,3 +222,31 @@ where v.enabled
     where o.variant_id = v.id
       and oa.availability <> 'Available'
   );
+
+-- 6. The shop reads this: one row per enabled variant with its stored MMK and USD price and the
+--    options that identify it. Both numbers come straight from variant_prices — the storefront
+--    toggle chooses a column, it never divides one by an exchange rate.
+create or replace function public.product_variant_prices(p_product_id uuid)
+returns table (signature text, options jsonb, price_ks integer, price_usd numeric, availability text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    v.signature,
+    coalesce(jsonb_object_agg(a.key, o.value) filter (where a.key is not null), '{}'::jsonb) as options,
+    p.price_ks,
+    p.price_usd,
+    p.availability
+  from public.product_variants v
+  join public.variant_prices p on p.variant_id = v.id
+  left join public.variant_options o on o.variant_id = v.id
+  left join public.attributes a on a.id = o.attribute_id
+  where v.product_id = p_product_id
+    and v.enabled
+  group by v.id, v.signature, p.price_ks, p.price_usd, p.availability
+  order by v.signature;
+$$;
+
+grant execute on function public.product_variant_prices(uuid) to anon, authenticated;

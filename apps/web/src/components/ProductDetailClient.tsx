@@ -8,6 +8,7 @@ import ProductMockupPreview from "@/components/ProductMockupPreview";
 import ProductSizeChart from "@/components/ProductSizeChart";
 import { useCart } from "@/lib/cart-context";
 import { useCurrency } from "@/lib/currency-context";
+import { findVariant, variantIsSellable, variantNotice } from "@/lib/variant-price";
 import { readDesignDraft, resolveDesignOverlay, type DesignOverlay } from "@/lib/design-draft";
 import { isDesignEditable } from "@/lib/product-editing";
 import {
@@ -76,7 +77,7 @@ function OptionGroup({ title, children, action }: { title: string; children: Rea
 export default function ProductDetailClient({ product, related, optionGroups: catalogueGroups = null }: Props) {
   const router = useRouter();
   const { addItem } = useCart();
-  const { formatRangeKs } = useCurrency();
+  const { formatPrice, formatRangeKs } = useCurrency();
   const { t } = useI18n();
   const designEditable = isDesignEditable(product);
   // Every box on the page comes from the post's attributes: a colour the admin did not tick is not offered.
@@ -129,9 +130,30 @@ export default function ProductDetailClient({ product, related, optionGroups: ca
   const variantPriceMax = product.priceMaxKs + sizePrice + colorPrice + materialPrice + gsmPrice;
   const unansweredOptions = missingOptionKeys(optionGroups, selection);
   const hasCompleteVariantSelection = unansweredOptions.length === 0;
-  const price = hasCompleteVariantSelection
-    ? `${(variantPriceMax * quantity).toLocaleString("en-US")} Ks`
-    : formatRangeKs(variantPriceMin * quantity, variantPriceMax * quantity);
+
+  // The Price Table's row for the picked combination is the price. Nothing is derived from it, and
+  // the currency toggle only chooses which of the two stored amounts to read.
+  const storedVariant = useMemo(
+    () => findVariant(product.variants, {
+      size: selectedSize,
+      color: selectedColor,
+      material: selectedMaterial,
+      gsm: selectedGsm,
+      fit: selectedFit || null,
+      sleeve: selectedSleeve || null,
+    }),
+    [product.variants, selectedSize, selectedColor, selectedMaterial, selectedGsm, selectedFit, selectedSleeve],
+  );
+  const sellable = variantIsSellable(storedVariant);
+  const unavailableNotice = hasCompleteVariantSelection && storedVariant ? variantNotice(storedVariant) : null;
+  const price = storedVariant
+    ? formatPrice(
+      storedVariant.priceKs === null ? null : storedVariant.priceKs * quantity,
+      storedVariant.priceUsd === null ? null : storedVariant.priceUsd * quantity,
+    )
+    : hasCompleteVariantSelection
+      ? formatPrice(variantPriceMax * quantity, null)
+      : formatRangeKs(variantPriceMin * quantity, variantPriceMax * quantity);
   const extras = Object.fromEntries(
     optionGroups
       .filter((group) => !(CART_VARIANT_KEYS as readonly string[]).includes(group.key))
@@ -151,10 +173,15 @@ export default function ProductDetailClient({ product, related, optionGroups: ca
   const firstMissingLabel = optionGroups.find((group) => group.key === unansweredOptions[0])?.label ?? "option";
   const addQuantityToCart = () => {
     // One line per exact combination: a different size or colour never merges into this one.
-    addItem(product, variant, quantity, hasCompleteVariantSelection ? variantPriceMax : undefined);
+    addItem(product, variant, quantity, hasCompleteVariantSelection ? (storedVariant?.priceKs ?? variantPriceMax) : undefined);
   };
   const addToCart = () => {
     if (missingVariant) {
+      setVariantWarning(true);
+      return;
+    }
+    // A combination the Price Table has not priced or has switched off cannot be sold.
+    if (storedVariant && !sellable) {
       setVariantWarning(true);
       return;
     }
@@ -165,6 +192,10 @@ export default function ProductDetailClient({ product, related, optionGroups: ca
   };
   const buyNow = () => {
     if (missingVariant) {
+      setVariantWarning(true);
+      return;
+    }
+    if (storedVariant && !sellable) {
       setVariantWarning(true);
       return;
     }
@@ -216,7 +247,7 @@ export default function ProductDetailClient({ product, related, optionGroups: ca
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-b border-border/70 pb-2.5 sm:mt-4 sm:gap-2 sm:pb-3"><span data-product-price aria-live="polite" className="text-xl font-black text-accent sm:text-2xl">{price}</span><span className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent sm:text-[10px]">↓ 15%</span><span className="text-[10px] text-text-faint line-through sm:text-xs">28,000 Ks</span></div>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-b border-border/70 pb-2.5 sm:mt-4 sm:gap-2 sm:pb-3"><span data-product-price data-product-price-variant={storedVariant?.signature ?? ""} aria-live="polite" className="text-xl font-black text-accent sm:text-2xl">{price}</span><span className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent sm:text-[10px]">↓ 15%</span><span className="text-[10px] text-text-faint line-through sm:text-xs">28,000 Ks</span></div>
 
           <div className={optionGroups.length ? "mt-2 grid gap-1 xl:grid-cols-2" : "mt-2"}>
             {optionGroups.map((group) => (
@@ -251,7 +282,8 @@ export default function ProductDetailClient({ product, related, optionGroups: ca
 
           <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xs font-black">{t("product.quantity")}</span><div className="flex items-center rounded-full border border-border bg-bg"><button type="button" aria-label="Decrease quantity" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-2.5"><Minus size={14} /></button><span data-product-quantity aria-live="polite" className="min-w-8 text-center text-sm font-bold">{quantity}</span><button type="button" aria-label="Increase quantity" onClick={() => setQuantity((value) => value + 1)} className="p-2.5"><Plus size={14} /></button></div><span className="flex items-center gap-1 text-[11px] font-bold text-accent"><Check size={14} /> {t("product.inStock")}</span></div>
           <div className={`mt-3 grid gap-1 sm:gap-1.5 ${designEditable ? "grid-cols-3" : "grid-cols-2"}`}><button type="button" onClick={buyNow} data-buy-now className="min-w-0 whitespace-nowrap rounded-lg bg-accent px-1 py-2.5 text-[9px] font-black text-accent-foreground shadow-sm transition hover:opacity-85 sm:px-2 sm:text-xs"><ShoppingCart size={12} className="mr-0.5 inline sm:mr-1 sm:h-[14px] sm:w-[14px]" />{t("product.buyNow")}</button><button type="button" onClick={addToCart} data-add-to-cart className="min-w-0 whitespace-nowrap rounded-lg border-2 border-accent px-1 py-2.5 text-[9px] font-black text-accent transition hover:bg-accent hover:text-accent-foreground sm:px-2 sm:text-xs">{added ? t("product.addedToCart") : t("product.addToCart")}</button>{designEditable ? <a href={`/create?product=${encodeURIComponent(product.slug)}`} className="min-w-0 whitespace-nowrap rounded-lg border border-border px-1 py-2.5 text-center text-[9px] font-black text-text-primary transition hover:border-accent hover:text-accent sm:px-2 sm:text-xs">{t("product.editDesign")}</a> : null}</div>
-          {variantWarning ? <p data-variant-warning role="status" className="mt-2 rounded-lg bg-[#fff6e6] px-2.5 py-1.5 text-[10px] font-semibold text-[#9a6a12]">{unansweredOptions.length > 1 ? t("product.variantWarnAll") : t("product.variantWarnOne").replace("{option}", firstMissingLabel.toLowerCase())}</p> : null}
+          {variantWarning ? <p data-variant-warning role="status" className="mt-2 rounded-lg bg-[#fff6e6] px-2.5 py-1.5 text-[10px] font-semibold text-[#9a6a12]">{!hasCompleteVariantSelection ? (unansweredOptions.length > 1 ? t("product.variantWarnAll") : t("product.variantWarnOne").replace("{option}", firstMissingLabel.toLowerCase())) : (unavailableNotice ?? "This combination cannot be bought right now.")}</p> : null}
+          {unavailableNotice && !variantWarning ? <p data-variant-unavailable role="status" className="mt-2 rounded-lg bg-[#fdf0f0] px-2.5 py-1.5 text-[10px] font-semibold text-[#a3353c]">{unavailableNotice}</p> : null}
         </div>
       </section>
 

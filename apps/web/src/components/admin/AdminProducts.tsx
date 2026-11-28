@@ -48,11 +48,11 @@ function PriceFromTable({ prices, type }: { prices: ProductSheetPrice[]; type: s
       ) : (
         <p data-product-price-missing className="rounded-xl border border-[#f2d58a] bg-[#fff9e6] px-2.5 py-2 text-[10px] font-semibold text-[#8a6a00]">
           No {type} price is set yet.{" "}
-          <a href="/admin/price-table" className="font-bold underline">Fill the Price Table</a> first, then post this product.
+          <a href="/admin/pricing" className="font-bold underline">Fill the Price Table</a> first, then post this product.
         </p>
       )}
       <p className="mt-1 text-[9px] leading-4 text-[#87909b]">
-        Copied from <a href="/admin/price-table" className="font-semibold text-[#3f8c22] hover:underline">Admin → Price Table</a>
+        Copied from <a href="/admin/pricing" className="font-semibold text-[#3f8c22] hover:underline">Admin → Price Table</a>
         {lowest === null ? "" : `; the product is listed from ${formatKs(lowest)}`} and every size sells at its own sheet price. Reprice it on its own sheet afterwards.
       </p>
     </div>

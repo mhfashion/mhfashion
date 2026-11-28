@@ -111,7 +111,7 @@ function StatusChart({ counts, total }: { counts: Record<string, number>; total:
 const QUICK_LINKS = [
   { href: "/admin/orders", label: "Order queue", detail: "Advance stages and print hand-off", icon: ClipboardList },
   { href: "/admin/products", label: "Products", detail: "Create and edit the catalog", icon: Package },
-  { href: "/admin/price-table", label: "Price Table", detail: "One price per size and category", icon: Grid3x3 },
+  { href: "/admin/pricing", label: "Price Table", detail: "Spec, MMK/USD and availability per variant", icon: Grid3x3 },
   { href: "/admin/inventory", label: "Inventory", detail: "Stock per size and low-stock alerts", icon: Layers3 },
   { href: "/admin/promotions", label: "Promotions", detail: "Discount codes and usage limits", icon: CreditCard },
 ];

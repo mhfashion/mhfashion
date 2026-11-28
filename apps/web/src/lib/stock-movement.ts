@@ -9,6 +9,7 @@
 
 import type { AdminDemoData, AdminOrder } from "@/lib/admin-demo-data";
 import { adjustStock } from "@/lib/admin-demo-data";
+import { applyVariantStockForOrder } from "@/lib/pricing-variants";
 
 export type StockLine = { productId: string; size: string; quantity: number };
 export type StockShortfall = { productId: string; size: string; wanted: number; available: number };
@@ -90,14 +91,21 @@ export function restoreStock(data: AdminDemoData, orderId: string, at: string): 
  * callback, an admin stage change or an approved refund. One call site per path, one rule.
  */
 export function syncStockWithStage(data: AdminDemoData, orderId: string, at = new Date().toISOString()): AdminDemoData {
-  // Owner decision 2026-11-21: Inventory is blank-garment stock and does not cap sales, so a sale leaves
-  // it alone unless the shop switches `deductStockOnSale` on.
-  if (!data.settings.deductStockOnSale) return data;
   const order = data.orders.find((entry) => entry.id === orderId);
   if (!order) return data;
-  if (order.stage === "Cancelled" || order.stage === "Refunded") return restoreStock(data, orderId, at).data;
-  if (order.stage === "Pending Payment") return data;
-  return consumeStock(data, orderId, at).data;
+  // The Price Table's variant stock always follows a sale; it is the figure the shop shows.
+  const withVariantStock = order.stage === "Cancelled" || order.stage === "Refunded"
+    ? applyVariantStockForOrder(data, orderId, "restore").data
+    : order.stage === "Pending Payment"
+      ? data
+      : applyVariantStockForOrder(data, orderId, "take").data;
+
+  // Owner decision 2026-11-21: Inventory is blank-garment stock and does not cap sales, so a sale leaves
+  // it alone unless the shop switches `deductStockOnSale` on.
+  if (!data.settings.deductStockOnSale) return withVariantStock;
+  if (order.stage === "Cancelled" || order.stage === "Refunded") return restoreStock(withVariantStock, orderId, at).data;
+  if (order.stage === "Pending Payment") return withVariantStock;
+  return consumeStock(withVariantStock, orderId, at).data;
 }
 
 /** What the order holds now: nothing before payment, taken once paid, put back once refunded. */

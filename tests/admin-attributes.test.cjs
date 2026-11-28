@@ -27,14 +27,17 @@ const chainLib = loadModule("apps/web/src/lib/admin-attributes.ts");
 const NOW = Date.UTC(2026, 10, 21, 9, 0, 0);
 const data = admin.createAdminDemoData(NOW);
 
-test("the seeded chain is the §4.1 vocabulary with the four default attributes on", () => {
+test("the seeded chain is the §4.1 vocabulary plus the other product types", () => {
   const chain = chainLib.attributeChain(data);
   assert.deepEqual(chain.map((attribute) => attribute.label), [
     "Size", "Fabric Type", "Knit Structure", "Fit Type", "Color", "Sleeve", "GSM", "MH Cuttings", "Print Method",
+    // A phone cover, a cup and a tote are priced from the same chain, not a second model.
+    "Phone Brand", "Phone Model", "Case Type", "MagSafe Support", "Cup Type", "Capacity", "Bag Size",
   ]);
-  assert.deepEqual(chain.filter((attribute) => attribute.enabled).map((attribute) => attribute.key), ["size", "material", "fit", "color"]);
+  // Every attribute is available; which ones a product prices is chosen per product.
+  assert.ok(chain.every((attribute) => attribute.enabled));
   assert.deepEqual(chainLib.chainIssues(data), []);
-  assert.deepEqual(chainLib.chainAsPostAttributes(data).map((attribute) => attribute.key), ["size", "material", "fit", "color"]);
+  assert.deepEqual(chainLib.chainAsPostAttributes(data).map((attribute) => attribute.key), chain.map((attribute) => attribute.key));
 });
 
 test("renaming an attribute keeps the key and changes only the label", () => {
@@ -83,21 +86,29 @@ test("adding an option and moving an attribute are chain edits", () => {
   const moved = chainLib.moveAttribute(data, "color", -1);
   assert.deepEqual(moved.attributeChain.map((attribute) => attribute.key).slice(2, 5), ["knit", "color", "fit"]);
   assert.deepEqual(chainLib.moveAttribute(data, "size", -1), data, "the first attribute cannot move up");
-  assert.deepEqual(chainLib.moveAttribute(data, "print", 1), data, "the last attribute cannot move down");
+  const lastKey = chainLib.attributeChain(data).at(-1).key;
+  assert.deepEqual(chainLib.moveAttribute(data, lastKey, 1), data, "the last attribute cannot move down");
 });
 
 test("reset restores the built-in chain", () => {
   const edited = chainLib.applyChainPatch(data, "material", { label: "Fabric" }).data;
   const reset = chainLib.resetAttributeChain(edited);
-  assert.deepEqual(reset.attributeChain.map((attribute) => attribute.label), admin.TSHIRT_POST_ATTRIBUTES.map((attribute) => attribute.label));
-  assert.deepEqual(chainLib.attributeChain({ ...data, attributeChain: [] }).map((attribute) => attribute.label), admin.TSHIRT_POST_ATTRIBUTES.map((attribute) => attribute.label));
+  const builtIn = [...admin.TSHIRT_POST_ATTRIBUTES, ...admin.CATEGORY_POST_ATTRIBUTES].map((attribute) => attribute.label);
+  assert.deepEqual(reset.attributeChain.map((attribute) => attribute.label), builtIn);
+  assert.deepEqual(chainLib.attributeChain({ ...data, attributeChain: [] }).map((attribute) => attribute.label), builtIn);
 });
 
 test("the chain drives new post drafts and the pricing grid labels", () => {
   const renamed = chainLib.applyChainPatch(data, "material", { label: "Fabric" }).data;
   const draft = admin.tshirtPostDraftFrom(undefined, chainLib.chainAsPostAttributes(renamed));
-  assert.deepEqual(draft.attributes.map((attribute) => attribute.label), ["Size", "Fabric", "Fit Type", "Color"]);
-  assert.deepEqual(draft.attributes.map((attribute) => attribute.enabled), [true, true, true, true]);
+  assert.equal(draft.attributes[0].label, "Size");
+  assert.equal(draft.attributes[1].label, "Fabric", "the rename reaches the post editor");
+  assert.deepEqual(
+    draft.attributes.filter((attribute) => attribute.enabled).map((attribute) => attribute.key),
+    ["size", "material", "fit", "color"],
+    "a new drop starts on the four defaults; the other specs are there to tick",
+  );
+  assert.ok(draft.attributes.some((attribute) => attribute.key === "phoneBrand"), "another category can be ticked too");
   // A stored post keeps its own options; only the label follows the chain.
   const pricing = loadModule("apps/web/src/lib/admin-pricing.ts");
   const labels = pricing.scopeAttributes(renamed, { kind: "post", id: "post-peacock-line" }).map((attribute) => attribute.label);

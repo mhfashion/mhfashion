@@ -2685,3 +2685,39 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
 - Result at 1440x900 and 390x844: no banner, tile, card, bar or pill changes size on a language switch. Page titles and section wrappers still follow their text.
 - Four rows stay in the diff on purpose: page-title bands (a title is text, not a box), the guide card image inside a fixed square card, the account order-count badge (absent in the Burmese fixture), and a 1px guide tag. See Plan §18.13.
 - Re-run the box diff on every layout change: build, start the server, dump every painted element per locale (1440x900 and 390x844), and diff. Only the rows listed in Plan §18.13 may differ.
+
+## Price Table: one screen, and the posts and attributes that feed it (2026-11-21, Plan §4.5.6)
+
+Price Table and Pricing are one screen now. `/admin/pricing` wears the *Price Table* name, the admin
+sidebar lists it once, and `/admin/price-table` only forwards. The per-specification sheet
+(`AdminPriceTable`) renders inside the Pricing screen's *Price Table* tab through an `embedded` prop
+that skips the admin shell, so it sits beside Overview, Product Pricing, Price History and Attribute
+Management instead of on a second page.
+
+A Product Post is wired to that table. The post editor's **Sold as** select lists every product with
+its category; choosing one switches on exactly the specifications that product prices, and the
+summary under the select reports how many variants the product has and how many still miss a USD
+price. Publishing runs `syncPostPricing`: each combination the post priced becomes a variant row per
+stocked size with the post's MMK price and an empty USD price — so the row lands in
+*Missing prices* until the owner types the dollar figure — while a price that already exists is never
+touched and a Draft changes nothing.
+
+Attribute Management feeds both the editor and the grid from one chain. The seeded chain now also
+holds Phone Brand, Phone Model, Case Type, MagSafe Support, Cup Type, Capacity and Bag Size, so a
+phone cover, a cup or a tote is priced like a T-shirt: the product picks its attributes in Pricing,
+the post ticks the same attributes, and the matrix groups by them. Every attribute is available; a
+new post simply starts on the four T-shirt defaults.
+
+The shop reads those stored numbers instead of inventing them. `SQL/0012` exposes
+`product_variant_prices(p_product_id)`, `getProductVariants` loads it into `Product.variants`, and
+the product page prices the picked combination from the matching row. `formatPrice` chooses a column
+— MMK or USD — and never divides by an exchange rate; a row that is unpriced, out of stock or
+switched off cannot be added to the cart and says why.
+
+A sale keeps the variant stock honest: `applyVariantStockForOrder` takes the pieces on a paid order
+and puts them back on a refund or cancellation, once each, beside the Inventory movement.
+
+Verified in Chromium at 1440x900 against a production build: seven products across five categories in
+the post editor, a phone cover linked and summarised, five Pricing tabs, the merged sheet listing all
+seven product types, and the old route redirecting. Tests: `tests/pricing-connections.test.cjs` (8);
+full suite 969 tests, 0 failures.
