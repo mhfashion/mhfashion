@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart3, Bell, Box, CircleHelp, ClipboardList, Globe2, House, Inbox, Layers3, LogOut, Megaphone, Menu, Newspaper, Package, Percent, Crown, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
+import { BarChart3, Bell, Box, CircleHelp, ClipboardList, Globe2, House, Inbox, Layers3, LogOut, Megaphone, Menu, Newspaper, Package, Percent, Crown, Grid3x3, HandCoins, Settings, SlidersHorizontal, Sparkles, Tags, type LucideIcon, Users, X } from "lucide-react";
 import { getDemoAdminSession, signOutDemoAdmin, type AdminDemoSession } from "@/lib/admin-demo-auth";
 import { ADMIN_NAV } from "@/lib/admin-nav";
 import type { AdminModuleId } from "@/lib/admin-demo-data";
@@ -15,6 +15,7 @@ const NAV_ICONS: Record<AdminModuleId, LucideIcon> = {
   posts: Newspaper,
   ads: Megaphone,
   pricing: Tags,
+  "price-table": Grid3x3,
   attributes: SlidersHorizontal,
   settlements: HandCoins,
   loyalty: Crown,

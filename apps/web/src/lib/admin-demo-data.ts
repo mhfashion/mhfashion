@@ -33,6 +33,7 @@ export type AdminModuleId =
   | "posts"
   | "ads"
   | "pricing"
+  | "price-table"
   | "attributes"
   | "settlements"
   | "loyalty"
@@ -618,6 +619,8 @@ export type AdminDemoData = {
   tshirtPosts: AdminTshirtPost[];
   productPrices: AdminProductPriceRow[];
   priceHistory: AdminPriceHistoryEntry[];
+  /** One price per category and size: the table every post reads its price from (owner request). */
+  priceTable: AdminPriceTable;
   promotions: AdminPromotion[];
   ads: AdminAd[];
   /** How long each banner stays up when a place has several live ones. */
@@ -633,6 +636,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
   { id: "posts", label: "Posts" },
   { id: "ads", label: "Ads" },
   { id: "pricing", label: "Pricing" },
+  { id: "price-table", label: "Price Table" },
   { id: "attributes", label: "Attributes" },
   { id: "settlements", label: "Settlements" },
   { id: "loyalty", label: "Loyalty" },
@@ -647,6 +651,90 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
 export const APPAREL_CATEGORIES: AdminProductCategory[] = ["T-Shirt", "Hoodie", "Polo", "Jersey"];
 export const APPAREL_SIZES = ["S", "M", "L", "XL", "2XL"];
 export const ONE_SIZE = ["One size"];
+
+/**
+ * The shop's Price Table (owner request 2026-11-21): one price per product category and size, entered
+ * once in Admin → Price Table. Posting a product or a T-shirt post never types a price — the post reads
+ * this table. Apparel sells S–2XL; every other category sells one size. A cell left empty means the
+ * shop does not sell that category in that size yet, and posting asks for the table to be filled first.
+ */
+export type AdminPriceTable = Partial<Record<AdminProductCategory, Record<string, number>>>;
+
+export const PRICE_TABLE_CATEGORIES: AdminProductCategory[] = ["T-Shirt", "Hoodie", "Polo", "Jersey", "Cap", "Accessory"];
+
+/** Every row the table draws: the five apparel sizes and the single non-apparel row. */
+export const PRICE_TABLE_SIZES = [...APPAREL_SIZES, ...ONE_SIZE];
+
+export function priceTableSizes(category: AdminProductCategory): string[] {
+  return APPAREL_CATEGORIES.includes(category) ? [...APPAREL_SIZES] : [...ONE_SIZE];
+}
+
+export const MAX_PRICE_TABLE_KS = 9_999_999;
+
+export const SEED_PRICE_TABLE: AdminPriceTable = {
+  "T-Shirt": { S: 12_000, M: 13_000, L: 14_000, XL: 15_000, "2XL": 16_000 },
+  Hoodie: { S: 26_000, M: 27_000, L: 28_000, XL: 29_000, "2XL": 30_000 },
+  Polo: { S: 18_000, M: 19_000, L: 20_000, XL: 21_000, "2XL": 22_000 },
+  Jersey: { S: 16_000, M: 17_000, L: 18_000, XL: 19_000, "2XL": 20_000 },
+  Cap: { "One size": 9_000 },
+  Accessory: { "One size": 8_000 },
+};
+
+function isTablePrice(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 && value <= MAX_PRICE_TABLE_KS;
+}
+
+/** Drops unknown categories, sizes outside the category's row set, and prices that are not positive. */
+export function normalizePriceTable(raw: unknown): AdminPriceTable {
+  const table: AdminPriceTable = {};
+  if (!raw || typeof raw !== "object") return table;
+  for (const category of PRICE_TABLE_CATEGORIES) {
+    const row = (raw as Record<string, unknown>)[category];
+    if (!row || typeof row !== "object") continue;
+    const cells: Record<string, number> = {};
+    for (const size of priceTableSizes(category)) {
+      const price = (row as Record<string, unknown>)[size];
+      if (isTablePrice(price)) cells[size] = price;
+    }
+    if (Object.keys(cells).length) table[category] = cells;
+  }
+  return table;
+}
+
+export function priceTableCell(table: AdminPriceTable, category: AdminProductCategory, size: string): number | null {
+  return table[category]?.[size] ?? null;
+}
+
+/** Writes one cell; `null` clears it. Returns a new table — the stored one is never mutated. */
+export function setPriceTableCell(
+  table: AdminPriceTable,
+  category: AdminProductCategory,
+  size: string,
+  priceKs: number | null,
+): AdminPriceTable {
+  const cells = { ...(table[category] ?? {}) };
+  if (priceKs === null) delete cells[size];
+  else cells[size] = Math.round(priceKs);
+  const next: AdminPriceTable = { ...table };
+  if (Object.keys(cells).length) next[category] = cells;
+  else delete next[category];
+  return next;
+}
+
+export function priceTableCounts(table: AdminPriceTable, category: AdminProductCategory) {
+  const sizes = priceTableSizes(category);
+  return { priced: sizes.filter((size) => priceTableCell(table, category, size) !== null).length, total: sizes.length };
+}
+
+export function priceTableSummary(table: AdminPriceTable) {
+  return PRICE_TABLE_CATEGORIES.reduce(
+    (total, category) => {
+      const counts = priceTableCounts(table, category);
+      return { priced: total.priced + counts.priced, total: total.total + counts.total };
+    },
+    { priced: 0, total: 0 },
+  );
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -2016,6 +2104,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
     productPrices,
     priceHistory: [],
+    priceTable: normalizePriceTable(SEED_PRICE_TABLE),
     promotions,
     ads: createSeedAds(),
     adsRotationSeconds: DEFAULT_ADS_ROTATION_SECONDS,
@@ -2091,6 +2180,8 @@ export function readAdminDemoData(): AdminDemoData {
             : createSeedJerseyStyles(Date.now()),
           productPrices: Array.isArray(parsed.productPrices) ? parsed.productPrices : [],
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
+          // A store saved before the table existed takes the seed; a table the owner has emptied stays empty.
+          priceTable: normalizePriceTable(parsed.priceTable ?? SEED_PRICE_TABLE),
           // Ads saved before the media-only model (headline/body) are dropped rather than half-rendered.
           ads: Array.isArray(parsed.ads)
             ? parsed.ads.filter((ad) => ad?.mediaType === "image" || ad?.mediaType === "video")

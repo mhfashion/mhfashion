@@ -199,6 +199,27 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   intrinsic width forces ~370 px of page at a 320 px viewport.
 - Tests: `tests/admin-pricing.test.cjs`.
 
+## Admin Price Table (`apps/web/src/lib/price-table.ts`, `components/admin/AdminPriceTable.tsx`)
+- One price per category and size, entered once at `/admin/price-table` (rows = the size run, columns
+  = the posted categories). It is the only place a price is typed: `AdminProducts` renders
+  `PriceFromTable` (chips, no input) and `draftWithTablePrice` writes the table's **lowest** price for
+  the category as the product's catalogue price at save time.
+- `priceTableSizes(category)` is the single rule for which rows a category owns (apparel run vs
+  `["One size"]`); the table, the product form and the pricing grid all read it. Do not add a second
+  size list.
+- Every storefront category must keep a column behind it: `SHOP_CATEGORY_PRICES` maps the
+  `CategoryRow` names onto the posted categories, and `tests/admin-price-table.test.cjs` fails when a
+  listed shop category has no mapping.
+- `normalizePriceTable` runs on the seed and on stored data (unknown categories, sizes a category does
+  not sell, and non-positive prices are dropped). `readAdminDemoData` uses
+  `parsed.priceTable ?? SEED_PRICE_TABLE`, so an owner-emptied table stays empty while a store saved
+  before the feature picks up the seed.
+- Price Management (`AdminPricing`) keeps per-combination rows; its bulk bar has **From Price Table**,
+  which stages each selected row's size price and still needs an explicit Save.
+- Mobile (<640px) shows one category at a time: a chip row plus 44px rows. The hidden phone inputs use
+  `data-price-cell-mobile`; `data-price-cell` must stay unique per cell for CDP probes.
+- Tests: `tests/admin-price-table.test.cjs`.
+
 ## Attribute Management (`apps/web/src/lib/admin-attributes.ts`, `components/admin/AdminAttributes.tsx`)
 - `data.attributeChain` is the canonical §4.1 vocabulary (order, label, options, enabled). It is **not** the editor's chain: `lib/editor-attributes.ts` stays static until the editor is reopened (owner directive 1), and the screen says so.
 - The chain drives the pricing grid's labels and column order (`scopeAttributes` ranks by chain position), and `tshirtPostDraftFrom(post, chainAsPostAttributes(data))` seeds a new post from the enabled attributes. Stored posts keep their own options — do not "normalise" them against the chain, or an admin edit would silently rewrite published posts.

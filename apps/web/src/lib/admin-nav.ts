@@ -11,6 +11,7 @@ export const ADMIN_NAV: { id: AdminModuleId; label: string; href: string }[] = [
   { id: "posts", label: "Posts", href: "/admin/posts" },
   { id: "ads", label: "Ads", href: "/admin/ads" },
   { id: "pricing", label: "Pricing", href: "/admin/pricing" },
+  { id: "price-table", label: "Price Table", href: "/admin/price-table" },
   { id: "attributes", label: "Attributes", href: "/admin/attributes" },
   { id: "settlements", label: "Settlements", href: "/admin/settlements" },
   { id: "loyalty", label: "Loyalty", href: "/admin/loyalty" },

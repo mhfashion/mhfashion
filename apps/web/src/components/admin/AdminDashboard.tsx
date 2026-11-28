@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight, ArrowUpRight, CalendarDays, ClipboardList, CreditCard, Layers3,
+  ArrowRight, ArrowUpRight, CalendarDays, ClipboardList, CreditCard, Grid3x3, Layers3,
   Package, Search, ShoppingBag, Sparkles, Users,
 } from "lucide-react";
 import AdminSearchMisses from "@/components/admin/AdminSearchMisses";
@@ -111,6 +111,7 @@ function StatusChart({ counts, total }: { counts: Record<string, number>; total:
 const QUICK_LINKS = [
   { href: "/admin/orders", label: "Order queue", detail: "Advance stages and print hand-off", icon: ClipboardList },
   { href: "/admin/products", label: "Products", detail: "Create and edit the catalog", icon: Package },
+  { href: "/admin/price-table", label: "Price Table", detail: "One price per size and category", icon: Grid3x3 },
   { href: "/admin/inventory", label: "Inventory", detail: "Stock per size and low-stock alerts", icon: Layers3 },
   { href: "/admin/promotions", label: "Promotions", detail: "Discount codes and usage limits", icon: CreditCard },
 ];

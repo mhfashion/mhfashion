@@ -316,6 +316,48 @@ Web keyboard-only entry works, and Phone has no horizontal overflow at 320/390 p
 keypad, keeps 44 px targets and an uncovered save bar; a change made on Web is visible on Phone
 after reload and the reverse.
 
+#### 4.5.2 Price Table — prices entered once, posts never type one  *(owner request, built 2026-11-21)*
+
+The owner asked for a Price Table in the admin area: **sizes down the side, the shop's categories
+across the top, one price in each cell**, and posting a product must not ask for a price again.
+"/admin/price-table" (`components/admin/AdminPriceTable.tsx`, `lib/price-table.ts`) is that table.
+
+**Shape.** Rows are the size run — `S M L XL 2XL` and `One size`. Columns are the posted categories
+— `T-Shirt Hoodie Polo Jersey Cap Accessory`, so the T-shirt family is there and so is every other
+category the shop sells. A category that sells one size leaves the apparel rows blank (a dash, not a
+zero); a category that sells apparel leaves the `One size` row blank. `priceTableSizes(category)` is
+the single rule for which rows a category owns.
+
+**Every shop category has a column behind it.** `SHOP_CATEGORY_PRICES` maps the storefront's
+category row onto the posted categories — T-Shirts and Kids T-Shirts to the T-Shirt column, Phone
+Covers, Bags and Cups to Accessory — and the page lists that mapping so no shop category is without
+a price. A test reads the storefront's own category names and fails if one has no column.
+
+**Saving.** Edits are staged per cell and the header states `n of m cells priced`; Save writes the
+whole table in one store update, Discard drops the staged cells. Bad input is refused per cell —
+whole Ks numbers above zero, under Ks 10,000,000 — and the header names how many cells to fix.
+`normalizePriceTable` drops unknown categories, sizes a category does not sell, and non-positive
+prices, so stored data can never widen the table.
+
+**Posting reads the table.** A product form shows the category's prices as chips (no price input at
+all, `data-product-price-from-table`); saving writes the table's **lowest** price for that category
+as the catalogue price (`draftWithTablePrice`), while every size sells at its own table price. A
+category the table does not fully price cannot be posted: the form says which sizes are missing and
+links to the table. The Price Management grid keeps its per-combination rows and gains a **From
+Price Table** bulk action that stages the size price for every selected row — a post is priced in
+one click, and saving is still explicit.
+
+**Categories and sizes stay one vocabulary.** The table never invents a category or a size: it reads
+`PRICE_TABLE_CATEGORIES`, `APPAREL_SIZES` and `ONE_SIZE` from `admin-demo-data.ts`, the same lists
+the product form validates against.
+
+**Acceptance checks (verified 2026-11-21).** The seeded table prices all 22 cells; a stored table
+saved before this feature takes the seed while a table the owner emptied stays empty; a cell can be
+saved and cleared and survives a reload (CDP: T-Shirt XL `15,500` → saved → reloaded); the product
+form for a Hoodie shows `Ks 26,000 – Ks 30,000` and has no price input; the phone layout shows one
+category at a time with 44 px rows and no horizontal overflow; `node --test tests/*.test.cjs`
+reports 936 tests with 0 failures.
+
 ### 4.6 Product detail presentation
 
 **Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and

@@ -16,6 +16,44 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
+### 2026-11-21 — Admin Price Table: enter a price once, and posts never type one
+
+- **A new admin screen, `/admin/price-table`** (`apps/web/src/app/admin/price-table/page.tsx` →
+  `components/admin/AdminPriceTable.tsx`). Rows are the size run (`S M L XL 2XL`, `One size`),
+  columns are the posted categories (`T-Shirt Hoodie Polo Jersey Cap Accessory`) and each cell holds
+  one price in Ks. It sits in the admin sidebar between Pricing and Attributes, and the dashboard's
+  quick links point at it.
+- **Which rows a category owns is one rule.** `priceTableSizes(category)` returns the apparel run for
+  `APPAREL_CATEGORIES` and `["One size"]` for Cap and Accessory; cells a category does not sell are
+  drawn as a dash and cannot be typed into.
+- **Data model.** `AdminDemoData.priceTable: AdminPriceTable` (category → size → Ks), with
+  `SEED_PRICE_TABLE`, `normalizePriceTable` (drops unknown categories, sizes the category does not
+  sell, and any non-positive price), `priceTableCell`, `setPriceTableCell`, `priceTableCounts` and
+  `priceTableSummary`. A store saved before the table existed takes the seed; a table the owner has
+  emptied stays empty.
+- **Saving.** Cells are staged and Saved in one store update (Discard drops them); the card header
+  reports `n of m cells priced` and names how many cells need fixing when a value is not a whole Ks
+  price above zero.
+- **Posting no longer types a price.** `AdminProducts` replaced its price input with
+  `PriceFromTable`, which lists the category's table prices as chips. `draftWithTablePrice` writes
+  the table's lowest price for the category as the product's catalogue price at save time, so the
+  stored price always agrees with the table; a category the table does not fully price is refused
+  with the missing sizes named and a link to the table.
+- **Every shop category is covered.** `SHOP_CATEGORY_PRICES` maps the storefront's category row onto
+  the posted categories (T-Shirts and Kids T-Shirts → T-Shirt; Phone Covers, Bags, Cups → Accessory)
+  and the page lists it, so nothing the shop sells is without a price.
+- **Pricing grid.** Price Management keeps its per-combination rows and gained a **From Price Table**
+  bulk action that stages each selected row's size price from the table. Saving is still explicit.
+- **Phone.** Below 640 px the table becomes one category at a time: a chip row of categories with
+  their `priced/total` counts and 44 px size rows, no horizontal overflow.
+- **Tests.** `tests/admin-price-table.test.cjs` (8 tests) covers the seed, the normaliser, the
+  row-set rule, the catalogue price, the draft price, scope-to-category mapping, the shop-category
+  coverage (read from `CategoryRow`), the nav/route/module wiring and the absence of a manual price
+  input. Full suite: 936 tests, 0 failures.
+- **Verified in Chromium (CDP).** Typing T-Shirt XL `15,500` → Save → reload keeps `15,500`; the
+  product form for a Hoodie shows `Ks 26,000 – Ks 30,000` with no price field; desktop and 390 px
+  screenshots checked.
+
 ### 2026-11-21 — Guide posts show photos, share one banner, and the article uses the full width
 
 - **Photos in posts.** `GuideSection` gained `images?: GuideImage[]` (`{ url, caption }`), parsed from

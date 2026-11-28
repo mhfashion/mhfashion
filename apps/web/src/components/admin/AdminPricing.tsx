@@ -2,10 +2,11 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeftRight, Check, ChevronDown, Download, History, RotateCcw, Save, Search, SlidersHorizontal, Tags, Upload, X } from "lucide-react";
+import { ArrowLeftRight, Check, ChevronDown, Download, Grid3x3, History, RotateCcw, Save, Search, SlidersHorizontal, Tags, Upload, X } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminEmpty, AdminInput, AdminSelect, AdminStat } from "@/components/admin/AdminUi";
 import { useModalFocus } from "@/lib/use-modal-focus";
+import { fillPricesFromTable, scopePriceCategory } from "@/lib/price-table";
 import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { formatKs, type AdminDemoData } from "@/lib/admin-demo-data";
@@ -232,8 +233,28 @@ export default function AdminPricing() {
     setMessage("Unsaved changes discarded.");
   }
 
-  function applyBulk(kind: "set" | "copy") {
+  function applyBulk(kind: "set" | "copy" | "table") {
     if (!selected.size) return;
+    if (kind === "table") {
+      // One click prices the selected rows from the Price Table, so a post never types a price.
+      const filled = fillPricesFromTable(data.priceTable, scopePriceCategory(data, activeScope), rows.filter((row) => selected.has(row.key)));
+      if (!filled.size) {
+        setBulkMessage("The Price Table has no price for these sizes yet.");
+        return;
+      }
+      setPending((current) => {
+        const next = { ...current };
+        for (const [key, price] of filled) {
+          const original = formatPriceInput(prices.get(key) ?? null);
+          const text = formatPriceInput(price);
+          if (text === original) delete next[key];
+          else next[key] = text;
+        }
+        return next;
+      });
+      setBulkMessage(`${filled.size} row${filled.size === 1 ? "" : "s"} priced from the Price Table — save to apply.`);
+      return;
+    }
     let value: number | null = null;
     if (kind === "set") {
       const parsed = parsePriceInput(bulkPrice);
@@ -409,6 +430,7 @@ export default function AdminPricing() {
             <AdminInput value={bulkPrice} onChange={(event) => setBulkPrice(event.target.value)} inputMode="numeric" placeholder="Ks 24,000" aria-label="Bulk exact price" className="h-8 w-32" />
             <AdminButton compact variant="secondary" onClick={() => applyBulk("set")} aria-label="Set exact price on selected rows">Set exact price</AdminButton>
             <AdminButton compact variant="secondary" onClick={() => applyBulk("copy")} aria-label="Copy price from the first selected row"><ArrowLeftRight size={12} /> Copy from first row</AdminButton>
+            <AdminButton compact variant="secondary" onClick={() => applyBulk("table")} aria-label="Fill the selected rows from the Price Table"><Grid3x3 size={12} /> From Price Table</AdminButton>
             <AdminButton compact variant="ghost" onClick={() => setSelected(new Set())}>Clear</AdminButton>
             {bulkMessage ? <span className="text-[10px] font-semibold text-[#6c7683]">{bulkMessage}</span> : null}
           </div>
@@ -743,6 +765,7 @@ export default function AdminPricing() {
           <div className="flex flex-wrap gap-1.5">
             <AdminButton onClick={() => { applyBulk("set"); }}>Set exact price</AdminButton>
             <AdminButton variant="secondary" onClick={() => applyBulk("copy")}><ArrowLeftRight size={12} /> Copy from first row</AdminButton>
+            <AdminButton variant="secondary" onClick={() => applyBulk("table")}><Grid3x3 size={12} /> From Price Table</AdminButton>
           </div>
           {bulkMessage ? <p role="status" className="text-[10px] font-semibold text-[#6c7683]">{bulkMessage}</p> : null}
           <div className="flex justify-between">
