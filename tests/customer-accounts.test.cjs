@@ -158,6 +158,7 @@ test("the Customers screen opens a detail drawer with the password panel and nev
   assert.match(screen, /data-customer-password-confirm/);
   assert.match(screen, /data-customer-generate/, "a temporary password can be generated");
   assert.match(screen, /data-customer-must-change/, "the owner can force a change at next sign-in");
+  assert.match(screen, /mustChangePassword: account\.mustChangePassword/, "the tick survives the save instead of being cleared");
   assert.match(screen, /data-customer-block/, "sign-in can be blocked");
   assert.match(screen, /createCustomerPassword\(password\)/, "the password is hashed before it is saved");
   assert.doesNotMatch(screen, /account\.password\.hash/, "the stored hash is never put on screen");

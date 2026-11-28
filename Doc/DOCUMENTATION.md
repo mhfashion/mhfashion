@@ -2790,3 +2790,45 @@ Verified in Chromium 1440x900 against a production build: 12 seeded accounts, dr
 on the top customer, a weak password showing "Use at least 8 characters" / "Add a number" with Save
 disabled, a generated 16-character password saved to a 64-hex hash at 210 000 iterations (absent from
 the DOM), badge Not set → Set, Block → Blocked, and the temporary flag → Temporary.
+
+## Customer self-service password change (owner request 2026-11-21, part 6)
+
+`/account` → **Account Settings** now holds the password panel. A customer can sign in and change their
+own password; a visitor who is not signed in cannot change anything.
+
+**Library** (`apps/web/src/lib/customer-session.ts`)
+- `signInCustomer(accounts, email, password)` → `{ ok: true, account }` or one of `unknown-email`,
+  `blocked`, `no-password`, `wrong-password`, `missing`. The email is matched without case; a blocked
+  account and an account with no password are refused before the hash is even compared.
+- `startCustomerSession` / `readCustomerSession` / `endCustomerSession` keep a 12-hour session in
+  `mh-fashion-customer-session-v1`. An expired, empty or malformed entry is deleted and read as
+  signed out. `SIGN_IN_MESSAGE` holds the customer-facing wording for each refusal.
+- `changeOwnPassword(accounts, session, current, next, confirm)` returns `signed-out` **before touching
+  any account** when there is no session. Signed in it checks the current password, the match of the
+  two new fields, `passwordIssues` (the owner's policy) and that the new password differs from the old
+  one; then it hashes and replaces **only that customer's** record, marking
+  `passwordUpdatedBy: "<name> (self)"` and clearing `mustChangePassword`.
+
+**Screen** (`apps/web/src/components/account/AccountPasswordPanel.tsx`)
+- Signed out: `data-account-password-signed-out` notice plus `data-account-signin-email` /
+  `-password` / `-submit`. The change fields and Save button do not render.
+- Signed in: `data-account-password-signed-in`, the temporary-password notice
+  (`data-account-password-temporary`) when the owner set one, `-current` / `-new` / `-confirm`,
+  `-save`, and Sign out.
+- Errors and successes land in `data-account-password-error` / `-issues` / `-done`; the panel never
+  reads or renders the stored hash.
+
+**Security notes**
+- The guard is enforced in the library, so removing or hiding a field cannot bypass it.
+- Sign-in and password change are the only writers of `customerAccounts` besides the owner's drawer.
+- The store is still browser-local (no customer table on the server yet), so the accounts do not travel
+  between devices until they move to Supabase; the code paths are the ones that table will use.
+
+**Tests.** `tests/customer-session.test.cjs` (9): signed-out refusal, current-password requirement,
+own-record-only change, policy and reuse checks, temporary flag cleared, every sign-in refusal, session
+storage/expiry/sign-out, tampered sessions ignored, and the panel/screen wiring.
+
+Verified in Chromium 1440x900: the signed-out panel had no Save button, a password-less account was
+refused, the temporary notice appeared after the owner set one, a wrong current password was refused,
+the real change stored a 64-hex hash with `(self)` attribution and the flag cleared, and signing out
+restored the refusal.

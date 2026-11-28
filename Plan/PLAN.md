@@ -552,6 +552,41 @@ and a number, not the customer's name or email, not a common password, entered t
 the plaintext is shown **once** with a Copy button. They can also flag *Change at next sign-in* and
 **block** or **allow** sign-in; `canCustomerSignIn` requires an active account with a password.
 
+#### 4.5.9 The customer changes their own password, and only while signed in  *(owner request 2026-11-21, part 6)*
+
+The owner asked to **connect** the customer side to the accounts, and to make sure **a visitor who is
+not signed in cannot change a password at all**.
+
+**Sign-in.** `lib/customer-session.ts` verifies the email and password with the same PBKDF2 hash the
+admin screen writes (`signInCustomer`), refusing an unknown email, a blocked account, an account with
+no password yet and a wrong password with a distinct message each. Success writes a 12-hour session
+(`mh-fashion-customer-session-v1`); `readCustomerSession` deletes and ignores an expired, empty or
+malformed one, so a tampered storage value is treated as signed out.
+
+**Change.** `changeOwnPassword(accounts, session, current, next, confirm)` returns
+`reason: "signed-out"` **before** it touches anything when there is no session — that is the guard the
+owner asked for, and it lives in the library, not only in the screen. Signed in, it still requires the
+current password, the two new entries to match, the same policy as the owner's panel
+(`passwordIssues`), and a password different from the current one. Only that customer's record changes,
+`passwordUpdatedBy` records `<name> (self)`, and `mustChangePassword` clears.
+
+**The screen.** Account Settings on `/account` carries **AccountPasswordPanel**: signed out it says
+*"You are not signed in, so no password can be changed on this device."* and shows the sign-in form
+only; the change fields and the Save button are not rendered at all. Signed in it names the account,
+shows the temporary-password notice when the owner set one, and offers current / new / repeat plus
+Sign out.
+
+**Known limit.** There is no customer table on the server yet, so the account list still lives in the
+browser store: the sign-in and the guard are real code paths, but a customer on another device does not
+see the same records until the accounts move to Supabase. The admin drawer earned the same note.
+
+**Verified 2026-11-21** in Chromium at 1440x900 against a production build: signed out the panel
+refused and no Save button existed; signing in with a password-less account said *"This account has no
+password yet"*; after the owner set a temporary password the customer signed in, saw the temporary
+notice, was refused with *"The current password does not match."* for a wrong current password, then
+changed it — the stored record went to a 64-hex hash at 210 000 iterations with
+`passwordUpdatedBy: "Aung Ko (self)"` and `mustChangePassword: false`; signing out restored the refusal.
+
 ### 4.6 Product detail presentation
 
 **Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and

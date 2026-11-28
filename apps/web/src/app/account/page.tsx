@@ -24,6 +24,7 @@ import {
   User,
 } from "lucide-react";
 import Header from "@/components/Header";
+import AccountPasswordPanel from "@/components/account/AccountPasswordPanel";
 import { useCurrency } from "@/lib/currency-context";
 import { useTheme } from "@/lib/theme-context";
 import { useI18n } from "@/lib/i18n";
@@ -578,7 +579,7 @@ export default function AccountPage() {
                     </div>
                   </div>
                 )}
-                {active === "settings" && <div className="max-w-xl space-y-3"><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{t("account.currency")}</p><p className="mt-1 text-xs text-text-muted">{t("account.currencyHelp")}</p></div><button onClick={toggleCurrency} className="rounded-full border border-border-light px-3 py-1 text-xs">{currency}</button></div><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{copy.theme}</p><p className="mt-1 text-xs text-text-muted">{t("account.themeHelp")}</p></div><button onClick={toggleTheme} className="rounded-full border border-border-light px-3 py-1 text-xs capitalize">{theme}</button></div><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{copy.notifications}</p><p className="mt-1 text-xs text-text-muted">{t("account.notificationsHelp")}</p></div><Check size={18} className="text-accent" /></div></div>}
+                {active === "settings" && <div className="max-w-xl space-y-3"><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{t("account.currency")}</p><p className="mt-1 text-xs text-text-muted">{t("account.currencyHelp")}</p></div><button onClick={toggleCurrency} className="rounded-full border border-border-light px-3 py-1 text-xs">{currency}</button></div><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{copy.theme}</p><p className="mt-1 text-xs text-text-muted">{t("account.themeHelp")}</p></div><button onClick={toggleTheme} className="rounded-full border border-border-light px-3 py-1 text-xs capitalize">{theme}</button></div><div className="flex items-center justify-between rounded-xl border border-border p-4"><div><p className="text-sm font-semibold">{copy.notifications}</p><p className="mt-1 text-xs text-text-muted">{t("account.notificationsHelp")}</p></div><Check size={18} className="text-accent" /></div><AccountPasswordPanel my={my} /></div>}
               </section>
             )}
           </div>

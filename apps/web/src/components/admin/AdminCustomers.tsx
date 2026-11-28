@@ -226,11 +226,14 @@ function CustomerDetail({
         customerAccounts: applyCustomerPassword(current.customerAccounts ?? [], customer.email, hash, {
           actor: "MH Fashion Owner",
           at: new Date().toISOString(),
-          mustChangePassword: false,
+          // The tick is written by its own toggle, so it must survive the save.
+          mustChangePassword: account.mustChangePassword,
         }),
       }));
       setIssued(password);
-      setMessage(`Password set. Share it with ${customer.name}; the screen shows it once.`);
+      setMessage(account.mustChangePassword
+        ? `Password set. ${customer.name} must choose a new one at next sign-in.`
+        : `Password set. Share it with ${customer.name}; the screen shows it once.`);
       setPassword("");
       setConfirm("");
     } catch (error) {

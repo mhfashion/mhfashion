@@ -1911,3 +1911,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   passwords, and drops a malformed hash. Do not "fix" a saved password by hashing the hash.
 - Browser caveat: clearing `localStorage` also drops the demo admin session — the verify scripts reseed
   `mh-fashion-admin-demo-session-v1` or the page bounces to `/admin/login`.
+
+## Customer sign-in and self-service password (`lib/customer-session.ts`, `components/account/AccountPasswordPanel.tsx`)
+- Session lives in `mh-fashion-customer-session-v1` with a 12-hour life. `readCustomerSession` treats a
+  missing/expired/malformed entry as signed out (and deletes it). No session → `changeOwnPassword`
+  returns `signed-out` before touching an account; that guard is in the library, not the JSX.
+- `signInCustomer` refuses `blocked` and `no-password` before comparing the hash, so a blocked customer
+  cannot log in even with the right password; `SIGN_IN_MESSAGE` is the wording shown.
+- A change requires the current password, matching new entries, `passwordIssues` policy, and a new
+  value different from the current one; attribution is `<name> (self)`.
+- The panel is mounted in Account Settings (`<AccountPasswordPanel my={my} />`). Signed out it renders
+  no change fields at all, only `data-account-signin-*`.
+- Both the admin drawer and this panel write `customerAccounts` in the browser store; there is still no
+  server table, so accounts do not sync across devices yet. Say so rather than implying otherwise.
+- Editing the admin tick: `savePassword` passes `mustChangePassword: account.mustChangePassword`; a
+  hard-coded `false` silently discarded the "Change at next sign-in" tick (fixed 2026-11-21).
