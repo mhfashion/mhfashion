@@ -1418,9 +1418,10 @@ backup place.
 
 **Status snapshot 2026-11-21 — read this line first; every dated snapshot below it is history.**
 
-- `main` is at `daf4efb`. `node --test tests/*.test.cjs` reports **1001 tests, 1000 pass, 0 fail**
-  (one is skipped on purpose) with a server on port 3000; `npx tsc -p apps/web/tsconfig.json --noEmit`
-  is clean and `npm run build --workspace=apps/web` compiles.
+- `main` is at `daf4efb` plus the plan and system work of 2026-11-21. `node --test tests/*.test.cjs` reports
+  **1017 tests, 1016 pass, 0 fail** (one is skipped on purpose) with a server on port 3000; `npx tsc -p
+  apps/web/tsconfig.json --noEmit` is clean, `npm run lint --workspace=apps/web` reports 0 errors, and
+  `npm run build --workspace=apps/web` plus `npm run cf:build --workspace=apps/web` both compile.
 - The admin workspace is a real, typed, browser-local application with **fifteen modules** (§10),
   including the Price Table, Attribute Management, Posts, Ads, Loyalty, Settlements and the Messages
   inbox. It is still **not** a security boundary (P0-1, P0-2).
@@ -1809,6 +1810,11 @@ Supabase migrations `0001`–`0007` remain owner-managed, and the admin workspac
 - 2026-11-21: **a post for every product category, with bilingual tags** (§4.5.10): `category` and
   `tags: {en, my}` on a post, `groupPostsByCategory` on the board, a category filter and per-group "New"
   button, and a tag editor with suggestions; older stored posts load as T-Shirt with no tags.
+- 2026-11-21: **the first five system defects are fixed** (§19.10): the admin search log is staff-only
+  (`lib/admin-api-guard.ts`, 401 before the key is read), CI runs the whole suite and ESLint, the security
+  headers ship from `apps/web/src/proxy.ts`, `.env.example` matches the code and is guarded by a test, and the
+  deploy is followed by a five-URL smoke. S5 (bindings) and S7 (public admin) remain open because they need
+  the Cloudflare account and the backend. Suite 1017 tests / 0 fail.
 - 2026-11-21: **§19 System architecture and operations** written at the owner's request: runtime topology,
   the one-way data migration, identity and authorization as a server-side system, the environment-variable
   table with what breaks without each, the pipeline and its five gaps, response security headers, abuse
@@ -2201,16 +2207,20 @@ P1-12 and P1-13 (below) are the ones §19 defines in detail.
     the backend of P0-1. Record the decision here before building, because the page shape decides what
     the post document must carry.
 
-12. **Security headers and a content policy** (§19.6). The site currently sends the platform defaults: no
+12. **Security headers and a content policy** (§19.6). **DONE 2026-11-21** — `apps/web/src/proxy.ts` and
+    `tests/security-headers.test.cjs`. The original finding follows, for the record. The site sent the
+    platform defaults: no
     `Strict-Transport-Security`, no `X-Content-Type-Options`, no `Referrer-Policy`, no `Permissions-Policy`,
     no `frame-ancestors`, no CSP — there is no `middleware.ts` and `next.config.*` sets only
     `images.remotePatterns`. Add the five headers and a CSP that still lets the canvas work (inline styles,
     `data:`/`blob:` images for every design preview, the Supabase host in `connect-src`, the R2 public host
     when it exists), and a test (`tests/security-headers.test.cjs`) that asks a running server for `/` and
     fails when a header disappears. Check the editor, a product page and `/admin/posts` afterwards at 1440
-    and 390, because a CSP that breaks a data-URL preview breaks the whole editor.
+    and 390, because a CSP that breaks a data-URL preview breaks the whole editor. Verified: seven routes in
+    Chromium with zero CSP violations and the editor still drawing.
 
-13. **Configuration truth** (§19.4). `apps/web/.env.example` names variables the code never reads
+13. **Configuration truth** (§19.4). **DONE 2026-11-21** — regenerated and guarded by
+    `tests/env-example.test.cjs`. The original finding: `.env.example` named variables the code never reads
     (`MH_DELIVERY_API_URL`, `MH_DELIVERY_API_KEY`, the S3-style `R2_*` quartet, three AI keys) and omits five
     it does (`PAYMENT_WEBHOOK_SECRET`, `PAYMENTS_ALLOW_MOCK`, `NEXT_PUBLIC_MH_DELIVERY_URL`,
     `NEXT_PUBLIC_R2_PUBLIC_URL`, `NEXT_PUBLIC_CONTACT_EMAIL`). Regenerate it from §19.4 and add
@@ -3687,11 +3697,12 @@ unexpected 200 fails. Visiting `/admin/orders` while signed out redirects or ret
 | `RATE_LIMIT_KV` | **binding** | `lib/rate-limit.ts` | the limiter is per isolate |
 | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | **Actions secrets** | the two deploy workflows | the deploy stops at its first step |
 
-**Known drift, fix with the next configuration change:** `apps/web/.env.example` still names
-`MH_DELIVERY_API_URL`, `MH_DELIVERY_API_KEY`, the S3-style `R2_*` quartet and three AI keys the code never
-reads, and it is missing `PAYMENT_WEBHOOK_SECRET`, `PAYMENTS_ALLOW_MOCK`, `NEXT_PUBLIC_MH_DELIVERY_URL`,
-`NEXT_PUBLIC_R2_PUBLIC_URL` and `NEXT_PUBLIC_CONTACT_EMAIL`. A person following it would configure the wrong
-names and discover it only when payments or delivery fail.
+**The drift is fixed (2026-11-21).** `apps/web/.env.example` now lists the names the code reads, in the order
+this table uses, and `tests/env-example.test.cjs` fails when the two drift apart in either direction. It finds
+a name in three places, because the code uses three: a literal `process.env.NAME`, a payment provider's
+`requires: [...]` list, and the two settings read from an `env` parameter (`PAYMENTS_ALLOW_MOCK`,
+`ADMIN_API_TOKEN`). Bindings (`RATE_LIMIT_KV`, the two R2 buckets) are documented in the same file as
+comments, because they live in `wrangler.jsonc` and not in the environment.
 
 **Target.** The example file is generated from this table, or checked against it by a test; Worker secrets go
 in through `wrangler secret put` and never into `wrangler.jsonc`; the deploy secrets are the only ones GitHub
@@ -3704,19 +3715,20 @@ holds; rotation is one paragraph — change the value in both places, redeploy, 
 
 **Now** (`.github/workflows/deploy-cloudflare.yml`, on a push to `main` that touches `apps/web`,
 `package*.json` or the workflow itself): secret presence check → checkout → Node 22 with the npm cache →
-`npm ci` → `npm audit --omit=dev --audit-level=moderate` → five suites (`guide`, `browser-guards`,
-`canvas-spec`, `canvas-shell`, `guide:http` against a local server) → `next build` → `tsc --noEmit` →
-`cf:build` → `wrangler deploy --dry-run` → `wrangler deploy`. A second workflow deploys the asset Worker; a
-third copies the buckets weekly and needs five further secrets.
+`npm ci` → `npm audit --omit=dev --audit-level=moderate` → **lint** → `next build` → **the whole suite**
+(`node --test tests/*.test.cjs`, 1017 tests, against a production server started on 127.0.0.1:3000 with
+`MH_TEST_ORIGIN` and `GUIDE_TEST_ORIGIN` set) → `tsc --noEmit` → `cf:build` → `wrangler deploy --dry-run` →
+`wrangler deploy` → **smoke** (`/`, `/nyein`, `/products`, `/create`, `/admin/login` must answer 200, and a
+failure names the URL and the rollback command). A second workflow deploys the asset Worker; a third copies
+the buckets weekly and needs five further secrets.
 
-**Gaps, in the order they matter.**
+**Gaps that remain.**
 
-1. **The suite that exists is not the suite that runs.** 1001 tests live in `tests/*.test.cjs`; CI runs five
-   named files, so everything written since those five were chosen merges unverified.
-2. ESLint never runs in CI, although the repo counts "ESLint 0 errors" as part of done.
-3. Nothing probes the deployed Worker, so a deploy that answers 500 everywhere is still a green run.
-4. There is no rollback step and no record of which Worker version a run deployed.
-5. No preview deployment: a branch cannot be looked at before merge, so layout work is verified locally only.
+1. No automatic rollback and no recorded Worker version per run. Automatic rollback is deliberately not done:
+   a slow or concurrent deploy could roll back a newer good version. The run names the command instead.
+2. No preview deployment: a branch cannot be looked at before merge, so layout work is verified locally only.
+3. The smoke checks status codes only. It does not assert content, so a 200 that renders an error page would
+   pass. A content assertion needs a stable string per page.
 
 **Target.** A `main` push runs install → audit → the **full** `node --test tests/*.test.cjs` → lint → tsc →
 build → HTTP tests → `cf:build` → dry-run → deploy → **smoke**, where `/`, `/nyein`, `/products/<a known
@@ -3727,8 +3739,12 @@ smoke leaves the previous version serving, and the run records the Worker versio
 
 ### 19.6 Edge security policy
 
-**Now.** No security headers are set: there is no `middleware.ts`, and `next.config.*` carries only
-`images.remotePatterns`. The site is served with the platform defaults.
+**Now (built 2026-11-21).** `apps/web/src/proxy.ts` sets the headers on every response. Next 16 renamed the
+`middleware.ts` convention to `proxy.ts`, and the build warns if the old name is used, so the file is `proxy.ts`
+exporting `proxy`. It is excluded from `_next/static`, `_next/image` and `favicon.ico`, which keep their own
+caching. `tests/security-headers.test.cjs` asserts the six headers on five routes and that the policy still
+admits data URLs, blobs, inline styles and cross-origin `connect-src`; Chromium showed seven routes with no CSP
+violation and the editor canvas still drawing.
 
 **Target.** Response headers, set once at the edge: `Strict-Transport-Security`, `X-Content-Type-Options:
 nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` limited to what the editor
@@ -3743,8 +3759,11 @@ framework upgrade cannot silently drop them.
 ### 19.7 Abuse control
 
 **Now.** `enforceRateLimit` guards `payments/intent`, `payments/status`, `payments/simulate`,
-`payments/webhook`, `uploads` (40 a minute) and `delivery/quote` (30 a minute); the counter is per isolate
-until the KV binding exists. `search/suggest` and `admin/search-misses` are unguarded.
+`payments/webhook`, `uploads` (40 a minute), `delivery/quote` (30 a minute) and — since 2026-11-21 —
+`admin/search-misses` (60 a minute, after the staff guard has already refused anonymous callers). The counter
+is per isolate until the KV binding exists. `search/suggest` stays unguarded on purpose: it is a public GET
+that the search box calls on every keystroke pause, and limiting it would break typing before it stopped an
+abuser.
 
 **Target.** Any unauthenticated route that writes, costs money, or queries with a user-supplied string carries
 a limiter, and its test fails when the limiter is removed. Uploads keep verifying the signed-in user and letting
@@ -3788,19 +3807,21 @@ already decided.
 **Acceptance.** A dated line in `Doc/DOCUMENTATION.md`: what was restored, from when, into where, how long it
 took, and what came back missing.
 
-### 19.10 System defects found in this pass *(2026-11-21, all open)*
+### 19.10 System defects found in this pass *(2026-11-21)*
 
-| # | Defect | Why it matters | Smallest fix | Owner item |
-| --- | --- | --- | --- | --- |
-| S1 | `GET /api/admin/search-misses` checks only that the service-role key exists, never who is calling | Anyone who learns the URL reads the search terms customers typed and found nothing for | Require a staff session (P0-2); until then return 401 unless a server-only token matches | P0-2 |
-| S2 | CI runs five test files, not the 1001-test suite; ESLint never runs | Most of what ships has never been run by CI | Add the two steps in §19.5 | P0-3 |
-| S3 | No security headers | A defect that stays invisible until it is exploited | §19.6 | P1-12 (new) |
-| S4 | `apps/web/.env.example` names variables the code does not read and omits five it does | A setup that looks right and silently loses payments and delivery | Regenerate it from §19.4 | P1-13 (new) |
-| S5 | R2 and KV bindings are commented out in `wrangler.jsonc` | Uploads have nowhere to land; the rate limiter resets per isolate | Create the namespace and the buckets, then uncomment | P1-9 |
-| S6 | No post-deploy smoke and no rollback step | A green run can mean a broken shop | §19.5 | P0-3 |
-| S7 | `/admin/*` is public HTML with browser-local data behind it | The owner may read a dashboard that is not the shop's | P0-1 and P0-2; until then the preview banner must stay | P0-1 |
+Five of the seven were fixed in the same session; two cannot be fixed from a code editor and stay open.
 
-The two register items this section adds:
+| # | Defect | Status |
+| --- | --- | --- |
+| S1 | `GET /api/admin/search-misses` answered any caller that held the service-role key, without asking who was calling | **Fixed.** `lib/admin-api-guard.ts` refuses with 401 before the key is read — either a bearer token equal to the server-only `ADMIN_API_TOKEN`, or a Supabase user whose `app_metadata.role` is `admin` (the field only the service role can write). The refusal is one shape for every reason, so the route cannot be probed. Covered by `tests/admin-api-guard.test.cjs` (unit cases plus a live 401) and by the rewritten case in `tests/search-suggest-http.test.cjs`. |
+| S2 | CI ran five test files, not the full suite, and never ran ESLint | **Fixed.** The workflow now lints the app and runs `node --test tests/*.test.cjs` against a production build, with `MH_TEST_ORIGIN` and `GUIDE_TEST_ORIGIN` pointing at the local server it starts. |
+| S3 | No security headers | **Fixed.** `apps/web/src/proxy.ts` sets the CSP, HSTS, `nosniff`, `Referrer-Policy`, `X-Frame-Options` and `Permissions-Policy` on every response. `tests/security-headers.test.cjs` asserts them on five routes and that the policy still permits data URLs, blobs, inline styles and cross-origin `connect-src`. Verified in Chromium: seven routes render with zero CSP violations, zero runtime exceptions, no broken images, and the editor's canvas still draws. |
+| S4 | `.env.example` named variables the code never reads and omitted five it does | **Fixed.** Regenerated from the names the code reads; `tests/env-example.test.cjs` fails in either direction (missing or unused), and knows the three places a name can hide: `process.env.X`, a provider's `requires: [...]`, and an indirect `env.X`. |
+| S5 | R2 and KV bindings are still commented out in `wrangler.jsonc` | **Open — needs the Cloudflare account.** Create the `mh-fashion-rate-limit` KV namespace and the two buckets, then uncomment the bindings (P1-9). No code change can do it. |
+| S6 | No post-deploy smoke and no rollback step | **Half fixed.** The workflow now smokes `/`, `/nyein`, `/products`, `/create` and `/admin/login` after the deploy and names the exact rollback command when one answers anything but 200. An automatic rollback and a recorded Worker version per run are still missing, because rolling back automatically could undo a newer good deploy. |
+| S7 | `/admin/*` is public HTML with browser-local data behind it | **Open — needs the backend.** P0-1 and P0-2. Until then the preview banner is what tells the truth, and the guarded API route is the only admin path that holds real data. |
+
+The two register items this section added, both now done:
 
 - **P1-12 Security headers and a content policy** (§19.6): the five headers plus a CSP that still lets the
   canvas, data-URL previews and fonts work, with a test that fails when one of them disappears.

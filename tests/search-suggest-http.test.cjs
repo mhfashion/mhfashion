@@ -46,13 +46,14 @@ test("a query nothing answers comes back empty rather than failing", async () =>
   assert.deepEqual(body.suggestions, []);
 });
 
-test("the admin search log reports whether it is connected", async () => {
+test("the admin search log is staff-only, so an anonymous caller learns nothing", async () => {
+  // Plan §19.10 S1: this route used to answer anyone with `configured: false`. It now refuses first, and
+  // the refusal is the same whether or not the log is configured, so the status cannot be probed either.
   const response = await fetch(`${origin}/api/admin/search-misses?days=7&limit=10`);
+  assert.equal(response.status, 401);
+  assert.equal(response.headers.get("cache-control"), "no-store");
   const body = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(typeof body.configured, "boolean");
-  assert.ok(Array.isArray(body.misses));
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    assert.equal(body.configured, false, "without a service-role key the panel must say so");
-  }
+  assert.equal(body.error, "unauthorized");
+  assert.equal(body.configured, undefined);
+  assert.equal(body.misses, undefined);
 });

@@ -1,16 +1,28 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { adminGuardOptionsFromProcess, authorizeAdmin, unauthorizedResponse } from "@/lib/admin-api-guard";
+import { RATE_LIMITS, enforceRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export type SearchMiss = { term: string; hits: number; lastSeen: string };
 
 /**
- * Plan §17 S8: the week's searches that found nothing. `top_search_misses` is granted to `service_role`
- * only, so this route needs the service-role key. Without it the panel says the log is not connected
- * instead of failing — the admin portal itself is a local demo with no Supabase session yet.
+ * Plan §17 S8 and §19.10 S1: the week's searches that found nothing. `top_search_misses` is granted to
+ * `service_role` only, so this route needs the service-role key — and, because the rows are the words
+ * customers typed, it also refuses a caller that cannot prove it is staff. An anonymous request gets 401
+ * before the key is looked at, so the answer never reveals whether the log is configured.
+ *
+ * Once the admin has a real Supabase session (P0-2), the same guard accepts that session and the token
+ * path can be retired.
  */
 export async function GET(request: Request) {
+  const decision = await authorizeAdmin(request, adminGuardOptionsFromProcess());
+  if (!decision.allowed) return unauthorizedResponse(decision);
+
+  const limited = await enforceRateLimit(request, "admin/search-misses", RATE_LIMITS.adminRead);
+  if (limited) return limited;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) {

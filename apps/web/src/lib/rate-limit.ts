@@ -169,4 +169,6 @@ export const RATE_LIMITS = {
   upload: { limit: 40, windowMs: 60_000 },
   /** A delivery quote may be a courier call; the checkout asks once per address change. */
   deliveryQuote: { limit: 30, windowMs: 60_000 },
+  /** A staff read that names customer rows: cheap, finished, and never hammered by a script. */
+  adminRead: { limit: 60, windowMs: 60_000 },
 } satisfies Record<string, RateLimitRule>;

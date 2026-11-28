@@ -35,10 +35,12 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - Build: `npm run build --workspace=apps/web`
 - Type-check: `npx tsc -p apps/web/tsconfig.json --noEmit`
 - Lint (run from the workspace, not the repo root): `cd apps/web && npx eslint <file>`
-- Unit + spec tests: `node --test tests/*.test.cjs`
-- Integration tests (`tests/guide-http.test.cjs`, `tests/editor-touch.cjs`) need a server first:
-  `npm run start --workspace=apps/web -- --port 3000` then run the test file.
-  `tests/editor-touch.cjs` reads `EDITOR_TEST_ORIGIN` (default `http://127.0.0.1:3000`).
+- Unit + spec tests: `node --test tests/*.test.cjs` — 1017 tests, 1 skipped, when a server is running
+- Integration tests (`tests/guide-http.test.cjs`, `tests/search-suggest-http.test.cjs`,
+  `tests/admin-api-guard.test.cjs`, `tests/security-headers.test.cjs`, `tests/editor-touch.cjs`) need a server
+  first: `npm run start --workspace=apps/web -- --port 3000` then run the file. `GUIDE_TEST_ORIGIN` and
+  `EDITOR_TEST_ORIGIN` default to `http://127.0.0.1:3000`; the newer HTTP tests read `MH_TEST_ORIGIN`
+  (same default). CI sets both and runs the whole suite against a production build.
 
 ## Accessibility sweep (`tests/storefront-a11y-sweep.cjs`)
 - Five passes: 23 storefront routes at 1440, 6 at 390, `/admin/login` signed out, **18 admin dashboard
@@ -1946,3 +1948,39 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   seed post (cupType, kidsSizeBand, capStyle, …) needs that union, not just the T-shirt list.
 - The headless container has no Myanmar font: Burmese text renders as boxes in screenshots. Verify Burmese
   by reading DOM text, not pixels.
+
+## Security headers and the proxy file (`apps/web/src/proxy.ts`)
+- Next 16 deprecated `middleware.ts`: the build warns and the convention file is `proxy.ts` exporting `proxy`.
+  Do not rename it back; the deprecation warning returns and the file may stop loading.
+- The CSP is written around what the app loads: `img-src data: blob:` (every design preview and uploaded
+  photo is a data URL), `style-src 'unsafe-inline'` (canvas geometry), `connect-src https: wss:` (Supabase
+  and the API routes). Tightening any of these breaks the editor — verify by loading `/create`, adding a text
+  layer and a photo, and looking for `Refused to` in the console.
+- `tests/security-headers.test.cjs` asserts the six headers on `/`, `/create`, `/admin/posts`, `/products`,
+  `/checkout`, and reads the source to catch a header being dropped from `proxy.ts`.
+- Verify in Chromium with `Log.enable` + `Log.entryAdded`; CSP refusals arrive there, not as exceptions.
+
+## The admin API guard (`apps/web/src/lib/admin-api-guard.ts`)
+- `/api/admin/*` routes call `authorizeAdmin` before reading any data. Two proofs: a bearer token equal to
+  `ADMIN_API_TOKEN`, or a Supabase user whose `app_metadata.role` is `admin` (only the service role can write
+  that field). Anonymous callers get 401 with one shape for every reason, so the route cannot be probed.
+- The token path is server-only and never appears in a bundle: it is read as `env?.ADMIN_API_TOKEN` in a
+  `use server`-free module used only by route handlers, and it is not `NEXT_PUBLIC_`.
+- P0-2 (real Supabase staff sessions) replaces the token path; keep both accepted until then.
+
+## Configuration drift (`apps/web/.env.example`)
+- `tests/env-example.test.cjs` fails when the example and the code disagree in either direction. It finds a
+  name three ways: `process.env.NAME`, a payment provider's `requires: [...]`, and `env.NAME` inside
+  `lib/payment-webhook.ts` / `lib/admin-api-guard.ts`. Add the new name to the example in the same commit, or
+  the suite goes red.
+- Bindings (`RATE_LIMIT_KV`, `MH_FASHION_ASSETS`, `MH_FASHION_PRIVATE`, `ASSETS`) are not env vars; they are
+  documented as comments in the example and set in `wrangler.jsonc`.
+
+## CI pipeline (`.github/workflows/deploy-cloudflare.yml`)
+- Order: secrets check → `npm ci` → `npm audit --omit=dev` → **lint** → `next build` → **full suite against a
+  local production server** → `tsc` → `cf:build` → `wrangler deploy --dry-run` → deploy → **smoke**.
+- The smoke hits `/`, `/nyein`, `/products`, `/create`, `/admin/login` on the Worker and fails naming the URL
+  and the `wrangler rollback` command. It checks status codes only, so a 200 error page still passes.
+- The smoke base URL is hard-coded (`https://mhfashion.mhfashionmm.workers.dev`); change it in the workflow if
+  the Worker's route changes.
+- The suite step needs `MH_TEST_ORIGIN` and `GUIDE_TEST_ORIGIN`; both are set to `http://127.0.0.1:3000`.

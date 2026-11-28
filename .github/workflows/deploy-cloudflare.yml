@@ -61,22 +61,13 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --workspace=apps/web --omit=dev --audit-level=moderate
 
-      - name: Run guide regression tests
-        run: npm run test:guide
-
-      - name: Run browser interaction guard tests
-        run: npm run test:browser-guards
-
-      - name: Run print canvas specification tests
-        run: npm run test:canvas-spec
-
-      - name: Run canvas shell interaction tests
-        run: npm run test:canvas-shell
+      - name: Lint the web app
+        run: npm run lint --workspace=apps/web
 
       - name: Build Next.js application
         run: npm run build --workspace=apps/web
 
-      - name: Run production HTTP regression tests
+      - name: Run the full test suite against a production build
         shell: bash
         run: |
           set -euo pipefail
@@ -107,7 +98,10 @@ jobs:
             cat /tmp/mhfashion-next.log
             exit 1
           fi
-          GUIDE_TEST_ORIGIN=http://127.0.0.1:3000 npm run test:guide:http
+          # Plan §19.5: the suite that exists is the suite that runs. The HTTP tests inside it need this
+          # server, so it starts once here and the whole file set runs against it.
+          MH_TEST_ORIGIN=http://127.0.0.1:3000 GUIDE_TEST_ORIGIN=http://127.0.0.1:3000 \
+            node --test tests/*.test.cjs
 
       - name: Type-check web app
         run: npx tsc -p apps/web/tsconfig.json --noEmit --incremental false --pretty false
@@ -126,3 +120,22 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy
+
+      # Plan §19.5 item 3: a green run used to mean only that the build compiled. These four URLs are the
+      # shop's own smoke test, and a failure names the URL it probed and the command that rolls back.
+      - name: Smoke the deployed Worker
+        if: ${{ github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://mhfashion.mhfashionmm.workers.dev"
+          failed=0
+          for path in "/" "/nyein" "/products" "/create" "/admin/login"; do
+            code=$(curl -s -o /dev/null --max-time 20 -w "%{http_code}" "$base$path" || echo "000")
+            echo "$path -> $code"
+            if [[ "$code" != "200" ]]; then
+              echo "::error::$base$path answered $code after the deploy. Roll back with: cd apps/web && npx wrangler rollback"
+              failed=1
+            fi
+          done
+          exit "$failed"

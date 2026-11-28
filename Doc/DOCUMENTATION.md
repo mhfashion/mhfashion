@@ -2879,6 +2879,35 @@ category vocabulary.
 `Jasmine`/`စံပယ်ပန်း` + `Gift` stored under `category:"Cup"`, both languages in the table, Cup filter
 narrowing the board, and a Burmese-tag search finding the post.
 
+## Work log — system hardening (2026-11-21)
+
+Five of the seven system defects in plan §19.10 are fixed and pushed. Nothing changed in what a shopper sees,
+except that the admin search log now refuses anonymous callers.
+
+- **The admin search log is staff-only.** `apps/web/src/lib/admin-api-guard.ts` decides before the route reads
+  `SUPABASE_SERVICE_ROLE_KEY`: a bearer token equal to `ADMIN_API_TOKEN`, or a Supabase user whose
+  `app_metadata.role` is `admin`. Every refusal is 401 with one shape (`{error:"unauthorized",reason}`,
+  `Cache-Control: no-store`), so the route cannot be used to test whether the log is configured. The route now
+  also carries a 60-a-minute limiter (`RATE_LIMITS.adminRead`).
+  Evidence: `tests/admin-api-guard.test.cjs` (11 unit cases plus a live 401 and a wrong-token 401),
+  `tests/search-suggest-http.test.cjs` rewritten to the new contract.
+- **Security headers.** `apps/web/src/proxy.ts` (Next 16's name for `middleware.ts`) sets CSP, HSTS,
+  `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and `Permissions-Policy` on every response
+  except `_next/static`, `_next/image` and `favicon.ico`. Evidence: `tests/security-headers.test.cjs`; in
+  Chromium, `/`, `/products`, `/search`, `/checkout`, `/admin/posts`, `/nyein` and `/create` reported zero CSP
+  violations and zero runtime exceptions, no broken images, and the editor canvas drew and accepted a Text
+  click.
+- **`.env.example` tells the truth.** Regenerated from the names the code reads and guarded both ways by
+  `tests/env-example.test.cjs`, which understands the three shapes a name appears in (`process.env.X`, a
+  provider `requires: [...]`, an indirect `env.X`).
+- **CI runs what exists.** Lint, then the full 1017-test suite against a production build, then tsc, then
+  `cf:build`, then deploy, then a five-URL smoke that fails naming the URL and the rollback command.
+- **Still open:** S5 (R2 and KV bindings need the Cloudflare account) and S7 (`/admin/*` stays public HTML
+  until P0-1/P0-2 land the backend).
+
+Suite: 1017 tests, 1016 pass, 0 fail, 1 skipped. `tsc` clean; ESLint 0 errors; `next build` and `cf:build`
+both compile.
+
 ## System plan: what runs the shop (§19 of the plan)
 
 `Plan/PLAN.md` §19 records the system side at the owner's request (2026-11-21): runtime topology, the one-way
@@ -2886,8 +2915,8 @@ data migration, identity and authorization as a server-side system, the environm
 pipeline and its gaps, security headers, abuse control, observability with four incident playbooks, and
 backup/restore/retention. Each block states what exists today, what the target is and the check that proves it.
 
-Seven defects were found while writing it. They are open, and they are the reason two register items were
-added (P1-12, P1-13):
+Seven defects were found while writing it. Five are fixed (see the work log above) and two remain open (S5,
+S7). The list is kept as the finding it was:
 
 1. `GET /api/admin/search-misses` verifies only that `SUPABASE_SERVICE_ROLE_KEY` exists, never who is calling,
    so the shop's search terms are readable by anyone who learns the URL.
