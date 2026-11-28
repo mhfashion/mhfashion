@@ -1,91 +1,159 @@
-import {
-  priceTableCell, 
-  priceTableSizes,
-  type AdminDemoData,
-  type AdminPriceTable,
-  type AdminProductCategory,
-  type AdminProductDraft,
-  type AdminProduct,
-  type AdminTshirtPost,
+// The Price Table is one sheet per product: the product and the spec it is made with, then one price
+// per size it stocks. Products are priced separately (a T-shirt is not a phone cover), and posting a
+// product never types a price — it copies the sheet of a product already priced in its category.
+import type {
+  AdminDemoData,
+  AdminProduct,
+  AdminProductCategory,
+  AdminProductDraft,
 } from "@/lib/admin-demo-data";
-import type { PricingScope } from "@/lib/admin-pricing";
+import { applyPriceChanges, type PricingScope } from "@/lib/admin-pricing";
 
-/**
- * The shop's own category names (the storefront's category row) and the price-table column each one is
- * posted under, so every category the shop lists has a price without adding a second vocabulary.
- */
-export const SHOP_CATEGORY_PRICES: { shop: string; column: AdminProductCategory }[] = [
-  { shop: "T-Shirts", column: "T-Shirt" },
-  { shop: "Kids T-Shirts", column: "T-Shirt" },
-  { shop: "Phone Covers", column: "Accessory" },
-  { shop: "Bags", column: "Accessory" },
-  { shop: "Cups", column: "Accessory" },
-];
+export type ProductSheetPrice = { size: string; priceKs: number | null; version: number };
 
-/** Every post in the shop is a T-shirt post, so its prices come from the T-shirt column. */
-export const POST_PRICE_CATEGORY: AdminProductCategory = "T-Shirt";
+export type ProductSheet = {
+  product: AdminProduct;
+  prices: ProductSheetPrice[];
+  priced: number;
+  total: number;
+};
 
-export type TablePriceCell = { size: string; priceKs: number | null };
-
-/** The prices a post of this category picks up, one per size that category sells. */
-export function pricesForCategory(table: AdminPriceTable, category: AdminProductCategory): TablePriceCell[] {
-  return priceTableSizes(category).map((size) => ({ size, priceKs: priceTableCell(table, category, size) }));
+/** The labelled spec block the owner sees above the sizes — same order as the product sheet. */
+export function productSpec(product: AdminProduct): { label: string; value: string }[] {
+  return [
+    { label: "Product", value: product.name },
+    { label: "Type", value: product.category },
+    { label: "Print Method", value: product.printMethod?.trim() || "—" },
+    { label: "Fabric Type", value: product.fabric.trim() || "—" },
+    { label: "Knit Structure", value: product.knitStructure?.trim() || "—" },
+    { label: "MH Cuttings", value: product.cuttings?.trim() || "—" },
+    { label: "GSM", value: product.gsm ? `${product.gsm} GSM` : "—" },
+    { label: "Color", value: product.colors?.length ? product.colors.join(", ") : "—" },
+  ];
 }
 
-/** Lowest price of a category — what a product card shows until a size is chosen. */
-export function lowestTablePrice(table: AdminPriceTable, category: AdminProductCategory): number | null {
-  const prices = pricesForCategory(table, category)
-    .map((cell) => cell.priceKs)
+/** Every size the product stocks, with the price the sheet holds for it. */
+export function productPriceRows(data: Pick<AdminDemoData, "productPrices">, product: AdminProduct): ProductSheetPrice[] {
+  return product.sizes.map((size) => {
+    const row = data.productPrices.find((entry) => entry.productId === product.id && entry.size === size);
+    return { size, priceKs: row?.priceKs ?? null, version: row?.version ?? 0 };
+  });
+}
+
+export function productSheets(data: Pick<AdminDemoData, "products" | "productPrices">): ProductSheet[] {
+  return data.products.map((product) => {
+    const prices = productPriceRows(data, product);
+    return { product, prices, priced: prices.filter((row) => row.priceKs !== null).length, total: prices.length };
+  });
+}
+
+/** Lowest size price — what the product card shows until a size is chosen. */
+export function lowestProductPrice(data: Pick<AdminDemoData, "products" | "productPrices">, product: AdminProduct): number | null {
+  const prices = productPriceRows(data, product)
+    .map((row) => row.priceKs)
     .filter((price): price is number => price !== null);
   return prices.length ? Math.min(...prices) : null;
 }
 
+/** True when every stocked size has a price, so the product can be sold. */
+export function productFullyPriced(data: Pick<AdminDemoData, "products" | "productPrices">, product: AdminProduct): boolean {
+  return productPriceRows(data, product).every((row) => row.priceKs !== null);
+}
+
+export function priceSheetSummary(sheets: readonly ProductSheet[]) {
+  return sheets.reduce(
+    (total, sheet) => ({ priced: total.priced + sheet.priced, total: total.total + sheet.total }),
+    { priced: 0, total: 0 },
+  );
+}
+
 /**
- * True when the table prices every size the category sells. Posting a product of a half-filled
- * category is refused, so a size can never be sold at an unknown price.
+ * The product a new product copies its prices from: the first priced product of the same category.
+ * Posting therefore never asks for a price — it starts from the sheet the owner already filled.
  */
-export function categoryFullyPriced(table: AdminPriceTable, category: AdminProductCategory): boolean {
-  return pricesForCategory(table, category).every((cell) => cell.priceKs !== null);
+export function templateProduct(data: Pick<AdminDemoData, "products" | "productPrices">, category: AdminProductCategory): AdminProduct | null {
+  const inCategory = data.products.filter((product) => product.category === category);
+  return inCategory.find((product) => productFullyPriced(data, product))
+    ?? inCategory.find((product) => lowestProductPrice(data, product) !== null)
+    ?? null;
 }
 
-/** The category a pricing scope draws its prices from: a product's own category, else the T-shirt column. */
-export function scopePriceCategory(
-  data: Pick<AdminDemoData, "products" | "tshirtPosts">,
-  scope: PricingScope,
-): AdminProductCategory | null {
-  if (scope.kind === "product") {
-    const product = data.products.find((entry: AdminProduct) => entry.id === scope.id);
-    return product?.category ?? null;
-  }
-  const post = data.tshirtPosts.find((entry: AdminTshirtPost) => entry.id === scope.id);
-  return post ? POST_PRICE_CATEGORY : null;
+/** The template's prices, which the post form shows as chips and a save copies onto the new product. */
+export function templatePrices(data: Pick<AdminDemoData, "products" | "productPrices">, category: AdminProductCategory): ProductSheetPrice[] {
+  const template = templateProduct(data, category);
+  return template ? productPriceRows(data, template) : [];
+}
+
+/** A saved draft takes the template's lowest price as its catalogue price; nothing is typed. */
+export function draftWithTablePrice(
+  draft: AdminProductDraft,
+  data: Pick<AdminDemoData, "products" | "productPrices">,
+): AdminProductDraft {
+  const prices = templatePrices(data, draft.category)
+    .map((row) => row.priceKs)
+    .filter((price): price is number => price !== null);
+  return prices.length ? { ...draft, priceKs: String(Math.min(...prices)) } : draft;
 }
 
 /**
- * The draft a save writes: a posted product's price is the table's lowest price for its category, so the
- * form never types one. A category the table does not price keeps whatever the draft already held.
- */
-export function draftWithTablePrice(draft: AdminProductDraft, table: AdminPriceTable): AdminProductDraft {
-  const price = lowestTablePrice(table, draft.category);
-  return price === null ? draft : { ...draft, priceKs: String(price) };
-}
-
-/**
- * The price each pricing row should carry, read from the table by the row's size. Rows whose size has
- * no table price are left out, so a fill never clears a price the admin set by hand.
+ * The price each pricing row should carry, read from the sheet of the product it belongs to. Post rows
+ * read the T-shirt sheet, because a posted T-shirt is sold at the T-shirt price. Rows without a sheet
+ * price are left out, so a fill never clears a price the admin set by hand.
  */
 export function fillPricesFromTable(
-  table: AdminPriceTable,
-  category: AdminProductCategory | null,
+  data: Pick<AdminDemoData, "products" | "productPrices">,
+  productId: string | null,
   rows: { key: string; options: Record<string, string> }[],
 ): Map<string, number> {
   const filled = new Map<string, number>();
-  if (!category) return filled;
+  if (!productId) return filled;
+  const product = data.products.find((entry) => entry.id === productId);
+  if (!product) return filled;
+  const prices = productPriceRows(data, product);
   for (const row of rows) {
     const size = row.options.size;
     if (!size) continue;
-    const price = priceTableCell(table, category, size);
+    const price = prices.find((entry) => entry.size === size)?.priceKs ?? null;
     if (price !== null) filled.set(row.key, price);
   }
   return filled;
+}
+
+/**
+ * The product whose sheet a pricing scope draws from: the product itself, or the T-shirt template for a
+ * T-shirt post (a posted T-shirt sells at the T-shirt sheet's prices).
+ */
+export function scopePriceProductId(data: Pick<AdminDemoData, "products" | "productPrices">, scope: PricingScope): string | null {
+  if (scope.kind === "product") return data.products.some((product) => product.id === scope.id) ? scope.id : null;
+  return templateProduct(data, "T-Shirt")?.id ?? null;
+}
+
+/** Writes the sheet's staged edits through the pricing store, so history and versions stay in step. */
+export function saveProductSheet(
+  data: AdminDemoData,
+  productId: string,
+  changes: { size: string; priceKs: number; version: number }[],
+  actor: string,
+  at: string,
+): { data: AdminDemoData; applied: number } {
+  const result = applyPriceChanges(
+    data,
+    { kind: "product", id: productId },
+    changes.map((change) => ({
+      key: `${productId}::${change.size}`,
+      options: { size: change.size },
+      priceKs: change.priceKs,
+      expectedVersion: change.version,
+    })),
+    actor,
+    at,
+  );
+  if (!result.applied) return { data, applied: 0 };
+  // The catalogue price follows the sheet, so a product card never shows a price the sheet dropped.
+  const product = result.data.products.find((entry) => entry.id === productId);
+  const lowest = product ? lowestProductPrice(result.data, product) : null;
+  const products = lowest === null
+    ? result.data.products
+    : result.data.products.map((entry) => (entry.id === productId ? { ...entry, priceKs: lowest } : entry));
+  return { data: { ...result.data, products }, applied: result.applied };
 }

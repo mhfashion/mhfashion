@@ -14,7 +14,7 @@ import {
   productFromDraft, removeProduct, upsertProduct, validateProductDraft,
   type AdminProduct, type AdminProductCategory, type AdminProductDraft, type AdminProductStatus,
 } from "@/lib/admin-demo-data";
-import { categoryFullyPriced, draftWithTablePrice, lowestTablePrice, pricesForCategory } from "@/lib/price-table";
+import { draftWithTablePrice, templatePrices, type ProductSheetPrice } from "@/lib/price-table";
 import {
   SIZE_CHART_MEASURES, SIZE_CHART_MEASURE_LABEL, normalizeSizeChart, setSizeChartCell, type ProductSizeChart,
 } from "@/lib/size-chart";
@@ -28,21 +28,18 @@ const STATUS_TONES: Record<AdminProductStatus, AdminTone> = {
   Archived: "slate",
 };
 
-/** The product's prices, read straight out of the Price Table — there is nothing to type here. */
-function PriceFromTable({
-  table,
-  category,
-}: {
-  table: Parameters<typeof pricesForCategory>[0];
-  category: AdminProductCategory;
-}) {
-  const prices = pricesForCategory(table, category);
-  const complete = categoryFullyPriced(table, category);
+/**
+ * The prices this product inherits, read from the Price Table — nothing is typed here. A new product
+ * copies the sheet of the first priced product in its category; the owner can reprice it afterwards.
+ */
+function PriceFromTable({ prices, category }: { prices: ProductSheetPrice[]; category: AdminProductCategory }) {
+  const priced = prices.filter((cell) => cell.priceKs !== null);
+  const lowest = priced.length ? Math.min(...priced.map((cell) => cell.priceKs ?? 0)) : null;
   return (
     <div data-product-price-from-table={category}>
-      {complete ? (
+      {priced.length ? (
         <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#e6e9ed] bg-white px-2.5 py-2">
-          {prices.map((cell) => (
+          {priced.map((cell) => (
             <span key={cell.size} className="inline-flex items-center gap-1 rounded-full bg-[#f1f8e9] px-2 py-1 text-[10px] font-bold text-[#3f8c22]">
               {cell.size} <span className="tabular-nums">{formatKs(cell.priceKs ?? 0)}</span>
             </span>
@@ -50,12 +47,13 @@ function PriceFromTable({
         </div>
       ) : (
         <p data-product-price-missing className="rounded-xl border border-[#f2d58a] bg-[#fff9e6] px-2.5 py-2 text-[10px] font-semibold text-[#8a6a00]">
-          The Price Table has no {category} price for {prices.filter((cell) => cell.priceKs === null).map((cell) => cell.size).join(", ") || "these sizes"}.{" "}
-          <a href="/admin/price-table" className="font-bold underline">Fill the Price Table</a> first.
+          No {category} product is priced yet.{" "}
+          <a href="/admin/price-table" className="font-bold underline">Fill the Price Table</a> first, then post this product.
         </p>
       )}
       <p className="mt-1 text-[9px] leading-4 text-[#87909b]">
-        Set in <a href="/admin/price-table" className="font-semibold text-[#3f8c22] hover:underline">Admin → Price Table</a>; the product is listed from {formatKs(lowestTablePrice(table, category) ?? 0)} and every size sells at its own table price.
+        Copied from <a href="/admin/price-table" className="font-semibold text-[#3f8c22] hover:underline">Admin → Price Table</a>
+        {lowest === null ? "" : `; the product is listed from ${formatKs(lowest)}`} and every size sells at its own sheet price. Reprice it on its own sheet afterwards.
       </p>
     </div>
   );
@@ -101,15 +99,33 @@ export default function AdminProducts() {
 
   function save() {
     if (!draft) return;
-    // Posting never types a price: the Price Table decides it (its lowest price for the category).
-    const priced = draftWithTablePrice(draft, data.priceTable);
+    // Posting never types a price: the Price Table decides it (the category template's lowest price).
+    const priced = draftWithTablePrice(draft, data);
     const found = validateProductDraft(priced);
     if (found.length) {
       setErrors(found);
       return;
     }
     const product = { ...productFromDraft(priced, editing ?? undefined), sizeChart: normalizeSizeChart(chart) };
-    updateAdminData((current) => upsertProduct(current, product));
+    // The new product's own sheet starts from the template, so the Price Table can reprice it alone.
+    const template = templatePrices(data, draft.category);
+    const seed = (current: typeof data, saved: AdminProduct) => {
+      const kept = current.productPrices.filter((row) => row.productId !== saved.id);
+      const rows = saved.sizes.map((size) => ({
+        productId: saved.id,
+        size,
+        priceKs: template.find((cell) => cell.size === size)?.priceKs ?? saved.priceKs,
+        version: 1,
+        updatedBy: "Owner",
+        updatedAt: new Date().toISOString(),
+      }));
+      return [...kept, ...rows];
+    };
+    updateAdminData((current) => {
+      const next = upsertProduct(current, product);
+      const created = editing === null;
+      return created ? { ...next, productPrices: seed(next, product) } : next;
+    });
     closeEditor();
   }
 
@@ -273,7 +289,7 @@ export default function AdminProducts() {
                 <AdminInput value={draft.gsm} onChange={(event) => setDraft({ ...draft, gsm: event.target.value })} inputMode="numeric" placeholder="180" aria-label="GSM" disabled={!APPAREL_CATEGORIES.includes(draft.category)} />
               </AdminField>
               <AdminField label="Price (Ks)">
-                <PriceFromTable table={data.priceTable} category={draft.category} />
+                <PriceFromTable prices={templatePrices(data, draft.category)} category={draft.category} />
               </AdminField>
             </div>
             <p className="rounded-xl bg-[#f7f9fb] px-3 py-2 text-[9px] leading-4 text-[#87909b]">

@@ -73,7 +73,11 @@ test("a product prices one row per stocked size", () => {
   const rows = pricing.scopeRows(data, scope);
   assert.deepEqual(rows.map((row) => row.options.size), product.sizes);
   const prices = pricing.scopePrices(data, scope);
-  for (const row of rows) assert.equal(prices.get(row.key), product.priceKs);
+  for (const row of rows) {
+    const size = row.options.size;
+    const sheetRow = data.productPrices.find((entry) => entry.productId === product.id && entry.size === size);
+    assert.equal(prices.get(row.key), sheetRow.priceKs, "each size sells at its own price-sheet price");
+  }
 });
 
 test("grid row keys are the keys the price map and version map use", () => {

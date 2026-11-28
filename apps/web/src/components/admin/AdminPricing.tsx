@@ -6,7 +6,7 @@ import { ArrowLeftRight, Check, ChevronDown, Download, Grid3x3, History, RotateC
 import AdminShell from "@/components/admin/AdminShell";
 import { AdminBadge, AdminButton, AdminCard, AdminCardHeader, AdminEmpty, AdminInput, AdminSelect, AdminStat } from "@/components/admin/AdminUi";
 import { useModalFocus } from "@/lib/use-modal-focus";
-import { fillPricesFromTable, scopePriceCategory } from "@/lib/price-table";
+import { fillPricesFromTable, scopePriceProductId } from "@/lib/price-table";
 import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import { formatKs, type AdminDemoData } from "@/lib/admin-demo-data";
@@ -237,7 +237,7 @@ export default function AdminPricing() {
     if (!selected.size) return;
     if (kind === "table") {
       // One click prices the selected rows from the Price Table, so a post never types a price.
-      const filled = fillPricesFromTable(data.priceTable, scopePriceCategory(data, activeScope), rows.filter((row) => selected.has(row.key)));
+      const filled = fillPricesFromTable(data, scopePriceProductId(data, activeScope), rows.filter((row) => selected.has(row.key)));
       if (!filled.size) {
         setBulkMessage("The Price Table has no price for these sizes yet.");
         return;

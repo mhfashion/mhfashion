@@ -381,6 +381,14 @@ export type AdminProduct = {
   category: AdminProductCategory;
   fabric: string;
   gsm: number | null;
+  /** How the artwork is printed on this product (DTF, sublimation, UV…). Shown on the price sheet. */
+  printMethod?: string;
+  /** Knit the fabric is built on (Single Jersey, Fleece…). */
+  knitStructure?: string;
+  /** The cut MH sews (Crew Neck, V-Neck…). */
+  cuttings?: string;
+  /** Colours the product is sold in. */
+  colors?: string[];
   priceKs: number;
   sizes: string[];
   status: AdminProductStatus;
@@ -620,7 +628,6 @@ export type AdminDemoData = {
   productPrices: AdminProductPriceRow[];
   priceHistory: AdminPriceHistoryEntry[];
   /** One price per category and size: the table every post reads its price from (owner request). */
-  priceTable: AdminPriceTable;
   promotions: AdminPromotion[];
   ads: AdminAd[];
   /** How long each banner stays up when a place has several live ones. */
@@ -653,87 +660,29 @@ export const APPAREL_SIZES = ["S", "M", "L", "XL", "2XL"];
 export const ONE_SIZE = ["One size"];
 
 /**
- * The shop's Price Table (owner request 2026-11-21): one price per product category and size, entered
- * once in Admin → Price Table. Posting a product or a T-shirt post never types a price — the post reads
- * this table. Apparel sells S–2XL; every other category sells one size. A cell left empty means the
- * shop does not sell that category in that size yet, and posting asks for the table to be filled first.
+ * A category's starting prices (owner request 2026-11-21). They seed every product of that category:
+ * the price sheet then keeps one price per product and size, so a T-shirt and a phone cover are priced
+ * separately instead of sharing a category column.
  */
-export type AdminPriceTable = Partial<Record<AdminProductCategory, Record<string, number>>>;
+const SEED_CATEGORY_PRICES: Record<AdminProductCategory, { sizes: string[]; prices: number[] }> = {
+  "T-Shirt": { sizes: ["S", "M", "L", "XL", "2XL"], prices: [12_000, 13_000, 14_000, 15_000, 16_000] },
+  Hoodie: { sizes: ["S", "M", "L", "XL", "2XL"], prices: [26_000, 27_000, 28_000, 29_000, 30_000] },
+  Polo: { sizes: ["S", "M", "L", "XL", "2XL"], prices: [18_000, 19_000, 20_000, 21_000, 22_000] },
+  Jersey: { sizes: ["S", "M", "L", "XL", "2XL"], prices: [16_000, 17_000, 18_000, 19_000, 20_000] },
+  Cap: { sizes: ["One size"], prices: [9_000] },
+  Accessory: { sizes: ["One size"], prices: [8_000] },
+};
 
-export const PRICE_TABLE_CATEGORIES: AdminProductCategory[] = ["T-Shirt", "Hoodie", "Polo", "Jersey", "Cap", "Accessory"];
-
-/** Every row the table draws: the five apparel sizes and the single non-apparel row. */
-export const PRICE_TABLE_SIZES = [...APPAREL_SIZES, ...ONE_SIZE];
-
-export function priceTableSizes(category: AdminProductCategory): string[] {
+/** Sizes a category sells: the apparel run, or the single row caps and accessories use. */
+export function sizesForCategory(category: AdminProductCategory): string[] {
   return APPAREL_CATEGORIES.includes(category) ? [...APPAREL_SIZES] : [...ONE_SIZE];
 }
 
-export const MAX_PRICE_TABLE_KS = 9_999_999;
-
-export const SEED_PRICE_TABLE: AdminPriceTable = {
-  "T-Shirt": { S: 12_000, M: 13_000, L: 14_000, XL: 15_000, "2XL": 16_000 },
-  Hoodie: { S: 26_000, M: 27_000, L: 28_000, XL: 29_000, "2XL": 30_000 },
-  Polo: { S: 18_000, M: 19_000, L: 20_000, XL: 21_000, "2XL": 22_000 },
-  Jersey: { S: 16_000, M: 17_000, L: 18_000, XL: 19_000, "2XL": 20_000 },
-  Cap: { "One size": 9_000 },
-  Accessory: { "One size": 8_000 },
-};
-
-function isTablePrice(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 && value <= MAX_PRICE_TABLE_KS;
-}
-
-/** Drops unknown categories, sizes outside the category's row set, and prices that are not positive. */
-export function normalizePriceTable(raw: unknown): AdminPriceTable {
-  const table: AdminPriceTable = {};
-  if (!raw || typeof raw !== "object") return table;
-  for (const category of PRICE_TABLE_CATEGORIES) {
-    const row = (raw as Record<string, unknown>)[category];
-    if (!row || typeof row !== "object") continue;
-    const cells: Record<string, number> = {};
-    for (const size of priceTableSizes(category)) {
-      const price = (row as Record<string, unknown>)[size];
-      if (isTablePrice(price)) cells[size] = price;
-    }
-    if (Object.keys(cells).length) table[category] = cells;
-  }
-  return table;
-}
-
-export function priceTableCell(table: AdminPriceTable, category: AdminProductCategory, size: string): number | null {
-  return table[category]?.[size] ?? null;
-}
-
-/** Writes one cell; `null` clears it. Returns a new table — the stored one is never mutated. */
-export function setPriceTableCell(
-  table: AdminPriceTable,
-  category: AdminProductCategory,
-  size: string,
-  priceKs: number | null,
-): AdminPriceTable {
-  const cells = { ...(table[category] ?? {}) };
-  if (priceKs === null) delete cells[size];
-  else cells[size] = Math.round(priceKs);
-  const next: AdminPriceTable = { ...table };
-  if (Object.keys(cells).length) next[category] = cells;
-  else delete next[category];
-  return next;
-}
-
-export function priceTableCounts(table: AdminPriceTable, category: AdminProductCategory) {
-  const sizes = priceTableSizes(category);
-  return { priced: sizes.filter((size) => priceTableCell(table, category, size) !== null).length, total: sizes.length };
-}
-
-export function priceTableSummary(table: AdminPriceTable) {
-  return PRICE_TABLE_CATEGORIES.reduce(
-    (total, category) => {
-      const counts = priceTableCounts(table, category);
-      return { priced: total.priced + counts.priced, total: total.total + counts.total };
-    },
-    { priced: 0, total: 0 },
-  );
+/** The price a fresh product of this category starts at, for one size. */
+export function seedPriceForCategory(category: AdminProductCategory, size: string): number | null {
+  const seed = SEED_CATEGORY_PRICES[category];
+  const at = seed.sizes.indexOf(size);
+  return at === -1 ? null : seed.prices[at];
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -1181,6 +1130,10 @@ export function productFromDraft(draft: AdminProductDraft, existing?: AdminProdu
     designSvgUrl: draft.designSvgUrl.trim() || undefined,
     fabric: draft.fabric.trim(),
     gsm: apparel && Number.isFinite(gsm) && gsm > 0 ? gsm : null,
+    printMethod: existing?.printMethod,
+    knitStructure: existing?.knitStructure,
+    cuttings: existing?.cuttings,
+    colors: existing?.colors,
     priceKs: Math.round(Number(draft.priceKs)),
     sizes: apparel ? APPAREL_SIZES : ONE_SIZE,
     status: draft.status,
@@ -1198,13 +1151,31 @@ export function upsertProduct(data: AdminDemoData, product: AdminProduct): Admin
         ...data.stock,
         [product.id]: Object.fromEntries(product.sizes.map((size) => [size, 0])),
       };
-  return { ...data, products, stock };
+  // The price sheet keeps one row per stocked size, so a new size inherits the product's price and a
+  // size the product no longer sells loses its row.
+  const kept = data.productPrices.filter((row) => row.productId !== product.id || product.sizes.includes(row.size));
+  const missing = product.sizes
+    .filter((size) => !kept.some((row) => row.productId === product.id && row.size === size))
+    .map((size) => ({
+      productId: product.id,
+      size,
+      priceKs: product.priceKs,
+      version: 1,
+      updatedBy: "Owner",
+      updatedAt: new Date().toISOString(),
+    }));
+  return { ...data, products, stock, productPrices: [...kept, ...missing] };
 }
 
 export function removeProduct(data: AdminDemoData, productId: string): AdminDemoData {
   const stock = { ...data.stock };
   delete stock[productId];
-  return { ...data, products: data.products.filter((product) => product.id !== productId), stock };
+  return {
+    ...data,
+    products: data.products.filter((product) => product.id !== productId),
+    stock,
+    productPrices: data.productPrices.filter((row) => row.productId !== productId),
+  };
 }
 
 // ---------------------------------------------------------------- t-shirt posts
@@ -1743,15 +1714,17 @@ const SEED_CUSTOMERS = [
   { name: "Ye Yint", email: "ye.yint@example.com", phone: "+95 9 663 118 240" },
 ];
 
+const SEED_COLOR_CHOICES = ["Black", "White", "Sand", "Navy"];
+
 const SEED_PRODUCTS: Omit<AdminProduct, "sizes">[] = [
-  { id: "product-classic-tee", name: "Classic T-shirt", category: "T-Shirt", designName: "Street Vibes", tags: ["tee", "basic", "unisex"], fabric: "Combed Cotton", gsm: 180, priceKs: 21000, status: "Active" },
-  { id: "product-oversized-tee", name: "Oversized T-shirt", category: "T-Shirt", designName: "Neon Grid", tags: ["tee", "streetwear", "drop shoulder"], fabric: "Cotton", gsm: 220, priceKs: 27000, status: "Active" },
-  { id: "product-hoodie", name: "Hoodie", category: "Hoodie", designName: "Mandalay Nights", tags: ["winter", "pullover", "unisex"], fabric: "Fleece", gsm: 320, priceKs: 42000, status: "Active" },
-  { id: "product-polo", name: "Polo Shirt", category: "Polo", designName: "Minimal Bloom", tags: ["office", "collar", "pique"], fabric: "Pique Cotton", gsm: 200, priceKs: 32000, status: "Active" },
-  { id: "product-jersey", name: "Football Jersey", category: "Jersey", designName: "Team Spirit 09", tags: ["sport", "team kit", "breathable"], fabric: "Polyester Mesh", gsm: 160, priceKs: 38000, status: "Active" },
-  { id: "product-cap", name: "Cap", category: "Cap", designName: "Golden Peacock", tags: ["headwear", "one size"], fabric: "Cotton Twill", gsm: null, priceKs: 18000, status: "Active" },
-  { id: "product-tote", name: "Tote Bag", category: "Accessory", designName: "Retro Waves", tags: ["bag", "canvas", "gift"], fabric: "Canvas", gsm: null, priceKs: 16000, status: "Draft" },
-  { id: "product-phone-cover", name: "Phone Cover", category: "Accessory", designName: "Minimal Bloom", tags: ["case", "gift", "custom print"], fabric: "TPU", gsm: null, priceKs: 15000, status: "Active" },
+  { id: "product-classic-tee", name: "Classic T-shirt", category: "T-Shirt", designName: "Street Vibes", tags: ["tee", "basic", "unisex"], fabric: "Combed Cotton", gsm: 160, printMethod: "DTF", knitStructure: "Single Jersey", cuttings: "Crew Neck", colors: ["Black", "White", "Sand"], priceKs: 21000, status: "Active" },
+  { id: "product-oversized-tee", name: "Oversized T-shirt", category: "T-Shirt", designName: "Neon Grid", tags: ["tee", "streetwear", "drop shoulder"], fabric: "Cotton", gsm: 220, printMethod: "DTF", knitStructure: "Single Jersey", cuttings: "Drop Shoulder", colors: ["Black", "Sand"], priceKs: 27000, status: "Active" },
+  { id: "product-hoodie", name: "Hoodie", category: "Hoodie", designName: "Mandalay Nights", tags: ["winter", "pullover", "unisex"], fabric: "Fleece", gsm: 320, printMethod: "Screen Print", knitStructure: "Fleece Brushed", cuttings: "Crew Neck", colors: ["Black", "Navy"], priceKs: 42000, status: "Active" },
+  { id: "product-polo", name: "Polo Shirt", category: "Polo", designName: "Minimal Bloom", tags: ["office", "collar", "pique"], fabric: "Pique Cotton", gsm: 200, printMethod: "DTF", knitStructure: "Pique", cuttings: "Polo Collar", colors: ["White", "Navy"], priceKs: 32000, status: "Active" },
+  { id: "product-jersey", name: "Football Jersey", category: "Jersey", designName: "Team Spirit 09", tags: ["sport", "team kit", "breathable"], fabric: "Polyester Mesh", gsm: 160, printMethod: "Sublimation", knitStructure: "Mesh", cuttings: "V-Neck", colors: ["Black", "White"], priceKs: 38000, status: "Active" },
+  { id: "product-cap", name: "Cap", category: "Cap", designName: "Golden Peacock", tags: ["headwear", "one size"], fabric: "Cotton Twill", gsm: null, printMethod: "Embroidery", knitStructure: "Twill", cuttings: "Six Panel", colors: ["Black", "Sand"], priceKs: 18000, status: "Active" },
+  { id: "product-tote", name: "Tote Bag", category: "Accessory", designName: "Retro Waves", tags: ["bag", "canvas", "gift"], fabric: "Canvas", gsm: null, printMethod: "Screen Print", knitStructure: "Canvas Weave", cuttings: "Square", colors: ["Sand"], priceKs: 16000, status: "Draft" },
+  { id: "product-phone-cover", name: "Phone Cover", category: "Accessory", designName: "Minimal Bloom", tags: ["case", "gift", "custom print"], fabric: "TPU", gsm: null, printMethod: "UV Print", knitStructure: "—", cuttings: "Model Cut", colors: ["Black", "White"], priceKs: 15000, status: "Active" },
 ];
 
 const SEED_DESIGN_NAMES = [
@@ -2081,7 +2054,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
   const productPrices: AdminProductPriceRow[] = products.flatMap((product) => product.sizes.map((size) => ({
     productId: product.id,
     size,
-    priceKs: product.priceKs,
+    priceKs: seedPriceForCategory(product.category, size) ?? product.priceKs,
     version: 1,
     updatedBy: "Seed",
     updatedAt: new Date(now - 30 * DAY_MS).toISOString(),
@@ -2104,7 +2077,6 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
     productPrices,
     priceHistory: [],
-    priceTable: normalizePriceTable(SEED_PRICE_TABLE),
     promotions,
     ads: createSeedAds(),
     adsRotationSeconds: DEFAULT_ADS_ROTATION_SECONDS,
@@ -2142,14 +2114,39 @@ export function readAdminDemoData(): AdminDemoData {
       const parsed = JSON.parse(raw) as AdminDemoData;
       if (parsed && parsed.version === 1 && Array.isArray(parsed.orders) && Array.isArray(parsed.products)) {
         // Entries saved before the Posts module existed have no tshirtPosts key.
-        const products = (Array.isArray(parsed.products) ? parsed.products : []).map((product) => ({
-          ...product,
-          // Products saved before the design moved onto the post have no design name; the product name
-          // stands in until the owner edits one, so an old row can still be saved.
-          designName: typeof product.designName === "string" ? product.designName : product.name,
-          tags: Array.isArray(product.tags) ? product.tags : [],
-          sizeChart: normalizeSizeChart(product.sizeChart),
-        }));
+        const products = (Array.isArray(parsed.products) ? parsed.products : []).map((product) => {
+          // The price sheet shows what a product is made of; a store saved before those fields existed
+          // takes the seed spec for its id, so the sheet is never half blank.
+          const seed = SEED_PRODUCTS.find((entry) => entry.id === product.id);
+          return {
+            ...product,
+            // Products saved before the design moved onto the post have no design name; the product name
+            // stands in until the owner edits one, so an old row can still be saved.
+            designName: typeof product.designName === "string" ? product.designName : product.name,
+            tags: Array.isArray(product.tags) ? product.tags : [],
+            sizeChart: normalizeSizeChart(product.sizeChart),
+            printMethod: product.printMethod ?? seed?.printMethod,
+            knitStructure: product.knitStructure ?? seed?.knitStructure,
+            cuttings: product.cuttings ?? seed?.cuttings,
+            colors: Array.isArray(product.colors) ? product.colors : seed?.colors,
+          };
+        });
+        // Every stocked size needs its own price row; an old store that predates the sheet gets one per
+        // size from the category seed, and a product's listed price stands in when the category has none.
+        const productPrices = Array.isArray(parsed.productPrices) ? [...parsed.productPrices] : [];
+        for (const product of products) {
+          for (const size of product.sizes) {
+            if (productPrices.some((row) => row.productId === product.id && row.size === size)) continue;
+            productPrices.push({
+              productId: product.id,
+              size,
+              priceKs: seedPriceForCategory(product.category, size) ?? product.priceKs,
+              version: 1,
+              updatedBy: "Seed",
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
         const orders = parsed.orders.map((order) => ({
           ...backfillOrderPrintSpec(order, products),
           refundRequests: normalizeRefundRequests(order.refundRequests),
@@ -2178,10 +2175,9 @@ export function readAdminDemoData(): AdminDemoData {
           jerseyStyles: Array.isArray(parsed.jerseyStyles) && parsed.jerseyStyles.length
             ? parsed.jerseyStyles
             : createSeedJerseyStyles(Date.now()),
-          productPrices: Array.isArray(parsed.productPrices) ? parsed.productPrices : [],
+          productPrices,
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
           // A store saved before the table existed takes the seed; a table the owner has emptied stays empty.
-          priceTable: normalizePriceTable(parsed.priceTable ?? SEED_PRICE_TABLE),
           // Ads saved before the media-only model (headline/body) are dropped rather than half-rendered.
           ads: Array.isArray(parsed.ads)
             ? parsed.ads.filter((ad) => ad?.mediaType === "image" || ad?.mediaType === "video")

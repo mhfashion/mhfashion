@@ -316,47 +316,47 @@ Web keyboard-only entry works, and Phone has no horizontal overflow at 320/390 p
 keypad, keeps 44 px targets and an uncovered save bar; a change made on Web is visible on Phone
 after reload and the reverse.
 
-#### 4.5.2 Price Table — prices entered once, posts never type one  *(owner request, built 2026-11-21)*
+#### 4.5.2 Price Table — a sheet per product  *(owner request, built 2026-11-21; reshaped the same day)*
 
-The owner asked for a Price Table in the admin area: **sizes down the side, the shop's categories
-across the top, one price in each cell**, and posting a product must not ask for a price again.
-"/admin/price-table" (`components/admin/AdminPriceTable.tsx`, `lib/price-table.ts`) is that table.
+The owner asked for a Price Table in the admin area and that posting a product never asks for a
+price. The first build laid it out as **sizes down the side, categories across the top**; the owner
+then rejected that shape: *"T-shirt က သပ်သပ်၊ Phone Cover က သပ်သပ်"* — a T-shirt and a phone cover
+must be priced separately, and each block must show what the product is **made of** (Product, Print
+Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color) before its sizes. The built screen is
+that per-product sheet (`components/admin/AdminPriceTable.tsx`, `lib/price-table.ts`).
 
-**Shape.** Rows are the size run — `S M L XL 2XL` and `One size`. Columns are the posted categories
-— `T-Shirt Hoodie Polo Jersey Cap Accessory`, so the T-shirt family is there and so is every other
-category the shop sells. A category that sells one size leaves the apparel rows blank (a dash, not a
-zero); a category that sells apparel leaves the `One size` row blank. `priceTableSizes(category)` is
-the single rule for which rows a category owns.
+**One card per product.** `productSheets(data)` builds a sheet for every posted product from
+`data.products`, priced from `data.productPrices` — one row per product and size, so the Classic
+T-shirt, the Oversized T-shirt binding, the Hoodie and the Phone Cover each carry their own numbers
+and changing one never moves another. A product with a size left empty is marked
+`data-price-sheet-missing` and does not sell until every stocked size has a price.
 
-**Every shop category has a column behind it.** `SHOP_CATEGORY_PRICES` maps the storefront's
-category row onto the posted categories — T-Shirts and Kids T-Shirts to the T-Shirt column, Phone
-Covers, Bags and Cups to Accessory — and the page lists that mapping so no shop category is without
-a price. A test reads the storefront's own category names and fails if one has no column.
+**The spec block.** `productSpec(product)` returns the labelled lines above the sizes in this order:
+Product, Type, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color, each read from the
+product record (`printMethod`, `fabric`, `knitStructure`, `cuttings`, `gsm`, `colors`) and `—` when the
+product does not say. The four spec fields were added to `AdminProduct` for this; a store saved
+before them takes the seed spec for its product id, so no sheet renders half blank.
 
-**Saving.** Edits are staged per cell and the header states `n of m cells priced`; Save writes the
-whole table in one store update, Discard drops the staged cells. Bad input is refused per cell —
-whole Ks numbers above zero, under Ks 10,000,000 — and the header names how many cells to fix.
-`normalizePriceTable` drops unknown categories, sizes a category does not sell, and non-positive
-prices, so stored data can never widen the table.
+**Saving.** Edits are staged per cell, the header states `n of m size prices set`, and Save writes
+each product's rows through the same store as the Pricing grid (`saveProductSheet` →
+`applyPriceChanges`), so versions are checked, history is appended, and the catalogue price follows
+the sheet's lowest size. Discard drops the staged cells; **Copy to the others** stages one product's
+prices onto every other product of its category (a second T-shirt), leaving a product's own numbers
+alone after that.
 
-**Posting reads the table.** A product form shows the category's prices as chips (no price input at
-all, `data-product-price-from-table`); saving writes the table's **lowest** price for that category
-as the catalogue price (`draftWithTablePrice`), while every size sells at its own table price. A
-category the table does not fully price cannot be posted: the form says which sizes are missing and
-links to the table. The Price Management grid keeps its per-combination rows and gains a **From
-Price Table** bulk action that stages the size price for every selected row — a post is priced in
-one click, and saving is still explicit.
+**Posting reads a sheet, not a column.** The product form shows the prices of the first priced
+product in the chosen category as chips (`data-product-price-from-table`, no price input at all) and
+saves that sheet's **lowest** price as the catalogue price (`draftWithTablePrice`). A new product's
+own rows are seeded from that template, so it can be repriced on its own sheet afterwards. The Price
+Management grid keeps its per-combination rows and its **From Price Table** bulk action now reads the
+product's own sheet (a T-shirt post reads the T-shirt sheet).
 
-**Categories and sizes stay one vocabulary.** The table never invents a category or a size: it reads
-`PRICE_TABLE_CATEGORIES`, `APPAREL_SIZES` and `ONE_SIZE` from `admin-demo-data.ts`, the same lists
-the product form validates against.
-
-**Acceptance checks (verified 2026-11-21).** The seeded table prices all 22 cells; a stored table
-saved before this feature takes the seed while a table the owner emptied stays empty; a cell can be
-saved and cleared and survives a reload (CDP: T-Shirt XL `15,500` → saved → reloaded); the product
-form for a Hoodie shows `Ks 26,000 – Ks 30,000` and has no price input; the phone layout shows one
-category at a time with 44 px rows and no horizontal overflow; `node --test tests/*.test.cjs`
-reports 936 tests with 0 failures.
+**Acceptance checks (verified 2026-11-21).** A fresh store renders 8 product sheets / 28 size prices
+with per-size seed prices (Classic T-shirt S 12,000 … 2XL 16,000, Phone Cover 8,000); a stored sheet
+saved before the change keeps its prices and gains the spec and any missing rows on read; saving the
+Phone Cover at 18,500 leaves the T-shirt at 12,000 – 16,000 and survives a reload (CDP); the phone
+layout shows one sheet at a time with 35 px chips and no horizontal overflow; the post form shows the
+T-shirt chips and no price input; `node --test tests/*.test.cjs` reports 944 tests with 0 failures.
 
 #### 4.5.3 Saved account address fills checkout  *(owner request, built 2026-11-21)*
 

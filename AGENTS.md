@@ -214,26 +214,27 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   saved record (read after mount, like the clock) with the demo pair as fallback.
 - Tests: `tests/checkout-account-address.test.cjs`.
 
-## Admin Price Table (`apps/web/src/lib/price-table.ts`, `components/admin/AdminPriceTable.tsx`)
-- One price per category and size, entered once at `/admin/price-table` (rows = the size run, columns
-  = the posted categories). It is the only place a price is typed: `AdminProducts` renders
-  `PriceFromTable` (chips, no input) and `draftWithTablePrice` writes the table's **lowest** price for
-  the category as the product's catalogue price at save time.
-- `priceTableSizes(category)` is the single rule for which rows a category owns (apparel run vs
-  `["One size"]`); the table, the product form and the pricing grid all read it. Do not add a second
-  size list.
-- Every storefront category must keep a column behind it: `SHOP_CATEGORY_PRICES` maps the
-  `CategoryRow` names onto the posted categories, and `tests/admin-price-table.test.cjs` fails when a
-  listed shop category has no mapping.
-- `normalizePriceTable` runs on the seed and on stored data (unknown categories, sizes a category does
-  not sell, and non-positive prices are dropped). `readAdminDemoData` uses
-  `parsed.priceTable ?? SEED_PRICE_TABLE`, so an owner-emptied table stays empty while a store saved
-  before the feature picks up the seed.
-- Price Management (`AdminPricing`) keeps per-combination rows; its bulk bar has **From Price Table**,
-  which stages each selected row's size price and still needs an explicit Save.
-- Mobile (<640px) shows one category at a time: a chip row plus 44px rows. The hidden phone inputs use
-  `data-price-cell-mobile`; `data-price-cell` must stay unique per cell for CDP probes.
-- Tests: `tests/admin-price-table.test.cjs`.
+## Price Table = a sheet per product (`apps/web/src/lib/price-table.ts`, `components/admin/AdminPriceTable.tsx`)
+- One price per **product and size**, stored in `productPrices` (one row per stocked size). The owner
+  rejected the first layout (sizes down the side, categories across the top): a T-shirt and a phone
+  cover must be priced separately, and each block must show the spec — Product, Type, Print Method,
+  Fabric Type, Knit Structure, MH Cuttings, GSM, Color — then its sizes. Do not reintroduce a
+  category matrix, a `priceTable` field, or a "shop category → column" mapping.
+- `productSpec(product)` reads `printMethod`, `fabric`, `knitStructure`, `cuttings`, `gsm`, `colors`
+  and prints `—` for an unset field. Those four spec fields are optional on `AdminProduct`; a store
+  saved before them takes the seed spec for its product id on read (`readAdminDemoData`), and the same
+  read path adds a `productPrices` row for any stocked size that has none.
+- Saving goes through `saveProductSheet` → `applyPriceChanges`, so versions are checked, `priceHistory`
+  gets the entry, and `product.priceKs` follows the sheet's lowest size. `upsertProduct` keeps the rows
+  in step with the stocked sizes and `removeProduct` deletes them.
+- Posting never types a price: `AdminProducts` renders `PriceFromTable` chips from
+  `templatePrices(data, category)` (the first *priced* product of that category) and
+  `draftWithTablePrice` saves that sheet's lowest price; a new product's rows are then seeded from the
+  template. The Pricing grid's **From Price Table** action uses `scopePriceProductId` (a T-shirt post
+  reads the T-shirt sheet).
+- Tests: `tests/admin-price-table.test.cjs` (sheets, spec, independence, versions/history, template,
+  row upkeep, source contracts).
+
 
 ## Attribute Management (`apps/web/src/lib/admin-attributes.ts`, `components/admin/AdminAttributes.tsx`)
 - `data.attributeChain` is the canonical §4.1 vocabulary (order, label, options, enabled). It is **not** the editor's chain: `lib/editor-attributes.ts` stays static until the editor is reopened (owner directive 1), and the screen says so.

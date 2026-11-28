@@ -16,6 +16,29 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
+### 2026-11-21 — Price Table reshaped: one sheet per product
+
+- The owner rejected the first layout (sizes down the side, categories across the top). The screen is
+  now **one card per product** — Classic T-shirt, Oversized T-shirt, Hoodie, Polo, Jersey, Cap, Tote
+  Bag, Phone Cover — each with its own prices, so a T-shirt price never sets a phone cover price.
+- Each card opens with the spec it is made of: Product, Type, Print Method, Fabric Type, Knit
+  Structure, MH Cuttings, GSM, Color (`productSpec`), followed by one price row per size the product
+  stocks. `AdminProduct` gained `printMethod`, `knitStructure`, `cuttings` and `colors` for this; a
+  store saved before the fields existed takes the seed spec for its product id on read.
+- Storage moved from the category matrix to the per-product rows that already existed
+  (`productPrices`, one row per product and size). `lib/price-table.ts` exposes `productSheets`,
+  `productPriceRows`, `productSpec`, `productFullyPriced`, `templateProduct(s)`, `draftWithTablePrice`,
+  `fillPricesFromTable`, `scopePriceProductId` and `saveProductSheet` (which writes through
+  `applyPriceChanges`, so versions and history stay in step); the category table, its seed, its
+  normaliser and its screen are gone.
+- Posting still never types a price: the product form shows the first priced sheet of the chosen
+  category as chips and saves its lowest price, then the new product's own rows are seeded from that
+  template so it can be repriced alone. The Pricing grid's **From Price Table** bulk action reads the
+  product's own sheet (a T-shirt post reads the T-shirt sheet).
+- Saving one product left the others untouched in a browser run (Phone Cover 18,500, T-shirt 12,000 –
+  16,000, both after a reload); the phone layout shows one sheet at a time. Tests:
+  `tests/admin-price-table.test.cjs` (8 tests). Full suite: 944 tests, 943 pass, 1 skipped, 0 fail.
+
 ### 2026-11-21 — A saved account address fills checkout, and stays editable
 
 - **The account record is real now** (`apps/web/src/lib/account-profile.ts`). `readAccountProfile` /
