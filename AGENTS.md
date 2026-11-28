@@ -1216,6 +1216,10 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
 - To push without persisting the credential, pass a write-capable token inline and leave
   `origin` alone, so the read-only URL in `.git/config` is never overwritten:
   `git push "https://x-access-token:$TOKEN@github.com/mhfashion/mhfashion.git" HEAD:main`
+- Assign the token in its **own** statement first (`T='github_pat_...'`). `T=... curl -H "…$T"`
+  expands `$T` before the temporary assignment applies, so the request goes out with an empty token
+  and the API answers `401` — that is a quoting bug, not an invalid token.
+- Verified 2026-11-21: an owner-supplied fine-grained PAT pushed `5a1988c..9240c8a` to `main`.
 - 2026-11-21: a PAT pasted into the chat authenticated as `mhfashion` for `git ls-remote`
   but was denied on push (`Permission to mhfashion/mhfashion.git denied to mhfashion`, 403)
   and returned `401 Bad credentials` from the REST API — i.e. read-only or already revoked.
