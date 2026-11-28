@@ -414,6 +414,42 @@ lists 5 size variants; switching **Color** on adds the Colour column and 25 Inco
 White/S at 9,900 saves as Active, writes one history row, and the matrix shows S Active with M/L
 Incomplete; `tests/pricing-management.test.cjs` (9 tests) is green.
 
+#### 4.5.5 Advanced Price Table — MMK + USD, availability, stock  *(owner spec 2026-11-21, part 2)*
+
+The Price Table (`/admin/pricing`, `AdminPricingManagement.tsx`, `lib/pricing-variants.ts`) now prices
+every variant in **both currencies**, holds its **availability** and optional **stock**, and offers the
+owner's views: **All prices · Table · Matrix · Missing prices · Out of stock · Disabled variants**,
+with Price History and Attribute Management as their own tabs.
+
+**Prices.** MMK is a whole number; USD takes two decimals. They are stored separately and neither is
+converted into the other — the demo seed's USD values are sample data, not arithmetic on the Ks price.
+A variant with one currency missing is **Missing price** (red border, its own view and filter) and is
+never sold. The Table edits both inline; the Matrix shows one specification as a two-dimensional grid
+(row attribute × size) with an MMK and a USD input in every cell, plus copy-to-cells, add/remove size
+and a missing-price indicator.
+
+**Availability vs status.** Every variant carries an availability — *Available, Out of Stock,
+Temporarily Unavailable, Disabled* — separate from its Active/Disabled status, so an Active variant can
+be out of stock. The product as a whole and each attribute option (say one colour) can be switched
+off too; `effectiveAvailability` folds the row, the option switch and the product switch into what the
+customer sees, and `variantSellable` requires both prices plus *Available*.
+
+**Stock.** Tracking is opt-in per product. When it is on, a quantity of zero reads as Out of Stock
+whatever the manual state says; the editor holds quantity, low-stock threshold, restock quantity, SKU,
+note and disable reason.
+
+**Table tools.** Search (product, SKU, spec, price), category/status filters, availability filter,
+missing-price filter, MMK minimum and USD maximum, sort by MMK/USD/Updated, column visibility, bulk
+selection with bulk availability, CSV export (both currencies, availability, SKU, updated) and CSV
+import that stages prices before any save.
+
+**History** records both currencies and the availability change, with actor and time.
+
+**Verified 2026-11-21** at 1440x900 and 390x844: S = 14,000/$3.80; editing to 9,900/$4.65 saved both
+(currencies recorded in the history), M switched to Out of Stock left the others selling, the "Out of
+stock" view listed only M, and the Matrix showed 9 colours × 5 sizes with 45 MMK and 45 USD cells.
+Tests: `tests/pricing-management.test.cjs` (17).
+
 ### 4.6 Product detail presentation
 
 **Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and

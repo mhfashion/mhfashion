@@ -141,8 +141,9 @@ test("the CSV carries the specification columns and the price", () => {
   const rows = variants.variantRows(withColor, tee(data)).slice(0, 2);
   const csv = variants.buildVariantCsv(attributes, rows);
   const [header, first] = csv.split("\n");
-  assert.equal(header, "Specification,Color,Size,Status,Price (Ks)");
+  assert.equal(header, "Specification,Color,Size,Status,MMK Price,USD Price,Availability,SKU,Updated At");
   assert.equal(first.split(",").slice(1, 4).join(","), `${rows[0].options.color},${rows[0].options.size},${rows[0].status}`, "the row carries its own spec and status");
+  assert.equal(first.split(",")[6], "Available", "the CSV carries the availability");
 });
 
 test("the screen keeps the spec's controls and reads the shared variant model", () => {
@@ -153,6 +154,132 @@ test("the screen keeps the spec's controls and reads the shared variant model", 
   assert.match(screen, /data-pricing-variant-row=/, "a table row per variant");
   assert.match(screen, /data-pricing-matrix\b/, "the matrix view is rendered");
   assert.match(screen, /data-pricing-table-view\b/, "the table view is rendered");
+  assert.match(screen, /data-pricing-usd=/, "the table edits the USD price beside the MMK one");
+  assert.match(screen, /data-pricing-availability=/, "availability is edited per variant");
+  assert.match(screen, /data-pricing-matrix-kmk=/, "each matrix cell holds the MMK price");
+  assert.match(screen, /data-pricing-matrix-usd=/, "each matrix cell holds the USD price");
+  assert.match(screen, /data-pricing-view=/, "the spec's views are the switch");
+  assert.match(screen, /data-pricing-stock-tracking/, "stock tracking is opt-in per product");
+  for (const label of ["All prices", "Matrix", "Missing prices", "Out of stock", "Disabled variants"]) {
+    assert.match(screen, new RegExp(label), `${label} is one of the views`);
+  }
   assert.match(screen, /Add product pricing/, "the add button is present");
   assert.doesNotMatch(screen, /derived|surcharge/i, "prices are manual, never derived");
+});
+
+test("MMK and USD are stored separately and neither is converted from the other", () => {
+  const data = admin.createAdminDemoData(Date.now());
+  const row = variants.variantRows(data, tee(data)).find((entry) => entry.size === "M");
+  assert.equal(typeof row.priceUsd, "number", "the seed carries a dollar price");
+  const saved = variants.saveVariantChanges(
+    data, tee(data).id, [{ options: row.options, size: "M", priceKs: 13_500, priceUsd: 6.4, expectedVersion: row.version }], "Owner", "2026-11-21T10:00:00.000Z",
+  );
+  const after = variants.variantRows(saved.data, tee(data)).find((entry) => entry.size === "M");
+  assert.equal(after.priceKs, 13_500);
+  assert.equal(after.priceUsd, 6.4, "the dollar price is the one typed, not 13500/2100");
+  assert.deepEqual(
+    [saved.data.priceHistory.at(-1).oldPriceUsd, saved.data.priceHistory.at(-1).newPriceUsd],
+    [row.priceUsd, 6.4],
+    "the history records both currencies",
+  );
+});
+
+test("a variant with one currency missing is Missing Price and cannot be sold", () => {
+  const data = admin.createAdminDemoData(Date.now());
+  const row = variants.variantRows(data, tee(data)).find((entry) => entry.size === "L");
+  const saved = variants.saveVariantChanges(
+    data, tee(data).id, [{ options: row.options, size: "L", priceUsd: null, expectedVersion: row.version }], "Owner", "2026-11-21T10:00:00.000Z",
+  );
+  const after = variants.variantRows(saved.data, tee(data)).find((entry) => entry.size === "L");
+  assert.equal(after.priceUsd, null);
+  assert.equal(variants.hasFullPrice(after), false);
+  assert.equal(variants.variantSellable(after), false, "both currencies are needed before it sells");
+  assert.equal(variants.pricingOverview(saved.data).missingUsd, 1);
+});
+
+test("availability is separate from status: Active can be out of stock, Disabled is never sold", () => {
+  const data = admin.createAdminDemoData(Date.now());
+  const row = variants.variantRows(data, tee(data)).find((entry) => entry.size === "XL");
+  const out = variants.saveVariantChanges(
+    data, tee(data).id,
+    [{ options: row.options, size: "XL", availability: "Out of Stock", expectedVersion: row.version }],
+    "Owner", "2026-11-21T10:00:00.000Z",
+  );
+  const after = variants.variantRows(out.data, tee(data)).find((entry) => entry.size === "XL");
+  assert.equal(after.status, "Active", "the status is untouched");
+  assert.equal(after.effectiveAvailability, "Out of Stock");
+  assert.equal(variants.variantSellable(after), false);
+  assert.equal(out.data.priceHistory.at(-1).newAvailability, "Out of Stock", "the switch is in the history");
+
+  const disabled = variants.setProductAvailability(out.data, tee(data).id, "Disabled");
+  assert.equal(variants.variantRows(disabled, tee(data)).every((entry) => entry.effectiveAvailability === "Disabled"), true, "a product switch covers every variant");
+});
+
+test("switching an option off stops only the variants that carry it", () => {
+  const data = admin.createAdminDemoData(Date.now());
+  const withColor = variants.setProductAttributes(data, tee(data).id, ["size", "color"]);
+  const switched = variants.setOptionAvailability(withColor, tee(data).id, "color", "White", "Disabled");
+  const rows = variants.variantRows(switched, tee(data));
+  assert.equal(rows.filter((row) => row.options.color === "White").every((row) => row.effectiveAvailability === "Disabled"), true);
+  assert.equal(rows.filter((row) => row.options.color !== "White").every((row) => row.effectiveAvailability === "Available"), true, "other colours still sell");
+});
+
+test("stock tracking zeroes availability when the quantity runs out", () => {
+  const data = admin.createAdminDemoData(Date.now());
+  const withStock = variants.setStockTracking(data, tee(data).id, true);
+  const row = variants.variantRows(withStock, tee(data)).find((entry) => entry.size === "S");
+  const saved = variants.saveVariantChanges(
+    withStock, tee(data).id,
+    [{
+      options: row.options, size: "S", expectedVersion: row.version,
+      stock: { tracking: true, quantity: 0, lowThreshold: 5, restockQuantity: 20 },
+    }],
+    "Owner", "2026-11-21T10:00:00.000Z",
+  );
+  const after = variants.variantRows(saved.data, tee(data)).find((entry) => entry.size === "S");
+  assert.equal(after.stock.quantity, 0);
+  assert.equal(after.effectiveAvailability, "Out of Stock", "zero stock reads as out of stock");
+
+  const restocked = variants.saveVariantChanges(
+    saved.data, tee(data).id,
+    [{
+      options: row.options, size: "S", expectedVersion: after.version,
+      stock: { tracking: true, quantity: 12, lowThreshold: 5, restockQuantity: 20 },
+    }],
+    "Owner", "2026-11-21T10:05:00.000Z",
+  );
+  assert.equal(variants.variantRows(restocked.data, tee(data)).find((entry) => entry.size === "S").effectiveAvailability, "Available");
+});
+
+test("the Table View filters combine availability, status, missing price and ranges", () => {
+  const data = admin.createAdminDemoData(Date.now());
+  const row = variants.variantRows(data, tee(data)).find((entry) => entry.size === "M");
+  const out = variants.saveVariantChanges(
+    data, tee(data).id, [{ options: row.options, size: "M", availability: "Out of Stock", expectedVersion: row.version }], "Owner", "2026-11-21T10:00:00.000Z",
+  );
+  const rows = variants.variantRows(out.data, tee(data));
+  assert.deepEqual(variants.filterVariants(rows, { availability: "Out of Stock" }).map((entry) => entry.size), ["M"]);
+  assert.equal(variants.filterVariants(rows, { minKs: 17_000 }).every((entry) => entry.priceKs >= 17_000), true);
+  assert.equal(variants.filterVariants(rows, { maxUsd: 4.2 }).length, 3, "3.80, 4.00, 4.20");
+  assert.equal(variants.filterVariants(rows, { missingPrice: true }).length, 0, "the seed prices both currencies");
+});
+
+test("the Table View sorts by MMK, USD and Updated At", () => {
+  const data = admin.createAdminDemoData(Date.now());
+  const row = variants.variantRows(data, tee(data)).find((entry) => entry.size === "XL");
+  const saved = variants.saveVariantChanges(
+    data, tee(data).id, [{ options: row.options, size: "XL", priceKs: 9_000, priceUsd: 2.5, expectedVersion: row.version }], "Owner", "2026-11-21T11:00:00.000Z",
+  );
+  const rows = variants.variantRows(saved.data, tee(data));
+  assert.equal(variants.sortVariants(rows, "mmk-asc")[0].size, "XL", "the cheapest Ks price first");
+  assert.equal(variants.sortVariants(rows, "usd-desc")[0].size, "2XL");
+  assert.equal(variants.sortVariants(rows, "updated")[0].size, "XL", "the last edit first");
+});
+
+test("USD input takes two decimals and refuses anything else", () => {
+  assert.deepEqual(variants.parseUsdInput("$3.80"), { ok: true, value: 3.8 });
+  assert.deepEqual(variants.parseUsdInput("3.8"), { ok: true, value: 3.8 });
+  assert.equal(variants.parseUsdInput("3.805").ok, false);
+  assert.equal(variants.parseUsdInput("0").ok, false);
+  assert.equal(variants.parseUsdInput("abc").ok, false);
 });

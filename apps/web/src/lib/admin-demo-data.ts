@@ -632,6 +632,12 @@ export type AdminDemoData = {
    * Only the size is on by default, so the variant grid starts from the rows the shop already has.
    */
   productPricingAttributes?: Record<string, string[]>;
+  /** Product-wide switch-off, on top of each variant's own availability. */
+  productAvailability?: Record<string, AdminAvailability>;
+  /** Per product, per attribute, per option — so "stop selling Black" is one click. */
+  optionAvailability?: Record<string, Record<string, Record<string, AdminAvailability>>>;
+  /** Stock tracking is opt-in per product; off means availability is set by hand. */
+  stockTracking?: Record<string, boolean>;
   promotions: AdminPromotion[];
   ads: AdminAd[];
   /** How long each banner stays up when a place has several live ones. */
@@ -689,6 +695,19 @@ export function seedPriceForSpec(product: Pick<AdminProduct, "category" | "gsm">
   if (base === null || base === undefined) return null;
   const premium = product.gsm ? Math.max(0, product.gsm - 160) * 100 : 0;
   return base + premium;
+}
+
+/** A sample dollar price per category and size — typed data, not a conversion of the Ks price. */
+export function seedUsdForCategory(category: AdminProductCategory, size: string): number | null {
+  const table: Partial<Record<AdminProductCategory, Record<string, number>>> = {
+    "T-Shirt": { S: 3.8, M: 4, L: 4.2, XL: 4.4, "2XL": 4.8 },
+    Hoodie: { S: 19.5, M: 20, L: 21, XL: 22, "2XL": 23.5 },
+    Polo: { S: 8.6, M: 9, L: 9.4, XL: 9.9, "2XL": 10.6 },
+    Jersey: { S: 16.5, M: 17, L: 17.6, XL: 18.2, "2XL": 19 },
+    Cap: { "One size": 6.5 },
+    Accessory: { "One size": 3.4 },
+  };
+  return table[category]?.[size] ?? null;
 }
 
 export function seedPriceForCategory(category: AdminProductCategory, size: string): number | null {
@@ -1258,10 +1277,25 @@ export type AdminTshirtPostPriceRow = {
 /** Product scope prices one row per stocked size; the catalogue price seeds it. */
 export type AdminVariantStatus = "Active" | "Disabled";
 
+/**
+ * Whether the customer can buy a variant. Deliberately separate from `status`: an Active variant can
+ * be Out of Stock, and a Disabled one is never offered at all.
+ */
+export type AdminAvailability = "Available" | "Out of Stock" | "Temporarily Unavailable" | "Disabled";
+
+export type AdminStock = {
+  tracking: boolean;
+  quantity: number;
+  lowThreshold: number;
+  restockQuantity: number;
+};
+
 export type AdminProductPriceRow = {
   productId: string;
   size: string;
   priceKs: number;
+  /** The dollar price is typed by the admin; it is never converted from Ks. */
+  priceUsd?: number | null;
   version: number;
   updatedBy: string;
   updatedAt: string;
@@ -1269,6 +1303,12 @@ export type AdminProductPriceRow = {
   options?: Record<string, string>;
   /** A disabled variant is not offered to the customer (Plan §4.6.6). */
   status?: AdminVariantStatus;
+  availability?: AdminAvailability;
+  /** Only read when this product turns tracking on; otherwise availability is manual. */
+  stock?: AdminStock;
+  sku?: string;
+  note?: string;
+  disableReason?: string;
 };
 
 export type AdminPriceHistoryEntry = {
@@ -1278,6 +1318,12 @@ export type AdminPriceHistoryEntry = {
   options: Partial<Record<AdminTshirtPostAttributeKey, string>>;
   oldPriceKs: number | null;
   newPriceKs: number;
+  oldPriceUsd?: number | null;
+  newPriceUsd?: number | null;
+  /** Set when the change was an availability switch rather than a price. */
+  oldAvailability?: AdminAvailability;
+  newAvailability?: AdminAvailability;
+  note?: string;
   actor: string;
   at: string;
 };
@@ -2074,6 +2120,8 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     size,
     // A heavier fabric costs more, so two specs of one type start on different prices.
     priceKs: seedPriceForSpec(product, size) ?? product.priceKs,
+    priceUsd: seedUsdForCategory(product.category, size),
+    availability: "Available",
     options: { size },
     version: 1,
     updatedBy: "Seed",
@@ -2172,6 +2220,8 @@ export function readAdminDemoData(): AdminDemoData {
               size,
               options: { size },
               priceKs: seedPriceForSpec(product, size) ?? product.priceKs,
+              priceUsd: seedUsdForCategory(product.category, size),
+              availability: "Available",
               version: 1,
               updatedBy: "Seed",
               updatedAt: new Date().toISOString(),

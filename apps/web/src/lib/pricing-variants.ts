@@ -9,9 +9,11 @@
 
 import {
   type AdminAttributeDefinition,
+  type AdminAvailability,
   type AdminDemoData,
   type AdminPriceHistoryEntry,
   type AdminProduct,
+  type AdminStock,
   type AdminVariantStatus,
 } from "@/lib/admin-demo-data";
 import { attributeChain, cascadeRules } from "@/lib/admin-attributes";
@@ -33,7 +35,16 @@ export type VariantRow = {
   options: PricingOptions;
   size: string;
   priceKs: number | null;
+  /** Typed by the admin, never converted from Ks. Null means Missing Price. */
+  priceUsd: number | null;
   status: AdminVariantStatus;
+  /** What the row itself says; `effectiveAvailability` folds in stock and the product/option switches. */
+  availability: AdminAvailability;
+  /** Ready to sell: both prices set, Active, Available, and not switched off by product or option. */
+  effectiveAvailability: AdminAvailability;
+  stock: AdminStock | null;
+  sku: string | null;
+  note: string | null;
   version: number;
   updatedAt: string | null;
 };
@@ -41,6 +52,58 @@ export type VariantRow = {
 export type VariantColumn = { key: string; label: string };
 
 export const DEFAULT_PRICING_ATTRIBUTES = ["size"] as const;
+
+export const AVAILABILITY_STATES: AdminAvailability[] = ["Available", "Out of Stock", "Temporarily Unavailable", "Disabled"];
+
+/** A Ks price: whole number above zero. The dollar price allows two decimals. */
+export function parseUsdInput(raw: string): { ok: true; value: number } | { ok: false; error: string } {
+  const cleaned = raw.trim().replace(/^\$\s*/, "").replace(/,/g, "");
+  if (!cleaned) return { ok: false, error: "Enter a USD price." };
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return { ok: false, error: "USD prices take at most two decimals." };
+  const value = Number(cleaned);
+  if (!Number.isFinite(value) || value <= 0) return { ok: false, error: "USD prices must be more than $0." };
+  return { ok: true, value: Math.round(value * 100) / 100 };
+}
+
+export const formatUsdInput = (value: number | null | undefined) => (value ? value.toFixed(2) : "");
+
+/** A price pair is complete only when both currencies are set; one alone is Missing Price. */
+export function hasFullPrice(row: Pick<VariantRow, "priceKs" | "priceUsd">): boolean {
+  return row.priceKs !== null && row.priceUsd !== null;
+}
+
+/** Stock tracking answers "is it in stock", so zero quantity overrides a manual Available. */
+function stockAvailability(stock: AdminStock | null | undefined, fallback: AdminAvailability): AdminAvailability {
+  if (!stock?.tracking) return fallback;
+  return stock.quantity > 0 ? "Available" : "Out of Stock";
+}
+
+/** The availability the customer sees, after the product switch and the option switch. */
+export function effectiveAvailability(
+  data: AdminDemoData,
+  productId: string,
+  options: PricingOptions,
+  row: { status: AdminVariantStatus; availability: AdminAvailability; stock: AdminStock | null },
+): AdminAvailability {
+  const productSwitch = data.productAvailability?.[productId];
+  if (productSwitch === "Disabled") return "Disabled";
+  for (const [key, value] of Object.entries(options)) {
+    const optionSwitch = data.optionAvailability?.[productId]?.[key]?.[value];
+    if (optionSwitch === "Disabled") return "Disabled";
+    if (optionSwitch === "Temporarily Unavailable") return "Temporarily Unavailable";
+  }
+  if (row.status === "Disabled" || row.availability === "Disabled") return "Disabled";
+  const stock = stockAvailability(row.stock, row.availability);
+  if (stock === "Out of Stock") return "Out of Stock";
+  if (row.availability === "Temporarily Unavailable") return "Temporarily Unavailable";
+  if (productSwitch === "Out of Stock") return "Out of Stock";
+  return "Available";
+}
+
+/** What the shop may show and sell: both prices set and the customer-facing state is Available. */
+export function variantSellable(row: VariantRow): boolean {
+  return hasFullPrice(row) && row.effectiveAvailability === "Available";
+}
 
 /** The attributes the shop can price: the enabled chain, in display order. */
 export function pricingAttributes(data: AdminDemoData): AdminAttributeDefinition[] {
@@ -96,12 +159,21 @@ export function variantRows(data: AdminDemoData, product: AdminProduct): Variant
       return Object.keys(combination.options).every((key) => options[key] === combination.options[key])
         && !Object.keys(options).some((key) => key !== "size" && !(key in combination.options));
     });
+    const status = stored?.status ?? "Active";
+    const availability = stored?.availability ?? "Available";
+    const stock = stored?.stock ?? null;
     rows.push({
       key: combination.key,
       options: combination.options,
       size,
       priceKs: stored?.priceKs ?? null,
-      status: stored?.status ?? "Active",
+      priceUsd: stored?.priceUsd ?? null,
+      status,
+      availability,
+      effectiveAvailability: effectiveAvailability(data, product.id, combination.options, { status, availability, stock }),
+      stock,
+      sku: stored?.sku ?? null,
+      note: stored?.note ?? null,
       version: stored?.version ?? 0,
       updatedAt: stored?.updatedAt ?? null,
     });
@@ -139,8 +211,14 @@ export function variantSearchText(attributes: readonly PricingAttribute[], row: 
 export type VariantChange = {
   options: PricingOptions;
   size: string;
-  priceKs: number | null;
+  priceKs?: number | null;
+  priceUsd?: number | null;
   status?: AdminVariantStatus;
+  availability?: AdminAvailability;
+  stock?: AdminStock | null;
+  sku?: string;
+  note?: string;
+  disableReason?: string;
   expectedVersion: number;
 };
 
@@ -157,17 +235,22 @@ const variantKey = (options: PricingOptions, size: string, keys: readonly string
 function historyEntry(
   product: AdminProduct,
   change: VariantChange,
-  previous: number | null,
+  previous: { priceKs: number | null; priceUsd: number | null; availability: AdminAvailability },
   actor: string,
   at: string,
 ): AdminPriceHistoryEntry {
   return {
-    id: `price-history-product-${product.id}-${variantKey(change.options, change.size, ["size"])}-${at}`,
+    id: `price-history-product-${product.id}-${variantKey(change.options, change.size, ["size"])}-${at}-${Math.random().toString(36).slice(2, 7)}`,
     scopeKind: "product",
     scopeId: product.id,
     options: { ...change.options, size: change.size },
-    oldPriceKs: previous,
-    newPriceKs: change.priceKs ?? previous ?? 0,
+    oldPriceKs: previous.priceKs,
+    newPriceKs: change.priceKs ?? previous.priceKs ?? 0,
+    oldPriceUsd: previous.priceUsd,
+    newPriceUsd: change.priceUsd ?? previous.priceUsd ?? null,
+    oldAvailability: previous.availability,
+    newAvailability: change.availability ?? previous.availability,
+    note: change.note,
     actor,
     at,
   };
@@ -202,18 +285,25 @@ export function saveVariantChanges(
     }
     const at2 = rows.findIndex((row) => row.productId === productId && variantKey(rowOptions(row), row.size, keys) === variantKey(change.options, change.size, keys));
     if (at2 === -1) {
-      if (change.priceKs === null) continue;
+      const priceKs = change.priceKs ?? null;
+      if (priceKs === null && !change.availability && !change.status) continue;
       rows.push({
         productId,
         size: change.size,
         options,
-        priceKs: change.priceKs,
+        priceKs: priceKs ?? 0,
+        priceUsd: change.priceUsd ?? null,
         status: change.status ?? "Active",
+        availability: change.availability ?? "Available",
+        stock: change.stock ?? undefined,
+        sku: change.sku,
+        note: change.note,
+        disableReason: change.disableReason,
         version: 1,
         updatedBy: actor,
         updatedAt: at,
       });
-      history.push(historyEntry(product, change, null, actor, at));
+      history.push(historyEntry(product, change, { priceKs: null, priceUsd: null, availability: "Available" }, actor, at));
       applied += 1;
       continue;
     }
@@ -222,24 +312,47 @@ export function saveVariantChanges(
       conflicts.push(variantKey(change.options, change.size, keys));
       continue;
     }
-    if (change.priceKs === null && (change.status ?? row.status) === (row.status ?? "Active")) continue;
+    const nextAvailability = change.availability ?? (change.status === "Disabled" ? "Disabled" : row.availability ?? "Available");
+    const priceChanged = (change.priceKs !== undefined && change.priceKs !== row.priceKs)
+      || (change.priceUsd !== undefined && change.priceUsd !== row.priceUsd);
+    const availabilityChanged = nextAvailability !== (row.availability ?? "Available");
+    const metaChanged = (change.sku !== undefined && change.sku !== row.sku)
+      || (change.note !== undefined && change.note !== row.note)
+      || change.stock !== undefined;
+    if (!priceChanged && !availabilityChanged && !metaChanged) continue;
     rows[at2] = {
       ...row,
       options,
       priceKs: change.priceKs ?? row.priceKs,
+      priceUsd: change.priceUsd === undefined ? row.priceUsd ?? null : change.priceUsd,
       status: change.status ?? row.status ?? "Active",
+      availability: nextAvailability,
+      stock: change.stock === undefined ? row.stock : change.stock ?? undefined,
+      sku: change.sku ?? row.sku,
+      note: change.note ?? row.note,
+      disableReason: change.disableReason ?? row.disableReason,
       version: row.version + 1,
       updatedBy: actor,
       updatedAt: at,
     };
-    if (change.priceKs !== null && change.priceKs !== row.priceKs) history.push(historyEntry(product, change, row.priceKs, actor, at));
+    if (priceChanged || availabilityChanged) {
+      history.push(historyEntry(product, change, {
+        priceKs: row.priceKs,
+        priceUsd: row.priceUsd ?? null,
+        availability: row.availability ?? "Available",
+      }, actor, at));
+    }
     applied += 1;
   }
 
   if (!applied) return { data, applied: 0, conflicts, duplicates };
   const products = data.products.map((entry) => {
     if (entry.id !== productId) return entry;
-    const prices = rows.filter((row) => row.productId === productId).map((row) => row.priceKs).filter((price) => price > 0);
+    // The catalogue price is the cheapest variant a customer can actually buy.
+    const sellable = rows
+      .filter((row) => row.productId === productId)
+      .filter((row) => (row.availability ?? "Available") === "Available" && row.priceKs > 0);
+    const prices = sellable.map((row) => row.priceKs);
     return prices.length ? { ...entry, priceKs: Math.min(...prices) } : entry;
   });
   return {
@@ -273,6 +386,8 @@ export type PricingOverview = {
   variants: number;
   priced: number;
   incomplete: number;
+  missingUsd: number;
+  outOfStock: number;
   disabled: number;
   attributes: number;
   recent: AdminPriceHistoryEntry[];
@@ -283,14 +398,18 @@ export function pricingOverview(data: AdminDemoData): PricingOverview {
   let priced = 0;
   let incomplete = 0;
   let disabled = 0;
+  let missingUsd = 0;
+  let outOfStock = 0;
   let productsPriced = 0;
   for (const product of data.products) {
     const rows = variantRows(data, product);
-    const complete = rows.filter((row) => row.priceKs !== null).length;
+    const complete = rows.filter((row) => hasFullPrice(row)).length;
     variants += rows.length;
     priced += complete;
     incomplete += rows.length - complete;
-    disabled += rows.filter((row) => row.status === "Disabled").length;
+    missingUsd += rows.filter((row) => row.priceUsd === null).length;
+    outOfStock += rows.filter((row) => row.effectiveAvailability === "Out of Stock").length;
+    disabled += rows.filter((row) => row.effectiveAvailability === "Disabled").length;
     if (complete) productsPriced += 1;
   }
   return {
@@ -299,6 +418,8 @@ export function pricingOverview(data: AdminDemoData): PricingOverview {
     variants,
     priced,
     incomplete,
+    missingUsd,
+    outOfStock,
     disabled,
     attributes: pricingAttributes(data).length,
     recent: [...data.priceHistory].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 8),
@@ -315,7 +436,7 @@ export function pricingHistory(data: AdminDemoData, filter: { search?: string; p
       if (!search) return true;
       const product = data.products.find((item) => item.id === entry.scopeId)?.name ?? entry.scopeId;
       const spec = Object.entries(entry.options ?? {}).map(([key, value]) => `${key} ${value}`).join(" ");
-      return `${product} ${spec} ${entry.actor}`.toLowerCase().includes(search);
+      return `${product} ${spec} ${entry.actor} ${entry.note ?? ""} ${entry.newAvailability ?? ""}`.toLowerCase().includes(search);
     })
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
@@ -326,12 +447,25 @@ export function buildVariantCsv(attributes: readonly PricingAttribute[], rows: r
     const text = String(value);
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
-  const header = ["Specification", ...attributes.map((attribute) => attribute.label), "Status", "Price (Ks)"];
+  const header = [
+    "Specification",
+    ...attributes.map((attribute) => attribute.label),
+    "Status",
+    "MMK Price",
+    "USD Price",
+    "Availability",
+    "SKU",
+    "Updated At",
+  ];
   const lines = rows.map((row) => [
     combinationLabel(attributes, row.options),
     ...attributes.map((attribute) => row.options[attribute.key] ?? ""),
     row.status,
     row.priceKs ?? "",
+    row.priceUsd === null ? "" : row.priceUsd.toFixed(2),
+    row.effectiveAvailability,
+    row.sku ?? "",
+    row.updatedAt ?? "",
   ].map(escape).join(","));
   return [header.join(","), ...lines].join("\n");
 }
@@ -347,4 +481,78 @@ export function setProductSizes(data: AdminDemoData, productId: string, sizes: r
     products: data.products.map((product) => (product.id === productId ? { ...product, sizes: next } : product)),
     productPrices: data.productPrices.filter((row) => row.productId !== productId || next.includes(row.size)),
   };
+}
+
+/** Product-wide switch: one product stops selling without touching any variant row. */
+export function setProductAvailability(data: AdminDemoData, productId: string, state: AdminAvailability): AdminDemoData {
+  return { ...data, productAvailability: { ...(data.productAvailability ?? {}), [productId]: state } };
+}
+
+/** Option switch: "stop selling Black" disables every variant that carries it, keeping the rows. */
+export function setOptionAvailability(
+  data: AdminDemoData,
+  productId: string,
+  attribute: string,
+  option: string,
+  state: AdminAvailability,
+): AdminDemoData {
+  const product = data.optionAvailability?.[productId] ?? {};
+  const attributeSwitches = product[attribute] ?? {};
+  return {
+    ...data,
+    optionAvailability: {
+      ...(data.optionAvailability ?? {}),
+      [productId]: { ...product, [attribute]: { ...attributeSwitches, [option]: state } },
+    },
+  };
+}
+
+/** Turning tracking on keeps the manual availability until a quantity is entered. */
+export function setStockTracking(data: AdminDemoData, productId: string, tracking: boolean): AdminDemoData {
+  return { ...data, stockTracking: { ...(data.stockTracking ?? {}), [productId]: tracking } };
+}
+
+export function stockTrackingOn(data: AdminDemoData, productId: string): boolean {
+  return data.stockTracking?.[productId] === true;
+}
+
+export type VariantFilter = {
+  availability?: AdminAvailability | "all";
+  status?: AdminVariantStatus | "all" | "missing";
+  missingPrice?: boolean;
+  minKs?: number | null;
+  maxKs?: number | null;
+  minUsd?: number | null;
+  maxUsd?: number | null;
+};
+
+/** The Table View's filters, applied to the rows the model produced. */
+export function filterVariants(rows: readonly VariantRow[], filter: VariantFilter): VariantRow[] {
+  return rows.filter((row) => {
+    if (filter.availability && filter.availability !== "all" && row.effectiveAvailability !== filter.availability) return false;
+    if (filter.status === "missing") {
+      if (hasFullPrice(row)) return false;
+    } else if (filter.status && filter.status !== "all" && row.status !== filter.status) return false;
+    if (filter.missingPrice && hasFullPrice(row)) return false;
+    if (filter.minKs !== null && filter.minKs !== undefined && (row.priceKs === null || row.priceKs < filter.minKs)) return false;
+    if (filter.maxKs !== null && filter.maxKs !== undefined && (row.priceKs === null || row.priceKs > filter.maxKs)) return false;
+    if (filter.minUsd !== null && filter.minUsd !== undefined && (row.priceUsd === null || row.priceUsd < filter.minUsd)) return false;
+    if (filter.maxUsd !== null && filter.maxUsd !== undefined && (row.priceUsd === null || row.priceUsd > filter.maxUsd)) return false;
+    return true;
+  });
+}
+
+export type VariantSort = "default" | "mmk-asc" | "mmk-desc" | "usd-asc" | "usd-desc" | "updated";
+
+export function sortVariants(rows: readonly VariantRow[], sort: VariantSort): VariantRow[] {
+  const copy = [...rows];
+  const num = (value: number | null) => (value === null ? Number.POSITIVE_INFINITY : value);
+  if (sort === "mmk-asc") return copy.sort((a, b) => num(a.priceKs) - num(b.priceKs));
+  if (sort === "mmk-desc") return copy.sort((a, b) => num(b.priceKs) - num(a.priceKs));
+  if (sort === "usd-asc") return copy.sort((a, b) => num(a.priceUsd) - num(b.priceUsd));
+  if (sort === "usd-desc") return copy.sort((a, b) => num(b.priceUsd) - num(a.priceUsd));
+  if (sort === "updated") {
+    return copy.sort((a, b) => new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime());
+  }
+  return copy;
 }

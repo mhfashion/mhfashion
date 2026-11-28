@@ -214,6 +214,21 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   saved record (read after mount, like the clock) with the demo pair as fallback.
 - Tests: `tests/checkout-account-address.test.cjs`.
 
+## Price Table: dual currency, availability, stock
+- Each variant row carries `priceKs` **and** `priceUsd` (two decimals) plus `availability`
+  (*Available / Out of Stock / Temporarily Unavailable / Disabled*), `stock`, `sku`, `note`. Both
+  currencies are typed by the admin and never converted into one another; a missing one makes the
+  variant Missing price (red border) and unsellable (`hasFullPrice`, `variantSellable`).
+- `effectiveAvailability` folds the row's own state, `optionAvailability[product][attribute][option]`
+  and `productAvailability[product]` into what the customer sees; `stockTracking` on with quantity 0
+  reads as Out of Stock. Availability stays separate from Active/Disabled.
+- Views: All prices / Table / Matrix / Missing prices / Out of stock / Disabled variants
+  (`data-pricing-view`), each backed by `filterVariants`. The Matrix is row-attribute × size with
+  `data-pricing-matrix-kmk` and `data-pricing-matrix-usd` inputs per cell; the Table has
+  `data-pricing-price` (MMK) and `data-pricing-usd` beside it, plus `data-pricing-availability`.
+- Price inputs must carry `bg-white`: the global input style paints them dark. Sizes come from the
+  product (`setProductSizes`), not the chain.
+
 ## Pricing Management = one manual price per variant (`apps/web/src/lib/pricing-variants.ts`)
 - `/admin/pricing` renders `AdminPricingManagement.tsx` with the owner's five tabs (Overview, Product
   Pricing, Price Table, Price History, Attribute Management). The older post/product combination grid

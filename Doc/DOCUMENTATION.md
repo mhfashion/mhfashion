@@ -16,6 +16,26 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
+### 2026-11-21 — Advanced Price Table: MMK + USD, availability, stock
+
+- Every variant now carries two prices, an availability state and optional stock, all edited in
+  `/admin/pricing`. `AdminProductPriceRow` gained `priceUsd`, `availability`, `stock`, `sku`, `note`,
+  `disableReason`; the store gained `productAvailability`, `optionAvailability` and `stockTracking`.
+- Prices are stored separately: MMK whole numbers, USD two decimals, never converted one into the
+  other. A variant missing either currency is Missing price and not sellable (`hasFullPrice`,
+  `variantSellable`).
+- Availability is separate from Active/Disabled (`effectiveAvailability` folds the row state, the
+  option switch and the product switch). Out of Stock / Temporarily Unavailable / Disabled are each
+  their own view and filter. Stock tracking is opt-in; a zero quantity reads as Out of Stock.
+- Views bar: All prices · Table · Matrix · Missing prices · Out of stock · Disabled variants. The
+  Matrix is a two-dimensional grid (row attribute × size) with an MMK and a USD input in every cell,
+  copy-to-cells, add/remove size and a red missing-price border.
+- Table tools: sort by MMK/USD/Updated, availability and missing-price filters, MMK min / USD max,
+  column visibility, bulk availability, CSV export and CSV import (staged before saving).
+- The variant editor holds SKU, admin note, disable reason, quantity, low-stock threshold. History
+  records both currencies and the availability change (`price_history` in `SQL/0012` too).
+- Verified at 1440x900 and 390x844; tests `tests/pricing-management.test.cjs` (17).
+
 ### 2026-11-21 — Pricing Management: a manual price for every variant
 
 - `/admin/pricing` is now Pricing Management: five tabs (Overview, Product Pricing, Price Table, Price
