@@ -679,6 +679,14 @@ export function sizesForCategory(category: AdminProductCategory): string[] {
 }
 
 /** The price a fresh product of this category starts at, for one size. */
+/** The seed price of one spec: the category's size price plus Ks 100 per GSM above 160. */
+export function seedPriceForSpec(product: Pick<AdminProduct, "category" | "gsm">, size: string): number | null {
+  const base = seedPriceForCategory(product.category, size);
+  if (base === null || base === undefined) return null;
+  const premium = product.gsm ? Math.max(0, product.gsm - 160) * 100 : 0;
+  return base + premium;
+}
+
 export function seedPriceForCategory(category: AdminProductCategory, size: string): number | null {
   const seed = SEED_CATEGORY_PRICES[category];
   const at = seed.sizes.indexOf(size);
@@ -1717,7 +1725,7 @@ const SEED_CUSTOMERS = [
 const SEED_COLOR_CHOICES = ["Black", "White", "Sand", "Navy"];
 
 const SEED_PRODUCTS: Omit<AdminProduct, "sizes">[] = [
-  { id: "product-classic-tee", name: "Classic T-shirt", category: "T-Shirt", designName: "Street Vibes", tags: ["tee", "basic", "unisex"], fabric: "Combed Cotton", gsm: 160, printMethod: "DTF", knitStructure: "Single Jersey", cuttings: "Crew Neck", colors: ["Black", "White", "Sand"], priceKs: 21000, status: "Active" },
+  { id: "product-classic-tee", name: "Classic T-shirt", category: "T-Shirt", designName: "Street Vibes", tags: ["tee", "basic", "unisex"], fabric: "Combed Cotton", gsm: 180, printMethod: "DTF", knitStructure: "Single Jersey", cuttings: "Crew Neck", colors: ["Black", "White", "Sand"], priceKs: 21000, status: "Active" },
   { id: "product-oversized-tee", name: "Oversized T-shirt", category: "T-Shirt", designName: "Neon Grid", tags: ["tee", "streetwear", "drop shoulder"], fabric: "Cotton", gsm: 220, printMethod: "DTF", knitStructure: "Single Jersey", cuttings: "Drop Shoulder", colors: ["Black", "Sand"], priceKs: 27000, status: "Active" },
   { id: "product-hoodie", name: "Hoodie", category: "Hoodie", designName: "Mandalay Nights", tags: ["winter", "pullover", "unisex"], fabric: "Fleece", gsm: 320, printMethod: "Screen Print", knitStructure: "Fleece Brushed", cuttings: "Crew Neck", colors: ["Black", "Navy"], priceKs: 42000, status: "Active" },
   { id: "product-polo", name: "Polo Shirt", category: "Polo", designName: "Minimal Bloom", tags: ["office", "collar", "pique"], fabric: "Pique Cotton", gsm: 200, printMethod: "DTF", knitStructure: "Pique", cuttings: "Polo Collar", colors: ["White", "Navy"], priceKs: 32000, status: "Active" },
@@ -2054,7 +2062,8 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
   const productPrices: AdminProductPriceRow[] = products.flatMap((product) => product.sizes.map((size) => ({
     productId: product.id,
     size,
-    priceKs: seedPriceForCategory(product.category, size) ?? product.priceKs,
+    // A heavier fabric costs more, so two specs of one type start on different prices.
+    priceKs: seedPriceForSpec(product, size) ?? product.priceKs,
     version: 1,
     updatedBy: "Seed",
     updatedAt: new Date(now - 30 * DAY_MS).toISOString(),
@@ -2148,7 +2157,7 @@ export function readAdminDemoData(): AdminDemoData {
             productPrices.push({
               productId: product.id,
               size,
-              priceKs: seedPriceForCategory(product.category, size) ?? product.priceKs,
+              priceKs: seedPriceForSpec(product, size) ?? product.priceKs,
               version: 1,
               updatedBy: "Seed",
               updatedAt: new Date().toISOString(),

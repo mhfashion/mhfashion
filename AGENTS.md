@@ -214,22 +214,23 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   saved record (read after mount, like the clock) with the demo pair as fallback.
 - Tests: `tests/checkout-account-address.test.cjs`.
 
-## Price Table = prices per product type, set once (`apps/web/src/lib/price-table.ts`)
-- The owner rejected two earlier shapes: a size-by-category **matrix**, and a price **per product**.
-  The rule is: a price is set once in `/admin/price-table` per **product type**, every product of that
-  type reads it, and a product never carries its own price. A T-shirt and a phone cover stay separate.
-- `productPriceType(product)` defines the type: apparel → its category (T-Shirt, Hoodie, Polo, Jersey,
-  Cap); anything else → the product name (Phone Cover, Tote Bag). `productSheets` groups by it;
-  `typePrices` reads a type's rows; `typeMembers` lists the products a save must reach.
-- Storage is still `productPrices` (one row per product and size) so the Pricing grid and the storefront
-  keep working: a sheet save writes the typed price onto **every** product of the type through
-  `saveProductSheet` → `applyPriceChanges` (version check + `priceHistory`), and each product's
-  `priceKs` becomes its sheet's lowest size. Do not reintroduce a `priceTable` field or a category map.
-- `productSpec(product)` prints Product, Type, Print Method, Fabric Type, Knit Structure, MH Cuttings,
-  GSM, Color; the four spec fields are optional on `AdminProduct` and an older stored catalogue takes
-  the seed spec for its product id on read.
-- Posting never types a price: `AdminProducts` shows `templatePrices(data, draft)` chips and
-  `draftWithTablePrice` saves that sheet's lowest price, then seeds the new product's rows from it.
+## Price Table = a card per product type, a box per spec (`apps/web/src/lib/price-table.ts`)
+- The owner rejected a size-by-category **matrix** and a price **per product**. The shipped shape is a
+  **T-shirt card** holding one **box per spec** (Combed Cotton 180 GSM vs Cotton 220 GSM), each box with
+  its own prices. Prices are set only in `/admin/price-table`.
+- `productPriceType(product)` names the card (apparel → category; anything else → product name, so
+  Phone Cover and Tote Bag stay apart). `productSpecKey(product)` names the box:
+  `printMethod|fabric|knitStructure|cuttings|gsm|colors`, lower-cased. `specBoxes` / `boxMembers` /
+  `productBox` / `boxPrices` are the accessors; identical specs share a box and its prices.
+- Storage is still `productPrices` (one row per product and size). A box save expands onto **every**
+  product of the box through `saveProductSheet` → `applyPriceChanges` (version check + `priceHistory`),
+  and each product's `priceKs` becomes its box's lowest size. Do not reintroduce a `priceTable` field,
+  a category map, or a per-product price input.
+- `productSpec(product, products)` prints Product, Type, Print Method, Fabric Type, Knit Structure, MH
+  Cuttings, GSM, Color. The four spec fields are optional on `AdminProduct`; an older stored catalogue
+  takes the seed spec for its product id on read, and `seedPriceForSpec` adds Ks 100 per GSM above 160.
+- Posting never types a price: `AdminProducts` shows `templatePrices(data, draft)` chips (the draft's
+  own spec box, else the first priced box of its type) and `draftWithTablePrice` saves its lowest price.
 - Tests: `tests/admin-price-table.test.cjs`.
 
 

@@ -16,25 +16,24 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
-### 2026-11-21 — Price Table: prices are set once per product type
+### 2026-11-21 — Price Table: cards per product type, a box per spec
 
-- The owner reshaped this twice: not a size-by-category matrix, and not a price per product either.
-  Prices are now set **once per product type** in `/admin/price-table`; a product never carries a
-  price of its own, and posting never asks for one.
-- `productPriceType(product)` is the type a price belongs to — apparel by category (T-Shirt, Hoodie,
-  Polo, Jersey, Cap), everything else by its own name (Phone Cover, Tote Bag) — and `productSheets`
-  groups the catalogue into one sheet per type. The T-Shirt card names the products that share it
-  ("2 products share this price · Classic T-shirt · Oversized T-shirt").
-- Each card opens with the spec (Product, Type, Print Method, Fabric Type, Knit Structure, MH
-  Cuttings, GSM, Color from `productSpec`), then one price per size. `AdminProduct` gained
-  `printMethod`, `knitStructure`, `cuttings` and `colors`; an older stored catalogue takes the seed
-  spec for its product id on read, and any stocked size without a price row gets one.
-- Saving expands the typed price onto every product of the type through `saveProductSheet` →
-  `applyPriceChanges` (versions checked, history appended), and each product's listed price follows
-  its sheet's lowest size. `typePrices`, `templatePrices(data, draft)`, `draftPriceType`,
-  `typeMembers` and `scopePriceProductId` are the helpers the product form and the Pricing grid use.
-- In a browser run, T-Shirt XL 19,500 saved onto both T-shirts and left the Phone Cover at 8,000.
-  Tests: `tests/admin-price-table.test.cjs` (8 tests). Full suite: 944 tests, 943 pass, 1 skipped.
+- Final shape after two rejected layouts (size-by-category matrix; a price per product): a **T-shirt
+  card** holding a **box per spec** — Combed Cotton 180 GSM and Cotton 220 GSM are separate boxes on
+  the same card, each with its own prices. Prices are set **only** in `/admin/price-table`.
+- `productPriceType` names the card (apparel → category, other → product name); `productSpecKey` names
+  the box (`printMethod|fabric|knitStructure|cuttings|gsm|colors`); `specBoxes`, `boxMembers`,
+  `productBox` and `boxPrices` are the helpers. Two products made to the same spec share a box.
+- Each box shows the spec (Product, Type, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM,
+  Color) above one price per size. `AdminProduct` gained `printMethod`, `knitStructure`, `cuttings`
+  and `colors`; an older stored catalogue takes the seed spec and any missing price row on read.
+- Saving writes the typed price onto every product of the box through `saveProductSheet` →
+  `applyPriceChanges` (version check, price history), and each product is listed from its box's lowest
+  size. Posting shows the box's chips and types no price. Seed prices now rise Ks 100 per GSM above
+  160 (`seedPriceForSpec`), so two specs never start identical.
+- Verified in a browser: 7 cards / 28 size prices; T-shirt XL 17,500 changed only the Combed Cotton
+  box (the Cotton 220 box stayed 21,000). Tests: `tests/admin-price-table.test.cjs` (8). Full suite:
+  944 tests, 943 pass, 1 skipped.
 
 ### 2026-11-21 — A saved account address fills checkout, and stays editable
 

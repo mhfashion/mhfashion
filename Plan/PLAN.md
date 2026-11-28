@@ -316,43 +316,38 @@ Web keyboard-only entry works, and Phone has no horizontal overflow at 320/390 p
 keypad, keeps 44 px targets and an uncovered save bar; a change made on Web is visible on Phone
 after reload and the reverse.
 
-#### 4.5.2 Price Table — prices set once per product type  *(owner request, built 2026-11-21; reshaped twice the same day)*
+#### 4.5.2 Price Table — one box per spec, prices set only here  *(owner request, built 2026-11-21; reshaped three times the same day)*
 
-The owner asked for a Price Table and that posting a product never asks for a price. The first build
-was a **size-by-category matrix**, which the owner rejected; the second priced **each product on its
-own sheet**, which the owner also rejected: *"Product တစ်ခုချင်းစီကို ဈေးလိုက်ပြီး မသတ်မှတ်ချင်ဘူး …
-Price table ကနေပဲ သတ်မှတ်ထားလိုက်မယ်"* — a price is set **once in the Price Table**, never on a
-product, while a T-shirt and a phone cover stay separate. The built screen is
-`components/admin/AdminPriceTable.tsx` + `lib/price-table.ts`.
+The owner asked for a Price Table and that posting a product never asks for a price. Two rejected
+shapes came first — a **size-by-category matrix**, then a price **per product**. The built shape is
+what the owner described last: a **T-shirt card**, and inside it a **box per spec** —
+`Product, Type, Print Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color` — where
+*"Combed Cotton မဟုတ်တော့ပဲ Cotton ဆိုတာမျိုး … ဈေးကလဲ ပြောင်းလဲသွားမယ်"*: a different fabric is a
+different box with different prices. `components/admin/AdminPriceTable.tsx` + `lib/price-table.ts`.
 
-**One card per product type.** `productPriceType(product)` is the type a price belongs to: apparel is
-priced by its category (**T-Shirt**, Hoodie, Polo, Jersey, Cap), everything else by its own name
-(**Phone Cover**, Tote Bag), because a phone cover is not a tote bag to make. `productSheets(data)`
-groups the catalogue into one sheet per type, so the seeded shop shows seven sheets; the T-Shirt card
-says *"2 products share this price — Classic T-shirt · Oversized T-shirt"* and both read it.
+**Cards and boxes.** `productSheets` draws one card per **product type** — apparel by category
+(T-Shirt, Hoodie, Polo, Jersey, Cap), everything else by its name (Phone Cover, Tote Bag) — and
+`specBoxes` fills each card with one box per **spec**: `productSpecKey` is
+`printMethod|fabric|knitStructure|cuttings|gsm|colors`. Two products made to the same spec share a
+box (`boxMembers`); a T-shirt in Combed Cotton 180 GSM and one in Cotton 220 GSM are two boxes on the
+same T-shirt card, each with its own price per size.
 
-**Each card shows the spec, then the sizes.** `productSpec(product)` prints Product, Type, Print
-Method, Fabric Type, Knit Structure, MH Cuttings, GSM, Color from the type's first product
-(`printMethod`, `fabric`, `knitStructure`, `cuttings`, `gsm`, `colors` on `AdminProduct`, `—` when
-unset), then one price row per size the type sells. A store saved before those fields existed takes
-the seed spec for its product id on read.
+**A price is never set on a product.** Save expands each staged cell onto **every product of its box**
+through `saveProductSheet` → `applyPriceChanges`, so versions are checked, `priceHistory` is written,
+and each product's listed price becomes its box's lowest size. The product form has no price input: it
+shows the box of the spec being posted as chips (`data-product-price-from-table`),
+`draftWithTablePrice` saves that box's lowest price, and the new product's rows are seeded from it. The
+Pricing grid's **From Price Table** uses the same box.
 
-**Saving writes the type, not one product.** Edits are staged per cell; Save expands each change onto
-**every product of that type** through `saveProductSheet` → `applyPriceChanges`, so versions are
-checked, `priceHistory` gets one entry per product, and each product's listed price becomes its
-sheet's lowest size. Discard drops the staged cells. The header states `n of m size prices set`
-across `k types`.
+**Seed and migration.** `seedPriceForSpec` starts a box at the category's size price plus Ks 100 per
+GSM above 160, so two specs of one type never start identical. A store saved before the spec fields
+existed takes the seed spec and any missing price row on read, and keeps the prices it already had.
 
-**Nothing else sets a price.** The product form has no price input: it shows the sheet of the type
-being posted as chips (`data-product-price-from-table`), `draftWithTablePrice` saves that sheet's
-lowest price, and the new product's own rows are seeded from it. The Pricing grid's **From Price
-Table** bulk action reads the same sheet (a T-shirt post reads the T-shirt sheet).
-
-**Acceptance checks (verified 2026-11-21).** A fresh store renders 7 type sheets / 23 size prices
-(T-Shirt 12,000–16,000, Hoodie 26,000–30,000, Phone Cover 8,000); typing T-Shirt XL 19,500 and saving
-wrote both T-shirt products (versions 2, history recorded) and left the Phone Cover at 8,000 (CDP,
-survives reload); the phone layout shows one sheet at a time; the post form shows the type's chips
-and has no price input; `node --test tests/*.test.cjs` reports 944 tests with 0 failures.
+**Acceptance checks (verified 2026-11-21).** A fresh store renders 7 cards / 28 size prices; the
+T-shirt card holds *Combed Cotton · 180 GSM* (14,000–18,000) and *Cotton · 220 GSM* (18,000–22,000);
+typing 17,500 into the Combed Cotton box's XL saved that cell only and left the Cotton 220 box at
+21,000 (CDP, survives reload); the phone layout shows one card at a time; the post form shows the
+box's chips and has no price input; `node --test tests/*.test.cjs` reports 944 tests, 0 failures.
 
 #### 4.5.3 Saved account address fills checkout  *(owner request, built 2026-11-21)*
 

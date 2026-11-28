@@ -1,42 +1,64 @@
-// The Price Table is one sheet per product: the product and the spec it is made with, then one price
-// per size it stocks. Products are priced separately (a T-shirt is not a phone cover), and posting a
-// product never types a price — it copies the sheet of a product already priced in its category.
+// The Price Table is one card per product type (T-Shirt, Hoodie, Phone Cover...), and inside it one
+// box per **spec** the shop makes — Combed Cotton 160 GSM is a different box from Cotton 220 GSM, and
+// each box carries its own prices. A price therefore belongs to what the shop makes, not to a
+// catalogue row: every product with that spec reads the same box, and posting never types a price.
 import { APPAREL_CATEGORIES } from "@/lib/admin-demo-data";
 import type {
   AdminDemoData,
   AdminProduct,
-  AdminProductCategory,
   AdminProductDraft,
 } from "@/lib/admin-demo-data";
 import { applyPriceChanges, type PricingScope } from "@/lib/admin-pricing";
 
 export type ProductSheetPrice = { size: string; priceKs: number | null; version: number };
 
-export type ProductSheet = {
-  /** The product type the sheet prices; every product of that type reads it. */
+/** One spec of a type, with its own prices — the box the owner fills in. */
+export type ProductSpecBox = {
+  /** `type::spec` — the key its price cells use. */
+  key: string;
   type: string;
-  /** The products that use this sheet — the owner prices the type once, not each product. */
+  specKey: string;
+  /** Every product made to this spec; they share the box's prices. */
   products: AdminProduct[];
-  /** The product the spec block describes (the first of the type). */
+  /** The product the spec block reads from. */
   product: AdminProduct;
   prices: ProductSheetPrice[];
   priced: number;
   total: number;
 };
 
+export type ProductSheet = {
+  type: string;
+  boxes: ProductSpecBox[];
+  priced: number;
+  total: number;
+};
+
 /**
  * What a price belongs to: a T-shirt, a hoodie, a phone cover — not one catalogue row. Apparel is
- * priced by its category, so Classic and Oversized T-shirts share the T-shirt sheet; everything else is
- * priced by its own name, because a phone cover and a tote bag are not the same thing to make.
+ * priced by its category, so Classic and Oversized T-shirts live on the T-shirt card; everything else
+ * by its own name, because a phone cover and a tote bag are not the same thing to make.
  */
 export function productPriceType(product: AdminProduct): string {
   return APPAREL_CATEGORIES.includes(product.category) ? product.category : product.name.trim();
 }
 
-/** The labelled spec block the owner sees above the sizes — same order as the product sheet. */
-export function productSpec(product: AdminProduct): { label: string; value: string }[] {
+/** The spec a price belongs to: fabric, weight, print method, knit, cuttings and colours. */
+export function productSpecKey(product: AdminProduct): string {
   return [
-    { label: "Product", value: product.name },
+    product.printMethod ?? "",
+    product.fabric,
+    product.knitStructure ?? "",
+    product.cuttings ?? "",
+    product.gsm ? String(product.gsm) : "",
+    (product.colors ?? []).join(","),
+  ].map((part) => part.trim().toLowerCase()).join("|");
+}
+
+/** The labelled spec block the owner sees above the sizes — same order as the product sheet. */
+export function productSpec(product: AdminProduct, products?: readonly AdminProduct[]): { label: string; value: string }[] {
+  return [
+    { label: "Product", value: (products?.length ? products : [product]).map((entry) => entry.name).join(", ") },
     { label: "Type", value: product.category },
     { label: "Print Method", value: product.printMethod?.trim() || "—" },
     { label: "Fabric Type", value: product.fabric.trim() || "—" },
@@ -55,19 +77,24 @@ export function productPriceRows(data: Pick<AdminDemoData, "productPrices">, pro
   });
 }
 
-/** One sheet per product type, in catalogue order, priced from the first product of that type. */
-export function productSheets(data: Pick<AdminDemoData, "products" | "productPrices">): ProductSheet[] {
-  const sheets: ProductSheet[] = [];
-  for (const product of data.products) {
-    const type = productPriceType(product);
-    const existing = sheets.find((sheet) => sheet.type === type);
+/** One box per spec, in catalogue order; products with an identical spec share a box. */
+export function specBoxes(
+  data: Pick<AdminDemoData, "products" | "productPrices">,
+  type: string,
+): ProductSpecBox[] {
+  const boxes: ProductSpecBox[] = [];
+  for (const product of data.products.filter((entry) => productPriceType(entry) === type)) {
+    const specKey = productSpecKey(product);
+    const existing = boxes.find((box) => box.specKey === specKey);
     if (existing) {
       existing.products.push(product);
       continue;
     }
     const prices = productPriceRows(data, product);
-    sheets.push({
+    boxes.push({
+      key: `${type}::${specKey}`,
       type,
+      specKey,
       products: [product],
       product,
       prices,
@@ -75,20 +102,99 @@ export function productSheets(data: Pick<AdminDemoData, "products" | "productPri
       total: prices.length,
     });
   }
-  return sheets;
+  return boxes;
 }
 
-/** The size prices a type sells at — what a product of that type is listed from. */
-export function typePrices(
-  data: Pick<AdminDemoData, "products" | "productPrices">,
-  type: string,
-): ProductSheetPrice[] {
-  return productSheets(data).find((sheet) => sheet.type === type)?.prices ?? [];
+/** One card per product type, each holding a box per spec the shop makes. */
+export function productSheets(data: Pick<AdminDemoData, "products" | "productPrices">): ProductSheet[] {
+  const types: string[] = [];
+  for (const product of data.products) {
+    const type = productPriceType(product);
+    if (!types.includes(type)) types.push(type);
+  }
+  return types.map((type) => {
+    const boxes = specBoxes(data, type);
+    return {
+      type,
+      boxes,
+      priced: boxes.reduce((total, box) => total + box.priced, 0),
+      total: boxes.reduce((total, box) => total + box.total, 0),
+    };
+  });
+}
+
+/** The box a product is sold from: the spec it is made to. */
+export function productBox(data: Pick<AdminDemoData, "products" | "productPrices">, product: AdminProduct): ProductSpecBox | null {
+  return specBoxes(data, productPriceType(product)).find((box) => box.specKey === productSpecKey(product)) ?? null;
+}
+
+/** The size prices of a box — what its products are listed from. */
+export function boxPrices(data: Pick<AdminDemoData, "products" | "productPrices">, boxKey: string): ProductSheetPrice[] {
+  for (const sheet of productSheets(data)) {
+    const box = sheet.boxes.find((entry) => entry.key === boxKey);
+    if (box) return box.prices;
+  }
+  return [];
 }
 
 /** The type a new product will read its prices from, before it exists in the catalogue. */
 export function draftPriceType(draft: Pick<AdminProductDraft, "category" | "name">): string {
   return APPAREL_CATEGORIES.includes(draft.category) ? draft.category : draft.name.trim();
+}
+
+/** What a draft says about its spec; the spec fields are optional until the form fills them. */
+export type DraftSpec = Pick<AdminProductDraft, "category" | "name" | "fabric" | "gsm">
+  & Partial<Pick<AdminProduct, "printMethod" | "knitStructure" | "cuttings" | "colors">>;
+
+/** The spec a draft will be made to, so posting can read the matching box. */
+export function draftSpecKey(draft: DraftSpec): string {
+  return [
+    draft.printMethod ?? "",
+    draft.fabric ?? "",
+    draft.knitStructure ?? "",
+    draft.cuttings ?? "",
+    draft.gsm ?? "",
+    (draft.colors ?? []).join(","),
+  ].map((part) => part.trim().toLowerCase()).join("|");
+}
+
+export function priceSheetSummary(sheets: readonly ProductSheet[]) {
+  return sheets.reduce(
+    (total, sheet) => ({ priced: total.priced + sheet.priced, total: total.total + sheet.total }),
+    { priced: 0, total: 0 },
+  );
+}
+
+/**
+ * The box a draft reads: its own spec when the Price Table prices it, otherwise the first priced box of
+ * its type (a new Cotton tee starts on the T-shirt card), otherwise the first priced box of its
+ * category. Posting therefore never asks for a price — it reads a box the owner already filled.
+ */
+export function templatePrices(
+  data: Pick<AdminDemoData, "products" | "productPrices">,
+  draft: DraftSpec,
+): ProductSheetPrice[] {
+  const type = draftPriceType(draft);
+  const own = specBoxes(data, type);
+  const exact = own.find((box) => box.specKey === draftSpecKey(draft));
+  if (exact && exact.priced) return exact.prices;
+
+  const box = own.find((entry) => entry.priced)
+    ?? productSheets(data).find((sheet) => sheet.boxes.some((entry) => entry.priced && entry.product.category === draft.category))
+      ?.boxes.find((entry) => entry.priced && entry.product.category === draft.category);
+  if (box) return box.prices;
+  return exact?.prices ?? [];
+}
+
+/** A saved draft takes its box's lowest price as its catalogue price; nothing is typed. */
+export function draftWithTablePrice(
+  draft: AdminProductDraft,
+  data: Pick<AdminDemoData, "products" | "productPrices">,
+): AdminProductDraft {
+  const prices = templatePrices(data, draft)
+    .map((row) => row.priceKs)
+    .filter((price): price is number => price !== null);
+  return prices.length ? { ...draft, priceKs: String(Math.min(...prices)) } : draft;
 }
 
 /** Lowest size price — what the product card shows until a size is chosen. */
@@ -102,40 +208,6 @@ export function lowestProductPrice(data: Pick<AdminDemoData, "products" | "produ
 /** True when every stocked size has a price, so the product can be sold. */
 export function productFullyPriced(data: Pick<AdminDemoData, "products" | "productPrices">, product: AdminProduct): boolean {
   return productPriceRows(data, product).every((row) => row.priceKs !== null);
-}
-
-export function priceSheetSummary(sheets: readonly ProductSheet[]) {
-  return sheets.reduce(
-    (total, sheet) => ({ priced: total.priced + sheet.priced, total: total.total + sheet.total }),
-    { priced: 0, total: 0 },
-  );
-}
-
-/**
- * The sheet a draft reads: its own type when the Price Table prices it, otherwise the first priced
- * sheet of the same category (a new accessory starts from the phone cover's prices). Posting therefore
- * never asks for a price — it reads the sheet the owner already filled.
- */
-export function templatePrices(
-  data: Pick<AdminDemoData, "products" | "productPrices">,
-  draft: Pick<AdminProductDraft, "category" | "name">,
-): ProductSheetPrice[] {
-  const sheets = productSheets(data);
-  const own = sheets.find((sheet) => sheet.type === draftPriceType(draft));
-  if (own && own.priced) return own.prices;
-  const inCategory = sheets.find((sheet) => sheet.product.category === draft.category && sheet.priced);
-  return inCategory?.prices ?? own?.prices ?? [];
-}
-
-/** A saved draft takes the sheet's lowest price as its catalogue price; nothing is typed. */
-export function draftWithTablePrice(
-  draft: AdminProductDraft,
-  data: Pick<AdminDemoData, "products" | "productPrices">,
-): AdminProductDraft {
-  const prices = templatePrices(data, draft)
-    .map((row) => row.priceKs)
-    .filter((price): price is number => price !== null);
-  return prices.length ? { ...draft, priceKs: String(Math.min(...prices)) } : draft;
 }
 
 /**
@@ -172,12 +244,13 @@ export function scopePriceProductId(data: Pick<AdminDemoData, "products" | "prod
 }
 
 /**
- * The sibling products a sheet save must reach: a price belongs to the type, so writing it on one
- * T-shirt writes it on every T-shirt. Returns the product and its siblings.
+ * The products a box save must reach: a price belongs to the spec, so writing it on one Combed Cotton
+ * tee writes it on every product made to that spec — and on nothing else.
  */
-export function typeMembers(data: Pick<AdminDemoData, "products">, product: AdminProduct): AdminProduct[] {
+export function boxMembers(data: Pick<AdminDemoData, "products">, product: AdminProduct): AdminProduct[] {
   const type = productPriceType(product);
-  return data.products.filter((entry) => productPriceType(entry) === type);
+  const specKey = productSpecKey(product);
+  return data.products.filter((entry) => productPriceType(entry) === type && productSpecKey(entry) === specKey);
 }
 
 /** Writes the sheet's staged edits through the pricing store, so history and versions stay in step. */

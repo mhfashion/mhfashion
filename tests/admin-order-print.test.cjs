@@ -224,7 +224,7 @@ test("orders saved before the print sheet existed are backfilled on read", () =>
   const filled = admin.backfillOrderPrintSpec(legacy, data.products);
   const item = filled.items[0];
   assert.equal(item.material, "Combed Cotton");
-  assert.equal(item.gsm, 160);
+  assert.equal(item.gsm, 180);
   assert.equal(item.fit, "Oversized");
   assert.equal(item.sleeve, "Short Sleeve");
   assert.equal(item.printMethod, "DTF");
