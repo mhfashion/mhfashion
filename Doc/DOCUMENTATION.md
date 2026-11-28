@@ -16,6 +16,28 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
+### 2026-11-21 — Pricing Management: a manual price for every variant
+
+- `/admin/pricing` is now Pricing Management: five tabs (Overview, Product Pricing, Price Table, Price
+  History, Attribute Management), a product search, category and status filters, and an Add product
+  pricing button. The old post-level grid moved to `/admin/pricing/combinations`.
+- `lib/pricing-variants.ts` defines a variant as one specification combination **including size**, with
+  its own price. Attribute values live in `productPrices[].options`, so switching an attribute on for
+  a product adds variants and a column without a schema change (`productPricingAttributes` records
+  which attributes each product prices; Size is always on).
+- Table View: dynamic columns, inline price, Incomplete/Active/Disabled status, duplicate/enable/
+  delete, bulk select + enable/disable, CSV export, 25-row pagination. Matrix View: choose one
+  specification, then its sizes in one column with copy-to-all, add/remove size, save all.
+- Manual pricing only — nothing is derived from attributes. Guards: whole prices above zero,
+  Incomplete when empty, disabled variants not sold, stale-version saves reported as conflicts,
+  duplicate combinations refused, delete confirmed, every change written to `priceHistory`.
+- Attribute Management edits the chain (rename, add/delete option, enable/disable, reorder) and can
+  add a new attribute key; a change that would orphan priced rows is refused with its reason.
+- `SQL/0012_pricing_management.sql` records the dynamic schema (attributes, attribute_values,
+  product_attributes, product_variants, variant_options, variant_prices, price_history) and the
+  transactional `set_variant_price` with optimistic versioning.
+- Tests: `tests/pricing-management.test.cjs` (9). Verified in Chromium at 1440x900 and 390x844.
+
 ### 2026-11-21 — Price Table: cards per product type, a box per spec
 
 - Final shape after two rejected layouts (size-by-category matrix; a price per product): a **T-shirt

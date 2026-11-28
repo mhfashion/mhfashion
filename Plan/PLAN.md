@@ -374,6 +374,46 @@ Verified end to end in headless Chromium at 1440x900 and 390x844 — save on the
 shows the account card, Change → edit → place order, and the account copy follows the edit.
 Tests: `tests/checkout-account-address.test.cjs`.
 
+#### 4.5.4 Pricing Management — manual price per variant  *(owner spec 2026-11-21)*
+
+Pricing Management (`/admin/pricing`, `components/admin/AdminPricingManagement.tsx` over
+`lib/pricing-variants.ts`) manages every product from one screen. Its navigation is the spec's five
+tabs: **Overview, Product Pricing, Price Table, Price History, Attribute Management**; the toolbar
+carries product search, a category filter, a status filter and **Add product pricing**.
+
+**A variant is one specification combination, size included, with its own price.** Nothing is derived:
+no base price plus surcharges, no percentage by attribute. Because the owner can add attributes and
+options, the attribute values live in each row's `options` map rather than in columns, so a new
+attribute becomes new rows and a new column with no schema change (`SQL/0012_pricing_management.sql`
+holds the matching `attributes` / `attribute_values` / `product_attributes` / `product_variants` /
+`variant_options` / `variant_prices` / `price_history` tables and the transactional
+`set_variant_price` function with its version check).
+
+**Product Pricing.** Choosing a product shows which attributes it prices (`data-pricing-attribute`
+checkboxes; Size is always on, the rest start off so the seeded size prices keep working). A
+segmented control switches **Table View** — a compact, sticky-header row per variant with dynamic
+columns, inline price, Incomplete/Active/Disabled status, duplicate/enable/delete per row, bulk
+select + enable/disable, CSV export and 25-row pagination — and **Matrix View** — pick one
+specification, then its sizes in one column with copy-to-all-sizes, add/remove size, save all and
+clear. Both views write the same `productPrices` rows, so the table, the matrix, the Price Table and
+the storefront never disagree.
+
+**Guards.** A price must be a whole number above zero; an empty one is Incomplete, never sold; a
+disabled variant keeps its price but is not offered; a save carrying a stale version is reported as a
+conflict instead of overwritten; a change that would duplicate a combination is refused; deleting
+asks for confirmation and keeps the history. Every applied change appends a `priceHistory` row
+(product, specification, previous price, new price, who, when), read back in the Price History tab.
+
+**Attribute Management.** Rename, add/edit/delete options, enable/disable and reorder attributes;
+a change that would orphan priced rows is refused with the reason. A brand-new attribute key can be
+added and is then switched on per product. The post-level combination grid stays at
+`/admin/pricing/combinations`.
+
+**Verified 2026-11-21** in Chromium at 1440x900 and 390x844: five tabs render; the Classic T-shirt
+lists 5 size variants; switching **Color** on adds the Colour column and 25 Incomplete rows; pricing
+White/S at 9,900 saves as Active, writes one history row, and the matrix shows S Active with M/L
+Incomplete; `tests/pricing-management.test.cjs` (9 tests) is green.
+
 ### 4.6 Product detail presentation
 
 **Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and

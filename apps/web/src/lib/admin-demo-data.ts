@@ -627,7 +627,11 @@ export type AdminDemoData = {
   tshirtPosts: AdminTshirtPost[];
   productPrices: AdminProductPriceRow[];
   priceHistory: AdminPriceHistoryEntry[];
-  /** One price per category and size: the table every post reads its price from (owner request). */
+  /**
+   * Which attribute keys each product prices (`{ "product-classic-tee": ["size", "material", "color"] }`).
+   * Only the size is on by default, so the variant grid starts from the rows the shop already has.
+   */
+  productPricingAttributes?: Record<string, string[]>;
   promotions: AdminPromotion[];
   ads: AdminAd[];
   /** How long each banner stays up when a place has several live ones. */
@@ -1252,6 +1256,8 @@ export type AdminTshirtPostPriceRow = {
 };
 
 /** Product scope prices one row per stocked size; the catalogue price seeds it. */
+export type AdminVariantStatus = "Active" | "Disabled";
+
 export type AdminProductPriceRow = {
   productId: string;
   size: string;
@@ -1259,6 +1265,10 @@ export type AdminProductPriceRow = {
   version: number;
   updatedBy: string;
   updatedAt: string;
+  /** The full spec the price belongs to (`{ size, material, color, ... }`); a size-only row has just `size`. */
+  options?: Record<string, string>;
+  /** A disabled variant is not offered to the customer (Plan §4.6.6). */
+  status?: AdminVariantStatus;
 };
 
 export type AdminPriceHistoryEntry = {
@@ -2064,6 +2074,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     size,
     // A heavier fabric costs more, so two specs of one type start on different prices.
     priceKs: seedPriceForSpec(product, size) ?? product.priceKs,
+    options: { size },
     version: 1,
     updatedBy: "Seed",
     updatedAt: new Date(now - 30 * DAY_MS).toISOString(),
@@ -2093,6 +2104,8 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     tshirtPosts: createSeedTshirtPosts(now).map(normalizeTshirtPostOptions),
     productPrices,
     priceHistory: [],
+    // Every product starts priced by size only; the owner adds specs per product in Pricing Management.
+    productPricingAttributes: Object.fromEntries(products.map((product) => [product.id, ["size"]])),
     promotions,
     ads: createSeedAds(),
     adsRotationSeconds: DEFAULT_ADS_ROTATION_SECONDS,
@@ -2157,6 +2170,7 @@ export function readAdminDemoData(): AdminDemoData {
             productPrices.push({
               productId: product.id,
               size,
+              options: { size },
               priceKs: seedPriceForSpec(product, size) ?? product.priceKs,
               version: 1,
               updatedBy: "Seed",
@@ -2192,6 +2206,8 @@ export function readAdminDemoData(): AdminDemoData {
             ? parsed.jerseyStyles
             : createSeedJerseyStyles(Date.now()),
           productPrices,
+          productPricingAttributes: parsed.productPricingAttributes
+            ?? Object.fromEntries(products.map((product) => [product.id, ["size"]])),
           products: products.map((product) => {
             const prices = productPrices
               .filter((row) => row.productId === product.id)

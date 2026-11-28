@@ -214,6 +214,28 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   saved record (read after mount, like the clock) with the demo pair as fallback.
 - Tests: `tests/checkout-account-address.test.cjs`.
 
+## Pricing Management = one manual price per variant (`apps/web/src/lib/pricing-variants.ts`)
+- `/admin/pricing` renders `AdminPricingManagement.tsx` with the owner's five tabs (Overview, Product
+  Pricing, Price Table, Price History, Attribute Management). The older post/product combination grid
+  still lives in `AdminPricing.tsx` at `/admin/pricing/combinations`; its tests are source checks, so
+  leave it in place.
+- A variant is one full specification combination **including the size**, and owns one price. Prices
+  are manual only — never derive one from an attribute. `variantRows` builds every valid combination
+  from `productPricingAttributes(data, product)` (Size always on, its options restricted to the
+  product's own `sizes`), marks unpriced rows Incomplete, and reads/writes the same
+  `productPrices` rows the Price Table and storefront use.
+- Attribute values live in `productPrices[].options`; adding an attribute is
+  `setProductAttributes`, so a new column/row needs no schema change. `SQL/0012_pricing_management.sql`
+  documents the matching tables plus the transactional `set_variant_price` version check.
+- Saving goes through `saveVariantChanges`: stale versions come back as `conflicts` (never overwritten),
+  invalid/duplicate combinations as `duplicates`, and each applied change appends to `priceHistory`
+  (product, options, old, new, actor, at) — the Price History tab reads `pricingHistory`.
+- UI markers used by the tests/CDP: `data-pricing-tab`, `data-pricing-variant-row`,
+  `data-pricing-price`, `data-pricing-matrix`, `data-pricing-matrix-row`, `data-pricing-history-row`,
+  `data-pricing-attribute`, `data-pricing-attribute-row`, `data-pricing-message`.
+- Price inputs need `bg-white`: the app's global input style paints them dark, which reads as a
+  disabled cell. `AdminSelect` is `w-full`, so a fixed width needs `!w-[…]`.
+
 ## Price Table = a card per product type, a box per spec (`apps/web/src/lib/price-table.ts`)
 - The owner rejected a size-by-category **matrix** and a price **per product**. The shipped shape is a
   **T-shirt card** holding one **box per spec** (Combed Cotton 180 GSM vs Cotton 220 GSM), each box with
