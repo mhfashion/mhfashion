@@ -497,6 +497,39 @@ tabs and the merged sheet with all seven product types (T-Shirt, Hoodie, Polo, J
 Phone Cover); `/admin/price-table` redirected to `/admin/pricing`. Tests:
 `tests/pricing-connections.test.cjs` (8) and the full suite — 969 tests, 0 failures.
 
+#### 4.5.7 Attributes and the Price Table for every category  *(owner request 2026-11-21, part 4)*
+
+The owner asked that **Attribute Management and the Price Table also cover the other categories** —
+phones, kids' T-shirts, football kits, bags and cups — not only the T-shirt.
+
+**Six specification packs, one chain.** `CATEGORY_POST_ATTRIBUTES` in `lib/admin-demo-data.ts` now
+carries the whole range: Phone Brand / Phone Model / Case Type / MagSafe Support, Cup Type / Capacity
+/ **Lid Type**, Bag Size / **Bag Type** / **Bag Material**, **Kit Type / Jersey Print / Sleeve Patch**
+(football), **Kids Age Band / Kids Pack**, and **Cap Style**. Attribute Management groups the chain
+under a heading per pack (`data-attribute-pack`, from `attributePackLabel`), so the owner sees which
+specs belong to which product instead of one flat list of 25 attributes.
+
+**A product starts on its category's preset.** `SPEC_PRESETS` names the specification each kind of
+product is priced by — T-shirt (size only), Kids T-shirt (pack + age band + size), Football kit (kit
+type + shirt print + size), Phone cover (brand + case type + size), Cap (style + size), Bag (type +
+size + size band) and Cup (type + capacity + size). `specPresetForProduct` resolves it from the
+category, telling the accessories apart by name ("Phone Cover" vs "Tote Bag"). The seed applies the
+preset to every product, and the Pricing screen shows one **preset** button
+(`data-pricing-preset`) that ticks the whole set in one click.
+
+**New categories and their own sizes.** `AdminProductCategory` gained **Kids T-Shirt** and **Cup**;
+`KIDS_SIZES` (1-2Y … 13-14Y) is what a kids' tee stocks, and the product picker offers both. The seed
+adds *Kids T-shirt* and *Ceramic Cup*, and seeds one price row per preset combination in **both**
+currencies — so a cup opens at Cup Type × Capacity and no variant is red for a missing dollar figure.
+
+**Verified 2026-11-21** in Chromium 1440x900 against a production build, from a cleared demo store:
+the Price Table listed nine types (… Kids T-shirt, Ceramic Cup, Phone Cover); picking *Kids T-shirt*
+showed preset `kids` with Kids Pack and Kids Age Band ticked, *Football Jersey* `football` with Kit
+Type and Jersey Print ticked, *Phone Cover* `phone`, *Ceramic Cup* `cup`, *Tote Bag* `bag`,
+*Cap* `cap`; Attribute Management showed the headings Phone cover, Cup, Bag, Football kit, Kids
+T-shirt, Cap over 25 attributes. Tests: `tests/pricing-connections.test.cjs` (11); full suite 972
+tests, 0 failures.
+
 ### 4.6 Product detail presentation
 
 **Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and

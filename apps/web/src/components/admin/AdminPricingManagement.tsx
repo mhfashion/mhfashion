@@ -7,7 +7,7 @@
 //
 // Views: All prices · Table · Matrix · Missing prices · Out of stock · Disabled variants · Price history.
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown, ArrowUp, Check, Columns3, CopyPlus, Download, Pencil, Plus, RotateCcw, Save,
@@ -18,7 +18,7 @@ import AdminPriceTable from "@/components/admin/AdminPriceTable";
 import { AdminButton, AdminCard, AdminCardHeader, AdminEmpty, AdminInput, AdminSelect, AdminStat } from "@/components/admin/AdminUi";
 import { getDemoAdminSession } from "@/lib/admin-demo-auth";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
-import { formatKs, type AdminAvailability, type AdminProductCategory } from "@/lib/admin-demo-data";
+import { SPEC_PRESETS, attributePackLabel, formatKs, specPresetForProduct, type AdminAvailability, type AdminProductCategory } from "@/lib/admin-demo-data";
 import { applyChainPatch, attributeChain, moveAttribute } from "@/lib/admin-attributes";
 import { formatPriceInput, parsePriceInput } from "@/lib/pricing-combinations";
 import {
@@ -684,6 +684,19 @@ export default function AdminPricingManagement() {
 
                 <div className="flex flex-wrap items-center gap-1.5 border-b border-[#f0f2f4] px-4 py-2 sm:px-5">
                   <span className="text-[9px] font-bold uppercase tracking-wide text-[#a4acb6]">Specifications</span>
+                  <button
+                    type="button"
+                    data-pricing-preset={specPresetForProduct(product)}
+                    onClick={() => {
+                      const preset = SPEC_PRESETS[specPresetForProduct(product)];
+                      updateAdminData((current) => setProductAttributes(current, product.id, preset.keys));
+                      setMessage(`Specifications set to the ${preset.label} preset.`);
+                    }}
+                    className="rounded-full border border-dashed border-[#c9d1d9] px-2 py-1 text-[9px] font-bold text-[#6c7683] hover:border-[#4cae22] hover:text-[#3f8c22]"
+                    title="Tick the specifications this kind of product is priced by"
+                  >
+                    {SPEC_PRESETS[specPresetForProduct(product)].label} preset
+                  </button>
                   {pricingAttributes(data).map((attribute) => {
                     const on = productAttributeKeys(data, product).includes(attribute.key);
                     return (
@@ -1016,7 +1029,18 @@ export default function AdminPricingManagement() {
               <AdminCardHeader title="Attribute Management" description="Add options, rename, switch off or reorder. A change reaches every product's table at once." />
               <ul className="divide-y divide-[#f0f2f4]">
                 {attributeChain(data).map((attribute, index) => (
-                  <li key={attribute.key} data-pricing-attribute-row={attribute.key} className="px-4 py-2.5 sm:px-5">
+                  <Fragment key={attribute.key}>
+                  {(() => {
+                    const pack = attributePackLabel(attribute.key);
+                    const previous = index === 0 ? null : attributePackLabel(attributeChain(data)[index - 1].key);
+                    if (!pack || pack === previous) return null;
+                    return (
+                      <li data-attribute-pack={pack} className="bg-[#f7f9fa] px-4 py-1.5 text-[9px] font-black uppercase tracking-wide text-[#6c7683] sm:px-5">
+                        {pack}
+                      </li>
+                    );
+                  })()}
+                  <li data-pricing-attribute-row={attribute.key} className="px-4 py-2.5 sm:px-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <input
                         aria-label={`Rename ${attribute.label}`}
@@ -1053,6 +1077,7 @@ export default function AdminPricingManagement() {
                       <button type="button" onClick={() => addOption(attribute.key)} className="text-[9px] font-bold text-[#3f8c22]">Add</button>
                     </div>
                   </li>
+                  </Fragment>
                 ))}
               </ul>
             </AdminCard>

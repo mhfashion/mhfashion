@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, CircleAlert, Layers3, Plus, RotateCcw, Save, Tag, Trash2 } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
 import { AdminBadge, AdminButton, AdminCard, AdminDrawer, AdminEmpty, AdminField, AdminInput, AdminStat } from "@/components/admin/AdminUi";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
-import { type AdminAttributeDefinition, type AdminTshirtPostAttributeKey } from "@/lib/admin-demo-data";
+import { attributePackLabel, type AdminAttributeDefinition, type AdminTshirtPostAttributeKey } from "@/lib/admin-demo-data";
 import {
   applyChainPatch, attributeChain, cascadeRules, chainIssues, chainUsage, moveAttribute, resetAttributeChain,
   resetCascadeRules, setCascadeAllowed,
@@ -156,7 +156,18 @@ export default function AdminAttributes() {
             </thead>
             <tbody className="divide-y divide-[#f0f2f4]">
               {chain.map((attribute, index) => (
-                <tr key={attribute.key} className="hover:bg-[#fafbfc]">
+                <Fragment key={attribute.key}>
+                {(() => {
+                  const pack = attributePackLabel(attribute.key);
+                  const previous = index === 0 ? null : attributePackLabel(chain[index - 1].key);
+                  if (!pack || pack === previous) return null;
+                  return (
+                    <tr data-attribute-pack={pack}>
+                      <td colSpan={5} className="bg-[#f7f9fa] px-4 py-1.5 text-[9px] font-black uppercase tracking-wide text-[#6c7683]">{pack}</td>
+                    </tr>
+                  );
+                })()}
+                <tr className="hover:bg-[#fafbfc]">
                   <td className="px-4 py-2 tabular-nums text-[#98a1ac]">{index + 1}</td>
                   <td className="px-3 py-2">
                     <span className="block font-bold text-[#303844]" data-attribute-label={attribute.key}>{attribute.label}</span>
@@ -181,6 +192,7 @@ export default function AdminAttributes() {
                     </div>
                   </td>
                 </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

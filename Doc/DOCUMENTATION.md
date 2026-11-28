@@ -2721,3 +2721,36 @@ Verified in Chromium at 1440x900 against a production build: seven products acro
 the post editor, a phone cover linked and summarised, five Pricing tabs, the merged sheet listing all
 seven product types, and the old route redirecting. Tests: `tests/pricing-connections.test.cjs` (8);
 full suite 969 tests, 0 failures.
+
+## Attributes and the Price Table for every category (owner request 2026-11-21, part 4)
+
+Attribute Management and the Price Table now cover the whole range, not only the T-shirt.
+
+| Product kind | Preset | Specification the product prices | Sizes |
+| --- | --- | --- | --- |
+| T-shirt, hoodie, polo | `tshirt` | size (more specs ticked per product) | S–2XL |
+| Kids T-shirt | `kids` | Kids Pack × Kids Age Band × size | 1-2Y … 13-14Y |
+| Football kit | `football` | Kit Type × Jersey Print × size | S–2XL |
+| Phone cover | `phone` | Phone Brand × Case Type × size | One size |
+| Cap | `cap` | Cap Style × size | One size |
+| Bag (tote, sleeve) | `bag` | Bag Type × Bag Size × size | One size |
+| Cup | `cup` | Cup Type × Capacity × size | One size |
+
+- `SPEC_PRESETS` and `specPresetForProduct(product)` in `apps/web/src/lib/admin-demo-data.ts` hold the
+  table. `specPresetKeysForProduct` returns the keys; the Pricing screen renders one preset button
+  (`data-pricing-preset`) that ticks them all.
+- `attributePackLabel(key)` names the pack each attribute belongs to. Attribute Management (both the
+  `/admin/attributes` screen and the *Attribute Management* tab of `/admin/pricing`) renders a heading
+  row (`data-attribute-pack`) per pack, so the chain reads as groups instead of 25 loose attributes.
+- `AdminProductCategory` gained **Kids T-Shirt** and **Cup**, with `KIDS_SIZES` for the kids' run; the
+  product screen offers both categories.
+- The seed now stores one price row per preset combination in MMK **and** USD, so a cup, a kit and a
+  kids' tee open fully priced. `price-table.ts` reads the size-only row for the type sheet, so the
+  per-type sheet keeps showing one figure per size even when a product stores many specs.
+- Extra attributes: Lid Type, Bag Type, Bag Material, Kit Type, Jersey Print, Sleeve Patch, Kids Age
+  Band, Kids Pack, Cap Style — beside the existing Phone Brand / Model / Case Type / MagSafe, Cup
+  Type / Capacity and Bag Size.
+- Tests: `tests/pricing-connections.test.cjs` (11 tests, 3 of them new for category coverage).
+
+Verified in Chromium 1440x900 against a production build: nine product types on the Price Table,
+the right preset per product, and six pack headings over 25 attributes.

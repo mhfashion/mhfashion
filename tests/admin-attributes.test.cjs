@@ -32,7 +32,11 @@ test("the seeded chain is the §4.1 vocabulary plus the other product types", ()
   assert.deepEqual(chain.map((attribute) => attribute.label), [
     "Size", "Fabric Type", "Knit Structure", "Fit Type", "Color", "Sleeve", "GSM", "MH Cuttings", "Print Method",
     // A phone cover, a cup and a tote are priced from the same chain, not a second model.
-    "Phone Brand", "Phone Model", "Case Type", "MagSafe Support", "Cup Type", "Capacity", "Bag Size",
+    "Phone Brand", "Phone Model", "Case Type", "MagSafe Support",
+    "Cup Type", "Capacity", "Lid Type",
+    "Bag Size", "Bag Type", "Bag Material",
+    // A football kit, a kids' tee and a cap each carry the specs they are priced by.
+    "Kit Type", "Jersey Print", "Sleeve Patch", "Kids Age Band", "Kids Pack", "Cap Style",
   ]);
   // Every attribute is available; which ones a product prices is chosen per product.
   assert.ok(chain.every((attribute) => attribute.enabled));

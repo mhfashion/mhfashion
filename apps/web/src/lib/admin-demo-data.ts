@@ -57,7 +57,15 @@ export const ADMIN_ORDER_STAGES = [
 
 export type AdminOrderStage = (typeof ADMIN_ORDER_STAGES)[number] | "Cancelled" | "Refunded";
 export type AdminPaymentMethod = "KBZPay" | "WavePay" | "AYAPay" | "Visa" | "Cash on Delivery";
-export type AdminProductCategory = "T-Shirt" | "Hoodie" | "Polo" | "Jersey" | "Cap" | "Accessory";
+export type AdminProductCategory =
+  | "T-Shirt"
+  | "Kids T-Shirt"
+  | "Hoodie"
+  | "Polo"
+  | "Jersey"
+  | "Cap"
+  | "Cup"
+  | "Accessory";
 export type AdminProductStatus = "Active" | "Draft" | "Archived";
 export type AdminDesignStatus = "Published" | "Draft" | "Hidden";
 export type AdminPromotionKind = "percent" | "amount";
@@ -671,6 +679,7 @@ export const ADMIN_MODULES: { id: AdminModuleId; label: string }[] = [
 
 export const APPAREL_CATEGORIES: AdminProductCategory[] = ["T-Shirt", "Hoodie", "Polo", "Jersey"];
 export const APPAREL_SIZES = ["S", "M", "L", "XL", "2XL"];
+export const KIDS_SIZES = ["1-2Y", "3-4Y", "5-6Y", "7-8Y", "9-10Y", "11-12Y", "13-14Y"];
 export const ONE_SIZE = ["One size"];
 
 /**
@@ -680,6 +689,8 @@ export const ONE_SIZE = ["One size"];
  */
 const SEED_CATEGORY_PRICES: Record<AdminProductCategory, { sizes: string[]; prices: number[] }> = {
   "T-Shirt": { sizes: ["S", "M", "L", "XL", "2XL"], prices: [12_000, 13_000, 14_000, 15_000, 16_000] },
+  "Kids T-Shirt": { sizes: [...KIDS_SIZES], prices: [8_000, 9_000, 10_000, 11_000, 12_000, 13_000, 14_000] },
+  Cup: { sizes: ["One size"], prices: [9_000] },
   Hoodie: { sizes: ["S", "M", "L", "XL", "2XL"], prices: [26_000, 27_000, 28_000, 29_000, 30_000] },
   Polo: { sizes: ["S", "M", "L", "XL", "2XL"], prices: [18_000, 19_000, 20_000, 21_000, 22_000] },
   Jersey: { sizes: ["S", "M", "L", "XL", "2XL"], prices: [16_000, 17_000, 18_000, 19_000, 20_000] },
@@ -689,6 +700,7 @@ const SEED_CATEGORY_PRICES: Record<AdminProductCategory, { sizes: string[]; pric
 
 /** Sizes a category sells: the apparel run, or the single row caps and accessories use. */
 export function sizesForCategory(category: AdminProductCategory): string[] {
+  if (category === "Kids T-Shirt") return [...KIDS_SIZES];
   return APPAREL_CATEGORIES.includes(category) ? [...APPAREL_SIZES] : [...ONE_SIZE];
 }
 
@@ -709,6 +721,8 @@ export function seedUsdForCategory(category: AdminProductCategory, size: string)
     Polo: { S: 8.6, M: 9, L: 9.4, XL: 9.9, "2XL": 10.6 },
     Jersey: { S: 16.5, M: 17, L: 17.6, XL: 18.2, "2XL": 19 },
     Cap: { "One size": 6.5 },
+    "Kids T-Shirt": { "1-2Y": 3, "3-4Y": 3.2, "5-6Y": 3.4, "7-8Y": 3.6, "9-10Y": 3.8, "11-12Y": 4, "13-14Y": 4.2 },
+    Cup: { "One size": 3.9 },
     Accessory: { "One size": 3.4 },
   };
   return table[category]?.[size] ?? null;
@@ -1237,7 +1251,16 @@ export type AdminTshirtPostAttributeKey =
   | "magSafe"
   | "cupType"
   | "capacity"
-  | "bagSize";
+  | "lidType"
+  | "bagSize"
+  | "bagType"
+  | "bagMaterial"
+  | "kitType"
+  | "jerseyPrint"
+  | "patch"
+  | "kidsSizeBand"
+  | "kidsSet"
+  | "capStyle";
 
 export type AdminTshirtPostAttribute = {
   key: AdminTshirtPostAttributeKey;
@@ -1273,8 +1296,66 @@ export const CATEGORY_POST_ATTRIBUTES: AdminTshirtPostAttribute[] = [
   { key: "magSafe", label: "MagSafe Support", options: ["Yes", "No"] },
   { key: "cupType", label: "Cup Type", options: ["Ceramic", "Glass", "Steel"] },
   { key: "capacity", label: "Capacity", options: ["330 ml", "450 ml"] },
+  { key: "lidType", label: "Lid Type", options: ["No lid", "Flip lid", "Straw lid"] },
   { key: "bagSize", label: "Bag Size", options: ["Small", "Medium", "Large"] },
+  { key: "bagType", label: "Bag Type", options: ["Tote", "Shoulder", "Backpack", "Laptop sleeve"] },
+  { key: "bagMaterial", label: "Bag Material", options: ["Canvas", "Nylon", "Leather-look"] },
+  // A football kit is priced by the kit it prints on and the shirt printing ordered with it.
+  { key: "kitType", label: "Kit Type", options: ["Home", "Away", "Third", "Goalkeeper"] },
+  { key: "jerseyPrint", label: "Jersey Print", options: ["No print", "Number only", "Name + Number"] },
+  { key: "patch", label: "Sleeve Patch", options: ["No patch", "League patch", "Cup patch"] },
+  // Kids' tees are sold by age band and by pack, not by adult size alone.
+  { key: "kidsSizeBand", label: "Kids Age Band", options: [...KIDS_SIZES] },
+  { key: "kidsSet", label: "Kids Pack", options: ["Single", "2-pack", "3-pack"] },
+  { key: "capStyle", label: "Cap Style", options: ["Six panel", "Five panel", "Bucket"] },
 ];
+
+/**
+ * The specification each kind of product is priced by. A product starts on the preset for its
+ * category, and the owner ticks or unticks any attribute per product in Pricing.
+ */
+export type AdminSpecPresetKey = "tshirt" | "kids" | "football" | "phone" | "cap" | "bag" | "cup";
+
+export const SPEC_PRESETS: Record<AdminSpecPresetKey, { label: string; keys: AdminTshirtPostAttributeKey[] }> = {
+  tshirt: { label: "T-shirt", keys: ["size"] },
+  kids: { label: "Kids T-shirt", keys: ["kidsSet", "kidsSizeBand", "size"] },
+  football: { label: "Football kit", keys: ["kitType", "jerseyPrint", "size"] },
+  phone: { label: "Phone cover", keys: ["phoneBrand", "caseType", "size"] },
+  cap: { label: "Cap", keys: ["capStyle", "size"] },
+  bag: { label: "Bag", keys: ["bagType", "bagSize", "size"] },
+  cup: { label: "Cup", keys: ["cupType", "capacity", "size"] },
+};
+
+/** Which preset a product starts on: its category, with the accessory range told apart by name. */
+export function specPresetForProduct(product: { name?: string; category?: AdminProductCategory | null }): AdminSpecPresetKey {
+  const name = (product.name ?? "").toLowerCase();
+  if (/phone|case/.test(name)) return "phone";
+  if (/cup|mug|bottle/.test(name)) return "cup";
+  if (/bag|tote|sleeve/.test(name)) return "bag";
+  switch (product.category) {
+    case "Kids T-Shirt": return "kids";
+    case "Jersey": return "football";
+    case "Cap": return "cap";
+    case "Cup": return "cup";
+    case "Accessory": return "bag";
+    default: return "tshirt";
+  }
+}
+
+export function specPresetKeysForProduct(product: { name?: string; category?: AdminProductCategory | null }): AdminTshirtPostAttributeKey[] {
+  return [...SPEC_PRESETS[specPresetForProduct(product)].keys];
+}
+
+/** The pack an attribute belongs to, for the Attribute Management headings. */
+export function attributePackLabel(key: AdminTshirtPostAttributeKey): string | null {
+  if (["phoneBrand", "phoneModel", "caseType", "magSafe"].includes(key)) return "Phone cover";
+  if (["cupType", "capacity", "lidType"].includes(key)) return "Cup";
+  if (["bagSize", "bagType", "bagMaterial"].includes(key)) return "Bag";
+  if (["kitType", "jerseyPrint", "patch"].includes(key)) return "Football kit";
+  if (["kidsSizeBand", "kidsSet"].includes(key)) return "Kids T-shirt";
+  if (key === "capStyle") return "Cap";
+  return null;
+}
 
 /** Built-in chain used for new demo data and as the reset target. */
 export function createSeedAttributeChain(): AdminAttributeDefinition[] {
@@ -1818,6 +1899,8 @@ const SEED_PRODUCTS: Omit<AdminProduct, "sizes">[] = [
   { id: "product-jersey", name: "Football Jersey", category: "Jersey", designName: "Team Spirit 09", tags: ["sport", "team kit", "breathable"], fabric: "Polyester Mesh", gsm: 160, printMethod: "Sublimation", knitStructure: "Mesh", cuttings: "V-Neck", colors: ["Black", "White"], priceKs: 38000, status: "Active" },
   { id: "product-cap", name: "Cap", category: "Cap", designName: "Golden Peacock", tags: ["headwear", "one size"], fabric: "Cotton Twill", gsm: null, printMethod: "Embroidery", knitStructure: "Twill", cuttings: "Six Panel", colors: ["Black", "Sand"], priceKs: 18000, status: "Active" },
   { id: "product-tote", name: "Tote Bag", category: "Accessory", designName: "Retro Waves", tags: ["bag", "canvas", "gift"], fabric: "Canvas", gsm: null, printMethod: "Screen Print", knitStructure: "Canvas Weave", cuttings: "Square", colors: ["Sand"], priceKs: 16000, status: "Draft" },
+  { id: "product-kids-tee", name: "Kids T-shirt", category: "Kids T-Shirt", designName: "Little Peacock", tags: ["kids", "tee", "school"], fabric: "Combed Cotton", gsm: 160, printMethod: "DTF", knitStructure: "Single Jersey", cuttings: "Crew Neck", colors: ["White", "Sand"], priceKs: 12000, status: "Active" },
+  { id: "product-cup", name: "Ceramic Cup", category: "Cup", designName: "Golden Peacock", tags: ["cup", "gift", "ceramic"], fabric: "Ceramic", gsm: null, printMethod: "UV Print", knitStructure: "—", cuttings: "Wrap", colors: ["White"], priceKs: 9000, status: "Active" },
   { id: "product-phone-cover", name: "Phone Cover", category: "Accessory", designName: "Minimal Bloom", tags: ["case", "gift", "custom print"], fabric: "TPU", gsm: null, printMethod: "UV Print", knitStructure: "—", cuttings: "Model Cut", colors: ["Black", "White"], priceKs: 15000, status: "Active" },
 ];
 
@@ -2011,8 +2094,15 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
   const random = seededRandom(20261121);
   const products: AdminProduct[] = SEED_PRODUCTS.map((product) => ({
     ...product,
-    sizes: APPAREL_CATEGORIES.includes(product.category) ? [...APPAREL_SIZES] : [...ONE_SIZE],
+    sizes: sizesForCategory(product.category),
   }));
+  const chain = createSeedAttributeChain();
+  // A product starts on the specification its category is priced by, so a phone cover, a cup and a
+  // football kit are usable the moment the demo opens instead of every spec being ticked by hand.
+  const pricingAttributes = Object.fromEntries(products.map((product) => [
+    product.id,
+    specPresetKeysForProduct(product).filter((key) => key === "size" || chain.some((attribute) => attribute.key === key)),
+  ]));
 
   const stock: Record<string, Record<string, number>> = {};
   for (const product of products) {
@@ -2145,18 +2235,31 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     },
   ];
 
-  const productPrices: AdminProductPriceRow[] = products.flatMap((product) => product.sizes.map((size) => ({
+  // One stored row per spec the product prices, so the sheet opens fully priced rather than red.
+  const seedSpecs = (product: AdminProduct): Record<string, string>[] => {
+    const keys = (pricingAttributes[product.id] ?? ["size"]).filter((key) => key !== "size");
+    let combos: Record<string, string>[] = [{}];
+    for (const key of keys) {
+      const options = key === "color" ? product.colors ?? [] : chain.find((attribute) => attribute.key === key)?.options ?? [];
+      if (!options.length) continue;
+      combos = combos.flatMap((combo) => options.map((option) => ({ ...combo, [key]: option })));
+    }
+    return combos;
+  };
+
+  const productPrices: AdminProductPriceRow[] = products.flatMap((product) => seedSpecs(product).flatMap((spec, specIndex) => product.sizes.map((size) => ({
     productId: product.id,
     size,
-    // A heavier fabric costs more, so two specs of one type start on different prices.
-    priceKs: seedPriceForSpec(product, size) ?? product.priceKs,
+    // A heavier fabric costs more, and each spec of a product starts a little above the last, so two
+    // rows of one product are never the same figure by accident.
+    priceKs: (seedPriceForSpec(product, size) ?? product.priceKs) + specIndex * 500,
     priceUsd: seedUsdForCategory(product.category, size),
     availability: "Available",
-    options: { size },
+    options: { ...spec, size },
     version: 1,
     updatedBy: "Seed",
     updatedAt: new Date(now - 30 * DAY_MS).toISOString(),
-  })));
+  }))));
   // The sheet is the price; a product is listed from the lowest size its sheet prices.
   for (const product of products) {
     const prices = productPrices
@@ -2173,7 +2276,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     designs,
     designTakedowns: [],
     contactMessages: [],
-    attributeChain: createSeedAttributeChain(),
+    attributeChain: chain,
     attributeCascade: DEFAULT_CASCADE_RULES.map((rule) => ({ ...rule, allowed: [...rule.allowed] })),
     deliveries: createSeedDeliveries(orders),
     loyalty: createSeedLoyalty(),
@@ -2183,7 +2286,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     productPrices,
     priceHistory: [],
     // Every product starts priced by size only; the owner adds specs per product in Pricing Management.
-    productPricingAttributes: Object.fromEntries(products.map((product) => [product.id, ["size"]])),
+    productPricingAttributes: pricingAttributes,
     promotions,
     ads: createSeedAds(),
     adsRotationSeconds: DEFAULT_ADS_ROTATION_SECONDS,

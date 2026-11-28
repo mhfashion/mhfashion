@@ -219,3 +219,58 @@ test("one Price Table screen: the old route forwards and the sheet is a tab", ()
   const sql = read("SQL/0012_pricing_management.sql");
   assert.match(sql, /create or replace function public\.product_variant_prices/, "the shop's read path is in the migration");
 });
+
+test("every kind of product has a spec preset the chain can price", () => {
+  const data = admin.createAdminDemoData(new Date(NOW));
+  const chainKeys = new Set(data.attributeChain.map((attribute) => attribute.key));
+  for (const [key, preset] of Object.entries(admin.SPEC_PRESETS)) {
+    assert.ok(preset.keys.length, `${key} has specifications`);
+    for (const attributeKey of preset.keys) {
+      assert.ok(chainKeys.has(attributeKey), `${key} prices ${attributeKey}, which the chain does not offer`);
+    }
+  }
+  // Kids' tees, football kits, phone covers, caps, bags and cups each price their own spec.
+  assert.deepEqual(admin.specPresetKeysForProduct({ name: "Kids T-shirt", category: "Kids T-Shirt" }), ["kidsSet", "kidsSizeBand", "size"]);
+  assert.deepEqual(admin.specPresetKeysForProduct({ name: "Football Jersey", category: "Jersey" }), ["kitType", "jerseyPrint", "size"]);
+  assert.deepEqual(admin.specPresetKeysForProduct({ name: "Phone Cover", category: "Accessory" }), ["phoneBrand", "caseType", "size"]);
+  assert.deepEqual(admin.specPresetKeysForProduct({ name: "Tote Bag", category: "Accessory" }), ["bagType", "bagSize", "size"]);
+  assert.deepEqual(admin.specPresetKeysForProduct({ name: "Ceramic Cup", category: "Cup" }), ["cupType", "capacity", "size"]);
+  assert.deepEqual(admin.specPresetKeysForProduct({ name: "Cap", category: "Cap" }), ["capStyle", "size"]);
+  assert.deepEqual(admin.specPresetKeysForProduct({ name: "Classic T-shirt", category: "T-Shirt" }), ["size"]);
+});
+
+test("the seed prices every category's own specification, on its own sizes", () => {
+  const data = admin.createAdminDemoData(new Date(NOW));
+  const byName = (name) => data.products.find((product) => product.name === name);
+  const kids = byName("Kids T-shirt");
+  const cup = byName("Ceramic Cup");
+  const jersey = byName("Football Jersey");
+  assert.ok(kids && cup && jersey);
+  assert.deepEqual(kids.sizes, ["1-2Y", "3-4Y", "5-6Y", "7-8Y", "9-10Y", "11-12Y", "13-14Y"], "a kids' tee sells kids' sizes");
+  assert.deepEqual(cup.sizes, ["One size"]);
+
+  const kidsKeys = pricing.productAttributeKeys(data, kids);
+  assert.ok(kidsKeys.includes("kidsSet") && kidsKeys.includes("kidsSizeBand"), "the kids pack prices pack and age band");
+  const kidsRows = pricing.variantRows(data, kids);
+  assert.ok(kidsRows.length > 0);
+  assert.ok(kidsRows.every((row) => row.priceKs !== null && row.priceUsd !== null), "every seeded kids variant carries both currencies");
+
+  const jerseyKeys = pricing.productAttributeKeys(data, jersey);
+  assert.deepEqual(jerseyKeys, ["kitType", "jerseyPrint", "size"], "a football kit is priced by kit type and shirt print");
+
+  const cupKeys = pricing.productAttributeKeys(data, cup);
+  assert.deepEqual(cupKeys, ["cupType", "capacity", "size"]);
+});
+
+test("the Pricing screen offers the category preset and Attribute Management names the packs", () => {
+  const pricingScreen = read("apps/web/src/components/admin/AdminPricingManagement.tsx");
+  assert.match(pricingScreen, /data-pricing-preset=\{specPresetForProduct\(product\)\}/, "one click ticks the category's specification");
+  assert.match(pricingScreen, /SPEC_PRESETS\[specPresetForProduct\(product\)\]/);
+
+  const attributesScreen = read("apps/web/src/components/admin/AdminAttributes.tsx");
+  assert.match(attributesScreen, /attributePackLabel\(attribute\.key\)/, "the chain is grouped by product type");
+  assert.match(attributesScreen, /data-attribute-pack=\{pack\}/);
+
+  const products = read("apps/web/src/components/admin/AdminProducts.tsx");
+  assert.match(products, /"Kids T-Shirt"[\s\S]{0,80}"Cup"/, "a product can be made a kids' tee or a cup");
+});

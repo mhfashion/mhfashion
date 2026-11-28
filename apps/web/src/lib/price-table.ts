@@ -72,7 +72,11 @@ export function productSpec(product: AdminProduct, products?: readonly AdminProd
 /** Every size the product stocks, with the price the sheet holds for it. */
 export function productPriceRows(data: Pick<AdminDemoData, "productPrices">, product: AdminProduct): ProductSheetPrice[] {
   return product.sizes.map((size) => {
-    const row = data.productPrices.find((entry) => entry.productId === product.id && entry.size === size);
+    // The sheet prices a type, so a size shows the row that carries no spec beyond the size; a
+    // product that only stores spec rows falls back to its first row for that size.
+    const row = data.productPrices.find((entry) => entry.productId === product.id && entry.size === size
+      && !Object.keys(entry.options ?? {}).some((key) => key !== "size"))
+      ?? data.productPrices.find((entry) => entry.productId === product.id && entry.size === size);
     return { size, priceKs: row?.priceKs ?? null, version: row?.version ?? 0 };
   });
 }

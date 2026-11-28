@@ -19,7 +19,7 @@ import {
   SIZE_CHART_MEASURES, SIZE_CHART_MEASURE_LABEL, normalizeSizeChart, setSizeChartCell, type ProductSizeChart,
 } from "@/lib/size-chart";
 
-const CATEGORIES: AdminProductCategory[] = ["T-Shirt", "Hoodie", "Polo", "Jersey", "Cap", "Accessory"];
+const CATEGORIES: AdminProductCategory[] = ["T-Shirt", "Kids T-Shirt", "Hoodie", "Polo", "Jersey", "Cap", "Cup", "Accessory"];
 const STATUSES: AdminProductStatus[] = ["Active", "Draft", "Archived"];
 
 const STATUS_TONES: Record<AdminProductStatus, AdminTone> = {

@@ -1877,3 +1877,22 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   (`variantStockConsumedAt` / `variantStockRestoredAt`) and is called from `syncStockWithStage`.
 - Tests: `tests/pricing-connections.test.cjs`. Its loader needs `jsx: ts.JsxEmit.React` to import
   `currency-context.tsx`, and `createAdminDemoData` wants a `Date`, not a string.
+
+## Attribute packs and category presets (`apps/web/src/lib/admin-demo-data.ts`)
+- `AdminProductCategory` is T-Shirt, Kids T-Shirt, Hoodie, Polo, Jersey, Cap, Cup, Accessory. A kids'
+  tee stocks `KIDS_SIZES` (1-2Y … 13-14Y); a cup stocks `One size`.
+- `CATEGORY_POST_ATTRIBUTES` holds the non-T-shirt packs: phone (Brand/Model/Case Type/MagSafe), cup
+  (Type/Capacity/Lid Type), bag (Size/Type/Material), football (Kit Type/Jersey Print/Sleeve Patch),
+  kids (Age Band/Pack) and cap (Cap Style). `attributePackLabel(key)` maps a key back to its pack, and
+  both Attribute Management screens render one heading row (`data-attribute-pack`) per pack.
+- `SPEC_PRESETS` + `specPresetForProduct` decide what a product starts out pricing; the accessories
+  share category `Accessory`, so the name ("Phone Cover" vs "Tote Bag") breaks the tie. The seed stores
+  the preset in `productPricingAttributes`, and the Pricing screen's `data-pricing-preset` button
+  re-applies it in one click.
+- The seed stores one `productPrices` row per preset combination carrying **both** currencies. A
+  category with no `seedUsdForCategory` entry seeds null USD and every variant reads Missing price —
+  add the category there when adding a category.
+- `price-table.ts#productPriceRows` prefers the row whose only option is `size`, so the per-type sheet
+  keeps one figure per size even when the product stores many specs.
+- Verified in Chromium from a cleared demo store: 9 types on the Price Table, kids/football/phone/cup/
+  bag/cap presets ticking the right chips, 6 pack headings over 25 attributes.

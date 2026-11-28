@@ -38,7 +38,7 @@ test("one T-shirt card holds a box per spec, and each box prices its own sizes",
   const sheets = sheet.productSheets(data);
   assert.deepEqual(
     sheets.map((entry) => entry.type),
-    ["T-Shirt", "Hoodie", "Polo", "Jersey", "Cap", "Tote Bag", "Phone Cover"],
+    ["T-Shirt", "Hoodie", "Polo", "Jersey", "Cap", "Tote Bag", "Kids T-shirt", "Ceramic Cup", "Phone Cover"],
     "a T-shirt and a phone cover are separate cards",
   );
 
@@ -67,7 +67,11 @@ test("one T-shirt card holds a box per spec, and each box prices its own sizes",
 
   const cover = sheets.find((entry) => entry.type === "Phone Cover");
   assert.deepEqual(cover.boxes[0].prices.map((row) => row.size), ["One size"], "a phone cover sells one size");
-  assert.equal(sheet.priceSheetSummary(sheets).total, 28, "2 T-shirt specs + 3 apparel types x 5 sizes + 3 one-size boxes");
+  assert.equal(
+    sheet.priceSheetSummary(sheets).total,
+    36,
+    "2 T-shirt specs + 3 apparel types x 5 sizes + 1 one-size boxes + kids 7 sizes + the cup",
+  );
   assert.equal(sheet.productPriceType(cover.boxes[0].product), "Phone Cover", "an accessory is priced by its name");
 });
 
