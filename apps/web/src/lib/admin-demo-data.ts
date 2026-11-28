@@ -2059,6 +2059,13 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     updatedBy: "Seed",
     updatedAt: new Date(now - 30 * DAY_MS).toISOString(),
   })));
+  // The sheet is the price; a product is listed from the lowest size its sheet prices.
+  for (const product of products) {
+    const prices = productPrices
+      .filter((row) => row.productId === product.id)
+      .map((row) => row.priceKs);
+    if (prices.length) product.priceKs = Math.min(...prices);
+  }
 
   return {
     version: 1,
@@ -2133,6 +2140,7 @@ export function readAdminDemoData(): AdminDemoData {
         });
         // Every stocked size needs its own price row; an old store that predates the sheet gets one per
         // size from the category seed, and a product's listed price stands in when the category has none.
+        // The sheet is the price, so the listed price follows its lowest size once the rows are in place.
         const productPrices = Array.isArray(parsed.productPrices) ? [...parsed.productPrices] : [];
         for (const product of products) {
           for (const size of product.sizes) {
@@ -2153,7 +2161,6 @@ export function readAdminDemoData(): AdminDemoData {
         }));
         cache = {
           ...parsed,
-          products,
           orders,
           designTakedowns: Array.isArray(parsed.designTakedowns) ? parsed.designTakedowns : [],
           contactMessages: normalizeContactMessages(parsed.contactMessages),
@@ -2176,6 +2183,13 @@ export function readAdminDemoData(): AdminDemoData {
             ? parsed.jerseyStyles
             : createSeedJerseyStyles(Date.now()),
           productPrices,
+          products: products.map((product) => {
+            const prices = productPrices
+              .filter((row) => row.productId === product.id)
+              .map((row) => row.priceKs)
+              .filter((price) => Number.isSafeInteger(price) && price > 0);
+            return prices.length ? { ...product, priceKs: Math.min(...prices) } : product;
+          }),
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
           // A store saved before the table existed takes the seed; a table the owner has emptied stays empty.
           // Ads saved before the media-only model (headline/body) are dropped rather than half-rendered.

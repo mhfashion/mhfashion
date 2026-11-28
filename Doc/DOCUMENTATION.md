@@ -16,28 +16,25 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
-### 2026-11-21 — Price Table reshaped: one sheet per product
+### 2026-11-21 — Price Table: prices are set once per product type
 
-- The owner rejected the first layout (sizes down the side, categories across the top). The screen is
-  now **one card per product** — Classic T-shirt, Oversized T-shirt, Hoodie, Polo, Jersey, Cap, Tote
-  Bag, Phone Cover — each with its own prices, so a T-shirt price never sets a phone cover price.
-- Each card opens with the spec it is made of: Product, Type, Print Method, Fabric Type, Knit
-  Structure, MH Cuttings, GSM, Color (`productSpec`), followed by one price row per size the product
-  stocks. `AdminProduct` gained `printMethod`, `knitStructure`, `cuttings` and `colors` for this; a
-  store saved before the fields existed takes the seed spec for its product id on read.
-- Storage moved from the category matrix to the per-product rows that already existed
-  (`productPrices`, one row per product and size). `lib/price-table.ts` exposes `productSheets`,
-  `productPriceRows`, `productSpec`, `productFullyPriced`, `templateProduct(s)`, `draftWithTablePrice`,
-  `fillPricesFromTable`, `scopePriceProductId` and `saveProductSheet` (which writes through
-  `applyPriceChanges`, so versions and history stay in step); the category table, its seed, its
-  normaliser and its screen are gone.
-- Posting still never types a price: the product form shows the first priced sheet of the chosen
-  category as chips and saves its lowest price, then the new product's own rows are seeded from that
-  template so it can be repriced alone. The Pricing grid's **From Price Table** bulk action reads the
-  product's own sheet (a T-shirt post reads the T-shirt sheet).
-- Saving one product left the others untouched in a browser run (Phone Cover 18,500, T-shirt 12,000 –
-  16,000, both after a reload); the phone layout shows one sheet at a time. Tests:
-  `tests/admin-price-table.test.cjs` (8 tests). Full suite: 944 tests, 943 pass, 1 skipped, 0 fail.
+- The owner reshaped this twice: not a size-by-category matrix, and not a price per product either.
+  Prices are now set **once per product type** in `/admin/price-table`; a product never carries a
+  price of its own, and posting never asks for one.
+- `productPriceType(product)` is the type a price belongs to — apparel by category (T-Shirt, Hoodie,
+  Polo, Jersey, Cap), everything else by its own name (Phone Cover, Tote Bag) — and `productSheets`
+  groups the catalogue into one sheet per type. The T-Shirt card names the products that share it
+  ("2 products share this price · Classic T-shirt · Oversized T-shirt").
+- Each card opens with the spec (Product, Type, Print Method, Fabric Type, Knit Structure, MH
+  Cuttings, GSM, Color from `productSpec`), then one price per size. `AdminProduct` gained
+  `printMethod`, `knitStructure`, `cuttings` and `colors`; an older stored catalogue takes the seed
+  spec for its product id on read, and any stocked size without a price row gets one.
+- Saving expands the typed price onto every product of the type through `saveProductSheet` →
+  `applyPriceChanges` (versions checked, history appended), and each product's listed price follows
+  its sheet's lowest size. `typePrices`, `templatePrices(data, draft)`, `draftPriceType`,
+  `typeMembers` and `scopePriceProductId` are the helpers the product form and the Pricing grid use.
+- In a browser run, T-Shirt XL 19,500 saved onto both T-shirts and left the Phone Cover at 8,000.
+  Tests: `tests/admin-price-table.test.cjs` (8 tests). Full suite: 944 tests, 943 pass, 1 skipped.
 
 ### 2026-11-21 — A saved account address fills checkout, and stays editable
 

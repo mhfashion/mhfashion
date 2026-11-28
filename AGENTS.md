@@ -214,26 +214,23 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   saved record (read after mount, like the clock) with the demo pair as fallback.
 - Tests: `tests/checkout-account-address.test.cjs`.
 
-## Price Table = a sheet per product (`apps/web/src/lib/price-table.ts`, `components/admin/AdminPriceTable.tsx`)
-- One price per **product and size**, stored in `productPrices` (one row per stocked size). The owner
-  rejected the first layout (sizes down the side, categories across the top): a T-shirt and a phone
-  cover must be priced separately, and each block must show the spec — Product, Type, Print Method,
-  Fabric Type, Knit Structure, MH Cuttings, GSM, Color — then its sizes. Do not reintroduce a
-  category matrix, a `priceTable` field, or a "shop category → column" mapping.
-- `productSpec(product)` reads `printMethod`, `fabric`, `knitStructure`, `cuttings`, `gsm`, `colors`
-  and prints `—` for an unset field. Those four spec fields are optional on `AdminProduct`; a store
-  saved before them takes the seed spec for its product id on read (`readAdminDemoData`), and the same
-  read path adds a `productPrices` row for any stocked size that has none.
-- Saving goes through `saveProductSheet` → `applyPriceChanges`, so versions are checked, `priceHistory`
-  gets the entry, and `product.priceKs` follows the sheet's lowest size. `upsertProduct` keeps the rows
-  in step with the stocked sizes and `removeProduct` deletes them.
-- Posting never types a price: `AdminProducts` renders `PriceFromTable` chips from
-  `templatePrices(data, category)` (the first *priced* product of that category) and
-  `draftWithTablePrice` saves that sheet's lowest price; a new product's rows are then seeded from the
-  template. The Pricing grid's **From Price Table** action uses `scopePriceProductId` (a T-shirt post
-  reads the T-shirt sheet).
-- Tests: `tests/admin-price-table.test.cjs` (sheets, spec, independence, versions/history, template,
-  row upkeep, source contracts).
+## Price Table = prices per product type, set once (`apps/web/src/lib/price-table.ts`)
+- The owner rejected two earlier shapes: a size-by-category **matrix**, and a price **per product**.
+  The rule is: a price is set once in `/admin/price-table` per **product type**, every product of that
+  type reads it, and a product never carries its own price. A T-shirt and a phone cover stay separate.
+- `productPriceType(product)` defines the type: apparel → its category (T-Shirt, Hoodie, Polo, Jersey,
+  Cap); anything else → the product name (Phone Cover, Tote Bag). `productSheets` groups by it;
+  `typePrices` reads a type's rows; `typeMembers` lists the products a save must reach.
+- Storage is still `productPrices` (one row per product and size) so the Pricing grid and the storefront
+  keep working: a sheet save writes the typed price onto **every** product of the type through
+  `saveProductSheet` → `applyPriceChanges` (version check + `priceHistory`), and each product's
+  `priceKs` becomes its sheet's lowest size. Do not reintroduce a `priceTable` field or a category map.
+- `productSpec(product)` prints Product, Type, Print Method, Fabric Type, Knit Structure, MH Cuttings,
+  GSM, Color; the four spec fields are optional on `AdminProduct` and an older stored catalogue takes
+  the seed spec for its product id on read.
+- Posting never types a price: `AdminProducts` shows `templatePrices(data, draft)` chips and
+  `draftWithTablePrice` saves that sheet's lowest price, then seeds the new product's rows from it.
+- Tests: `tests/admin-price-table.test.cjs`.
 
 
 ## Attribute Management (`apps/web/src/lib/admin-attributes.ts`, `components/admin/AdminAttributes.tsx`)

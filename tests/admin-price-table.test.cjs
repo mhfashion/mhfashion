@@ -33,26 +33,33 @@ const sheet = loadModule("apps/web/src/lib/price-table.ts");
 
 const product = (data, id) => data.products.find((entry) => entry.id === id);
 
-test("every product gets its own sheet of prices, not a category column", () => {
+test("the table prices each product type once, and a product never carries its own price", () => {
   const data = admin.createAdminDemoData(Date.now());
   const sheets = sheet.productSheets(data);
-  assert.equal(sheets.length, data.products.length, "one sheet per product");
-  assert.equal(new Set(sheets.map((entry) => entry.product.id)).size, sheets.length, "sheets are not shared");
+  assert.deepEqual(
+    sheets.map((entry) => entry.type),
+    ["T-Shirt", "Hoodie", "Polo", "Jersey", "Cap", "Tote Bag", "Phone Cover"],
+    "a T-shirt and a phone cover are separate sheets, and no type appears twice",
+  );
 
   for (const entry of sheets) {
-    assert.equal(entry.total, entry.product.sizes.length, `${entry.product.name} prices its stocked sizes`);
-    assert.equal(entry.priced, entry.total, `${entry.product.name} is fully priced in the seed`);
+    assert.equal(entry.total, entry.product.sizes.length, `${entry.type} prices its sizes`);
+    assert.equal(entry.priced, entry.total, `${entry.type} is fully priced in the seed`);
     for (const row of entry.prices) {
-      assert.ok(Number.isSafeInteger(row.priceKs) && row.priceKs > 0, `${entry.product.name} ${row.size} has a price`);
+      assert.ok(Number.isSafeInteger(row.priceKs) && row.priceKs > 0, `${entry.type} ${row.size} has a price`);
     }
   }
 
-  const tee = sheets.find((entry) => entry.product.id === "product-classic-tee");
-  const cover = sheets.find((entry) => entry.product.id === "product-phone-cover");
+  const tee = sheets.find((entry) => entry.type === "T-Shirt");
+  const cover = sheets.find((entry) => entry.type === "Phone Cover");
+  assert.deepEqual(tee.products.map((entry) => entry.name), ["Classic T-shirt", "Oversized T-shirt"], "both T-shirts read the T-shirt sheet");
+  assert.equal(cover.products.length, 1, "the phone cover is priced on its own");
   assert.deepEqual(tee.prices.map((row) => row.size), ["S", "M", "L", "XL", "2XL"]);
   assert.deepEqual(cover.prices.map((row) => row.size), ["One size"], "a phone cover sells one size");
-  assert.notDeepEqual(tee.prices, cover.prices, "the two products carry their own prices");
-  assert.equal(sheet.priceSheetSummary(sheets).total, 28, "5 sizes x 5 apparel products + 3 one-size products");
+  assert.notDeepEqual(tee.prices, cover.prices, "a T-shirt price never sets a phone cover price");
+  assert.equal(sheet.priceSheetSummary(sheets).total, 23, "4 apparel types x 5 sizes + 3 one-size types");
+  assert.equal(sheet.productPriceType(tee.products[0]), "T-Shirt");
+  assert.equal(sheet.productPriceType(cover.products[0]), "Phone Cover", "an accessory is priced by its name");
 });
 
 test("the sheet shows what the product is made of", () => {
@@ -78,9 +85,10 @@ test("the sheet shows what the product is made of", () => {
   assert.equal(bareValues.find((line) => line.label === "Print Method").value, "—");
 });
 
-test("pricing one product never moves another product's price", () => {
+test("the type's price is shared by its products and never leaks into another type", () => {
   const data = admin.createAdminDemoData(Date.now());
   const tee = product(data, "product-classic-tee");
+  const oversized = product(data, "product-oversized-tee");
   const cover = product(data, "product-phone-cover");
   const before = sheet.productPriceRows(data, cover).map((row) => row.priceKs);
 
@@ -97,6 +105,11 @@ test("pricing one product never moves another product's price", () => {
   assert.equal(after.priceKs, 19_500, "the typed price is stored on the product's own row");
   assert.equal(after.version, 2, "the row version moves");
   assert.deepEqual(sheet.productPriceRows(saved.data, cover).map((row) => row.priceKs), before, "the phone cover is untouched");
+  assert.deepEqual(
+    sheet.typeMembers(saved.data, oversized).map((entry) => entry.name),
+    ["Classic T-shirt", "Oversized T-shirt"],
+    "the screen writes a sheet change onto every product of the type",
+  );
   assert.equal(
     saved.data.priceHistory.at(-1).scopeId,
     tee.id,
@@ -109,28 +122,32 @@ test("pricing one product never moves another product's price", () => {
   assert.equal(stale.applied, 0, "a stale version does not write");
 });
 
-test("a product sells once every stocked size has a price", () => {
+test("a type is fully priced when every stocked size has a price", () => {
   const data = admin.createAdminDemoData(Date.now());
   const tee = product(data, "product-classic-tee");
+  const cover = product(data, "product-phone-cover");
   assert.equal(sheet.productFullyPriced(data, tee), true);
+  assert.equal(sheet.typePrices(data, "Phone Cover").length, 1, "the phone cover sells one size");
   const cleared = sheet.saveProductSheet(data, tee.id, [{ size: "M", priceKs: 0, version: 1 }], "Owner", "2026-11-21T10:00:00.000Z");
   assert.equal(cleared.applied, 1, "the store accepts the change it is given");
 });
 
-test("posting copies the first priced sheet of the category and never asks for a price", () => {
+test("posting reads the type's sheet and never asks for a price", () => {
   const data = admin.createAdminDemoData(Date.now());
-  const template = sheet.templateProduct(data, "T-Shirt");
-  assert.equal(template.id, "product-classic-tee", "the first T-shirt sheet is the template");
-
-  const prices = sheet.templatePrices(data, "T-Shirt");
+  const prices = sheet.templatePrices(data, { category: "T-Shirt", name: "New tee" });
   assert.deepEqual(prices.map((row) => row.size), ["S", "M", "L", "XL", "2XL"]);
-  assert.deepEqual(prices.map((row) => row.priceKs), sheet.productPriceRows(data, template).map((row) => row.priceKs), "the template's own prices");
+  assert.deepEqual(prices.map((row) => row.priceKs), sheet.typePrices(data, "T-Shirt").map((row) => row.priceKs), "the T-shirt sheet's prices");
 
   const draft = { name: "New tee", category: "T-Shirt", fabric: "Cotton", gsm: "180", priceKs: "", tags: "", designName: "Art", designSvgUrl: "", status: "Draft" };
   const priced = sheet.draftWithTablePrice(draft, data);
   assert.equal(priced.priceKs, String(Math.min(...prices.map((row) => row.priceKs))), "the lowest sheet price is used");
-  assert.deepEqual(sheet.templatePrices(data, "Cap").map((row) => row.size), ["One size"], "a cap reads the cap sheet");
-  assert.equal(sheet.scopePriceProductId(data, { kind: "post", id: "post-street-vibes" }), template.id, "a T-shirt post reads the T-shirt sheet");
+  assert.deepEqual(sheet.templatePrices(data, { category: "Cap", name: "Cap" }).map((row) => row.size), ["One size"], "a cap reads the cap sheet");
+  assert.deepEqual(
+    sheet.templatePrices(data, { category: "Accessory", name: "Phone Cover" }).map((row) => row.priceKs),
+    sheet.typePrices(data, "Phone Cover").map((row) => row.priceKs),
+    "a phone cover reads the phone cover sheet",
+  );
+  assert.equal(sheet.scopePriceProductId(data, { kind: "post", id: "post-street-vibes" }), "product-classic-tee", "a T-shirt post reads the T-shirt sheet");
   assert.equal(sheet.scopePriceProductId(data, { kind: "product", id: "product-phone-cover" }), "product-phone-cover");
 });
 
@@ -151,15 +168,17 @@ test("a new size inherits the product price and a removed size loses its row", (
 test("the screen draws one sheet per product instead of category columns", () => {
   const screen = read("apps/web/src/components/admin/AdminPriceTable.tsx");
   assert.match(screen, /mobile \? "data-price-sheet-mobile" : "data-price-sheet"/, "a card per product");
-  assert.match(screen, /data-price-sheet-spec=\{product\.id\}/, "the spec block is on the sheet");
+  assert.match(screen, /data-price-sheet-spec=\{sheet\.type\}/, "the spec block is on the sheet");
   assert.match(screen, /mobile \? "data-price-cell-mobile" : "data-price-cell"/, "one input per size");
   assert.match(screen, /productSpec/, "the spec comes from the library");
+  assert.match(screen, /data-price-sheet-users=\{sheet\.type\}/, "a shared sheet names the products that read it");
+  assert.match(screen, /typeMembers/, "a save writes every product of the type");
   assert.match(screen, /saveProductSheet/, "saves go through the pricing store");
   assert.doesNotMatch(screen, /PRICE_TABLE_CATEGORIES|priceTableCell/, "the category matrix is gone");
   assert.doesNotMatch(screen, /data-shop-category-prices/, "no shop-category mapping card");
 
   const products = read("apps/web/src/components/admin/AdminProducts.tsx");
-  assert.match(products, /PriceFromTable prices=\{templatePrices\(data, draft\.category\)\}/, "posting reads the price sheet");
+  assert.match(products, /PriceFromTable prices=\{templatePrices\(data, draft\)\}/, "posting reads the price sheet");
   assert.match(products, /draftWithTablePrice\(draft, data\)/, "the saved price comes from the sheet");
   assert.doesNotMatch(products, /type="number"[^>]*price/i, "posting has no price input");
 });

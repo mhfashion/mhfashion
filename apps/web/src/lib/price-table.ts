@@ -1,6 +1,7 @@
 // The Price Table is one sheet per product: the product and the spec it is made with, then one price
 // per size it stocks. Products are priced separately (a T-shirt is not a phone cover), and posting a
 // product never types a price — it copies the sheet of a product already priced in its category.
+import { APPAREL_CATEGORIES } from "@/lib/admin-demo-data";
 import type {
   AdminDemoData,
   AdminProduct,
@@ -12,11 +13,25 @@ import { applyPriceChanges, type PricingScope } from "@/lib/admin-pricing";
 export type ProductSheetPrice = { size: string; priceKs: number | null; version: number };
 
 export type ProductSheet = {
+  /** The product type the sheet prices; every product of that type reads it. */
+  type: string;
+  /** The products that use this sheet — the owner prices the type once, not each product. */
+  products: AdminProduct[];
+  /** The product the spec block describes (the first of the type). */
   product: AdminProduct;
   prices: ProductSheetPrice[];
   priced: number;
   total: number;
 };
+
+/**
+ * What a price belongs to: a T-shirt, a hoodie, a phone cover — not one catalogue row. Apparel is
+ * priced by its category, so Classic and Oversized T-shirts share the T-shirt sheet; everything else is
+ * priced by its own name, because a phone cover and a tote bag are not the same thing to make.
+ */
+export function productPriceType(product: AdminProduct): string {
+  return APPAREL_CATEGORIES.includes(product.category) ? product.category : product.name.trim();
+}
 
 /** The labelled spec block the owner sees above the sizes — same order as the product sheet. */
 export function productSpec(product: AdminProduct): { label: string; value: string }[] {
@@ -40,11 +55,40 @@ export function productPriceRows(data: Pick<AdminDemoData, "productPrices">, pro
   });
 }
 
+/** One sheet per product type, in catalogue order, priced from the first product of that type. */
 export function productSheets(data: Pick<AdminDemoData, "products" | "productPrices">): ProductSheet[] {
-  return data.products.map((product) => {
+  const sheets: ProductSheet[] = [];
+  for (const product of data.products) {
+    const type = productPriceType(product);
+    const existing = sheets.find((sheet) => sheet.type === type);
+    if (existing) {
+      existing.products.push(product);
+      continue;
+    }
     const prices = productPriceRows(data, product);
-    return { product, prices, priced: prices.filter((row) => row.priceKs !== null).length, total: prices.length };
-  });
+    sheets.push({
+      type,
+      products: [product],
+      product,
+      prices,
+      priced: prices.filter((row) => row.priceKs !== null).length,
+      total: prices.length,
+    });
+  }
+  return sheets;
+}
+
+/** The size prices a type sells at — what a product of that type is listed from. */
+export function typePrices(
+  data: Pick<AdminDemoData, "products" | "productPrices">,
+  type: string,
+): ProductSheetPrice[] {
+  return productSheets(data).find((sheet) => sheet.type === type)?.prices ?? [];
+}
+
+/** The type a new product will read its prices from, before it exists in the catalogue. */
+export function draftPriceType(draft: Pick<AdminProductDraft, "category" | "name">): string {
+  return APPAREL_CATEGORIES.includes(draft.category) ? draft.category : draft.name.trim();
 }
 
 /** Lowest size price — what the product card shows until a size is chosen. */
@@ -68,28 +112,27 @@ export function priceSheetSummary(sheets: readonly ProductSheet[]) {
 }
 
 /**
- * The product a new product copies its prices from: the first priced product of the same category.
- * Posting therefore never asks for a price — it starts from the sheet the owner already filled.
+ * The sheet a draft reads: its own type when the Price Table prices it, otherwise the first priced
+ * sheet of the same category (a new accessory starts from the phone cover's prices). Posting therefore
+ * never asks for a price — it reads the sheet the owner already filled.
  */
-export function templateProduct(data: Pick<AdminDemoData, "products" | "productPrices">, category: AdminProductCategory): AdminProduct | null {
-  const inCategory = data.products.filter((product) => product.category === category);
-  return inCategory.find((product) => productFullyPriced(data, product))
-    ?? inCategory.find((product) => lowestProductPrice(data, product) !== null)
-    ?? null;
+export function templatePrices(
+  data: Pick<AdminDemoData, "products" | "productPrices">,
+  draft: Pick<AdminProductDraft, "category" | "name">,
+): ProductSheetPrice[] {
+  const sheets = productSheets(data);
+  const own = sheets.find((sheet) => sheet.type === draftPriceType(draft));
+  if (own && own.priced) return own.prices;
+  const inCategory = sheets.find((sheet) => sheet.product.category === draft.category && sheet.priced);
+  return inCategory?.prices ?? own?.prices ?? [];
 }
 
-/** The template's prices, which the post form shows as chips and a save copies onto the new product. */
-export function templatePrices(data: Pick<AdminDemoData, "products" | "productPrices">, category: AdminProductCategory): ProductSheetPrice[] {
-  const template = templateProduct(data, category);
-  return template ? productPriceRows(data, template) : [];
-}
-
-/** A saved draft takes the template's lowest price as its catalogue price; nothing is typed. */
+/** A saved draft takes the sheet's lowest price as its catalogue price; nothing is typed. */
 export function draftWithTablePrice(
   draft: AdminProductDraft,
   data: Pick<AdminDemoData, "products" | "productPrices">,
 ): AdminProductDraft {
-  const prices = templatePrices(data, draft.category)
+  const prices = templatePrices(data, draft)
     .map((row) => row.priceKs)
     .filter((price): price is number => price !== null);
   return prices.length ? { ...draft, priceKs: String(Math.min(...prices)) } : draft;
@@ -125,7 +168,16 @@ export function fillPricesFromTable(
  */
 export function scopePriceProductId(data: Pick<AdminDemoData, "products" | "productPrices">, scope: PricingScope): string | null {
   if (scope.kind === "product") return data.products.some((product) => product.id === scope.id) ? scope.id : null;
-  return templateProduct(data, "T-Shirt")?.id ?? null;
+  return data.products.find((product) => product.category === "T-Shirt")?.id ?? null;
+}
+
+/**
+ * The sibling products a sheet save must reach: a price belongs to the type, so writing it on one
+ * T-shirt writes it on every T-shirt. Returns the product and its siblings.
+ */
+export function typeMembers(data: Pick<AdminDemoData, "products">, product: AdminProduct): AdminProduct[] {
+  const type = productPriceType(product);
+  return data.products.filter((entry) => productPriceType(entry) === type);
 }
 
 /** Writes the sheet's staged edits through the pricing store, so history and versions stay in step. */
