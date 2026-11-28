@@ -1896,3 +1896,18 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   keeps one figure per size even when the product stores many specs.
 - Verified in Chromium from a cleared demo store: 9 types on the Price Table, kids/football/phone/cup/
   bag/cap presets ticking the right chips, 6 pack headings over 25 attributes.
+
+## Customer records and passwords (`apps/web/src/lib/customer-accounts.ts`, `AdminCustomers.tsx`)
+- `AdminDemoData.customerAccounts` holds one `AdminCustomerAccount` per order email. `password` is
+  `{ salt, hash, iterations } | null` — PBKDF2-SHA256 at 210 000 iterations, 16-byte salt, constant-time
+  compare. Never render `password.hash` / `password.salt`; the UI shows only the state and the date.
+- The drawer is the only place a password is typed: `data-customer-password-input` /
+  `-confirm` / `-generate` / `-must-change` / `-block`, and the one-time plaintext lives in
+  `data-customer-password-issued`. A set password is cleared from the fields and never persisted.
+- `passwordIssues` is the policy (8+, letter, number, not common, not the name or email);
+  `canCustomerSignIn` = active **and** has a password. `applyCustomerPassword` throws on an unknown
+  email so a typo cannot mint an account.
+- `normalizeCustomerAccounts` runs on load: it adds accounts for new order emails, keeps saved
+  passwords, and drops a malformed hash. Do not "fix" a saved password by hashing the hash.
+- Browser caveat: clearing `localStorage` also drops the demo admin session — the verify scripts reseed
+  `mh-fashion-admin-demo-session-v1` or the page bounces to `/admin/login`.

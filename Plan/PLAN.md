@@ -530,6 +530,28 @@ Type and Jersey Print ticked, *Phone Cover* `phone`, *Ceramic Cup* `cup`, *Tote 
 T-shirt, Cap over 25 attributes. Tests: `tests/pricing-connections.test.cjs` (11); full suite 972
 tests, 0 failures.
 
+#### 4.5.8 Customer records and password management  *(owner request 2026-11-21, part 5)*
+
+The owner asked to **see every customer's details** and to **change and manage their passwords**.
+
+**A record per customer.** `AdminDemoData.customerAccounts` holds one `AdminCustomerAccount` per order
+email (`lib/customer-accounts.ts`): name, email, phone, account status, the password hash, when and by
+whom it changed, and whether the customer must change it at next sign-in. The seed creates them from
+the order queue and `normalizeCustomerAccounts` adds accounts for new order emails while keeping every
+password already saved, so an older store upgrades in place.
+
+**Details.** Clicking a row on `/admin/customers` opens a drawer with the contact details, the delivery
+addresses the orders used, the recent orders with pieces and totals, the first/last order dates, the
+lifetime spend and average order value, beside the segment (New / Repeat / VIP).
+
+**Passwords.** The password is stored only as **PBKDF2-SHA256, 210 000 iterations, per-account salt**
+(`createCustomerPassword` / `verifyCustomerPassword`, constant-time hex compare). The screen shows the
+state — *No password set*, *Set <date> · by <owner>*, *Temporary password*, *Sign-in blocked* — never
+the hash. The owner can **Generate** a 16-character password, type one (policy: 8+ characters, a letter
+and a number, not the customer's name or email, not a common password, entered twice), **set** it, and
+the plaintext is shown **once** with a Copy button. They can also flag *Change at next sign-in* and
+**block** or **allow** sign-in; `canCustomerSignIn` requires an active account with a password.
+
 ### 4.6 Product detail presentation
 
 **Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and

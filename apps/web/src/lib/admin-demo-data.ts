@@ -21,6 +21,11 @@ import {
 } from "@/lib/attribute-rules";
 import { normalizeRefundRequests, type AdminOrderRefundRequest } from "@/lib/order-refunds";
 import { normalizeLoyaltyLedger, type LoyaltyEntry } from "@/lib/loyalty-ledger";
+import {
+  createSeedCustomerAccounts,
+  normalizeCustomerAccounts,
+  type AdminCustomerAccount,
+} from "@/lib/customer-accounts";
 import { normalizeSizeChart, type ProductSizeChart } from "@/lib/size-chart";
 import { normalizeContactMessages, type ContactMessage } from "@/lib/contact-messages";
 
@@ -645,6 +650,8 @@ export type AdminDemoData = {
    * Only the size is on by default, so the variant grid starts from the rows the shop already has.
    */
   productPricingAttributes?: Record<string, string[]>;
+  /** One account per customer email; passwords are salted hashes, never the password itself. */
+  customerAccounts?: AdminCustomerAccount[];
   /** Product-wide switch-off, on top of each variant's own availability. */
   productAvailability?: Record<string, AdminAvailability>;
   /** Per product, per attribute, per option — so "stop selling Black" is one click. */
@@ -2277,6 +2284,7 @@ export function createAdminDemoData(now = Date.now()): AdminDemoData {
     designTakedowns: [],
     contactMessages: [],
     attributeChain: chain,
+    customerAccounts: createSeedCustomerAccounts(orders, now),
     attributeCascade: DEFAULT_CASCADE_RULES.map((rule) => ({ ...rule, allowed: [...rule.allowed] })),
     deliveries: createSeedDeliveries(orders),
     loyalty: createSeedLoyalty(),
@@ -2399,6 +2407,8 @@ export function readAdminDemoData(): AdminDemoData {
             return prices.length ? { ...product, priceKs: Math.min(...prices) } : product;
           }),
           priceHistory: Array.isArray(parsed.priceHistory) ? parsed.priceHistory : [],
+          // A store saved before accounts existed gains one per order email; saved passwords survive.
+          customerAccounts: normalizeCustomerAccounts(parsed.customerAccounts, orders, Date.now()),
           // A store saved before the table existed takes the seed; a table the owner has emptied stays empty.
           // Ads saved before the media-only model (headline/body) are dropped rather than half-rendered.
           ads: Array.isArray(parsed.ads)

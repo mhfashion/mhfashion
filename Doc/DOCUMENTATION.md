@@ -2754,3 +2754,39 @@ Attribute Management and the Price Table now cover the whole range, not only the
 
 Verified in Chromium 1440x900 against a production build: nine product types on the Price Table,
 the right preset per product, and six pack headings over 25 attributes.
+
+## Customer records and passwords (owner request 2026-11-21, part 5)
+
+`/admin/customers` now opens each customer in a drawer: contact details, the delivery addresses their
+orders used, recent orders, first/last order dates, lifetime spend and average order value, and the
+password panel.
+
+**Where the data lives.** `AdminDemoData.customerAccounts` (`apps/web/src/lib/customer-accounts.ts`)
+holds one `AdminCustomerAccount` per order email: `email`, `name`, `phone`, `password` (a
+`{ salt, hash, iterations }` record or `null`), `passwordUpdatedAt`, `passwordUpdatedBy`,
+`mustChangePassword`, `status` (`Active` | `Blocked`), `createdAt`, `lastOrderAt`. The seed builds
+them from the order queue; `normalizeCustomerAccounts` adds an account for a newly seen order email and
+keeps every password already saved (a broken hash is dropped, not trusted).
+
+**Password rules.**
+- Stored as PBKDF2-SHA256, 210 000 iterations, 16-byte per-account salt; verified in constant time.
+  Nothing in the UI can read a password back — the drawer shows *when* and *by whom* it changed.
+- `passwordIssues(password, account)` is the policy: 8+ characters, at least one letter and one number,
+  not a common password, not the customer's name or email. The Save button stays disabled while issues
+  remain or the two fields differ.
+- `generateCustomerPassword()` returns a 16-character password that satisfies the policy.
+- After a save the plaintext is displayed **once** (`data-customer-password-issued`) with Copy; it is not
+  stored anywhere.
+- *Change at next sign-in* sets `mustChangePassword`; **Block sign-in** sets `status: "Blocked"`.
+  `canCustomerSignIn(account)` is the single check both states feed: active **and** has a password.
+- `applyCustomerPassword` refuses an email that is not a customer, so a typo cannot create an account.
+
+**Tests.** `tests/customer-accounts.test.cjs` (10): one account per order email with no password,
+hash-not-plaintext + verify, unique salts, policy rejections, generated passwords pass and are unique,
+temporary/blocked states, unknown email refused, save/load keeps passwords, and the screen renders the
+detail drawer, the password fields, the one-time display and never the hash.
+
+Verified in Chromium 1440x900 against a production build: 12 seeded accounts, drawer with 6 addresses
+on the top customer, a weak password showing "Use at least 8 characters" / "Add a number" with Save
+disabled, a generated 16-character password saved to a 64-hex hash at 210 000 iterations (absent from
+the DOM), badge Not set → Set, Block → Blocked, and the temporary flag → Temporary.
