@@ -95,9 +95,15 @@ test("a language switch never resizes a banner, tile or card", () => {
   // went 340 -> 509px). Every banner now carries a fixed height at each breakpoint, and its Burmese
   // headline is drawn smaller inside that height instead of stretching it.
   const css = read("apps/web/src/app/globals.css");
-  assert.match(css, /html\[lang="my"\] \[data-hero\] h1 \{\n  font-size: 20px;/);
-  assert.match(css, /@media \(min-width: 640px\) \{\n  html\[lang="my"\] \[data-hero\] h1 \{\n    font-size: 25px;/);
-  assert.match(css, /@media \(min-width: 1024px\) \{\n  html\[lang="my"\] \[data-hero\] h1 \{\n    font-size: 40px;/);
+  assert.match(css, /html\[lang="my"\] \[data-hero\] h1 \{\n  font-size: 16px;/);
+  assert.match(css, /@media \(min-width: 640px\) \{\n  html\[lang="my"\] \[data-hero\] h1 \{\n    font-size: 20px;/);
+  assert.match(css, /@media \(min-width: 1024px\) \{\n  html\[lang="my"\] \[data-hero\] h1 \{\n    font-size: 24px;/);
+  // A Burmese headline is one line: the <br> that splits the two English halves is dropped, and the
+  // copy column is wider, so the headline fits without costing a second 2.1em line.
+  assert.match(css, /html\[lang="my"\] \[data-hero\] h1 br \{\n  display: none;\n\}/);
+  assert.match(css, /html\[lang="my"\] \[data-hero\] > div:first-child \{\n  max-width: 84%;\n\}/);
+  assert.match(css, /html\[lang="my"\] \[data-hero\] > div:first-child \{\n    max-width: 66%;\n  \}/);
+  assert.match(css, /html\[lang="my"\] \[data-hero\] > div:first-child \{\n    max-width: 52%;\n  \}/);
 
   const heroes = [
     "apps/web/src/app/page.tsx",
@@ -111,10 +117,11 @@ test("a language switch never resizes a banner, tile or card", () => {
     const source = read(file);
     const hero = source.match(/<section data-hero className="([^"]+)"/);
     assert.ok(hero, `${file} marks its banner`);
-    assert.match(hero[1], /(^|\s)h-\[\d+px\]/, `${file} pins the banner height`);
+    // Every banner is the guide banner's height: 206, 250 and 267.
+    assert.match(hero[1], /(^|\s)h-\[206px\]/, `${file} pins the phone height`);
     assert.doesNotMatch(hero[1], /(^|\s)min-h-\[/, `${file} no longer grows with its copy`);
-    assert.match(hero[1], /sm:h-\[\d+px\]/, `${file} pins the tablet height`);
-    assert.match(hero[1], /lg:h-\[\d+px\]/, `${file} pins the desktop height`);
+    assert.match(hero[1], /sm:h-\[250px\]/, `${file} pins the tablet height`);
+    assert.match(hero[1], /lg:h-\[267px\]/, `${file} pins the desktop height`);
   }
 
   // A one-line bar and a link list keep the Latin line box, so the footer never changes height.
@@ -128,5 +135,5 @@ test("a language switch never resizes a banner, tile or card", () => {
   assert.match(read("apps/web/src/app/account/page.tsx"), /min-h-\[353px\] rounded-2xl border border-border bg-bg-surface p-5 sm:min-h-\[315px\]/);
   assert.match(read("apps/web/src/components/CartPageClient.tsx"), /min-h-\[390px\] rounded-2xl/);
   assert.match(read("apps/web/src/app/search/page.tsx"), /min-h-\[311px\] rounded-2xl border border-border bg-bg-surface p-8 text-center sm:min-h-\[212px\]/);
-  assert.match(read("apps/web/src/components/guide/GuideBanner.tsx"), /min-h-\[206px\][^"]*lg:min-h-\[267px\]/);
+  assert.match(read("apps/web/src/components/guide/GuideBanner.tsx"), /min-h-\[206px\][^"]*sm:min-h-\[250px\][^"]*lg:min-h-\[267px\]/, "the guide banner is the reference height");
 });

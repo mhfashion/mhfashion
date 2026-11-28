@@ -29,20 +29,20 @@ export default async function NyeinPage() {
       <Header />
       <div className="w-full bg-bg px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
         <div className="mx-auto max-w-[1480px]">
-          <section data-hero className="relative isolate h-[256px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdc] via-[#dcf4bc] to-[#b6e773] px-4 py-4 text-[#172810] sm:h-[404px] sm:px-10 sm:py-10 lg:h-[420px] lg:px-12">
+          <section data-hero className="relative isolate h-[206px] overflow-hidden rounded-2xl bg-gradient-to-r from-[#efffdc] via-[#dcf4bc] to-[#b6e773] px-4 py-4 text-[#172810] sm:h-[250px] sm:px-10 sm:py-6 lg:h-[267px] lg:px-12 lg:py-7">
             <div className="relative z-10 max-w-[68%] sm:max-w-[47%]">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4c9d16] sm:text-xs sm:tracking-[0.18em]">Nyein · MH Fashion</p>
-              <h1 className="mt-2 text-2xl font-black leading-[0.95] tracking-tight sm:mt-3 sm:text-5xl lg:text-6xl">
+              <h1 className="mt-2 text-[24px] font-black leading-[0.95] tracking-tight sm:mt-3 sm:text-[30px] lg:text-[38px]">
                 <T k="nyein.title1" />
                 <br />
                 <span className="text-[#4d9e16]"><T k="nyein.title2" /></span>
               </h1>
-              <p className="mt-2 max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-4 sm:text-sm">
+              <p className="mt-2 line-clamp-2 max-w-sm text-[10px] leading-relaxed text-[#355128] sm:mt-2 sm:text-xs">
                 <T k="nyein.lead" />
               </p>
               <a
                 href="#nyein-pieces"
-                className="mt-3 inline-flex h-7 min-w-[222px] items-center justify-center rounded-full bg-[#55a918] px-3 text-[10px] font-bold text-white shadow-sm sm:mt-5 sm:h-9 sm:px-4 sm:text-xs"
+                className="mt-2 inline-flex h-7 min-w-[222px] items-center justify-center rounded-full bg-[#55a918] px-3 text-[10px] font-bold text-white shadow-sm sm:mt-4 sm:h-8 sm:px-4 sm:text-xs"
               >
                 <T k="nyein.cta" />
                 <ArrowRight size={13} className="ml-1.5 sm:h-[15px] sm:w-[15px]" />

@@ -62,22 +62,39 @@ html[lang="my"] [data-tight-line] * {
 /* The home banner keeps one height in both languages. Burmese sets a 2.1em line box, so its headline and
    copy are drawn smaller inside the same box instead of stretching the banner. */
 html[lang="my"] [data-hero] :is(p, a) {
-  line-height: 1.6;
+  line-height: 1.5;
+}
+
+html[lang="my"] [data-hero] h1 br {
+  display: none;
+}
+
+/* The Burmese copy sits on one line, so it can use more of the banner width than the English copy. */
+html[lang="my"] [data-hero] > div:first-child {
+  max-width: 84%;
 }
 
 html[lang="my"] [data-hero] h1 {
-  font-size: 20px;
+  font-size: 16px;
 }
 
 @media (min-width: 640px) {
   html[lang="my"] [data-hero] h1 {
-    font-size: 25px;
+    font-size: 20px;
+  }
+
+  html[lang="my"] [data-hero] > div:first-child {
+    max-width: 66%;
   }
 }
 
 @media (min-width: 1024px) {
   html[lang="my"] [data-hero] h1 {
-    font-size: 40px;
+    font-size: 24px;
+  }
+
+  html[lang="my"] [data-hero] > div:first-child {
+    max-width: 52%;
   }
 }
 

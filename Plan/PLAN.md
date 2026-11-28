@@ -4778,11 +4778,12 @@ Measured by dumping every painted box (background, border or radius) on `/`, `/c
 both locales at 1440x900 and 390x844 and diffing width/height. Before this pass the home banner alone
 went 340 -> 509px and the promo tiles 208 -> 263px.
 
-- **Banners** (`data-hero`): a fixed height at each breakpoint — `h-[236px] sm:h-[388px] lg:h-[400px]`
-  (nyein carries a meta row, so `h-[256px] sm:h-[404px] lg:h-[420px]`). Burmese sets a 2.1em line box,
-  so its headline is drawn smaller inside that height (`20px / 25px / 40px` by breakpoint) and its copy
-  keeps a 1.6 line box; the lead is clamped to two lines. Same for the account hero (`h-[245px]`) and
-  the guide banner (`min-h-[206px] sm:min-h-[250px] lg:min-h-[267px]`).
+- **Banners** (`data-hero`): the guide banner's height is the reference — every page banner is
+  `h-[206px] sm:h-[250px] lg:h-[267px]`, and the guide banner itself `min-h-[206px] sm:min-h-[250px]
+  lg:min-h-[267px]`. Burmese sets a 2.1em line box, so the headline is drawn smaller inside that height
+  (`16px / 20px / 24px` by breakpoint), the `<br />` that splits the two English halves is dropped so
+  the Burmese headline is one line, the copy column is wider (`84% / 66% / 52%`), the lead is clamped to
+  two lines and the call to action is `h-8` from `sm` up. The account banner is `data-hero` too.
 - **Tiles and cards** take the taller (Burmese) measure as a `min-h`, so both languages render them at
   one size: home promo tiles (`min-h-[168px]` / `h-[252px]`), collections tiles (`min-h-[172px]`,
   `w-[160px]` in the phone scroller, `sm:w-auto` in the grid), nyein tiles (`min-h-[266px]`), the cart

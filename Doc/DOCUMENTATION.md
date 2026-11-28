@@ -2554,7 +2554,7 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
 
 ## Language switch: box sizes
 
-- Banners carry `data-hero` and a fixed height per breakpoint (`h-[236px] sm:h-[388px] lg:h-[400px]`; nyein is taller because of its meta row). In Myanmar the headline is drawn at 20/25/40px inside that height, because a Burmese line needs a 2.1em box.
+- Banners carry `data-hero` and a fixed height per breakpoint, all at the guide banner height: `h-[206px] sm:h-[250px] lg:h-[267px]`. In Myanmar the headline is drawn at 16/20/24px inside that height, its `<br>` is dropped so the headline is one line, and the copy column is wider (84/66/52%).
 - Tiles and cards use a `min-h` equal to the taller (Burmese) measure, so both languages render one size. Phone-specific heights are added as the base value with `sm:` restoring the desktop one.
 - `data-tight-line` keeps the Latin line box (1.5) for one-line bars and link lists (copyright bar, footer lists).
 - CTA pills carry a `min-w` equal to the wider Burmese label and centre their text.
