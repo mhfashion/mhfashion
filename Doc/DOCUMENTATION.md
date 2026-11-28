@@ -16,6 +16,31 @@ This file consolidates the website work log, code audit, Guide content maintenan
 <a id="work-log"></a>
 ## Website Work Log
 
+### 2026-11-21 — A saved account address fills checkout, and stays editable
+
+- **The account record is real now** (`apps/web/src/lib/account-profile.ts`). `readAccountProfile` /
+  `saveAccountProfile` keep `{ email, delivery }` on the device under
+  `mh-fashion-account-profile-v1` (there is still no customer table on the server);
+  `accountDeliveryAddress()` returns the address only when all five parts are filled, so a half-saved
+  address never leaves the checkout looking complete.
+- **Account → Profile** (`apps/web/src/app/account/page.tsx`) is a working form: full name, email,
+  phone, township, city (from `CHECKOUT_CITIES`) and the delivery address, saved with
+  *Save changes* and confirmed by "Saved. Checkout fills this address for you." The section now has a
+  sidebar entry (`SECTIONS` gained `profile`), and the dashboard's *Edit Profile* tile opens it
+  instead of the settings list. The green account card shows the saved name and `@handle` instead of
+  the demo pair.
+- **Checkout** (`apps/web/src/components/CheckoutClient.tsx`) pre-fills in this order: the account
+  address, then the address this device kept (`delivery-address.ts`), then the newest order. The card
+  says where it came from (`data-checkout-address-source="account"` plus the localized hint) and keeps
+  its **Change** button, which swaps the summary for the same editable fields. Nothing is locked.
+- An address edited at checkout is saved back to the account (`saveAccountDelivery`) once the order is
+  placed — but only when an account already exists, so a guest is never given one behind their back.
+  An incomplete edit never overwrites a good saved address.
+- Tests: `tests/checkout-account-address.test.cjs` (unit round-trip, incomplete/junk storage, guest
+  rule, and the source contracts in the two components). Verified end to end in headless Chromium at
+  1440x900 and 390x844: save on the account, checkout shows the account card, Change → edit → order,
+  and the account copy follows the edit.
+
 ### 2026-11-21 — Admin Price Table: enter a price once, and posts never type one
 
 - **A new admin screen, `/admin/price-table`** (`apps/web/src/app/admin/price-table/page.tsx` →

@@ -199,6 +199,21 @@ Repository memory for AI agents working on **mhfashion/mhfashion**.
   intrinsic width forces ~370 px of page at a 320 px viewport.
 - Tests: `tests/admin-pricing.test.cjs`.
 
+## Checkout address from the account (`apps/web/src/lib/account-profile.ts`)
+- There is no customer table on the server, so the account record (email + delivery address) lives on
+  the device under `mh-fashion-account-profile-v1`. `accountDeliveryAddress()` returns it only when all
+  five parts are filled — a half-saved address must never make checkout look complete.
+- Checkout hydrates in this order: account → device (`delivery-address.ts`) → newest order, records
+  which one it used in `data-checkout-address-source`, and keeps the **Change** button that swaps the
+  summary for the same editable fields. Never turn the summary into a read-only card: the owner's
+  requirement is "filled in automatically, still editable".
+- `saveAccountDelivery` updates an **existing** profile only (a guest is never given an account) and
+  ignores an incomplete address, so a checkout edit can never wipe a good saved one.
+- Account → Profile is a sidebar section (`SECTIONS` in `app/account/page.tsx`); the dashboard's
+  *Edit Profile* tile must open it, not the settings list. The account card's name/handle come from the
+  saved record (read after mount, like the clock) with the demo pair as fallback.
+- Tests: `tests/checkout-account-address.test.cjs`.
+
 ## Admin Price Table (`apps/web/src/lib/price-table.ts`, `components/admin/AdminPriceTable.tsx`)
 - One price per category and size, entered once at `/admin/price-table` (rows = the size run, columns
   = the posted categories). It is the only place a price is typed: `AdminProducts` renders

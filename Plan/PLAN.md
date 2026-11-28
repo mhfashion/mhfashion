@@ -358,6 +358,31 @@ form for a Hoodie shows `Ks 26,000 – Ks 30,000` and has no price input; the ph
 category at a time with 44 px rows and no horizontal overflow; `node --test tests/*.test.cjs`
 reports 936 tests with 0 failures.
 
+#### 4.5.3 Saved account address fills checkout  *(owner request, built 2026-11-21)*
+
+The owner asked that a customer who opened an account and entered an address get that address filled
+in automatically when paying, while still being allowed to change it.
+
+**Where the address lives.** `apps/web/src/lib/account-profile.ts` keeps the customer's own record
+(`{ email, delivery }`) on the device under `mh-fashion-account-profile-v1` — there is still no
+customer table on the server, so nothing is uploaded. `accountDeliveryAddress()` only returns a
+**complete** address, so a half-saved record never makes checkout look filled when it cannot ship.
+
+**The account form is real.** Account → Profile (now a sidebar section, and what the dashboard's
+*Edit Profile* tile opens) captures name, email, phone, township, city and street; *Save changes*
+writes the record and confirms "Saved. Checkout fills this address for you." The green account card
+shows the saved name and `@handle`.
+
+**Checkout** fills in this order: account address → the address this device kept → the newest order.
+The card names its source and keeps **Change**, which swaps the summary for the same editable
+fields; the customer can always edit the address for this parcel. Placing the order saves the address
+used back into the account, but only when an account already exists (a guest is never given one), and
+an incomplete edit never overwrites a good saved address.
+
+Verified end to end in headless Chromium at 1440x900 and 390x844 — save on the account, checkout
+shows the account card, Change → edit → place order, and the account copy follows the edit.
+Tests: `tests/checkout-account-address.test.cjs`.
+
 ### 4.6 Product detail presentation
 
 **Gallery sizing is settled as built** (owner decision, 2026-11-21): keep the current column and

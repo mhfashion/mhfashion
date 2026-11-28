@@ -30,6 +30,10 @@ import { useI18n } from "@/lib/i18n";
 import { useWishlist } from "@/lib/wishlist-context";
 import { updateAdminData, useAdminDemoData } from "@/lib/admin-demo-store";
 import {
+  EMPTY_ACCOUNT_PROFILE, readAccountProfile, saveAccountProfile, type AccountProfile,
+} from "@/lib/account-profile";
+import { CHECKOUT_CITIES, type CheckoutAddress } from "@/lib/checkout";
+import {
   earnDaily, lifetimeSpendKs, loyaltyHistory, milestoneProgress, nextTier, pointsBalance, tierFor,
 } from "@/lib/loyalty-ledger";
 import {
@@ -49,6 +53,7 @@ type SectionId = "dashboard" | "profile" | "orders" | "designs" | "wishlist" | "
 
 const SECTIONS: { id: SectionId; labelKey: string; fallback: string; Icon: typeof User }[] = [
   { id: "dashboard", labelKey: "account.dashboard", fallback: "Dashboard", Icon: Package },
+  { id: "profile", labelKey: "account.profile", fallback: "Profile", Icon: User },
   { id: "orders", labelKey: "account.orders", fallback: "My Orders", Icon: ShoppingBag },
   { id: "designs", labelKey: "account.designs", fallback: "My Designs", Icon: Palette },
   { id: "points", labelKey: "account.points", fallback: "My Points", Icon: Star },
@@ -94,6 +99,9 @@ const COPY = {
     email: "Email",
     phone: "Phone number",
     address: "Delivery address",
+    township: "Township",
+    city: "City / region",
+    profileSaved: "Saved. Checkout fills this address for you.",
     save: "Save changes",
     empty: "Nothing saved yet.",
     newDesign: "+ New design",
@@ -139,6 +147,9 @@ const COPY = {
     email: "အီးမေးလ်",
     phone: "ဖုန်းနံပါတ်",
     address: "ပို့ဆောင်မည့်လိပ်စာ",
+    township: "မြို့နယ်",
+    city: "မြို့ / တိုင်းဒေသကြီး",
+    profileSaved: "သိမ်းပြီးပါပြီ။ ငွေချေသည့်အခါ ဤလိပ်စာကို အလိုအလျောက် ဖြည့်ပေးပါမည်။",
     save: "ပြောင်းလဲမှုများ သိမ်းရန်",
     empty: "သိမ်းဆည်းထားသည် မရှိသေးပါ။",
     newDesign: "+ ဒီဇိုင်းအသစ်",
@@ -264,6 +275,106 @@ function StatCard({ Icon, label, value, helper, tone = "green" }: { Icon: typeof
   return <div className="min-h-[130px] rounded-2xl border border-border bg-bg-surface p-4"><div className="flex items-start gap-3"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}><Icon size={22} /></span><div className="min-w-0"><p className="text-xs text-text-secondary">{label}</p><p className="mt-1 text-xl font-black tracking-tight">{value}</p>{helper && <p className="mt-1 text-[10px] text-text-muted">{helper}</p>}</div></div></div>;
 }
 
+/** The customer's own record. Saving it is what lets checkout fill the address without asking. */
+type Copy = { [K in keyof (typeof COPY)["en"]]: string };
+
+function AccountProfileForm({ copy }: { copy: Copy }) {
+  const { t } = useI18n();
+  const [profile, setProfile] = useState<AccountProfile>(() => readAccountProfile() ?? EMPTY_ACCOUNT_PROFILE);
+  const [saved, setSaved] = useState(false);
+
+  function change(key: keyof CheckoutAddress, value: string) {
+    setSaved(false);
+    setProfile((current) => ({ ...current, delivery: { ...current.delivery, [key]: value } }));
+  }
+
+  function save() {
+    saveAccountProfile(profile);
+    setSaved(true);
+  }
+
+  return (
+    <form
+      data-account-profile
+      className="grid max-w-2xl gap-4 sm:grid-cols-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        save();
+      }}
+    >
+      <label className="text-xs text-text-muted">
+        {copy.fullName}
+        <input
+          aria-label={copy.fullName}
+          value={profile.delivery.name}
+          onChange={(event) => change("name", event.target.value)}
+          className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary"
+        />
+      </label>
+      <label className="text-xs text-text-muted">
+        {copy.email}
+        <input
+          aria-label={copy.email}
+          type="email"
+          value={profile.email}
+          onChange={(event) => {
+            setSaved(false);
+            setProfile((current) => ({ ...current, email: event.target.value }));
+          }}
+          className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary"
+        />
+      </label>
+      <label className="text-xs text-text-muted">
+        {copy.phone}
+        <input
+          aria-label={copy.phone}
+          type="tel"
+          inputMode="tel"
+          value={profile.delivery.phone}
+          onChange={(event) => change("phone", event.target.value)}
+          className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary"
+        />
+      </label>
+      <label className="text-xs text-text-muted">
+        {copy.township}
+        <input
+          aria-label={copy.township}
+          value={profile.delivery.township}
+          onChange={(event) => change("township", event.target.value)}
+          className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary"
+        />
+      </label>
+      <label className="text-xs text-text-muted">
+        {copy.city}
+        <select
+          aria-label={copy.city}
+          value={profile.delivery.city}
+          onChange={(event) => change("city", event.target.value)}
+          className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary"
+        >
+          <option value="">—</option>
+          {CHECKOUT_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
+        </select>
+      </label>
+      <label className="text-xs text-text-muted sm:col-span-2">
+        {copy.address}
+        <textarea
+          aria-label={copy.address}
+          rows={3}
+          value={profile.delivery.address}
+          onChange={(event) => change("address", event.target.value)}
+          placeholder={t("account.addressPlaceholder")}
+          className="mt-1 w-full resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary"
+        />
+      </label>
+      <div className="flex items-center gap-3 sm:col-span-2">
+        <button type="submit" className="rounded-full bg-accent px-5 py-2 text-xs font-bold text-accent-foreground">{copy.save}</button>
+        {saved ? <p role="status" data-account-profile-saved className="text-xs font-semibold text-accent">{copy.profileSaved}</p> : null}
+      </div>
+    </form>
+  );
+}
+
 export default function AccountPage() {
   const [active, setActive] = useState<SectionId>("dashboard");
   const { currency, toggleCurrency } = useCurrency();
@@ -280,6 +391,20 @@ export default function AccountPage() {
   // empty on both, so the points read 0 until the browser has the store.
   const [now, setNow] = useState("");
   useEffect(() => setNow(new Date().toISOString()), []);
+
+  // The saved record is read after mount so the server render and the first client render agree.
+  const [savedName, setSavedName] = useState("");
+  const [savedHandle, setSavedHandle] = useState("");
+  useEffect(() => {
+    const stored = readAccountProfile();
+    if (!stored) return;
+    setSavedName(stored.delivery.name.trim());
+    const local = stored.email.split("@")[0]?.trim();
+    setSavedHandle(local ? `@${local}` : "");
+  }, []);
+  const displayName = savedName || "Min Thu Aung";
+  const displayHandle = savedHandle || "@minthu.aung";
+  const initials = (displayName.split(/\s+/).filter(Boolean).slice(0, 3).map((word) => word[0]?.toUpperCase()).join("")) || "MTA";
   useEffect(() => {
     if (!now) return;
     updateAdminData((current) => {
@@ -317,7 +442,7 @@ export default function AccountPage() {
       <div className="w-full px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
         <div className="mx-auto grid w-full max-w-[1480px] gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="hidden xl:flex xl:flex-col xl:gap-4">
-            <div className="min-h-[230px] rounded-2xl bg-gradient-to-br from-[#69b917] via-[#4a9d0f] to-[#25720b] p-5 text-center text-white shadow-sm"><div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/70 bg-slate-900 text-xl font-black shadow-lg">MTA</div><h2 className="mt-3 text-lg font-black">Min Thu Aung</h2><p className="text-xs text-white/80">@minthu.aung</p><span className="mt-3 inline-flex min-w-[112px] items-center justify-center rounded-full bg-[#e7b52d] px-3 py-1 text-[10px] font-bold text-[#573600]">♛ {copy.member}</span></div>
+            <div className="min-h-[230px] rounded-2xl bg-gradient-to-br from-[#69b917] via-[#4a9d0f] to-[#25720b] p-5 text-center text-white shadow-sm"><div data-account-initials className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/70 bg-slate-900 text-xl font-black shadow-lg">{initials}</div><h2 data-account-name className="mt-3 text-lg font-black">{displayName}</h2><p className="text-xs text-white/80">{displayHandle}</p><span className="mt-3 inline-flex min-w-[112px] items-center justify-center rounded-full bg-[#e7b52d] px-3 py-1 text-[10px] font-bold text-[#573600]">♛ {copy.member}</span></div>
             <nav aria-label="Account navigation" className="rounded-2xl border border-border bg-bg-surface p-2">{SECTIONS.map((section) => { const Icon = section.Icon; return <button key={section.id} onClick={() => setActive(section.id)} aria-current={active === section.id ? "page" : undefined} className={`flex h-[42px] w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-semibold transition-colors ${active === section.id ? "bg-accent/10 text-accent" : "text-text-secondary hover:bg-bg hover:text-text-primary"}`}><Icon size={17} /> <span className="min-w-0 truncate">{sectionLabel(section)}</span>{section.id === "points" && <span data-account-points-badge className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[9px] text-accent-foreground">{points.total}</span>}</button>; })}<div className="my-2 border-t border-border" /><button className="flex h-[42px] w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold text-text-secondary hover:bg-bg"><LogOut size={17} /> <span className="min-w-0 truncate">{t("account.signOut")}</span></button></nav>
             <div className="min-h-[221px] rounded-2xl bg-gradient-to-b from-[#efffdc] to-[#d9f4bd] p-5 text-center text-[#18350d]"><Sparkles size={25} className="mx-auto text-[#6eae18]" /><h3 className="mt-3 text-base font-black">{copy.earn}</h3><p className="mt-2 text-[10px]">{copy.earnSub}</p><button className="mt-4 inline-flex h-8 min-w-[132px] items-center justify-center rounded-full bg-[#54a817] px-4 text-[10px] font-bold text-white">{copy.learn} <ArrowRight size={12} className="ml-1 inline" /></button></div>
           </aside>
@@ -325,7 +450,7 @@ export default function AccountPage() {
           <div className="min-w-0">
             <section className="mb-4 flex min-h-[114px] items-center gap-3 rounded-2xl bg-gradient-to-r from-[#69b917] to-[#3d8d0d] p-4 text-white shadow-sm xl:hidden">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-white/70 bg-slate-900 text-sm font-black shadow-lg">MTA</div>
-              <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-black">Min Thu Aung</h2><p className="mt-0.5 text-[10px] text-white/75">@minthu.aung</p><span className="mt-2 inline-flex min-w-[99px] items-center justify-center rounded-full bg-[#e7b52d] px-2.5 py-1 text-[9px] font-bold text-[#573600]">♛ {copy.member}</span></div>
+              <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-black">{displayName}</h2><p className="mt-0.5 text-[10px] text-white/75">{displayHandle}</p><span className="mt-2 inline-flex min-w-[99px] items-center justify-center rounded-full bg-[#e7b52d] px-2.5 py-1 text-[9px] font-bold text-[#573600]">♛ {copy.member}</span></div>
               <button type="button" onClick={() => setActive("settings")} aria-label={copy.accountSettings} className="rounded-full bg-white/15 p-2"><Settings size={16} /></button>
             </section>
             {sectionContent === "dashboard" ? (
@@ -343,7 +468,7 @@ export default function AccountPage() {
                   )}</section>
                   <section className="min-h-[353px] rounded-2xl border border-border bg-bg-surface p-5 sm:min-h-0"><div className="mb-4 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><Star size={19} className="text-accent" /> {copy.rewards}</h2><button onClick={() => setActive("points")} className="text-xs font-semibold text-accent">{copy.viewHistory} <ArrowRight size={13} className="ml-1 inline" /></button></div><div className="flex items-center gap-5"><div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-[10px] border-accent/25 border-l-accent border-t-accent"><div className="text-center"><p data-account-points-total className="text-2xl font-black">{points.total}</p><p className="text-[10px] text-text-muted">{t("account.pointsLabel")}</p></div></div><div><p className="text-xs text-text-muted">{copy.nextReward}</p><p className="mt-1 text-lg font-black text-accent">{nextTierInfo ? (my ? `${nextTierInfo.tier.name} · ${formatMoney(nextTierInfo.remainingKs)} လိုသေးသည်` : `${nextTierInfo.tier.name} · ${formatMoney(nextTierInfo.remainingKs)} to go`) : (my ? `${tier?.name ?? "အဖွဲ့ဝင်"} · ${tier?.discountPercent ?? 0}% လျှော့` : `${tier?.name ?? "Member"} · ${tier?.discountPercent ?? 0}% off`)}</p><p className="mt-2 text-xs leading-relaxed text-text-secondary">{points.expiresAt ? (my ? `နေ့စဉ်အမှတ် ${points.daily} သည် ${formatOrderDate(points.expiresAt)} တွင် သက်တမ်းကုန်မည်။` : `${points.daily} daily points lapse at ${formatOrderDate(points.expiresAt)}.`) : copy.closer}</p></div></div><button onClick={() => setActive("points")} className="mt-5 flex h-9 w-full items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">{copy.explore} <ArrowRight size={14} className="ml-1 inline" /></button></section>
                 </div>
-                <div className="mt-5 grid gap-5 lg:grid-cols-2"><section className="min-h-[329px] rounded-2xl border border-border bg-bg-surface p-5 sm:min-h-[267px]"><h2 className="text-lg font-black"><Settings size={18} className="mr-2 inline text-accent" />{copy.accountSettings}</h2><p className="mt-1 text-xs text-text-muted">{copy.manage}</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{[{ Icon: Pencil, label: copy.editProfile }, { Icon: ShieldCheck, label: copy.changePassword }, { Icon: Bell, label: copy.notificationSettings }, { Icon: ShieldCheck, label: copy.privacy }].map(({ Icon, label }) => <button key={label} onClick={() => setActive("settings")} className="flex h-[42px] items-center gap-2 rounded-xl border border-border px-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}</button>)}</div></section><section className="min-h-[329px] rounded-2xl border border-border bg-bg-surface p-5 sm:min-h-[267px]"><h2 className="text-lg font-black"><HelpCircle size={18} className="mr-2 inline text-accent" />{copy.needHelp}</h2><p className="mt-1 text-xs text-text-muted">{copy.support}</p><div className="mt-4 space-y-2">{[{ Icon: HelpCircle, label: copy.faqs }, { Icon: MapPin, label: copy.contact }, { Icon: Bell, label: copy.chat }].map(({ Icon, label }) => <button key={label} className="flex h-[42px] w-full items-center gap-3 rounded-xl border border-border px-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}<ChevronRight size={14} className="ml-auto text-text-muted" /></button>)}</div></section></div>
+                <div className="mt-5 grid gap-5 lg:grid-cols-2"><section className="min-h-[329px] rounded-2xl border border-border bg-bg-surface p-5 sm:min-h-[267px]"><h2 className="text-lg font-black"><Settings size={18} className="mr-2 inline text-accent" />{copy.accountSettings}</h2><p className="mt-1 text-xs text-text-muted">{copy.manage}</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{[{ Icon: Pencil, label: copy.editProfile, to: "profile" as SectionId }, { Icon: ShieldCheck, label: copy.changePassword, to: "settings" as SectionId }, { Icon: Bell, label: copy.notificationSettings, to: "settings" as SectionId }, { Icon: ShieldCheck, label: copy.privacy, to: "settings" as SectionId }].map(({ Icon, label, to }) => <button key={label} onClick={() => setActive(to)} className="flex h-[42px] items-center gap-2 rounded-xl border border-border px-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}</button>)}</div></section><section className="min-h-[329px] rounded-2xl border border-border bg-bg-surface p-5 sm:min-h-[267px]"><h2 className="text-lg font-black"><HelpCircle size={18} className="mr-2 inline text-accent" />{copy.needHelp}</h2><p className="mt-1 text-xs text-text-muted">{copy.support}</p><div className="mt-4 space-y-2">{[{ Icon: HelpCircle, label: copy.faqs }, { Icon: MapPin, label: copy.contact }, { Icon: Bell, label: copy.chat }].map(({ Icon, label }) => <button key={label} className="flex h-[42px] w-full items-center gap-3 rounded-xl border border-border px-3 text-left text-xs hover:border-accent"><Icon size={16} className="text-accent" /> {label}<ChevronRight size={14} className="ml-auto text-text-muted" /></button>)}</div></section></div>
               </>
             ) : (
               <section className="rounded-2xl border border-border bg-bg-surface p-5 sm:p-7">
@@ -363,7 +488,7 @@ export default function AccountPage() {
                     </div>
                   </div>
                 ))}
-                {active === "profile" && <div className="grid max-w-2xl gap-4 sm:grid-cols-2"><label className="text-xs text-text-muted">{copy.fullName}<input defaultValue="Min Thu Aung" className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><label className="text-xs text-text-muted">{copy.email}<input defaultValue="minthu.aung@example.com" className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><label className="text-xs text-text-muted">{copy.phone}<input defaultValue="+95 9 400 686 925" className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><label className="text-xs text-text-muted sm:col-span-2">{copy.address}<textarea rows={3} placeholder={t("account.addressPlaceholder")} className="mt-1 w-full resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary" /></label><button className="rounded-full bg-accent px-5 py-2 text-xs font-bold text-accent-foreground sm:col-span-2 sm:w-fit">{copy.save}</button></div>}
+                {active === "profile" && <AccountProfileForm copy={copy} />}
                 {active === "designs" && <div className="grid gap-4 sm:grid-cols-3">{["Chaos Theory remix", "Team jersey #10"].map((name) => <div key={name} className="overflow-hidden rounded-xl border border-border"><div className="flex aspect-square items-center justify-center bg-gradient-to-br from-[#dff1c5] to-[#b7d98d] text-center text-sm font-black text-[#4c9d16]">MH<br />FASHION</div><div className="p-3"><p className="truncate text-xs font-bold">{name}</p><p className="mt-1 text-[10px] text-text-muted">T-shirt · Crew Neck · M</p><div className="mt-3 flex gap-3"><a href="/create" className="text-[10px] font-semibold text-accent">Edit</a><button className="flex items-center gap-1 text-[10px] text-text-muted"><Trash2 size={11} /> Delete</button></div></div></div>)}<a href="/create" className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-border-light text-xs text-text-muted">{copy.newDesign}</a></div>}
                 {active === "wishlist" && (
                   wishlist.count ? (

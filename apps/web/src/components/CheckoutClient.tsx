@@ -12,9 +12,14 @@ import {
   providerIdFor, type CheckoutAddress, type CheckoutDraft, type CheckoutPayment,
 } from "@/lib/checkout";
 import { addressSummary, lastOrderAddress, readSavedAddress, saveDeliveryAddress } from "@/lib/delivery-address";
+import { accountDeliveryAddress, saveAccountDelivery } from "@/lib/account-profile";
+import { useI18n } from "@/lib/i18n";
 import { orderAmountKs, type PaymentStatus } from "@/lib/payments";
 
 const CHECKOUT_KEY_STORAGE = "mh-fashion-checkout-key";
+
+/** Where the prefilled address came from, so the card can say so instead of guessing. */
+type AddressSource = "account" | "device" | "order" | null;
 
 /** One key per checkout attempt: a refresh reuses it, so a double submit cannot create two orders. */
 function useIdempotencyKey(): string {
@@ -36,11 +41,13 @@ function useIdempotencyKey(): string {
 export default function CheckoutClient() {
   const { items, clearCart } = useCart();
   const { formatRangeKs } = useCurrency();
+  const { t } = useI18n();
   const data = useAdminDemoData();
   const idempotencyKey = useIdempotencyKey();
 
   const [address, setAddress] = useState<CheckoutAddress>(EMPTY_ADDRESS);
   const [savedAddress, setSavedAddress] = useState<CheckoutAddress | null>(null);
+  const [addressSource, setAddressSource] = useState<AddressSource>(null);
   const [editingAddress, setEditingAddress] = useState(false);
   const addressHydrated = useRef(false);
   const [payment, setPayment] = useState<CheckoutPayment>("KBZPay");
@@ -54,13 +61,17 @@ export default function CheckoutClient() {
   const submittingRef = useRef(false);
   const confirmationRef = useRef<HTMLHeadingElement>(null);
 
-  // A customer who already gave us an address does not type it again: the saved one fills the form,
-  // and the newest order on this device covers the case where nothing was saved yet.
+  // A customer who already gave us an address does not type it again. The account's saved address
+  // comes first — that is the one the customer entered once and expects everywhere — then the address
+  // this device kept, then the newest order. All of them only prefill the form, which stays editable.
   useEffect(() => {
     if (addressHydrated.current) return;
     addressHydrated.current = true;
-    const known = readSavedAddress() ?? lastOrderAddress(data.orders);
+    const fromAccount = accountDeliveryAddress();
+    const fromDevice = fromAccount ? null : readSavedAddress();
+    const known = fromAccount ?? fromDevice ?? lastOrderAddress(data.orders);
     if (!known) return;
+    setAddressSource(fromAccount ? "account" : fromDevice ? "device" : "order");
     setSavedAddress(known);
     setAddress(known);
   }, [data.orders]);
@@ -108,7 +119,10 @@ export default function CheckoutClient() {
     if (outcome.order) {
       setSubmittedOrder(outcome.order);
       saveDeliveryAddress(address);
+      // An address edited at checkout is the address from now on, so the account copy follows it.
+      saveAccountDelivery(address);
       setSavedAddress(address);
+      setAddressSource("account");
       setEditingAddress(false);
       clearCart();
       setMessage(outcome.created ? `Order ${outcome.order.id} placed.` : `Order ${outcome.order.id} was already placed — nothing was charged twice.`);
@@ -270,14 +284,18 @@ export default function CheckoutClient() {
               <p className="text-[11px] font-bold">{address.name} <span className="font-semibold text-text-muted">· {address.phone}</span></p>
               <p data-checkout-saved-address-line className="mt-1 text-[11px] text-text-secondary">{addressSummary(address)}</p>
               <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="text-[9px] text-text-muted">Already on file — this parcel ships here unless you change it.</p>
+                <p data-checkout-address-source={addressSource ?? "device"} className="text-[9px] text-text-muted">
+                  {addressSource === "account"
+                    ? t("checkout.addressFromAccount")
+                    : "Already on file — this parcel ships here unless you change it."}
+                </p>
                 <button
                   type="button"
                   data-checkout-address-change
                   onClick={() => setEditingAddress(true)}
                   className="shrink-0 rounded-full border border-border-light px-3 py-1 text-[10px] font-bold text-accent hover:border-accent"
                 >
-                  Change
+                  {t("checkout.addressChange")}
                 </button>
               </div>
             </div>
