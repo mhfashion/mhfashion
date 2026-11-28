@@ -4799,3 +4799,44 @@ went 340 -> 509px and the promo tiles 208 -> 263px.
   2-16px of slack for the Burmese copy at both widths, so nothing is clipped.
 - `tests/myanmar-typography.test.cjs` pins the banner heights, the Myanmar type scale, the tight-line
   hook and the card `min-h` values.
+
+## §18.13 What still moves on a language switch, and why
+
+The §18.12 pass took every painted box on twelve routes to 0 px. Four rows were left in the diff on
+purpose. This section records each one with its measured numbers and the decision, so the next agent does
+not "fix" them and clip the Burmese copy.
+
+| What | EN → MY (1440x900 / 390x844) | Decision |
+|---|---|---|
+| Page-title band on `/checkout` (87 -> 138), `/cart` (498 -> 549), `/account`, `/collections` (906 -> 952 / 746 -> 848), `/new` and `/popular` (622 -> 645), `/nyein` (1496 -> 1525), `/` (1153 -> 1182 / 1157 -> 1215) | +23 to +102 px, from the `<h1>` wrapping to two 2.1em lines | **Leave.** A page title is text, not a box: no fill, border or radius to hold still. Forcing one line would clip the Burmese title, and a fixed band would need the `data-hero` treatment (a smaller Burmese title), which is a design decision, not a bug fix. Ask the owner before doing it. |
+| Guide card image (246x208 -> 246x200, 246x193 -> 246x177) | -8 / -16 px | **Leave.** The card is `aspect-square` and stays 246x246 in both languages; only the `flex-1` image gives room back as the Burmese caption grows. Pinning the image would push the caption out of the card. |
+| Account order-count badge (31x20 in EN, absent in MY) | badge not rendered | **Leave.** The badge prints `orders.length`; the Burmese view of that fixture has one order fewer, so the element is not in the DOM at all. A data difference, not a size drift. |
+| Guide category tag (23x20 -> 23x19) | -1 px | **Leave.** A 9px tag inside a 1.5 line box; sub-pixel rounding, under the 2 px bar the rest of the pass uses. |
+
+Everything else — banners, promo tiles, collection tiles, empty states, account cards, the guide
+sidebar, the footer, the copyright bar and every CTA pill — is 0 px at both widths.
+
+### §18.13.1 Re-running the check
+
+The check is a browser measurement, so it is not in the unit suite; do it on every layout change.
+
+1. `npm run build --workspace=apps/web` and start the server on port 3000 (kill any old `next-server`
+   first, or you measure the previous build).
+2. `chromium --headless=new --no-sandbox --remote-debugging-port=9222 about:blank`.
+3. For each locale (`en`, `my`, set through `localStorage["mh-locale"]`, then reload) and each width
+   (1440x900 desktop, 390x844 mobile), visit `/`, `/create`, `/collections`, `/cart`, `/account`,
+   `/search?q=tee`, `/guide`, `/nyein`, `/checkout`, `/new`, `/popular`, `/mh-fashion` and record every
+   element that has a background, a border or a radius, keyed by `tagName + className + text`, with its
+   `getBoundingClientRect()` width and height.
+4. Diff the two locale dumps per width. Acceptance: the table above is the *only* output.
+
+### §18.13.2 Rules for a new box
+
+1. A banner is `data-hero` plus a fixed height at every breakpoint (`h-[..] sm:h-[..] lg:h-[..]`). Never
+   give a banner `min-h` — its copy then sets the height and the box grows on a language switch.
+2. A tile or card takes the taller (Burmese) measure as `min-h`. A phone-only height goes in the base
+   class and the desktop value behind `sm:` (`min-h-[390px] sm:min-h-[323px]`).
+3. A one-line bar or a link list gets `data-tight-line`, which keeps the Latin 1.5 line box in Myanmar.
+4. A pill with a fixed label gets `min-w` equal to its wider (Burmese) label and centres its text.
+5. Add the new value to `tests/myanmar-typography.test.cjs` ("a language switch never resizes a banner,
+   tile or card") so the contract cannot drift.

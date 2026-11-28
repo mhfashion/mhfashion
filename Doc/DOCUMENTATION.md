@@ -2559,3 +2559,5 @@ Tier names (`Silver`, `Gold`), demo wallet values, guide article bodies and the 
 - `data-tight-line` keeps the Latin line box (1.5) for one-line bars and link lists (copyright bar, footer lists).
 - CTA pills carry a `min-w` equal to the wider Burmese label and centre their text.
 - Result at 1440x900 and 390x844: no banner, tile, card, bar or pill changes size on a language switch. Page titles and section wrappers still follow their text.
+- Four rows stay in the diff on purpose: page-title bands (a title is text, not a box), the guide card image inside a fixed square card, the account order-count badge (absent in the Burmese fixture), and a 1px guide tag. See Plan §18.13.
+- Re-run the box diff on every layout change: build, start the server, dump every painted element per locale (1440x900 and 390x844), and diff. Only the rows listed in Plan §18.13 may differ.
