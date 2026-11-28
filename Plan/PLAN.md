@@ -3,7 +3,7 @@
 **Canonical planning file:** `Plan/PLAN.md`
 **Consolidated from:** the former project, editor vision, editor implementation, legacy architecture, deployment notes, and TODO sources. Their full planning/specification/history content is preserved below. Operational guidance and audit records are consolidated in [`Doc/DOCUMENTATION.md`](../Doc/DOCUMENTATION.md).
 **Repository baseline at consolidation:** `mhfashion/mhfashion`, branch `main`, commit `90dc398` (2026-11-13). Re-check code and deployment before treating dated status statements as current.
-**Contents:** Part I is the project plan (sections 1 to 17 and the dated updates below); Part II is the editor plan, at the end of this file ([Part II — Editor plan](#part-ii--editor-plan)). `Plan/` holds this one file only.
+**Contents:** Part I is the project plan (sections 1 to 19 and the dated updates below; §19 holds the system architecture and operations); Part II is the editor plan, at the end of this file ([Part II — Editor plan](#part-ii--editor-plan)). `Plan/` holds this one file only.
 
 ## Owner directives and maintenance rules
 
@@ -1809,6 +1809,12 @@ Supabase migrations `0001`–`0007` remain owner-managed, and the admin workspac
 - 2026-11-21: **a post for every product category, with bilingual tags** (§4.5.10): `category` and
   `tags: {en, my}` on a post, `groupPostsByCategory` on the board, a category filter and per-group "New"
   button, and a tag editor with suggestions; older stored posts load as T-Shirt with no tags.
+- 2026-11-21: **§19 System architecture and operations** written at the owner's request: runtime topology,
+  the one-way data migration, identity and authorization as a server-side system, the environment-variable
+  table with what breaks without each, the pipeline and its five gaps, response security headers, abuse
+  control, observability and the four incident playbooks, backup/restore/retention, and seven open system
+  defects (S1–S7). Two register items were added from it: P1-12 (security headers) and P1-13 (configuration
+  truth). Nothing there is approved to start.
 - 2026-11-26: §12.2 now covers the editor's Photos and Patterns libraries (`photos/`, `patterns/`) and moves customers' files to `users/<account-uuid>/` and `tmp/<account-uuid>/`; decisions R2-10 to R2-14; the code changes this needs are listed in §12.2.12; Part II (II.2, E1, E10, the inputs list) and §17 search follow.
 
 
@@ -1998,6 +2004,11 @@ This section records the current repository state and overrides earlier draft bu
 
 Editor items are excluded by owner decision 1 — the editor is final as built. Priority below is a
 proposal, not an approved order.
+
+**The system-level work has its own section:** §19 states the runtime topology, the data model, identity,
+configuration, the pipeline, security headers, abuse control, observability and backup as requirements with
+acceptance checks. This register owns the work; §19 says what "done" means. Items P0-1, P0-2, P0-3, P1-9,
+P1-12 and P1-13 (below) are the ones §19 defines in detail.
 
 ### P0 — foundation
 
@@ -2189,6 +2200,23 @@ proposal, not an approved order.
     strip), how a category group becomes a page, and whether the tags become filters — then build it on
     the backend of P0-1. Record the decision here before building, because the page shape decides what
     the post document must carry.
+
+12. **Security headers and a content policy** (§19.6). The site currently sends the platform defaults: no
+    `Strict-Transport-Security`, no `X-Content-Type-Options`, no `Referrer-Policy`, no `Permissions-Policy`,
+    no `frame-ancestors`, no CSP — there is no `middleware.ts` and `next.config.*` sets only
+    `images.remotePatterns`. Add the five headers and a CSP that still lets the canvas work (inline styles,
+    `data:`/`blob:` images for every design preview, the Supabase host in `connect-src`, the R2 public host
+    when it exists), and a test (`tests/security-headers.test.cjs`) that asks a running server for `/` and
+    fails when a header disappears. Check the editor, a product page and `/admin/posts` afterwards at 1440
+    and 390, because a CSP that breaks a data-URL preview breaks the whole editor.
+
+13. **Configuration truth** (§19.4). `apps/web/.env.example` names variables the code never reads
+    (`MH_DELIVERY_API_URL`, `MH_DELIVERY_API_KEY`, the S3-style `R2_*` quartet, three AI keys) and omits five
+    it does (`PAYMENT_WEBHOOK_SECRET`, `PAYMENTS_ALLOW_MOCK`, `NEXT_PUBLIC_MH_DELIVERY_URL`,
+    `NEXT_PUBLIC_R2_PUBLIC_URL`, `NEXT_PUBLIC_CONTACT_EMAIL`). Regenerate it from §19.4 and add
+    `tests/env-example.test.cjs`, which fails when a name is read by the code but missing from the example, or
+    listed there and never read. Also list the Worker secrets (`wrangler secret put`) in the same table, so the
+    two lists cannot drift apart again.
 
 ### P2 — later
 
@@ -3548,6 +3576,236 @@ The owner: the editor's Tools / Adjustments should be fuller on the design side.
   (866 px = 866 px), centre lands at dx 0 / dy 0, flip reads -100%, reset size 100%, duplicate adds a
   layer, and Neon writes two Glow effects that paint on the canvas. Phone: panel 256 px, buttons 44 px, no
   sideways scroll. Suite 386/386, tsc clean, ESLint 0 errors, e2e desktop + phone pass.
+
+---
+
+## 19. System architecture and operations *(owner request 2026-11-21: strengthen the system side)*
+
+Sections 1 to 18 plan what the shop **does**. This section plans what **runs** it: where each piece lives,
+who owns each piece of data, how it is configured, deployed, watched, backed up and recovered. Every block
+below has the same three parts — **Now** (what the repository actually contains, checked 2026-11-21),
+**Target** (what it must be before real customers and real money), and **Acceptance** (the check that proves
+it, written so a command or a test can fail).
+
+Nothing here is approved to start except the items the register (§16) already lists; this section states the
+requirement, and each block names the register item that owns it.
+
+### 19.1 Runtime topology — what runs where
+
+**Now.**
+
+| Concern | Where it lives today | Binding / file |
+| --- | --- | --- |
+| Web app | Next.js 16 App Router, built by OpenNext into a Cloudflare Worker | `apps/web/wrangler.jsonc` → `.open-next/worker.js` |
+| Static assets | Worker `ASSETS` binding from `.open-next/assets` | same file |
+| Worker logs and metrics | `observability.enabled: true` (Cloudflare dashboard only) | same file |
+| Catalogue, guide, search, search misses, staff roles | Supabase Postgres + RPCs, migrations `0001`–`0012` | `SQL/` |
+| Asset service | a second Worker that answers asset JSON | `Worker/assets.ts`, `.github/workflows/deploy-assets-worker.yml` |
+| Object storage | **nothing bound yet** — both R2 bindings are commented out | `apps/web/wrangler.jsonc` (commented) |
+| Rate-limit counter | **module memory** (per isolate) until the KV namespace exists and is bound | `lib/rate-limit.ts` → `RATE_LIMIT_KV` |
+| Admin data: orders, products, stock, posts, prices, promotions, designs, customer accounts, contact messages, ads, settings | the customer's own browser, `localStorage["mh-fashion-admin-demo-data-v1"]` | `lib/admin-demo-data.ts` |
+| Cart, wishlist, customer session, crash log | browser, own keys | `lib/cart-store.ts`, `lib/wishlist.ts`, `lib/customer-session.ts`, crash log |
+
+Two consequences follow, and both are visible to the owner: **an order exists only in the browser that placed
+it**, and **the admin workspace is empty on a new device**. That is a property of the topology, not a bug to
+paper over.
+
+**Target.** One owner per concern, and no row above may say "the browser" except drafts, cart and wishlist.
+Money, orders, stock, posts and prices live in Supabase; pictures and design files live in R2; counters live in
+KV; the browser keeps only what is disposable — a design draft, the cart, the wishlist, the theme, the
+language.
+
+**Acceptance.** This table is kept current and read in review. Any row whose "today" column has not changed is
+a known gap, and a new feature may not add a new browser-owned store of business data.
+
+### 19.2 Data model and the one-way migration
+
+**Now.** The shapes exist in TypeScript (`AdminOrder`, `AdminTshirtPost`, `AdminProduct`, `PriceRow`,
+`AdminDesign`, `AdminPromotion`, `CustomerAccount`, `ContactMessage`, `AdminAd`, `AdminSettings`) and in
+`localStorage`. The database holds the catalogue, guide, search and staff-role tables only. Nothing migrates
+one into the other, and the demo seed rebuilds itself in any empty browser.
+
+**Target.**
+
+- Tables mirror the TypeScript shapes one for one (P0-1), `tshirt_posts.category` and its tags included, so no
+  field is invented at the edge.
+- Ids are stable and shared: a post's product link, a product's size chart and the Price Table all use the
+  **same** `products.id` the catalogue serves, or none of them line up (the size chart already waits on this).
+- `orders.checkout_key` is a **unique index**. The client already sends the key; unique is what makes a double
+  submit safe at the database, not only inside `placeOrder`.
+- Money is an integer in Ks (never a float), every timestamp is a UTC ISO string, and text a person typed is
+  length-capped in the database as well as in the form.
+- The demo seed writes only into a database it can prove is empty (`settings.dataset = 'demo'`), so it can never
+  overwrite a shop that has traded.
+- Deletion is soft wherever money or printing touched the row (designs, orders, price history): a `deleted_at`
+  column, never a `DELETE`.
+
+**Acceptance.** A migration runs from an empty database to the full schema; running it twice is a no-op; the
+seed refuses a non-empty dataset; a duplicate `checkout_key` insert leaves exactly one order.
+
+### 19.3 Identity and authorization — the system, not the checkboxes
+
+**Now.** Two independent, browser-local identities: the admin demo session, and the customer account with a
+salted PBKDF2 hash in `localStorage` (§4.5.8, §4.5.9). No server route reads either one, so **every `/admin/*`
+page is public HTML to anyone who types the URL**, and the numbers on it are that browser's own data. Module
+permissions are drawn as checkboxes and enforced only by the page that draws them.
+
+**Target.**
+
+- **Customers** use Supabase Auth: email and password, verified email, reset by email. The local PBKDF2 hash
+  cannot be exported, so the honest migration is that each customer sets a password **once** on their first
+  sign-in after the switch. The owner should be told before it happens, because customers will see one extra
+  step.
+- **Staff** use Supabase Auth too, with a `staff` row carrying the module list; a claim or a lookup puts the
+  role in the token. The Super Admin creates staff exactly as today, but the record survives the device.
+- Every server route resolves the caller through **one** helper and compares it with a per-route rule; the
+  matrix of route × caller (anonymous, customer, staff) is written down here and in the tests.
+- RLS is the floor, not the ceiling: the catalogue is public read; an order is readable by its owner or by
+  staff; posts and prices are staff-only to write; `contact_messages` is insert-only for the public and
+  readable by staff.
+- The demo session survives only as an explicit preview mode that cannot write to Supabase, or it is removed.
+
+**Acceptance.** A test signs in as the three callers and calls every route expecting the matrix's answer; any
+unexpected 200 fails. Visiting `/admin/orders` while signed out redirects or returns 401, not a table.
+
+### 19.4 Secrets and configuration
+
+**Now.** The variables the code actually reads, and what stops working without each:
+
+| Variable | Scope | Read by | Without it |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | public | catalogue, search, guide, assets | empty catalogue; the search panels say "not connected" |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | same | same |
+| `SUPABASE_SERVICE_ROLE_KEY` | **secret** | `/api/admin/search-misses` | search-miss panel reports "not connected" |
+| `PAYMENT_WEBHOOK_SECRET` | **secret** | `lib/payments.ts` | the mock secret is used and a real provider callback is rejected |
+| `PAYMENTS_ALLOW_MOCK` | server | `/api/payments/simulate` | mock callbacks stay **on** — set `0` in production |
+| `NEXT_PUBLIC_MH_DELIVERY_URL` | public | delivery quote client | quote answers from the shop's own fee table |
+| `MH_DELIVERY_TOKEN` | **secret** | `/api/delivery/quote` | same fallback, with the reason printed |
+| `NEXT_PUBLIC_SITE_URL` | public | structured data, canonical | relative URLs only, no canonical origin |
+| `NEXT_PUBLIC_R2_PUBLIC_URL` | public | asset URLs | placeholders instead of pictures |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | public | footer, contact page | the built-in address is used |
+| `RATE_LIMIT_KV` | **binding** | `lib/rate-limit.ts` | the limiter is per isolate |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | **Actions secrets** | the two deploy workflows | the deploy stops at its first step |
+
+**Known drift, fix with the next configuration change:** `apps/web/.env.example` still names
+`MH_DELIVERY_API_URL`, `MH_DELIVERY_API_KEY`, the S3-style `R2_*` quartet and three AI keys the code never
+reads, and it is missing `PAYMENT_WEBHOOK_SECRET`, `PAYMENTS_ALLOW_MOCK`, `NEXT_PUBLIC_MH_DELIVERY_URL`,
+`NEXT_PUBLIC_R2_PUBLIC_URL` and `NEXT_PUBLIC_CONTACT_EMAIL`. A person following it would configure the wrong
+names and discover it only when payments or delivery fail.
+
+**Target.** The example file is generated from this table, or checked against it by a test; Worker secrets go
+in through `wrangler secret put` and never into `wrangler.jsonc`; the deploy secrets are the only ones GitHub
+holds; rotation is one paragraph — change the value in both places, redeploy, revoke.
+
+**Acceptance.** `tests/env-example.test.cjs` fails when a name is read by the code but absent from
+`.env.example`, or listed there and never read.
+
+### 19.5 The pipeline
+
+**Now** (`.github/workflows/deploy-cloudflare.yml`, on a push to `main` that touches `apps/web`,
+`package*.json` or the workflow itself): secret presence check → checkout → Node 22 with the npm cache →
+`npm ci` → `npm audit --omit=dev --audit-level=moderate` → five suites (`guide`, `browser-guards`,
+`canvas-spec`, `canvas-shell`, `guide:http` against a local server) → `next build` → `tsc --noEmit` →
+`cf:build` → `wrangler deploy --dry-run` → `wrangler deploy`. A second workflow deploys the asset Worker; a
+third copies the buckets weekly and needs five further secrets.
+
+**Gaps, in the order they matter.**
+
+1. **The suite that exists is not the suite that runs.** 1001 tests live in `tests/*.test.cjs`; CI runs five
+   named files, so everything written since those five were chosen merges unverified.
+2. ESLint never runs in CI, although the repo counts "ESLint 0 errors" as part of done.
+3. Nothing probes the deployed Worker, so a deploy that answers 500 everywhere is still a green run.
+4. There is no rollback step and no record of which Worker version a run deployed.
+5. No preview deployment: a branch cannot be looked at before merge, so layout work is verified locally only.
+
+**Target.** A `main` push runs install → audit → the **full** `node --test tests/*.test.cjs` → lint → tsc →
+build → HTTP tests → `cf:build` → dry-run → deploy → **smoke**, where `/`, `/nyein`, `/products/<a known
+slug>` and `/admin/login` must return 200 and the workflow fails naming the URL it probed. A failed build or
+smoke leaves the previous version serving, and the run records the Worker version it deployed.
+
+**Acceptance.** Break one page on purpose; the pipeline must go red **after** the deploy, not green.
+
+### 19.6 Edge security policy
+
+**Now.** No security headers are set: there is no `middleware.ts`, and `next.config.*` carries only
+`images.remotePatterns`. The site is served with the platform defaults.
+
+**Target.** Response headers, set once at the edge: `Strict-Transport-Security`, `X-Content-Type-Options:
+nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` limited to what the editor
+uses, `frame-ancestors 'none'`, and a CSP whose directives name what actually loads — the Supabase host in
+`connect-src`, `data:` and `blob:` in `img-src` (every design preview and uploaded photo is a data URL), the R2
+public host once it exists, `'self'` for scripts. Inline styles must be allowed for the canvas geometry, or that
+geometry has to move off inline styles first.
+
+**Acceptance.** `tests/security-headers.test.cjs` asks a running server for `/` and asserts each header, so a
+framework upgrade cannot silently drop them.
+
+### 19.7 Abuse control
+
+**Now.** `enforceRateLimit` guards `payments/intent`, `payments/status`, `payments/simulate`,
+`payments/webhook`, `uploads` (40 a minute) and `delivery/quote` (30 a minute); the counter is per isolate
+until the KV binding exists. `search/suggest` and `admin/search-misses` are unguarded.
+
+**Target.** Any unauthenticated route that writes, costs money, or queries with a user-supplied string carries
+a limiter, and its test fails when the limiter is removed. Uploads keep verifying the signed-in user and letting
+the bytes decide the type, as they already do.
+
+**Acceptance.** `lib/rate-limit.ts` lists every guarded route, and a test imports the route modules and fails
+when a route is missing from the list.
+
+### 19.8 Observability and incident handling
+
+**Now.** Worker observability is on, so Cloudflare keeps request logs and metrics. The client crash log is
+written to `localStorage` and never leaves the device (P2-15 records that gap). There is no uptime check, no
+alert to the owner, and no written runbook.
+
+**Target.**
+
+- A server-side crash sink, so a crash on a customer's phone reaches the owner.
+- An uptime check on `/` and `/nyein` every five minutes, alerting the owner's own channel — a Telegram bot
+  message is the cheapest option that works on a phone in Myanmar.
+- A runbook in `Doc/DOCUMENTATION.md` with four short playbooks: **site down** (check the Worker deployment,
+  `wrangler rollback`, re-run the smoke), **bad deploy** (name the last good version, roll back, fix forward),
+  **payments silent** (webhook secret, replay window, the recorded event), **R2 403** (binding name, bucket
+  policy, clock skew on a signed URL).
+- A stated log-retention window, so nobody assumes last year's logs exist.
+
+**Acceptance.** One named person, one channel, one page; the runbook commands are copy-pasteable and have been
+run once.
+
+### 19.9 Backup, restore, retention
+
+**Now.** Supabase takes its own daily backup on whatever plan the shop pays for (unverified from here). The R2
+copy workflow exists and is **not armed** — it needs five secrets. Browser data has no backup and needs none,
+because it is demo data today.
+
+**Target.** A restore that has been **performed once**, not merely planned: one table and one object restored
+into a scratch project, with a date and a note. Retention stated per class — temporary uploads 30 days
+(`tmp/`), order and print files kept for the period the shop's accountant names, design drafts until the
+customer deletes them, contact messages twelve months — and implemented by the bucket lifecycle rules §12.2.7
+already decided.
+
+**Acceptance.** A dated line in `Doc/DOCUMENTATION.md`: what was restored, from when, into where, how long it
+took, and what came back missing.
+
+### 19.10 System defects found in this pass *(2026-11-21, all open)*
+
+| # | Defect | Why it matters | Smallest fix | Owner item |
+| --- | --- | --- | --- | --- |
+| S1 | `GET /api/admin/search-misses` checks only that the service-role key exists, never who is calling | Anyone who learns the URL reads the search terms customers typed and found nothing for | Require a staff session (P0-2); until then return 401 unless a server-only token matches | P0-2 |
+| S2 | CI runs five test files, not the 1001-test suite; ESLint never runs | Most of what ships has never been run by CI | Add the two steps in §19.5 | P0-3 |
+| S3 | No security headers | A defect that stays invisible until it is exploited | §19.6 | P1-12 (new) |
+| S4 | `apps/web/.env.example` names variables the code does not read and omits five it does | A setup that looks right and silently loses payments and delivery | Regenerate it from §19.4 | P1-13 (new) |
+| S5 | R2 and KV bindings are commented out in `wrangler.jsonc` | Uploads have nowhere to land; the rate limiter resets per isolate | Create the namespace and the buckets, then uncomment | P1-9 |
+| S6 | No post-deploy smoke and no rollback step | A green run can mean a broken shop | §19.5 | P0-3 |
+| S7 | `/admin/*` is public HTML with browser-local data behind it | The owner may read a dashboard that is not the shop's | P0-1 and P0-2; until then the preview banner must stay | P0-1 |
+
+The two register items this section adds:
+
+- **P1-12 Security headers and a content policy** (§19.6): the five headers plus a CSP that still lets the
+  canvas, data-URL previews and fonts work, with a test that fails when one of them disappears.
+- **P1-13 Configuration truth** (§19.4): `.env.example` matches the names the code reads, checked by a test,
+  and the Worker secret list matches it name for name.
 
 ---
 

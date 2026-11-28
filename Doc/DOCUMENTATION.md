@@ -2878,3 +2878,26 @@ category vocabulary.
 **Verified** in Chromium 1440x900: five groups with counts, Cup drawer limited to the Ceramic Cup product,
 `Jasmine`/`စံပယ်ပန်း` + `Gift` stored under `category:"Cup"`, both languages in the table, Cup filter
 narrowing the board, and a Burmese-tag search finding the post.
+
+## System plan: what runs the shop (§19 of the plan)
+
+`Plan/PLAN.md` §19 records the system side at the owner's request (2026-11-21): runtime topology, the one-way
+data migration, identity and authorization as a server-side system, the environment-variable table, the deploy
+pipeline and its gaps, security headers, abuse control, observability with four incident playbooks, and
+backup/restore/retention. Each block states what exists today, what the target is and the check that proves it.
+
+Seven defects were found while writing it. They are open, and they are the reason two register items were
+added (P1-12, P1-13):
+
+1. `GET /api/admin/search-misses` verifies only that `SUPABASE_SERVICE_ROLE_KEY` exists, never who is calling,
+   so the shop's search terms are readable by anyone who learns the URL.
+2. CI runs five test files, not the 1001-test suite, and never runs ESLint.
+3. No security headers are sent (no `middleware.ts`; `next.config.*` sets only `images.remotePatterns`).
+4. `apps/web/.env.example` names variables the code never reads and omits five it does.
+5. The R2 and KV bindings are still commented out in `wrangler.jsonc`, so uploads have no bucket and the rate
+   limiter resets per isolate.
+6. The pipeline has no post-deploy smoke and no rollback step.
+7. `/admin/*` is public HTML with browser-local data behind it; the preview banner is what tells the truth.
+
+None of these is a regression from recent work; all seven predate it and are now written down instead of being
+rediscovered one at a time.
